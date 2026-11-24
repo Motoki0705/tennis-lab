@@ -1,0 +1,802 @@
+{
+  "analysed_clips": 55,
+  "camera_frames": 20804,
+  "clips": [
+    {
+      "clip_id": "video_000/clip_000",
+      "missing_player_frames": 8,
+      "player_frames": 1424,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_001",
+      "missing_player_frames": 567,
+      "player_frames": 2244,
+      "selection_loss": {
+        "inside_core": 193,
+        "inside_core_chain_observations_below_requirement": 4,
+        "inside_core_unrounded": 192,
+        "outside_core": 1042,
+        "outside_core_unrounded": 1043,
+        "outside_laterally": 1042,
+        "reference_also_outside_core": 733,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 559,
+        "no_detection_in_radius": 433,
+        "no_reference": 32,
+        "not_selected": 1235,
+        "not_tracked": 7,
+        "outside_image": 2
+      }
+    },
+    {
+      "clip_id": "video_000/clip_003",
+      "missing_player_frames": 8,
+      "player_frames": 1476,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_005",
+      "missing_player_frames": 320,
+      "player_frames": 1256,
+      "selection_loss": {
+        "inside_core": 19,
+        "inside_core_chain_observations_below_requirement": 0,
+        "inside_core_unrounded": 19,
+        "outside_core": 653,
+        "outside_core_unrounded": 653,
+        "outside_laterally": 653,
+        "reference_also_outside_core": 303,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 296,
+        "no_detection_in_radius": 202,
+        "no_reference": 96,
+        "not_selected": 672,
+        "not_tracked": 4,
+        "outside_image": 10
+      }
+    },
+    {
+      "clip_id": "video_000/clip_006",
+      "missing_player_frames": 8,
+      "player_frames": 3468,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_007",
+      "missing_player_frames": 8,
+      "player_frames": 1604,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_008",
+      "missing_player_frames": 8,
+      "player_frames": 2504,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_009",
+      "missing_player_frames": 35,
+      "player_frames": 3896,
+      "selection_loss": {
+        "inside_core": 40,
+        "inside_core_chain_observations_below_requirement": 40,
+        "inside_core_unrounded": 40,
+        "outside_core": 30,
+        "outside_core_unrounded": 30,
+        "outside_laterally": 30,
+        "reference_also_outside_core": 9,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 28,
+        "no_detection_in_radius": 2,
+        "no_reference": 32,
+        "not_selected": 70,
+        "not_tracked": 1,
+        "outside_image": 7
+      }
+    },
+    {
+      "clip_id": "video_000/clip_010",
+      "missing_player_frames": 9,
+      "player_frames": 2180,
+      "selection_loss": {
+        "outside_core": 1,
+        "outside_core_unrounded": 1,
+        "outside_laterally": 1,
+        "reference_also_outside_core": 1,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 1,
+        "no_detection_in_radius": 1,
+        "no_reference": 32,
+        "not_selected": 1,
+        "not_tracked": 1
+      }
+    },
+    {
+      "clip_id": "video_000/clip_011",
+      "missing_player_frames": 8,
+      "player_frames": 4588,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_013",
+      "missing_player_frames": 8,
+      "player_frames": 1876,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_015",
+      "missing_player_frames": 8,
+      "player_frames": 3312,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_016",
+      "missing_player_frames": 257,
+      "player_frames": 4856,
+      "selection_loss": {
+        "inside_core": 465,
+        "inside_core_chain_observations_below_requirement": 464,
+        "inside_core_unrounded": 465,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 249,
+        "no_detection_in_radius": 260,
+        "no_reference": 32,
+        "not_selected": 465,
+        "not_tracked": 8,
+        "outside_image": 14
+      }
+    },
+    {
+      "clip_id": "video_000/clip_017",
+      "missing_player_frames": 8,
+      "player_frames": 1456,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_019",
+      "missing_player_frames": 396,
+      "player_frames": 2276,
+      "selection_loss": {
+        "inside_core": 22,
+        "inside_core_chain_observations_below_requirement": 0,
+        "inside_core_unrounded": 22,
+        "outside_core": 1095,
+        "outside_core_unrounded": 1095,
+        "outside_laterally": 1095,
+        "reference_also_outside_core": 1067,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 388,
+        "no_detection_in_radius": 44,
+        "no_reference": 32,
+        "not_selected": 1117,
+        "not_tracked": 3
+      }
+    },
+    {
+      "clip_id": "video_000/clip_021",
+      "missing_player_frames": 86,
+      "player_frames": 2052,
+      "selection_loss": {
+        "outside_core": 61,
+        "outside_core_unrounded": 61,
+        "outside_laterally": 61,
+        "reference_also_outside_core": 61,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 78,
+        "no_detection_in_radius": 95,
+        "no_reference": 32,
+        "not_selected": 61,
+        "outside_image": 78
+      }
+    },
+    {
+      "clip_id": "video_000/clip_022",
+      "missing_player_frames": 1060,
+      "player_frames": 4176,
+      "selection_loss": {
+        "inside_core": 1224,
+        "inside_core_chain_observations_below_requirement": 863,
+        "inside_core_no_linked_group": 15,
+        "inside_core_unrounded": 1221,
+        "outside_core": 1482,
+        "outside_core_unrounded": 1485,
+        "outside_laterally": 1482,
+        "reference_also_outside_core": 1470,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 1052,
+        "no_detection_in_radius": 433,
+        "no_reference": 32,
+        "not_selected": 2706,
+        "not_tracked": 17
+      }
+    },
+    {
+      "clip_id": "video_000/clip_024",
+      "missing_player_frames": 8,
+      "player_frames": 1588,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_025",
+      "missing_player_frames": 8,
+      "player_frames": 2020,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_026",
+      "missing_player_frames": 213,
+      "player_frames": 5048,
+      "selection_loss": {
+        "inside_core": 394,
+        "inside_core_chain_observations_below_requirement": 394,
+        "inside_core_unrounded": 394,
+        "outside_core": 10,
+        "outside_core_unrounded": 10,
+        "outside_laterally": 7,
+        "reference_also_outside_core": 5,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 205,
+        "no_detection_in_radius": 172,
+        "no_reference": 32,
+        "not_selected": 404,
+        "not_tracked": 1,
+        "outside_image": 38
+      }
+    },
+    {
+      "clip_id": "video_000/clip_027",
+      "missing_player_frames": 8,
+      "player_frames": 940,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_029",
+      "missing_player_frames": 260,
+      "player_frames": 3960,
+      "selection_loss": {
+        "inside_core": 455,
+        "inside_core_chain_observations_below_requirement": 318,
+        "inside_core_unrounded": 455,
+        "outside_core": 269,
+        "outside_core_unrounded": 269,
+        "outside_laterally": 269,
+        "reference_also_outside_core": 269,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 252,
+        "no_detection_in_radius": 32,
+        "no_reference": 32,
+        "not_selected": 724
+      }
+    },
+    {
+      "clip_id": "video_000/clip_030",
+      "missing_player_frames": 8,
+      "player_frames": 2060,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_031",
+      "missing_player_frames": 8,
+      "player_frames": 1284,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_032",
+      "missing_player_frames": 457,
+      "player_frames": 1804,
+      "selection_loss": {
+        "inside_core": 73,
+        "inside_core_chain_observations_below_requirement": 0,
+        "inside_core_unrounded": 73,
+        "outside_core": 1274,
+        "outside_core_unrounded": 1274,
+        "outside_laterally": 1274,
+        "reference_also_outside_core": 981,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 449,
+        "no_reference": 32,
+        "not_selected": 1347
+      }
+    },
+    {
+      "clip_id": "video_000/clip_033",
+      "missing_player_frames": 8,
+      "player_frames": 1660,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_034",
+      "missing_player_frames": 8,
+      "player_frames": 4496,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_035",
+      "missing_player_frames": 63,
+      "player_frames": 8432,
+      "selection_loss": {
+        "inside_core": 165,
+        "inside_core_chain_observations_below_requirement": 165,
+        "inside_core_unrounded": 165,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 55,
+        "no_reference": 32,
+        "not_selected": 165
+      }
+    },
+    {
+      "clip_id": "video_000/clip_037",
+      "missing_player_frames": 8,
+      "player_frames": 1168,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_040",
+      "missing_player_frames": 8,
+      "player_frames": 1668,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_041",
+      "missing_player_frames": 8,
+      "player_frames": 3124,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_042",
+      "missing_player_frames": 8,
+      "player_frames": 1672,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_043",
+      "missing_player_frames": 8,
+      "player_frames": 2836,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_044",
+      "missing_player_frames": 62,
+      "player_frames": 2464,
+      "selection_loss": {
+        "outside_core": 38,
+        "outside_core_unrounded": 38,
+        "outside_laterally": 38,
+        "reference_also_outside_core": 38,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 37,
+        "no_detection_in_radius": 61,
+        "no_reference": 112,
+        "not_selected": 38
+      }
+    },
+    {
+      "clip_id": "video_000/clip_045",
+      "missing_player_frames": 8,
+      "player_frames": 1372,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_046",
+      "missing_player_frames": 8,
+      "player_frames": 1700,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_047",
+      "missing_player_frames": 8,
+      "player_frames": 3380,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_048",
+      "missing_player_frames": 8,
+      "player_frames": 3492,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_050",
+      "missing_player_frames": 8,
+      "player_frames": 3332,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_051",
+      "missing_player_frames": 8,
+      "player_frames": 1200,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_052",
+      "missing_player_frames": 8,
+      "player_frames": 1700,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_053",
+      "missing_player_frames": 8,
+      "player_frames": 2184,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_054",
+      "missing_player_frames": 8,
+      "player_frames": 3072,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_055",
+      "missing_player_frames": 8,
+      "player_frames": 2764,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_056",
+      "missing_player_frames": 8,
+      "player_frames": 3052,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_057",
+      "missing_player_frames": 8,
+      "player_frames": 1140,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_059",
+      "missing_player_frames": 8,
+      "player_frames": 1900,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_061",
+      "missing_player_frames": 8,
+      "player_frames": 1948,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_062",
+      "missing_player_frames": 8,
+      "player_frames": 1720,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_063",
+      "missing_player_frames": 8,
+      "player_frames": 1364,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_064",
+      "missing_player_frames": 1087,
+      "player_frames": 5008,
+      "selection_loss": {
+        "inside_core": 1096,
+        "inside_core_chain_observations_below_requirement": 409,
+        "inside_core_unrounded": 1096,
+        "outside_core": 749,
+        "outside_core_unrounded": 749,
+        "outside_laterally": 747,
+        "reference_also_outside_core": 745,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_to_other_player": 34,
+        "assigned_without_second_inlier_view": 939,
+        "no_detection_in_radius": 444,
+        "no_reference": 592,
+        "not_selected": 1845,
+        "not_tracked": 7,
+        "outside_image": 487
+      }
+    },
+    {
+      "clip_id": "video_000/clip_065",
+      "missing_player_frames": 8,
+      "player_frames": 1420,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_066",
+      "missing_player_frames": 9,
+      "player_frames": 2452,
+      "selection_loss": {
+        "outside_core": 3,
+        "outside_core_unrounded": 3,
+        "outside_laterally": 3,
+        "reference_also_outside_core": 3,
+        "selected_but_group_origin_missing": 0
+      },
+      "stages": {
+        "assigned_without_second_inlier_view": 1,
+        "no_reference": 32,
+        "not_selected": 3
+      }
+    },
+    {
+      "clip_id": "video_000/clip_067",
+      "missing_player_frames": 8,
+      "player_frames": 2172,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    },
+    {
+      "clip_id": "video_000/clip_068",
+      "missing_player_frames": 8,
+      "player_frames": 1848,
+      "selection_loss": {},
+      "stages": {
+        "no_reference": 32
+      }
+    }
+  ],
+  "missing_player_frames": 5201,
+  "player_frames": 139088,
+  "selection_loss": {
+    "cut_off_at_bottom": 0,
+    "inside_core": 4146,
+    "inside_core_chain_observations_below_requirement": 2657,
+    "inside_core_no_linked_group": 15,
+    "inside_core_unrounded": 4142,
+    "outside_core": 6707,
+    "outside_core_unrounded": 6711,
+    "outside_laterally": 6702,
+    "reference_also_outside_core": 5685,
+    "selected_but_group_origin_missing": 0
+  },
+  "source": {
+    "all/outcome.json": "4d9ef0af9d03f25219b54db5d3b6c089fcdb49c29f07f05a80b136577b739f44",
+    "all/progress/d1df39596d4f47f1896cb535191e7040/progress.json": "4686dc79649d7b16b9cc33fd13c6a9ad36776adf515796153886ddcecc95f426",
+    "input.json": "0e601e5da65e9dd3fa0f8552767dbc576b94178c151137b5e780ef6ce2dc10a0"
+  },
+  "stages": {
+    "assigned_to_other_player": 34,
+    "assigned_without_second_inlier_view": 4589,
+    "no_detection_in_radius": 2179,
+    "no_reference": 2464,
+    "not_assigned": 0,
+    "not_selected": 10853,
+    "not_tracked": 49,
+    "occluded_by_closer_player": 0,
+    "outside_image": 636
+  },
+  "stopped": [
+    {
+      "cameras": {
+        "cam0": {
+          "max_chain_core_frames": 0,
+          "median_abs_x_m": 5.159,
+          "median_y_m": 13.099,
+          "near_alley_frames": 563,
+          "observed_frames": 649,
+          "required_frames": 162.75,
+          "selected_frames": 0,
+          "track_id": 8
+        },
+        "cam1": {
+          "max_chain_core_frames": 0,
+          "median_abs_x_m": 4.772,
+          "median_y_m": 12.617,
+          "near_alley_frames": 615,
+          "observed_frames": 649,
+          "required_frames": 162.75,
+          "selected_frames": 0,
+          "track_id": 4
+        },
+        "cam2": {
+          "max_chain_core_frames": 0,
+          "median_abs_x_m": 4.722,
+          "median_y_m": 12.281,
+          "near_alley_frames": 403,
+          "observed_frames": 403,
+          "required_frames": 162.75,
+          "selected_frames": 0,
+          "track_id": 2
+        },
+        "cam3": {
+          "max_chain_core_frames": 0,
+          "median_abs_x_m": 5.142,
+          "median_y_m": 14.084,
+          "near_alley_frames": 588,
+          "observed_frames": 649,
+          "required_frames": 162.75,
+          "selected_frames": 0,
+          "track_id": 1
+        }
+      },
+      "clip_id": "video_000/clip_020",
+      "error": "ReconstructionUnavailable: Side y>0 lacks 2 identities present for 163 frames",
+      "frames": 651
+    },
+    {
+      "cameras": {
+        "cam0": {
+          "max_chain_core_frames": 11,
+          "median_abs_x_m": 4.645,
+          "median_y_m": 12.067,
+          "near_alley_frames": 561,
+          "observed_frames": 596,
+          "required_frames": 191.25,
+          "selected_frames": 0,
+          "track_id": 7
+        },
+        "cam1": {
+          "max_chain_core_frames": 4,
+          "median_abs_x_m": 4.776,
+          "median_y_m": 12.266,
+          "near_alley_frames": 667,
+          "observed_frames": 763,
+          "required_frames": 191.25,
+          "selected_frames": 0,
+          "track_id": 3
+        },
+        "cam2": {
+          "max_chain_core_frames": 154,
+          "median_abs_x_m": 4.453,
+          "median_y_m": 12.352,
+          "near_alley_frames": 543,
+          "observed_frames": 763,
+          "required_frames": 191.25,
+          "selected_frames": 0,
+          "track_id": 1
+        },
+        "cam3": {
+          "max_chain_core_frames": 0,
+          "median_abs_x_m": 4.729,
+          "median_y_m": 12.489,
+          "near_alley_frames": 675,
+          "observed_frames": 763,
+          "required_frames": 191.25,
+          "selected_frames": 0,
+          "track_id": 2
+        }
+      },
+      "clip_id": "video_000/clip_058",
+      "error": "ReconstructionUnavailable: Side y>0 lacks 2 identities present for 191 frames",
+      "frames": 765
+    }
+  ]
+}
