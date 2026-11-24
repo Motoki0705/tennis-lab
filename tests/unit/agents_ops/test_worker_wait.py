@@ -324,16 +324,29 @@ def test_target_is_pinned_and_never_follows_new_work(
     assert len(evidence.timeouts) == 1
 
 
-def test_hung_status_is_bounded_by_wait_deadline(
-    evidence: Evidence, monkeypatch: pytest.MonkeyPatch
+@pytest.mark.parametrize(
+    "wait_limit,status_limit,expected",
+    [(3, 3, 124), (None, 60, 2), (90, 60, 2)],
+)
+def test_hung_status_is_bounded_by_wait_deadline_or_status_limit(
+    evidence: Evidence,
+    monkeypatch: pytest.MonkeyPatch,
+    wait_limit: float | None,
+    status_limit: float,
+    expected: int,
 ) -> None:
     def hung(_runtime: Any, _path: Path, *, timeout: float | None) -> None:
-        assert timeout == 3
+        assert timeout == status_limit
         raise subprocess.TimeoutExpired("agent_exec.sh status", timeout)
 
     monkeypatch.setattr(evidence.module.Runtime, "inspect", hung)
-    code, value = evidence.wait(timeout=3)
-    assert code == 124 and value["wait_state"] == "timeout"
+    code, value = evidence.wait(timeout=wait_limit)
+    assert code == expected
+    assert (value["wait_state"], value["error"]) == (
+        ("timeout", "wait_timeout")
+        if expected == 124
+        else ("liveness_unknown", "runner_status_timed_out")
+    )
 
 
 @pytest.mark.parametrize("timeout", [0, -1, float("nan"), float("inf")])

@@ -13,6 +13,7 @@ from issues.supplement_state import (
     read_enabled_since,
     supplement_state,
 )
+from lib.checkout_lock import checkout_wait
 
 from .github import GitHub
 from .policy import nonempty, number, object_value
@@ -98,12 +99,13 @@ def wait_supplement(gh: GitHub, parent: int) -> dict[str, Any]:
             f"#{parent}: no matching {WORKFLOW} run; manually start workflow_dispatch "
             f"for this issue, or ask a human to add {SUPPLEMENT_SKIPPED_LABEL}"
         )
-    result = subprocess.run(
-        ["gh", "run", "watch", str(run_id), "--repo", gh.repo],
-        stdout=sys.stderr,
-        stderr=sys.stderr,
-        check=False,
-    )
+    with checkout_wait():
+        result = subprocess.run(
+            ["gh", "run", "watch", str(run_id), "--repo", gh.repo],
+            stdout=sys.stderr,
+            stderr=sys.stderr,
+            check=False,
+        )
     if result.returncode:
         raise ValueError(f"gh run watch {run_id} failed: exit {result.returncode}")
     state = current_state(gh, parent)

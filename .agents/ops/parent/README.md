@@ -34,6 +34,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent evidence-close --apply
 証拠用Issueの作成直後は、POST応答のIssue番号をjournalに保存し、番号を指定して取得した結果と照合する。
 ラベル付き一覧への反映前でも、直接照合が成功し、一覧に競合する紐付けがなければ確定できる。
 
+メインcheckoutから実行した `wait-worker` は、runと監視結果を読む区間で `ops-code.lock` を共有取得し、ポーリング間隔では手放す。`wait-supplement` は `gh run watch` 中、`wait-merge` とレビュー・マージ操作の `--wait` はイベントの観測間隔で手放す。復帰時の版照合と終了条件は [対話CLIの保護](../lib/README.md#対話cliの保護) を参照する。checkout更新で75が返った場合は、更新後のCLIで `wait-worker`・`wait-supplement`・`wait-merge` を実行し、保存済みのrun・監視・進行記録から待機を続ける。
+
 状態ルートは実ディレクトリを指定する。状態ルートと `parents/` は実行ユーザーが所有し、上位は root または実行ユーザーが所有する。
 状態ディレクトリ本体と状態ファイルにはグループ・その他への書込み権限を与えない。
 上位ディレクトリのグループ書込みは、その他への書込み権限がなく、実行ユーザーが所有し、
@@ -47,7 +49,7 @@ v2 の更新は索引と親レコードの新しい内容を先に準備する�
 - [session.py](session.py) と [execution.py](execution.py) が担当と実行根拠を照合する。
 - [launch.py](launch.py)・[manual_workers.py](manual_workers.py)・[development.py](development.py) が委任予約、手動実行、dispatcherとの接続を扱う。
 - [local_jobs.py](local_jobs.py) は、GPU不要の長時間ローカルコマンドを独立したsystemd user transient service（`tennis-lab-local-job-<job_id>`）として実行し、`PARENT_LOCAL_JOBS_DIR` または `<state_dir>/local-jobs/<job_id>/` に実行記録・ログ・完了記録を保存する。
-- [worker_monitor.py](worker_monitor.py) は、固定した起動元HEADから運用コードを一時のdetached worktreeに展開するsystemd user serviceを起動する。service停止時にworktreeを回収する。監視中のレジストリ処理はGit共通lockを使い、CI・queue・`local` jobや空き枠を待つ間はlockを解放する。queueの終端ファイルから60秒以内、`local` jobのプロセス消滅から10秒以内に完了記録を観測できなければ、`wait-worker` にエラーを返す。
+- [worker_monitor.py](worker_monitor.py) は、固定した起動元HEADから運用コードを一時のdetached worktreeに展開するsystemd user serviceを起動する。service停止時にworktreeを回収する。監視の起動入口は専用worktreeを照合してからclaimし、メインからの直接起動には75を返す。レジストリ処理の区間でGit共通lockを共有取得する。queueの終端ファイルから60秒以内、`local` jobのプロセス消滅から10秒以内に完了記録を観測できなければ、`wait-worker` にエラーを返す。
 - [review_handoff.py](review_handoff.py) が [マージ自動進行](../review/README.md) へ渡す。
 - [completion.py](completion.py) と [improvements.py](improvements.py) が全体の受入・次回改善を記録する。改善提案の期限処理は [systemd](systemd/) にある。
 
