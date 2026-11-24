@@ -45,6 +45,19 @@ from src.tasks.plcs.data.augmentation import PLCSObservationAugmentation
 from src.tasks.plcs.data.frame_rate_augmentation import PLCSFrameRateSampler
 from src.tasks.plcs.data.targets import build_coco17_world_targets
 from src.tasks.plcs.data.types import PLCSBatch
+from src.tasks.plcs.geometry.monocular_camera_bbox import (
+    CAMERA_FEATURE_DIM,
+    CLIFFCAM_DIM,
+    BBoxAugmentationConfig,
+    CalibrationNoiseConfig,
+    SyntheticBBoxConfig,
+    augment_bbx_xys,
+    compute_camera_features,
+    compute_cliffcam_features,
+    compute_synthetic_bbx_xys,
+    normalize_kp2d_bbox,
+    perturb_camera_calibration,
+)
 from src.utils.data.camera_sampling import camera_candidate_indices
 from src.utils.projection.camera_projector import camera_from_mapping
 from src.utils.schema.court_normalization import (
@@ -53,6 +66,11 @@ from src.utils.schema.court_normalization import (
 
 if TYPE_CHECKING:
     from omegaconf import DictConfig
+
+
+_DEFAULT_DATASET_BBOX_CFG = SyntheticBBoxConfig()
+_DISABLED_DATASET_BBOX_AUG_CFG = BBoxAugmentationConfig(enabled=False)
+_DISABLED_DATASET_CALIB_NOISE_CFG = CalibrationNoiseConfig(enabled=False)
 
 
 class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
@@ -67,6 +85,11 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
     - position: (T, 3)
     - rotation: (T, 2)
     """
+
+    is_monocular: bool = False
+    monocular_bbox_cfg: SyntheticBBoxConfig = _DEFAULT_DATASET_BBOX_CFG
+    monocular_bbox_aug_cfg: BBoxAugmentationConfig = _DISABLED_DATASET_BBOX_AUG_CFG
+    calibration_noise_cfg: CalibrationNoiseConfig = _DISABLED_DATASET_CALIB_NOISE_CFG
 
     def __init__(
         self,
@@ -110,11 +133,13 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
     def _configure_task(self, data_cfg: dict) -> None:
         from omegaconf import DictConfig
 
+        mode = str(data_cfg["mode"])
         self.camera_mode_plcs = str(data_cfg["camera_mode"])
-        self.is_multiview = str(data_cfg["mode"]) in {
+        self.is_multiview = mode in {
             "multiview",
             "multiview_sequence",
         }
+        self.is_monocular = mode == "monocular_sequence"
 
         r = data_cfg["num_views_range"]
         self._plcs_num_views_range: tuple[int, int] = (int(r[0]), int(r[1]))
@@ -126,6 +151,19 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             raise ValueError("data.augmentation must be a mapping-like config.")
         self.augmentation = PLCSObservationAugmentation(augmentation_cfg)
         self.frame_rate_sampler = PLCSFrameRateSampler(augmentation_cfg)
+        self.monocular_bbox_cfg = SyntheticBBoxConfig()
+        self.monocular_bbox_aug_cfg = BBoxAugmentationConfig.from_mapping(
+            cast(
+                "Mapping[str, object] | None",
+                self.augmentation.config.get("monocular_bbox"),
+            )
+        )
+        self.calibration_noise_cfg = CalibrationNoiseConfig.from_mapping(
+            cast(
+                "Mapping[str, object] | None",
+                self.augmentation.config.get("camera_calibration_noise"),
+            )
+        )
         # Number of court keypoints to use (first N from the canonical order)
         self.num_court_kp = int(data_cfg["num_court_kp"])
 
@@ -153,12 +191,39 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
     def _validate_scene_metadata(self, meta: dict, *, path: Path) -> None:
         validate_court_coordinate_normalization(meta, artifact=f"Scene {path}")
 
-    def build_sample(self, scene: Scene) -> dict[str, Any]:
-        cams = self.select_cameras(
-            scene,
-            num_views_range=self._plcs_num_views_range,
-            camera_mode=self.camera_mode_plcs,
+    def _select_monocular_training_camera(self, scene: Scene) -> CameraSelection:
+        explicit = camera_candidate_indices(
+            self.config.camera_candidates, capacity=scene.num_cameras
         )
+        candidates = tuple(range(scene.num_cameras)) if explicit is None else explicit
+        min_joints = self.monocular_bbox_cfg.min_visible_joints
+        visible_candidates = tuple(
+            cam_idx
+            for cam_idx in candidates
+            if bool(
+                (
+                    scene.get_camera_array(cam_idx, "human_kp_vis").sum(axis=-1)
+                    >= min_joints
+                ).any()
+            )
+        )
+        pool = visible_candidates if visible_candidates else candidates
+        chosen = int(self.rng.choice(pool))
+        return CameraSelection(indices=(chosen,))
+
+    def build_sample(self, scene: Scene) -> dict[str, Any]:
+        if (
+            self.is_monocular
+            and self.augment
+            and self.camera_mode_plcs == "random"
+        ):
+            cams = self._select_monocular_training_camera(scene)
+        else:
+            cams = self.select_cameras(
+                scene,
+                num_views_range=self._plcs_num_views_range,
+                camera_mode=self.camera_mode_plcs,
+            )
         complete_views = scene_court_views(
             self.court_keypoint_validation,
             scene.path,
@@ -351,13 +416,156 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
             if self.track_query_reference_document is not None:
                 sample.update(self.track_query_reference_document)
 
+        if self.is_monocular:
+            populate_monocular_sample_fields(
+                sample,
+                bbox_cfg=self.monocular_bbox_cfg,
+                augment=False,
+            )
+
         return sample
 
     def augment_sample(self, sample: dict[str, Any]) -> dict[str, Any]:
         if not self.augment:
             return sample
         augmented: dict[str, Any] = self.augmentation.forward(sample)
+        if self.is_monocular:
+            generator = torch.Generator(device="cpu")
+            generator.manual_seed(int(self.rng.integers(0, 2**31 - 1)))
+            populate_monocular_sample_fields(
+                augmented,
+                bbox_cfg=self.monocular_bbox_cfg,
+                bbox_aug_cfg=self.monocular_bbox_aug_cfg,
+                calibration_noise_cfg=self.calibration_noise_cfg,
+                augment=bool(self.augmentation.enabled),
+                generator=generator,
+            )
         return augmented
+
+
+_MONOCULAR_SAMPLE_KEYS = (
+    "bbx_xys",
+    "frame_observed",
+    "kp2d_norm",
+    "cliffcam",
+    "cam_feat",
+    "camera_R_in",
+    "camera_C_in",
+    "camera_f_in",
+    "camera_cx_in",
+    "camera_cy_in",
+)
+
+
+def populate_monocular_sample_fields(
+    sample: dict[str, Any],
+    *,
+    bbox_cfg: SyntheticBBoxConfig = _DEFAULT_DATASET_BBOX_CFG,
+    bbox_aug_cfg: BBoxAugmentationConfig = _DISABLED_DATASET_BBOX_AUG_CFG,
+    calibration_noise_cfg: CalibrationNoiseConfig = _DISABLED_DATASET_CALIB_NOISE_CFG,
+    augment: bool = False,
+    generator: torch.Generator | None = None,
+) -> dict[str, Any]:
+    """Compute synthetic ``bbx_xys``, bbox-normalized 2D pose, CLIFF, and camera tokens."""
+    human_kp = cast(Tensor, sample["human_kp"])
+    human_vis = cast(Tensor, sample["human_vis"])
+    camera_R = cast(Tensor, sample["camera_R"])
+    camera_C = cast(Tensor, sample["camera_C"])
+    camera_f = cast(Tensor, sample["camera_f"])
+    camera_cx = cast(Tensor, sample["camera_cx"])
+    camera_cy = cast(Tensor, sample["camera_cy"])
+    camera_w = cast(Tensor, sample["camera_w"])
+    camera_h = cast(Tensor, sample["camera_h"])
+
+    wh = torch.stack([camera_w, camera_h], dim=-1)
+    kp2d_px = human_kp * wh[:, None, None, :]
+    bbx_xys, frame_observed = compute_synthetic_bbx_xys(
+        kp2d_px,
+        human_vis,
+        config=bbox_cfg,
+    )
+    if "padding_mask" in sample:
+        valid_frames = ~cast(Tensor, sample["padding_mask"])
+        frame_observed = frame_observed & valid_frames
+        bbx_xys = torch.where(
+            frame_observed.unsqueeze(-1), bbx_xys, torch.zeros_like(bbx_xys)
+        )
+
+    if augment:
+        bbx_xys = augment_bbx_xys(
+            bbx_xys,
+            frame_observed,
+            base_enlarge=bbox_cfg.base_enlarge,
+            config=bbox_aug_cfg,
+            generator=generator,
+        )
+        perturbed_cam = perturb_camera_calibration(
+            camera_R,
+            camera_C,
+            fx=camera_f,
+            fy=camera_f,
+            cx0=camera_cx,
+            cy0=camera_cy,
+            image_w=camera_w,
+            image_h=camera_h,
+            config=calibration_noise_cfg,
+            generator=generator,
+        )
+        camera_R_in = perturbed_cam.R_w2c
+        camera_C_in = perturbed_cam.C_w
+        camera_f_in = perturbed_cam.fx
+        camera_cx_in = perturbed_cam.cx0
+        camera_cy_in = perturbed_cam.cy0
+    else:
+        camera_R_in = camera_R.clone()
+        camera_C_in = camera_C.clone()
+        camera_f_in = camera_f.clone()
+        camera_cx_in = camera_cx.clone()
+        camera_cy_in = camera_cy.clone()
+
+    kp2d_norm, _ = normalize_kp2d_bbox(
+        kp2d_px,
+        human_vis,
+        bbx_xys,
+        frame_observed,
+        vis_threshold=bbox_cfg.vis_threshold,
+    )
+    cliffcam = compute_cliffcam_features(
+        bbx_xys,
+        frame_observed,
+        fx=camera_f_in,
+        fy=camera_f_in,
+        cx0=camera_cx_in,
+        cy0=camera_cy_in,
+    )
+    cam_feat = compute_camera_features(
+        camera_R_in,
+        camera_C_in,
+        fx=camera_f_in,
+        fy=camera_f_in,
+        cx0=camera_cx_in,
+        cy0=camera_cy_in,
+        image_w=camera_w,
+        image_h=camera_h,
+        seq_len=int(human_kp.shape[1]),
+    )
+    if "padding_mask" in sample:
+        valid_frames = ~cast(Tensor, sample["padding_mask"])
+        cam_feat = torch.where(
+            valid_frames.unsqueeze(-1), cam_feat, torch.zeros_like(cam_feat)
+        )
+
+    sample["bbx_xys"] = bbx_xys
+    sample["frame_observed"] = frame_observed
+    sample["kp2d_norm"] = kp2d_norm
+    sample["cliffcam"] = cliffcam
+    sample["cam_feat"] = cam_feat
+    sample["camera_R_in"] = camera_R_in
+    sample["camera_C_in"] = camera_C_in
+    sample["camera_f_in"] = camera_f_in
+    sample["camera_cx_in"] = camera_cx_in
+    sample["camera_cy_in"] = camera_cy_in
+    return sample
 
 
 _REFERENCE_SAMPLE_FIELDS = frozenset(
@@ -524,6 +732,20 @@ def collate_plcs_batch(batch: list[dict[str, Any]]) -> PLCSBatch | dict[str, Any
         )
     has_reprojection = all(complete_reprojection)
 
+    monocular_presence = [
+        tuple(key in sample for key in _MONOCULAR_SAMPLE_KEYS) for sample in batch
+    ]
+    if any(any(presence) and not all(presence) for presence in monocular_presence):
+        raise ValueError(
+            "PLCS monocular sample fields must be provided as one complete group."
+        )
+    complete_monocular = [all(presence) for presence in monocular_presence]
+    if any(complete_monocular) and not all(complete_monocular):
+        raise ValueError(
+            "PLCS batch cannot mix samples with and without monocular fields."
+        )
+    has_monocular = all(complete_monocular)
+
     max_views = max(int(sample["human_kp"].shape[0]) for sample in batch)
     max_seq_len = max(int(sample["human_kp"].shape[1]) for sample in batch)
 
@@ -544,6 +766,16 @@ def collate_plcs_batch(batch: list[dict[str, Any]]) -> PLCSBatch | dict[str, Any
     camera_cy_batch: list[Tensor] = []
     camera_w_batch: list[Tensor] = []
     camera_h_batch: list[Tensor] = []
+    bbx_xys_batch: list[Tensor] = []
+    frame_observed_batch: list[Tensor] = []
+    kp2d_norm_batch: list[Tensor] = []
+    cliffcam_batch: list[Tensor] = []
+    cam_feat_batch: list[Tensor] = []
+    camera_R_in_batch: list[Tensor] = []
+    camera_C_in_batch: list[Tensor] = []
+    camera_f_in_batch: list[Tensor] = []
+    camera_cx_in_batch: list[Tensor] = []
+    camera_cy_in_batch: list[Tensor] = []
 
     for sample in batch:
         n_views = int(sample["human_kp"].shape[0])
@@ -570,6 +802,17 @@ def collate_plcs_batch(batch: list[dict[str, Any]]) -> PLCSBatch | dict[str, Any
             camera_cy = sample["camera_cy"]
             camera_w = sample["camera_w"]
             camera_h = sample["camera_h"]
+        if has_monocular:
+            bbx_xys = cast(Tensor, sample["bbx_xys"])
+            frame_observed = cast(Tensor, sample["frame_observed"])
+            kp2d_norm = cast(Tensor, sample["kp2d_norm"])
+            cliffcam = cast(Tensor, sample["cliffcam"])
+            cam_feat = cast(Tensor, sample["cam_feat"])
+            camera_R_in = cast(Tensor, sample["camera_R_in"])
+            camera_C_in = cast(Tensor, sample["camera_C_in"])
+            camera_f_in = cast(Tensor, sample["camera_f_in"])
+            camera_cx_in = cast(Tensor, sample["camera_cx_in"])
+            camera_cy_in = cast(Tensor, sample["camera_cy_in"])
 
         if pad_seq > 0:
             human_kp = torch.cat(
@@ -598,6 +841,27 @@ def collate_plcs_batch(batch: list[dict[str, Any]]) -> PLCSBatch | dict[str, Any
                 )
                 human_vis_target = torch.cat(
                     [human_vis_target, torch.zeros(n_views, pad_seq, 17)],
+                    dim=1,
+                )
+            if has_monocular:
+                bbx_xys = torch.cat(
+                    [bbx_xys, torch.zeros(n_views, pad_seq, 3)], dim=1
+                )
+                frame_observed = torch.cat(
+                    [
+                        frame_observed,
+                        torch.zeros(n_views, pad_seq, dtype=torch.bool),
+                    ],
+                    dim=1,
+                )
+                kp2d_norm = torch.cat(
+                    [kp2d_norm, torch.zeros(n_views, pad_seq, 17, 3)], dim=1
+                )
+                cliffcam = torch.cat(
+                    [cliffcam, torch.zeros(n_views, pad_seq, CLIFFCAM_DIM)], dim=1
+                )
+                cam_feat = torch.cat(
+                    [cam_feat, torch.zeros(n_views, pad_seq, CAMERA_FEATURE_DIM)],
                     dim=1,
                 )
 
@@ -640,6 +904,40 @@ def collate_plcs_batch(batch: list[dict[str, Any]]) -> PLCSBatch | dict[str, Any
                 camera_cy = torch.cat([camera_cy, torch.zeros(pad_views)], dim=0)
                 camera_w = torch.cat([camera_w, torch.ones(pad_views)], dim=0)
                 camera_h = torch.cat([camera_h, torch.ones(pad_views)], dim=0)
+            if has_monocular:
+                bbx_xys = torch.cat(
+                    [bbx_xys, torch.zeros(pad_views, max_seq_len, 3)], dim=0
+                )
+                frame_observed = torch.cat(
+                    [
+                        frame_observed,
+                        torch.zeros(pad_views, max_seq_len, dtype=torch.bool),
+                    ],
+                    dim=0,
+                )
+                kp2d_norm = torch.cat(
+                    [kp2d_norm, torch.zeros(pad_views, max_seq_len, 17, 3)], dim=0
+                )
+                cliffcam = torch.cat(
+                    [cliffcam, torch.zeros(pad_views, max_seq_len, CLIFFCAM_DIM)],
+                    dim=0,
+                )
+                cam_feat = torch.cat(
+                    [
+                        cam_feat,
+                        torch.zeros(pad_views, max_seq_len, CAMERA_FEATURE_DIM),
+                    ],
+                    dim=0,
+                )
+                camera_R_in = torch.cat(
+                    [camera_R_in, torch.zeros(pad_views, 3, 3)], dim=0
+                )
+                camera_C_in = torch.cat(
+                    [camera_C_in, torch.zeros(pad_views, 3)], dim=0
+                )
+                camera_f_in = torch.cat([camera_f_in, torch.zeros(pad_views)], dim=0)
+                camera_cx_in = torch.cat([camera_cx_in, torch.zeros(pad_views)], dim=0)
+                camera_cy_in = torch.cat([camera_cy_in, torch.zeros(pad_views)], dim=0)
 
         human_kp_batch.append(human_kp)
         court_kp_batch.append(court_kp)
@@ -660,6 +958,17 @@ def collate_plcs_batch(batch: list[dict[str, Any]]) -> PLCSBatch | dict[str, Any
             camera_cy_batch.append(camera_cy)
             camera_w_batch.append(camera_w)
             camera_h_batch.append(camera_h)
+        if has_monocular:
+            bbx_xys_batch.append(bbx_xys)
+            frame_observed_batch.append(frame_observed)
+            kp2d_norm_batch.append(kp2d_norm)
+            cliffcam_batch.append(cliffcam)
+            cam_feat_batch.append(cam_feat)
+            camera_R_in_batch.append(camera_R_in)
+            camera_C_in_batch.append(camera_C_in)
+            camera_f_in_batch.append(camera_f_in)
+            camera_cx_in_batch.append(camera_cx_in)
+            camera_cy_in_batch.append(camera_cy_in)
 
     collated: dict[str, Any] = {
         "human_kp": torch.stack(human_kp_batch, dim=0),
@@ -693,6 +1002,21 @@ def collate_plcs_batch(batch: list[dict[str, Any]]) -> PLCSBatch | dict[str, Any
                 "camera_cy": torch.stack(camera_cy_batch, dim=0),
                 "camera_w": torch.stack(camera_w_batch, dim=0),
                 "camera_h": torch.stack(camera_h_batch, dim=0),
+            }
+        )
+    if has_monocular:
+        collated.update(
+            {
+                "bbx_xys": torch.stack(bbx_xys_batch, dim=0),
+                "frame_observed": torch.stack(frame_observed_batch, dim=0),
+                "kp2d_norm": torch.stack(kp2d_norm_batch, dim=0),
+                "cliffcam": torch.stack(cliffcam_batch, dim=0),
+                "cam_feat": torch.stack(cam_feat_batch, dim=0),
+                "camera_R_in": torch.stack(camera_R_in_batch, dim=0),
+                "camera_C_in": torch.stack(camera_C_in_batch, dim=0),
+                "camera_f_in": torch.stack(camera_f_in_batch, dim=0),
+                "camera_cx_in": torch.stack(camera_cx_in_batch, dim=0),
+                "camera_cy_in": torch.stack(camera_cy_in_batch, dim=0),
             }
         )
 
