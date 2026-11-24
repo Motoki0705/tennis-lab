@@ -16,6 +16,9 @@ def compatible_source_digests(
     sources: dict[str, str], *, ball_court_side: bool = False, tensorrt: bool = False
 ) -> dict[str, str]:
     """Keep the baseline identity for exact, compatible source changes."""
+    # The tracking and comparison branches changed the same registry and this
+    # dispatcher. Their merged sources must match one reviewed snapshot.
+    sources = _compatible_patch(sources, "multiview_scene_cache_compatibility.json")
     sources = _compatible_patch(sources, "pose_comparison_cache_compatibility.json")
     sources = _compatible_patch(sources, "multiview_tracking_cache_compatibility.json")
     sources = _compatible_patch(sources, "multiview_pose_cache_compatibility.json")

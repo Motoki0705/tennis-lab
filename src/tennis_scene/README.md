@@ -48,6 +48,7 @@ storeの採用済みartifactは、推論もstoreへの書き込みもせずにHT
 
 全人物の3D再構成を試すCPU入口は、[フレーム別の候補生成](multiview_pose/README.md)と
 [時間追跡・選手選別](multiview_tracking/README.md)にあります。
+統合済みの3D IDから身体とSceneResultを生成するrecipeは [multiview_scene](multiview_scene/README.md) を参照してください。
 
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.visualize_component_store --store <clip>/annotations/tennis_scene --output <dir> [--videos]
