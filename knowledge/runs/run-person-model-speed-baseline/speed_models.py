@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from itertools import groupby
 from pathlib import Path
 
@@ -94,6 +95,20 @@ def bind(spec, directory: Path, *, size: int):
             raise
         raise ConditionUnavailable(
             Status.UNSUPPORTED, f"{directory}: {error}"
+        ) from error
+
+
+@contextmanager
+def classify_startup(backend: Backend):
+    try:
+        yield
+    except (ConditionUnavailable, torch.OutOfMemoryError):
+        raise
+    except (OSError, RuntimeError, ValueError) as error:
+        if backend is not Backend.TRT16:
+            raise
+        raise ConditionUnavailable(
+            Status.UNAVAILABLE, f"TensorRT startup failed: {error}"
         ) from error
 
 
