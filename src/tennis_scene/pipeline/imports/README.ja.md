@@ -104,3 +104,39 @@ importの`origin=import`を記録し、nodeに宣言した上流artifactの依�
 小さい非対称カメラと独立に投影した既知3Dにより、保存v3、推定の寄与、欠測、保存復元、
 再実行なしの固定幾何、入力/配列改変の拒否、誤差を含むviewの等重みfitを確認する。
 実動画の認識精度・受入合格を示すものではない。
+
+## 外部のクリップ別ボール座標
+
+`src.tennis_scene.scripts.import_external_ball publish` は保存済みの選手のみの
+データセットへボール3Dを追加します。クリップ・カメラ名、フレーム数・連番、
+解像度、FPSを `clip.json` と照合し、メディアは保存済みsourceと共有コートの
+SHA-256に結び付けます。画面内の4ステータスを等重みで三角測量します。
+`visible_in_frame` の表記は正規化して入力属性に保存し、採否は座標の画面内判定で決まります。
+
+既存の `scene_assembly`・校正・`camera_alignment` を参照とchecksumで固定し、
+共有コート向きと既存のカメラ順・半回転・パラメータを照合します。
+保存済みの人物再構成が停止したclipでは、既存校正とボール由来の共有向きで幾何を構成します。
+選手軸は空で、無効を表すmaskと停止理由、人物による再検証の有無をsceneに記録します。
+CPUで読み込んだ固定成果物を使い、通常runnerのキャッシュ照合は標準経路で引き続き有効です。
+
+sceneの `metadata.external_ball.status_codes` はcamera × frameの入力ステータスを
+`status_labels` の添字で表します。採用座標は `ball_vis`、3D欠測理由は
+`ball_rejection_code`（1はview不足、7は幾何solver不成立）で確認できます。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.import_external_ball publish \
+  --dataset "$DATASET" --video video_000 --positions "$POSITIONS" \
+  --side-store "$SIDE_STORE" --side-digest "$SIDE_DIGEST" \
+  --court-store "$COURT_STORE" --drift-store "$DRIFT_STORE" \
+  --report "$REPORT" --clip clip_000 --clip clip_020
+
+.venv/bin/python -m src.tennis_scene.scripts.import_external_ball restore \
+  --dataset "$DATASET" --video video_000 --clip clip_000 --clip clip_020
+```
+
+`--clip` を省略すると動画全件を処理します。参照の切替前に成果物を検証し、
+`updates/external_ball/<scene_assembly ID>.json` に入力の版と切替前後の参照を保存します。
+矛盾したclipは切り替えず、reportへ理由を残して終了コードを1にします。
+切替中の中断は同じコマンドで再開できます。`restore` は元の参照をバイト単位で戻し、
+元のannotationが無かったclipからは追加したmarkerを除去します。旧版・新版の不変成果物を保持します。
+[Meijiでの実行記録とコマンド](../../../../knowledge/runs/run-meiji-external-ball-20261124/README.md)

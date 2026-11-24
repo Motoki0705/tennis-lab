@@ -1,0 +1,365 @@
+"""Publish and restore the two pointers of an external ball scene revision."""
+
+from __future__ import annotations
+
+import json
+import os
+import tempfile
+from dataclasses import dataclass
+from hashlib import sha256
+from io import BytesIO
+from pathlib import Path
+from typing import Any, cast
+from zipfile import ZipFile
+
+import numpy as np
+
+from src.tennis_scene.pipeline.artifacts import (
+    document_digest,
+    json_value,
+    write_json_atomic,
+)
+from src.tennis_scene.pipeline.clip_inputs import DatasetClipInputs, InputSnapshot
+from src.tennis_scene.pipeline.dataset_publication import (
+    ANNOTATION_SCHEMA_VERSION,
+    scene_array_manifest,
+)
+from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, clip_store_lock
+from src.tennis_scene.pipeline.storage.scene_export import write_scene_export
+from src.tennis_scene.pipeline.storage.scene_index import (
+    annotation_scene_path,
+    read_component_descriptor,
+    resolve_indexed_scene,
+)
+from src.tennis_scene.pipeline.video_artifact import validate_digest
+from src.tennis_scene.schema import SceneResult
+from src.utils.checksum import dual_sha256
+from src.utils.io import utc_now_iso
+
+PUBLICATION = "external_ball_publication"
+SCHEMA = "external_ball_publication_v1"
+
+
+def _encode(document: dict[str, Any]) -> str:
+    return json.dumps(document, ensure_ascii=False, sort_keys=True, allow_nan=False)
+
+
+def _digest(content: str | None) -> str | None:
+    return None if content is None else sha256(content.encode("utf-8")).hexdigest()
+
+
+def _replace_text(path: Path, content: str | None) -> None:
+    if content is None:
+        path.unlink(missing_ok=True)
+        return
+    with tempfile.NamedTemporaryFile(
+        "wb", dir=path.parent, suffix=".partial", delete=False
+    ) as handle:
+        temporary = Path(handle.name)
+        try:
+            handle.write(content.encode("utf-8"))
+            handle.flush()
+            os.fsync(handle.fileno())
+        except BaseException:
+            temporary.unlink(missing_ok=True)
+            raise
+    try:
+        temporary.replace(path)
+    finally:
+        temporary.unlink(missing_ok=True)
+
+
+@dataclass(frozen=True)
+class ScenePointers:
+    scene: str
+    annotation: str | None
+
+    @classmethod
+    def read(cls, root: Path) -> ScenePointers:
+        index = (root / "scene.json").read_bytes().decode("utf-8")
+        marker = root / "annotation.json"
+        return cls(
+            index, marker.read_bytes().decode("utf-8") if marker.is_file() else None
+        )
+
+    def index(self) -> dict[str, Any]:
+        return cast(dict[str, Any], json.loads(self.scene))
+
+    def marker(self) -> dict[str, Any] | None:
+        return None if self.annotation is None else json.loads(self.annotation)
+
+    def revision(self) -> str | None:
+        marker = self.marker()
+        names = {
+            value
+            for doc in (self.index(), marker or {})
+            if (value := doc.get(PUBLICATION)) is not None
+        }
+        if len(names) > 1:
+            raise ValueError(
+                "Scene and annotation pointers name different external ball revisions"
+            )
+        return validate_digest(names.pop()) if names else None
+
+    def verify(self, root: Path) -> Path | None:
+        index, marker = self.index(), self.marker()
+        if marker is None:
+            if index["exports"].get("scene") is not None:
+                raise ValueError("Saved scene export has no annotation marker")
+            return None
+        reference = index["artifacts"]["scene_assembly"]
+        path = resolve_indexed_scene(index, root)
+        if (
+            index["exports"]["scene"]["inputs"] != {"scene_assembly": reference}
+            or marker.get("scene_index") != "scene.json"
+            or marker.get("scene_result") != str(path.relative_to(root))
+            or marker.get("clip_id") != index["source"]["clip_id"]
+        ):
+            raise ValueError("Saved scene index and annotation marker disagree")
+        return path
+
+    def replace(self, root: Path, current: ScenePointers) -> None:
+        if self.scene != current.scene:
+            _replace_text(root / "scene.json", self.scene)
+        if self.annotation != current.annotation:
+            _replace_text(root / "annotation.json", self.annotation)
+
+
+@dataclass(frozen=True)
+class PublicationReceipt:
+    before: ScenePointers
+    after: ScenePointers
+    inputs: dict[str, Any]
+    statistics: dict[str, Any]
+
+    @classmethod
+    def read(cls, root: Path, scene_id: str) -> PublicationReceipt:
+        document = json.loads(_receipt_path(root, scene_id).read_text())
+        if document["schema"] != SCHEMA:
+            raise ValueError("Unsupported external ball publication receipt")
+        receipt = cls(
+            ScenePointers(**document["before"]),
+            ScenePointers(**document["after"]),
+            document["inputs"],
+            document["statistics"],
+        )
+        if (
+            receipt.before.revision() is not None
+            or receipt.after.revision() != scene_id
+            or receipt.after.index()["artifacts"]["scene_assembly"]["artifact_id"]
+            != scene_id
+            or document["pointer_digests"] != receipt.pointer_digests()
+        ):
+            raise ValueError("Invalid external ball publication receipt")
+        return receipt
+
+    def pointer_digests(self) -> dict[str, Any]:
+        return {
+            label: {
+                "scene_sha256": _digest(pointers.scene),
+                "annotation_sha256": _digest(pointers.annotation),
+            }
+            for label, pointers in (("before", self.before), ("after", self.after))
+        }
+
+    def require_current(self, current: ScenePointers) -> None:
+        # A process can stop after either rename. An unrelated pointer change
+        # must never be overwritten as part of recovery.
+        if current.scene not in (
+            self.before.scene,
+            self.after.scene,
+        ) or current.annotation not in (self.before.annotation, self.after.annotation):
+            raise ValueError(
+                "Clip pointers changed independently of the recorded external ball update"
+            )
+
+    def activate(self, root: Path, current: ScenePointers) -> None:
+        self.require_current(current)
+        path = self.after.verify(root)
+        marker = self.after.marker()
+        if marker is None or path is None:
+            raise ValueError(
+                "External ball publication requires a complete scene and marker"
+            )
+        self.after.replace(root, current)
+        saved = ScenePointers.read(root)
+        if saved != self.after or annotation_scene_path(root, marker) != path:
+            raise ValueError("External ball publication did not survive readback")
+
+
+def _receipt_path(root: Path, scene_id: str) -> Path:
+    return root / "updates" / "external_ball" / f"{validate_digest(scene_id)}.json"
+
+
+def current_publication(root: Path) -> tuple[ScenePointers, PublicationReceipt | None]:
+    with clip_store_lock(root):
+        current = ScenePointers.read(root)
+        revision = current.revision()
+        receipt = None if revision is None else PublicationReceipt.read(root, revision)
+        if receipt is not None:
+            receipt.require_current(current)
+        return current, receipt
+
+
+def restore_publication(root: Path) -> bool:
+    with clip_store_lock(root):
+        current = ScenePointers.read(root)
+        scene_id = current.revision()
+        if scene_id is None:
+            return False
+        receipt = PublicationReceipt.read(root, scene_id)
+        receipt.require_current(current)
+        receipt.before.verify(root)
+        receipt.before.replace(root, current)
+        if ScenePointers.read(root) != receipt.before:
+            raise ValueError(
+                "Restored scene pointers differ from the recorded originals"
+            )
+        return True
+
+
+def publish_scene_revision(
+    root: Path,
+    current: ScenePointers,
+    before: ScenePointers,
+    nodes: dict[str, ArtifactRef],
+    scene: SceneResult,
+    clip: DatasetClipInputs,
+    input_files: InputSnapshot,
+    identity: dict[str, Any],
+    statistics: dict[str, Any],
+) -> PublicationReceipt:
+    scene_ref = nodes["scene_assembly"]
+    scene_id = scene_ref.artifact_id
+    journal = _receipt_path(root, scene_id)
+    with clip_store_lock(root):
+        if ScenePointers.read(root) != current:
+            raise ValueError(
+                "Clip pointers changed during external ball reconstruction"
+            )
+        input_files.assert_unchanged()
+        if journal.exists():
+            receipt = PublicationReceipt.read(root, scene_id)
+            if receipt.inputs != identity or receipt.before != before:
+                raise ValueError(
+                    "External ball receipt conflicts with the requested inputs"
+                )
+        else:
+            receipt = _stage_publication(
+                root, before, nodes, scene, clip, identity, statistics
+            )
+            write_json_atomic(
+                journal,
+                {
+                    "schema": SCHEMA,
+                    **json_value(receipt),
+                    "pointer_digests": receipt.pointer_digests(),
+                    "previous_scene_assembly": before.index()["artifacts"].get(
+                        "scene_assembly"
+                    ),
+                    "previous_scene_export": before.index()["exports"].get("scene"),
+                },
+            )
+        receipt.activate(root, current)
+        return receipt
+
+
+def _stage_publication(
+    root: Path,
+    before: ScenePointers,
+    nodes: dict[str, ArtifactRef],
+    scene: SceneResult,
+    clip: DatasetClipInputs,
+    identity: dict[str, Any],
+    statistics: dict[str, Any],
+) -> PublicationReceipt:
+    reference = nodes["scene_assembly"]
+    destination = root / "exports" / reference.artifact_id
+    if not destination.exists():
+        write_scene_export(scene, destination)
+    archive = destination / "scene.npz"
+    doc = before.index()
+    descriptor = read_component_descriptor(
+        root,
+        json_value(reference),
+        node="scene_assembly",
+        source_sha256=doc["source_sha256"],
+    )
+    _verify_archive(archive, scene, descriptor)
+    doc["artifacts"].update(json_value(nodes))
+    doc["revision"] += 1
+    doc[PUBLICATION] = reference.artifact_id
+    doc["exports"]["scene"] = {
+        "inputs": {"scene_assembly": json_value(reference)},
+        "files": {
+            role: {"path": str(path.relative_to(root)), "sha256": dual_sha256(path)}
+            for role, path in (
+                ("scene", archive),
+                ("metadata", archive.with_suffix(".metadata.json")),
+            )
+        },
+    }
+    identity_digest = document_digest(identity)
+    config = root / "configs" / f"{identity_digest}.yaml"
+    # JSON is a subset of YAML. Keep the exact pinned import recipe beside the
+    # previous reconstruction's immutable config.
+    if config.exists():
+        if json.loads(config.read_text()) != identity:
+            raise ValueError("Saved external ball publication recipe changed")
+    else:
+        write_json_atomic(config, identity)
+    annotation = {
+        "version": ANNOTATION_SCHEMA_VERSION,
+        "clip_id": clip.record.clip_id,
+        "generator": "src.tennis_scene.scripts.import_external_ball",
+        "generated_at": utc_now_iso(),
+        "scene_result": str(archive.relative_to(root)),
+        "scene_index": "scene.json",
+        "pipeline_config": str(config.relative_to(root)),
+        "clip_manifest_sha256": clip.manifest_sha256,
+        "arrays": scene_array_manifest(scene),
+        "scene_schema_version": scene.schema_version,
+        "result_status": scene.metadata["status"],
+        "validity_statistics": scene.metadata["validity_statistics"],
+        "publication_identity_sha256": identity_digest,
+        "media_sha256": dict(clip.media_sha256),
+        PUBLICATION: reference.artifact_id,
+    }
+    return PublicationReceipt(
+        before, ScenePointers(_encode(doc), _encode(annotation)), identity, statistics
+    )
+
+
+def _verify_archive(path: Path, scene: SceneResult, descriptor: dict[str, Any]) -> None:
+    """Read back the full archive in chunks against the staged NPY checksums."""
+    arrays = {
+        f"{name}.npy": descriptor["arrays"][entry["array"]]["sha256"]
+        for name, entry in descriptor["payload"].items()
+        if isinstance(entry, dict) and set(entry) == {"array"}
+    }
+    scalars = {
+        f"{name}.npy": getattr(scene, name)
+        for name in ("num_frames", "width", "height", "fps")
+    }
+    with ZipFile(path) as archive:
+        if sorted(archive.namelist()) != sorted(arrays.keys() | scalars.keys()):
+            raise ValueError(
+                "Staged scene archive member names disagree with the component"
+            )
+        for member, expected in arrays.items():
+            digest = sha256()
+            with archive.open(member) as handle:
+                for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                    digest.update(chunk)
+            if digest.hexdigest() != expected:
+                raise ValueError(f"Staged scene archive disagrees with {member}")
+        for member, expected in scalars.items():
+            if (
+                np.load(BytesIO(archive.read(member)), allow_pickle=False).item()
+                != expected
+            ):
+                raise ValueError(f"Staged scene archive disagrees with {member}")
+    if json.loads(path.with_suffix(".metadata.json").read_text()) != json_value(
+        scene.metadata
+    ):
+        raise ValueError("Staged scene archive metadata disagrees with the component")

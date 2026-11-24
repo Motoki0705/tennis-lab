@@ -34,6 +34,19 @@ def validate_scene_export(scene: SceneResult, path: Path) -> None:
             raise ValueError(f"Scene export disagrees with reconstructed field {field.name}")
 
 
+def write_scene_export(scene: SceneResult, destination: Path) -> None:
+    """Create an archive directory once under the caller's publication lock."""
+    destination.parent.mkdir(exist_ok=True)
+    temporary = Path(tempfile.mkdtemp(prefix=".writing-", dir=destination.parent))
+    try:
+        with temporary_directory(temporary):
+            save_scene_result(scene, temporary / "scene.npz")
+        os.replace(temporary, destination)
+    finally:
+        if temporary.exists():
+            shutil.rmtree(temporary)
+
+
 @measured("save")
 def export_scene(store: ClipStore, scene: SceneResult, reference: ArtifactRef) -> Path:
     """Write ``exports/<artifact ID>/scene.npz`` once and adopt it in ``scene.json``.
@@ -43,7 +56,6 @@ def export_scene(store: ClipStore, scene: SceneResult, reference: ArtifactRef) -
     and validated before adoption. Creation and adoption share the clip lock.
     """
     exports = store.root / "exports"
-    exports.mkdir(exist_ok=True)
     destination = exports / reference.artifact_id
     scene_path: Path = destination / "scene.npz"
 
@@ -55,14 +67,7 @@ def export_scene(store: ClipStore, scene: SceneResult, reference: ArtifactRef) -
                 indexed_scene_path(store.index_path)
             validate_scene_export(scene, scene_path)
             return
-        temporary = Path(tempfile.mkdtemp(prefix=".writing-", dir=exports))
-        try:
-            with temporary_directory(temporary):
-                save_scene_result(scene, temporary / "scene.npz")
-            os.replace(temporary, destination)
-        finally:
-            if temporary.exists():
-                shutil.rmtree(temporary)
+        write_scene_export(scene, destination)
     store.record_export("scene", {"scene": scene_path, "metadata": destination / "scene.metadata.json"},
         {"scene_assembly": reference}, prepare=prepare)
     return scene_path
