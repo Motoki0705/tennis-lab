@@ -22,6 +22,7 @@ from src.tennis_scene.configuration import (
     parse_visualize_tasks_config,
 )
 from src.tennis_scene.pipeline.artifacts import document_digest
+from src.tennis_scene.pipeline.definition import standard_model_components
 from src.utils.configuration import (
     UnknownConfigurationKeyError,
 )
@@ -252,6 +253,24 @@ def test_visualize_tasks_accepts_gvhmr_alignment_on_its_own(
 def test_default_person_capacity_covers_doubles_with_buffer(tmp_path: Path) -> None:
     runtime = PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path), bind_inputs=False)
     assert runtime.max_tracks_per_camera == 6
+
+
+@pytest.mark.parametrize("players_per_side", [1, 2])
+def test_standard_selector_uses_doubles_width_for_both_player_counts(tmp_path: Path, players_per_side: int) -> None:
+    runtime = PipelineRuntimeConfig.from_config(_pipeline_config(
+        tmp_path, f"player_association.players_per_side={players_per_side}",
+    ), bind_inputs=False)
+    selector = standard_model_components(runtime, ("cam0",))["player_selection"]
+    assert selector.config.core_half_width_m == 5.485
+    assert selector.config.baseline_limit_m == 16.885
+    assert selector.config.min_presence_fraction == .25
+    assert runtime.player_association.players_per_side == players_per_side
+
+
+def test_pipeline_rejects_obsolete_opt_in_selection_settings(tmp_path: Path) -> None:
+    cfg = _pipeline_config(tmp_path, "+person_observations.selection={match_format:singles,min_presence_fraction:0.25}")
+    with pytest.raises(UnknownConfigurationKeyError, match="selection"):
+        PipelineRuntimeConfig.from_config(cfg, bind_inputs=False)
 
 
 def test_pipeline_and_task_default_use_fitted_association(tmp_path: Path) -> None:

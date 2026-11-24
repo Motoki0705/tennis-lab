@@ -21,6 +21,7 @@ from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
 from src.tennis_scene.pipeline.definition import enabled_model_assets, file_identity
 from src.utils.checksum import dual_sha256
+from src.utils.schema.court import HALF_DOUBLES_WIDTH
 
 CODE = Path(__file__).resolve().parents[2]
 CLIPS = ('video_000/clip_002', 'video_001/clip_003', 'video_002/clip_003')
@@ -55,6 +56,7 @@ def freeze(repo: Path, report: Path, target: Path) -> None:
         raise FileExistsError('A freeze manifest is immutable')
     cfg = configuration(repo, report)
     runtime = PipelineRuntimeConfig.from_config(cfg, bind_inputs=False)
+    selection = LinkingConfig(max_candidates=runtime.max_tracks_per_camera)
     reservation = repo / 'data/tennis_multiview/processed/meiji_3cam/dataset/annotations/player_association/unseen_protocol.json'
     reserved = json.loads(reservation.read_text())  # metadata only, never a reserved clip
     if set(reserved['clips']) != set(CLIPS) or reserved['evaluation_attempts'] != 0:
@@ -83,9 +85,9 @@ def freeze(repo: Path, report: Path, target: Path) -> None:
                        'source_ids_preserved': True},
             'gsi': {'gap_frames_exclusive': [1, 20], 'length_scale': 'clip(10*log(1000/N), .1, 100)',
                     'kernel_noise': 1e-10, 'synthetic_separate_from_observed': True},
-            'selection': asdict(LinkingConfig(max_candidates=runtime.max_tracks_per_camera)),
-            'selection_region': {'core_half_width_m': 4.115, 'corridor_half_width_m': 5.485,
-                                 'half_length_plus_runoff_m': 16.885, 'endpoint_window_s': .1,
+            'selection': asdict(selection),
+            'selection_region': {'core_half_width_m': selection.core_half_width_m, 'corridor_half_width_m': HALF_DOUBLES_WIDTH,
+                                 'half_length_plus_runoff_m': selection.baseline_limit_m, 'endpoint_window_s': .1,
                                  'switch_window_s': .25, 'switch_max_jump_m': 3.,
                                  'cap_after_dwell_and_linking': True, 'keep_all_selected_real_observations': True},
             'appearance_sampling': asdict(CropSamplingConfig()),

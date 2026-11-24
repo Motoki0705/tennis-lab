@@ -36,8 +36,8 @@ def _input(positions: list[tuple[float, float]], seen: np.ndarray) -> PlayerSele
     return PlayerSelectionInput(SourceVideo('cam0', Path('unused.mp4'), 'hash', seen.shape[1], 30., 1920, 1080), calibration, raw)
 
 
-def _module() -> PlayerSelectionModule:
-    return PlayerSelectionModule(LinkingConfig(), footpoints=FootpointConfig(), sampling=CropSamplingConfig(),
+def _module(config: LinkingConfig | None = None) -> PlayerSelectionModule:
+    return PlayerSelectionModule(config or LinkingConfig(), footpoints=FootpointConfig(), sampling=CropSamplingConfig(),
                                  encoder=None, encoder_name=None, device='cpu', enabled=True)
 
 
@@ -115,9 +115,27 @@ def test_cap_applies_to_eligible_groups_not_all_person_input() -> None:
     assert result.diagnostics['linking']['groups'][-1]['reason'] == 'insufficient_dwell'
 
 
-def test_membership_boundary_is_singles_width_and_baseline_plus_five_metres() -> None:
-    points = np.array([[4.115, 16.885], [-4.115, -16.885], [4.116, 0.], [0., 16.886]])
+def test_membership_boundary_is_doubles_width_and_baseline_plus_five_metres() -> None:
+    points = np.array([[5.485, 16.885], [-5.485, -16.885], [5.486, 0.], [0., 16.886]])
     assert exclusive_region(points, LinkingConfig(), core=True).tolist() == [True, True, False, False]
+
+
+def test_doubles_width_and_shorter_dwell_recover_different_real_observations() -> None:
+    seen: np.ndarray = np.ones((3, 80), bool)
+    seen[1, 12:] = False  # Central, with a short real fragment.
+    inputs = _input([(5., 8.), (0., -8.), (5.6, 8.)], seen)
+    legacy = _module(LinkingConfig(core_half_width_m=4.115)).process(inputs)
+    standard = _module().process(inputs)
+    shorter = _module(LinkingConfig(min_presence_fraction=.125)).process(inputs)
+    assert legacy.selected.sum(axis=1).tolist() == [0, 0, 0]
+    assert standard.selected.sum(axis=1).tolist() == [80, 0, 0]
+    assert shorter.selected.sum(axis=1).tolist() == [80, 12, 0]
+    diagnostic = standard.diagnostics["linking"]
+    assert diagnostic["region"]["core_half_width_m"] == 5.485
+    assert diagnostic["required_frames"] == 20
+    assert [(group["in_core_frames"], group["reason"]) for group in diagnostic["groups"]] == [
+        (80, "selected"), (12, "insufficient_dwell"), (0, "insufficient_dwell"),
+    ]
 
 
 def test_wide_observations_survive_component_and_uncalibrated_camera_is_explicit() -> None:
