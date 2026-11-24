@@ -66,12 +66,16 @@ def assert_current_component_lineage(document: dict[str, Any], root: Path, input
 
 def indexed_scene_path(index_path: Path, *, required_components: Mapping[str, Any] | None = None) -> Path:
     document = json.loads(index_path.read_text())
+    return resolve_indexed_scene(document, index_path.parent.resolve(), required_components=required_components)
+
+
+def resolve_indexed_scene(document: dict[str, Any], root: Path, *, required_components: Mapping[str, Any] | None = None) -> Path:
+    """Verify a scene index snapshot, including one staged for publication."""
     if document.get("schema") != "tennis_scene_index_v1":
         raise ValueError("Unsupported scene index schema")
     export = document.get("exports", {}).get("scene")
     if not isinstance(export, dict):
         raise ValueError("Clip has no completed scene export")
-    root = index_path.parent.resolve()
     inputs = export.get("inputs")
     if not isinstance(inputs, dict):
         raise ValueError("Scene export has no component input lineage")

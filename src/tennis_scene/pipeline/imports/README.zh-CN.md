@@ -100,3 +100,33 @@ result = runner.output("ball_triangulation")
 
 用小型非对称相机与独立投影的已知3D验证保存v3、估计点贡献、缺失、保存恢复、无重新执行的
 固定几何、输入/数组篡改拒绝，以及含误差view的等权重拟合。它们不证明真实视频识别精度或验收通过。
+
+## 导入每个片段的外部球坐标
+
+`src.tennis_scene.scripts.import_external_ball publish` 为已有的球员重建数据集补充球的
+3D轨迹。它根据 `clip.json` 核对片段、相机、分辨率、帧率和完整帧序列，并通过
+保存的来源与共享球场校验视频 SHA-256。画面内的四种状态均以等权重参与三角测量，
+`visible_in_frame` 的不同写法归一化后保留为来源属性。
+
+导入使用已保存的场景、标定和相机对齐产物，并比对视频级的球场朝向及相机参数。
+对于保存了球员重建失败记录的片段，根据现有标定和视频级朝向构建相机几何。
+场景记录原失败原因、空的球员轴及有效掩码，以及是否经过球员验证。
+场景元数据中的 `external_ball.status_codes` 和 `status_labels` 按相机和帧保留输入状态。
+`ball_vis` 标记画面内的位置，`ball_rejection_code` 区分视角不足（1）与几何求解失败（7）。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.import_external_ball publish \
+  --dataset "$DATASET" --video video_000 --positions "$POSITIONS" \
+  --side-store "$SIDE_STORE" --side-digest "$SIDE_DIGEST" \
+  --court-store "$COURT_STORE" --drift-store "$DRIFT_STORE" \
+  --report "$REPORT" --clip clip_000 --clip clip_020
+
+.venv/bin/python -m src.tennis_scene.scripts.import_external_ball restore \
+  --dataset "$DATASET" --video video_000 --clip clip_000 --clip clip_020
+```
+
+省略 `--clip` 会处理整个视频。切换前验证新产物，并将输入版本和切换前后的引用保存到
+`updates/external_ball/<scene_assembly ID>.json`。发生冲突的片段保留原引用，
+报告记录错误并返回失败。重复同一命令可恢复中断的切换。
+`restore` 按原始字节恢复引用，同时保留两个版本的不变产物。
+[Meiji 执行记录与复现命令](../../../../knowledge/runs/run-meiji-external-ball-20261124/README.md)
