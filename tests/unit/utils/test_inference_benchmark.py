@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import ctypes
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from pathlib import Path
+from typing import Any
 
 import pytest
 import torch
@@ -91,6 +93,45 @@ def _unexpected_load() -> Callable[[int, BatchStages], int]:
     raise AssertionError("Unexpected backend load")
 
 
+def test_nvml_memory_and_clock_snapshots_allow_unavailable_power_limit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sampler = object.__new__(speed._BenchmarkNvml)
+    handle = ctypes.c_void_p(42)
+    sampler._handles = {"cuda:0": handle}
+
+    def call(name: str, *args: Any) -> None:
+        if name == "nvmlSystemGetDriverVersion":
+            args[0].value = b"580.82"
+            return
+        assert args[0] is handle
+        if name == "nvmlDeviceGetMemoryInfo":
+            args[1]._obj.used = 3 * 2**30
+        elif name == "nvmlDeviceGetClockInfo":
+            args[2]._obj.value = 1200 * args[1]
+        elif name == "nvmlDeviceGetMaxClockInfo":
+            args[2]._obj.value = 1600 * args[1]
+        elif name == "nvmlDeviceGetPowerUsage":
+            args[1]._obj.value = 50_000
+        elif name == "nvmlDeviceGetEnforcedPowerLimit":
+            raise RuntimeError("Power limit is unavailable")
+        else:
+            raise AssertionError(f"Unexpected NVML call: {name}")
+
+    monkeypatch.setattr(sampler, "_call", call)
+    assert sampler.memory_used_bytes("cuda:0") == 3 * 2**30
+    assert sampler.device_state("cuda:0") == {
+        "driver": "580.82",
+        "sm_clock_mhz": 1200,
+        "memory_clock_mhz": 2400,
+        "max_sm_clock_mhz": 1600,
+        "max_memory_clock_mhz": 3200,
+        "power_mw": 50_000,
+        "power_limit_mw": None,
+        "telemetry_errors": {"power_limit_mw": "Power limit is unavailable"},
+    }
+
+
 def test_composite_stage_and_gpu_times_use_full_batch_counts(
     cuda: _Cuda, tmp_path: Path
 ) -> None:
@@ -102,11 +143,11 @@ def test_composite_stage_and_gpu_times_use_full_batch_counts(
         calls.append(value)
         stages.stage(Stage.PREPROCESS, lambda: cuda.step(1))
         stages.stage(Stage.H2D, lambda: cuda.step(2))
-        stages.forward(
+        stages.measure_forward(
             Backend.PT32, lambda: cuda.step(value + 1, value), name="detector"
         )
         stages.stage(Stage.POSTPROCESS, lambda: cuda.step(2), name="boxes")
-        stages.forward(
+        stages.measure_forward(
             Backend.PT32, lambda: cuda.step(2 * value + 1, 2 * value), name="pose"
         )
         stages.stage(Stage.D2H, lambda: cuda.step(1))
@@ -179,7 +220,7 @@ def test_allocator_oom_stops_condition_and_keeps_completed_samples(
             cuda.step(2, 1)
             return value
 
-        return stages.forward(Backend.PT32, forward)
+        return stages.measure_forward(Backend.PT32, forward)
 
     def load() -> Callable[[int, BatchStages], int]:
         if phase == "load":
@@ -275,9 +316,9 @@ def test_forward_cannot_recover_a_failed_trt_call_with_pt(
             raise AssertionError("PyTorch fallback must be rejected before execution")
 
         with pytest.raises(ConditionUnavailable):
-            stages.forward(Backend.TRT16, trt)
+            stages.measure_forward(Backend.TRT16, trt)
         with pytest.raises(ConditionUnavailable):
-            stages.forward(Backend.PT32, pytorch)
+            stages.measure_forward(Backend.PT32, pytorch)
         return value
 
     adapter = BenchmarkAdapter(Backend.TRT16, lambda: infer, {}, {"model": engine})
@@ -297,7 +338,7 @@ def test_parity_failure_withholds_success_summary(
     cuda: _Cuda, has_reference: bool
 ) -> None:
     def infer(value: int, stages: BatchStages) -> int:
-        return stages.forward(Backend.PT16, lambda: forward(value))
+        return stages.measure_forward(Backend.PT16, lambda: forward(value))
 
     def forward(value: int) -> int:
         cuda.step(2, 1)
@@ -353,7 +394,7 @@ def test_build_time_is_separate_from_trt_load_and_inference(
             cuda.step(4, 2)
             return value + 1
 
-        return stages.forward(Backend.TRT16, forward)
+        return stages.measure_forward(Backend.TRT16, forward)
 
     def check(predictions: Iterator[tuple[Batch[int], int]]) -> ParityResult:
         result = {batch.ids[0]: value for batch, value in predictions}
