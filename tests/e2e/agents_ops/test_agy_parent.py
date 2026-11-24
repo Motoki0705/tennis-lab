@@ -470,6 +470,71 @@ def _pre_invocation(
     )
 
 
+@pytest.mark.parametrize(
+    ("command", "response"),
+    [
+        pytest.param(
+            "pane get",
+            {
+                "pane": {
+                    "pane_id": "w1:p1",
+                    "terminal_id": "term-a",
+                    "agent": "agy",
+                    "tokens": None,
+                }
+            },
+            id="pane-null-tokens",
+        ),
+        pytest.param(
+            "agent list",
+            {
+                "agents": [
+                    {
+                        "pane_id": "w1:p2",
+                        "terminal_id": "term-b",
+                        "agent": "agy",
+                        "tokens": None,
+                    }
+                ]
+            },
+            id="agent-null-tokens",
+        ),
+        pytest.param("pane process-info", {}, id="missing-process-info"),
+        pytest.param(
+            "pane process-info", {"process_info": {}}, id="missing-foreground-processes"
+        ),
+        pytest.param(
+            "pane process-info",
+            {"process_info": {"foreground_processes": [{"name": "agy"}]}},
+            id="missing-pid",
+        ),
+        pytest.param("session list", {"sessions": [None]}, id="invalid-session-entry"),
+        pytest.param("pane current", ["/private/checkout"], id="non-object-result"),
+    ],
+)
+def test_agy_status_line_reports_invalid_herdr_response(
+    labels: Labels, command: str, response: object
+) -> None:
+    with foreground(labels.root / "agy-home") as tui:
+        assert tui.lock(ROOT)
+        labels.set_registry({"o/r#42": labels.owner(identity=f"agy:{ROOT}")})
+        env = _agy_env(labels.env)
+        if command == "session list":
+            del env["HERDR_SOCKET_PATH"]
+        state = labels.read()
+        state["pid"] = tui.pid
+        state["panes"]["w1:p1"]["agent"] = "agy"
+        state["responses"] = {command: response}
+        labels.write(state)
+
+        hook = _status(tui, env, labels.root)
+        assert hook.returncode == 1 and hook.stdout == ""
+        assert hook.stderr == (
+            "agy parent hook: Herdr connection, command or response could not be verified\n"
+        )
+        assert not labels.mutations()
+
+
 def test_agy_status_line_survives_incomplete_register(
     parent_env: ParentEnv, labels: Labels
 ) -> None:

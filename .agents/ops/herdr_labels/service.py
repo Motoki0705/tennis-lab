@@ -307,15 +307,8 @@ def _bind_native(
 ) -> None:
     """Let daemon-hosted tools reuse the destination verified by their own TUI."""
     socket = client.socket_path()
-    sessions = client.call("session", "list", "--json").get("sessions", [])
-    matches = [
-        row
-        for row in sessions
-        if row.get("running")
-        and row.get("socket_path")
-        and str(Path(row["socket_path"]).resolve()) == socket
-    ]
-    if len(matches) != 1 or not matches[0].get("name"):
+    matches = [row for row in client.running_sessions() if row["socket_path"] == socket]
+    if len(matches) != 1:
         raise ValueError("cannot identify the inherited Herdr server for binding")
     record = {
         "version": 1,
@@ -388,14 +381,11 @@ def _sync(
         raise ValueError("invalid parent registry key")
     if expected_parent is not None and int(number) != expected_parent:
         raise ValueError("requested parent differs from the caller's registered parent")
-    agents = client.call("agent", "list").get("agents")
-    if not isinstance(agents, list) or not all(isinstance(p, dict) for p in agents):
-        raise HerdrError("Herdr returned an invalid agent list")
     if any(
         p.get("terminal_id") != pane["terminal_id"]
         and p.get("agent") == identity.split(":", 1)[0]
         and p.get("tokens", {}).get("tl_owner") == token
-        for p in agents
+        for p in client.agents()
     ):
         raise ValueError(
             "the same session already labels another live pane; "

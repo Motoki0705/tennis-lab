@@ -15,7 +15,7 @@ from typing import Any
 from lib.agy_session import AgyTui, AgyVerificationError
 from parent.state import Store
 
-from .client import Herdr
+from .client import Herdr, HerdrError
 
 
 def state_root(env: Mapping[str, str]) -> Path:
@@ -51,14 +51,11 @@ class UnconfirmedDisplayDestination(ValueError):
 
 
 def process_stamp(client: Herdr, pane: dict[str, Any]) -> list[dict[str, Any]]:
-    info = client.call("pane", "process-info", "--pane", pane["pane_id"])[
-        "process_info"
-    ]
     stamps = []
-    for proc in info["foreground_processes"]:
+    for proc in client.foreground_processes(pane["pane_id"]):
         if proc["name"] != pane.get("agent"):
             continue
-        pid = int(proc["pid"])
+        pid = proc["pid"]
         stat = (Path("/proc") / str(pid) / "stat").read_text()
         stamps.append({"pid": pid, "start": stat.rsplit(")", 1)[1].split()[19]})
     if len(stamps) != 1:
@@ -154,50 +151,19 @@ class Guard:
             or not terminal
         ):
             raise ValueError("invalid confirmed parent display destination")
-        servers = self.client.call("session", "list", "--json").get("sessions")
-        if not isinstance(servers, list):
-            raise ValueError("invalid Herdr server list; cannot verify old destination")
-        matches = []
-        for server in servers:
-            if not isinstance(server, dict) or type(server.get("running")) is not bool:
-                raise ValueError(
-                    "invalid Herdr server entry; cannot verify old destination"
-                )
-            if not server["running"]:
-                continue
-            socket, name = server.get("socket_path"), server.get("name")
-            if (
-                not isinstance(socket, str)
-                or not socket
-                or not Path(socket).is_absolute()
-                or not isinstance(name, str)
-                or not name
-            ):
-                raise ValueError(
-                    "invalid Herdr server identity; cannot verify old destination"
-                )
-            if owner_token(str(Path(socket).resolve())) == scope:
-                matches.append(name)
+        matches = [
+            server["name"]
+            for server in self.client.running_sessions()
+            if owner_token(server["socket_path"]) == scope
+        ]
         if len(matches) > 1:
             raise ValueError("ambiguous Herdr server for the old destination")
         if not matches:
             return  # A validated server list confirms the old server is stopped.
         client = Herdr(self.client.env, matches[0])
-        agents = client.call("agent", "list").get("agents")
-        if not isinstance(agents, list) or not all(
-            isinstance(agent, dict)
-            and all(
-                isinstance(agent.get(key), str) and agent[key]
-                for key in ("pane_id", "terminal_id", "agent")
-            )
-            and isinstance(agent.get("tokens", {}), dict)
-            and all(
-                isinstance(key, str) and isinstance(value, str)
-                for key, value in agent.get("tokens", {}).items()
-            )
-            for agent in agents
-        ):
-            raise ValueError("invalid Herdr agent list; cannot verify old destination")
+        agents = client.agents()
+        if any(not agent.get("agent") for agent in agents):
+            raise HerdrError("invalid Herdr agent list; cannot verify old destination")
         candidates = [agent for agent in agents if agent["terminal_id"] == terminal]
         if len(candidates) > 1:
             raise ValueError("ambiguous Herdr terminal for the old destination")

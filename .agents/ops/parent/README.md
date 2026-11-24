@@ -11,12 +11,12 @@
 | 証拠用Issue | 機械イベントと人間の元発言への参照。保存先のbindingと公開再送を照合する。[evidence.py](evidence.py) |
 | ワーカー・親のログ | [ワーカーの各ターン](../worker_logs/README.md) と [親の判断](../decision_logs/README.ja.md) を別々に保存する。 |
 
-証拠用Issueの作成直後は、POST応答のIssue番号をjournalに保存し、番号を指定して取得した結果と照合する。
-ラベル付き一覧への反映前でも、直接照合が成功し、一覧に競合する紐付けがなければ確定できる。
-
 ## 排他とI/O
 
 担当変更と掲示板配送は同じownership fenceを使う。取得順は操作lock、ownership、registry。GitHub・runnerへのI/O中はregistryを解放し、復帰後に担当・対象記録を照合する。読取はsnapshotを使う。版移行と競合時の再検証は [state.py](state.py)、GitHubの取得範囲とキャッシュ境界は [github.py](github.py) を参照。
+
+証拠用Issueの作成直後は、POST応答のIssue番号をjournalに保存し、番号を指定して取得した結果と照合する。
+ラベル付き一覧への反映前でも、直接照合が成功し、一覧に競合する紐付けがなければ確定できる。
 
 状態ルートは実ディレクトリを指定する。状態ルートと `parents/` は実行ユーザーが所有し、上位は root または実行ユーザーが所有する。
 状態ディレクトリ本体と状態ファイルにはグループ・その他への書込み権限を与えない。
