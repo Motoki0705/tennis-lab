@@ -201,6 +201,17 @@ def main() -> int:
         state = json.loads(github.read_text())
         state["prs"].append(json.loads(pr))
         store.write_json(github, state)
+    if previous is not None and (
+        updates := os.environ.get("MANUAL_PR_UPDATES_SEQUENCE")
+    ):
+        patch = json.loads(updates).get(str(len(task["worker_runs"])))
+        if patch is not None:
+            github = Path(os.environ["PARENT_GH_STATE"])
+            state = json.loads(github.read_text())
+            for existing in state["prs"]:
+                if existing["number"] == patch["number"]:
+                    existing.update(patch)
+            store.write_json(github, state)
     print(json.dumps(summary))
     return code
 
