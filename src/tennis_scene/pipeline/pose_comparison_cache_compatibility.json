@@ -1,0 +1,33 @@
+{
+  "baseline_commit": "590c2377810762fdea0d5485d10307e612de51eb",
+  "files": {
+    "tennis_scene/pipeline/source_identity.py": {
+      "before": "3a608ef31c5d0d396e514eef1c23d106e37dfa8b406e3a1467c347958e218bd6",
+      "after": "1c8bc1b4013eff0f8f16c2c39f088031051f4a94d45630bd076dba1376cca767"
+    },
+    "tennis_scene/visualization/pose_comparison/__init__.py": {
+      "before": null,
+      "after": "1c15b4b4c7188be8bfd76978e3c43f3189a47ff4ed3ab264332413544a537fb2"
+    },
+    "tennis_scene/visualization/pose_comparison/__main__.py": {
+      "before": null,
+      "after": "9cb8de9ed79a44acadbe551594b6c7dc0d2faea0f0d360a77067e6accb872a63"
+    },
+    "tennis_scene/visualization/pose_comparison/inputs.py": {
+      "before": null,
+      "after": "3c314527ec376ff93283375972c6d6051cd6c63d32b601b542b8554f0288a462"
+    },
+    "tennis_scene/visualization/pose_comparison/rendering.py": {
+      "before": null,
+      "after": "69e97d47566af5761053d0a92e761eecc3a6169a4cf73235a6ba84adb993fb78"
+    },
+    "tennis_scene/visualization/pose_comparison/report.py": {
+      "before": null,
+      "after": "38e4243af2faa48cb859fa040f873cd9bd829e83d7f4463632db8e40ccc1a1da"
+    },
+    "utils/configuration/inventory.py": {
+      "before": "d1f78faac1ef561bfff0d6fe594ad93c8ea17804b7cd28067d5d43608c13a4eb",
+      "after": "8df03fe5083ee939967c670485d68c0660fb875bbca6cac5c3c1f498c11ea31d"
+    }
+  }
+}
