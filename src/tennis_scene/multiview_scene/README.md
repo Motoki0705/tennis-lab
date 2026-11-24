@@ -36,7 +36,14 @@ args=(
 指定した当初のバッチ実行記録に従います。出力は `--output/<video_id>/<clip_name>/` のclip storeで、
 `exports/<scene_assembly ID>/scene.npz` にそのclipのSceneResultを保存します。
 
-`report` は旧経路・新経路それぞれのCSVを出力し、欠けたclipも理由付きで記録します。
+完了表は `run` が保存します。既存のSceneResultから表を再集計するときは、同じ出力先を指定してCPUで実行します。
+
+```bash
+.venv/bin/python -m src.tennis_scene.multiview_scene report "${args[@]}"
+```
+
+出力先の `legacy-completion.csv` と `multiview-completion.csv` に、clipごとの結果と不足理由を保存します。
+`report` に `--clip` を渡すと、その対象だけで両方のCSVを書き直します。全件を確認するときは `--clip` を省略します。
 GVHMRの身体フレーム数は実際に選ばれた約30 fpsの元フレーム番号を数えます。
 身体配置は有効なメッシュmaskで採点し、全員が揃う割合とボール3Dの割合の分母は元フレーム数です。
 完了には各側の指定人数、各IDのGVHMRと有効な身体配置、sceneに入った有効なボール3Dを要します。
