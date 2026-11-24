@@ -1,0 +1,77 @@
+{
+  "baseline_commit": "b000039fab705bd51c5148425553d10b50f8474b",
+  "files": {
+    "submodules/models/fasthmr/assets.py": {
+      "before": null,
+      "after": "5032bd0cc0e24794e21a32d89b9f63c6dbfa13d089854a295b28e71203cdd5ca"
+    },
+    "submodules/models/fasthmr/inference.py": {
+      "before": null,
+      "after": "3aff4bdc622a743c556de45ac8106226d1e288ba968e61b077a2d81ba2a37c62"
+    },
+    "submodules/models/fasthmr/upstream.py": {
+      "before": null,
+      "after": "960a95a98b45be8632de4a68a04cd9fb2fa21fb4c045d3ac1812cfb0ad315b5a"
+    },
+    "tennis_scene/configuration.py": {
+      "before": "36b09b3a6a4c1b5c89d4eb7aaad23b52419096753e7b7e57740157b5600dce64",
+      "after": "b38cda56328d8430bf2ac19539f5b10ec0f18f144d224efa8e412449dcbf600b"
+    },
+    "tennis_scene/generate_dataset/pseudo_annotation.py": {
+      "before": "58514e85c3b6c02ef8dbfd955aee49e6a84f5260e6e31fdca1cb39cf50eb0c4b",
+      "after": "7b5c49becceca9e3a287c1e65acccd5cb3d2bf07adc01856a4b4f1417328f778"
+    },
+    "tennis_scene/pipeline/body_artifacts.py": {
+      "before": "3a9182c714a7baa4398bce2eef7b47fe3137c788bcc87907ff2741e561ddfa42",
+      "after": "64ce234185cb7bbc830b2742510756264ba28989d16c66fd6df17971ddaf2238"
+    },
+    "tennis_scene/pipeline/body_types.py": {
+      "before": "494bf66d7b85e5bb558e3f867860291cdc40842d10546801301b2ca9ca2c983e",
+      "after": "bb7d57130863c8c4fe4aaf24d62308782050b76409ddc6d76f005e41b5a84b6f"
+    },
+    "tennis_scene/pipeline/components/body_placement.py": {
+      "before": "a71f30e783c2cc2308731181dcf1227df033ab284b6eb4e143b8e111509a26c6",
+      "after": "c6a4be4f823a58912a26b182984ca916a962d96a7ef2c0cf03f71493a3f10b26"
+    },
+    "tennis_scene/pipeline/components/fasthmr.py": {
+      "before": null,
+      "after": "d9c1ab9985fc7407da7573fac3a77a68e46017403790d859179493f13bc1b53d"
+    },
+    "tennis_scene/pipeline/components/player_reconstruction.py": {
+      "before": "4d86e89fa2d8e7b7aebebfb0092252a756192f133907848cb1f58886ebdae076",
+      "after": "5ab50c2d8ca073fbf7c110206668b0aeae068f4a5c0648e69f19febf6105263e"
+    },
+    "tennis_scene/pipeline/dataset_publication.py": {
+      "before": "468bafc47d5a8a73356f3bd69c75b043400ba5d333e8ad9e91d920b37ccbeebd",
+      "after": "39ed9b82cef695bb33541eb96b5673113ac05958842a1057c395f2346d99d71a"
+    },
+    "tennis_scene/pipeline/definition.py": {
+      "before": "92cd0948f25f47e2bac7e1e986a0b472ac01fd120412966f88b8610551158014",
+      "after": "72d739996c472b909e034ca6b2294d1bca8b923d9dcda2aaf8a70019ba1b2a0f"
+    },
+    "tennis_scene/pipeline/input_assembly/body.py": {
+      "before": "661ee38536a37f981c2e8629337f44e610b5f8b3806b8c67a5ae946560e8957f",
+      "after": "1d1bc7f80403eaa44110b6aa61775e6c2407b184a973a144bc3b41e9a5edb40d"
+    },
+    "tennis_scene/pipeline/orchestrator.py": {
+      "before": "e206eb017ad3df74e444d71596ce4b0c26c4fbb001e1d6d008141010e3538bce",
+      "after": "1f276a82c213976340979416749df46aeac99bf7d5b7125b2dcb55e08d9db226"
+    },
+    "tennis_scene/pipeline/recipes.py": {
+      "before": null,
+      "after": "e0b11e47e079b5ea0a6eb7b5b8afbfbb5551de1e962823cdcb87bef3bbcc8bf2"
+    },
+    "tennis_scene/pipeline/source_identity.py": {
+      "before": "bcf77236d136e86a1b817bac692b13680d1c1aefc44da6a39d6a5d2db4d9c4c0",
+      "after": "c62227a28d93ad1e5729d8e2397749aa00f202d35ec39ab686ead5a0d65b9cb7"
+    },
+    "tennis_scene/pipeline/video_batch.py": {
+      "before": "c5648e92a8669e15a30a965f2be9f11f900ed4f6a4e65e615589b563e78291e0",
+      "after": "4a552ab442c8375efc32d0d71c24ec21628ca93fc7553c243529277c3d5a5ec9"
+    },
+    "tennis_scene/preflight.py": {
+      "before": "07104e3eae8fcbf5e128f8b5b7c26f9de78765604c6b0ed78948345fbe6a8bcf",
+      "after": "11a7d4e124a441579f375b7587cc895d78a56a88ec627b7d8ee5951da8e33663"
+    }
+  }
+}

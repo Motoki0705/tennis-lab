@@ -1,17 +1,23 @@
-"""Place stored GVHMR parameters against triangulated joints without image inference."""
+"""Place recovered body parameters against triangulated joints without image inference."""
 
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
+from typing import Any
 
 import numpy as np
 import torch
 from numpy.typing import NDArray
 
 from src.submodules.models import SmplCoco17Reconstructor, SmplVertexReconstructor
+from src.submodules.models.fasthmr.assets import FastHMRConfig
 from src.tennis_scene.motion_alignment.temporal import TemporalPlacementConfig
 from src.tennis_scene.pipeline.body_types import BodyGeometry, BodyParameters
 from src.tennis_scene.pipeline.components.camera_alignment import CameraAlignmentOutput
+from src.tennis_scene.pipeline.components.fasthmr import (
+    FastHMROutput,
+    native_smpl_spec,
+)
 from src.tennis_scene.pipeline.components.gvhmr import GVHMROutput
 from src.tennis_scene.pipeline.components.identity import IDENTITIES_PORT
 from src.tennis_scene.pipeline.components.player_reconstruction import (
@@ -54,6 +60,8 @@ class SmplGeometry:
         return self._root
 
     def reconstruct(self, parameters: BodyParameters) -> BodyGeometry:
+        if parameters.pose_width != 63:
+            raise ValueError("SMPL-X geometry requires 21 local joint rotations")
         tensors = parameters.tensors()
         return BodyGeometry(self.vertices.reconstruct(tensors).numpy(), self.coco.reconstruct(tensors).numpy())
 
@@ -75,7 +83,7 @@ class BodyPlacementInput:
     raw: ObjectObservations
     grouped: GroupedObservations
     skeleton: PlayerTriangulationOutput
-    recovered: GVHMROutput
+    recovered: GVHMROutput | FastHMROutput
 
 
 @dataclass(frozen=True)
@@ -85,14 +93,18 @@ class BodyPlacementOutput:
 
 class BodyPlacementModule(InferenceComponent[BodyPlacementInput, BodyPlacementOutput]):
     def __init__(self, camera_ids: tuple[str, ...], models: PeopleModelConfig, config: TemporalPlacementConfig,
-                 *, reprojection_px: float, enabled: bool = True) -> None:
+                 *, reprojection_px: float, enabled: bool = True, fasthmr: FastHMRConfig | None = None) -> None:
         self.models, self.config, self.reprojection_px, self.enabled = models, config, reprojection_px, enabled
+        self.fasthmr = fasthmr
         self.io = ComponentIO("body_placement", BodyPlacementInput, BodyPlacementOutput,
             {"alignment": InputPort("aligned_cameras"), "calibration": InputPort("local_court_calibration"),
              "identities": IDENTITIES_PORT, "skeleton": InputPort("player_skeletons"),
-             "recovered": InputPort("body_parameters", version=2), **{f"pose_{c}": InputPort("person_poses", 2) for c in camera_ids}}, "placed_bodies")
+             "recovered": InputPort("body_parameters", version=2 if fasthmr is None else 3),
+             **{f"pose_{c}": InputPort("person_poses", 2) for c in camera_ids}}, "placed_bodies")
 
-    def model_specs(self) -> dict[str, ModelSpec[SmplGeometry]]:
+    def model_specs(self) -> dict[str, ModelSpec[Any]]:
+        if self.fasthmr is not None:
+            return {"body": native_smpl_spec(self.fasthmr)} if self.enabled else {}
         weights = {k: v for k, v in self.models.body_assets().items() if k not in {"hmr2", "gvhmr"}}
         return {} if not self.enabled else {"body": ModelSpec("body_geometry", weights, "smplx_supermotion_smpl_coco17",
             self.models.runtime.device, "float32", {}, lambda: SmplGeometry(self.models),
@@ -112,6 +124,12 @@ class BodyPlacementModule(InferenceComponent[BodyPlacementInput, BodyPlacementOu
         return int(smpl + smplx + observations)
 
     def process_with_models(self, inputs: BodyPlacementInput, models: ModelBorrower) -> BodyPlacementOutput:
+        recovered = inputs.recovered
+        native = isinstance(recovered, FastHMROutput)
+        if native != (self.fasthmr is not None):
+            raise ValueError("Body placement recovery parameters disagree with the selected body model")
+        if isinstance(recovered, FastHMROutput):
+            recovered.validate_source(inputs.source)
         geometry, skeleton = inputs.alignment.geometry, inputs.skeleton.skeleton
         if geometry is None or skeleton is None:
             return BodyPlacementOutput(None)
