@@ -78,26 +78,32 @@ class EvidenceIssues:
             number(row["number"])
         return row
 
-    def _binding(self, raw: dict[str, Any], login: str) -> EvidenceIssue:
-        n = self.gh.identity(raw)
+    def _marker_parent(self, raw: dict[str, Any], issue: int) -> int:
         body = raw.get("body")
         line = body.split("\n", 1)[0].rstrip("\r") if isinstance(body, str) else ""
         if not line.startswith(EVIDENCE_PREFIX) or not line.endswith(" -->"):
-            raise ValueError(f"evidence issue #{n}: missing or unknown binding marker")
+            raise ValueError(
+                f"evidence issue #{issue}: missing or unknown binding marker"
+            )
         data = object_value(read_json(line[len(EVIDENCE_PREFIX) : -4]))
+        if set(data) != {"repo", "parent"} or data["repo"] != self.gh.repo.casefold():
+            raise ValueError(f"evidence issue #{issue}: unverifiable binding marker")
+        parent = number(data["parent"])
+        if parent == issue:
+            raise ValueError("evidence issue cannot be its own parent")
+        return parent
+
+    def _binding(self, raw: dict[str, Any], login: str) -> EvidenceIssue:
+        n = self.gh.identity(raw)
+        parent = self._marker_parent(raw, n)
         if (
-            set(data) != {"repo", "parent"}
-            or data["repo"] != self.gh.repo.casefold()
-            or {x["name"] for x in raw.get("labels", [])} != {EVIDENCE_LABEL}
+            {x["name"] for x in raw.get("labels", [])} != {EVIDENCE_LABEL}
             or object_value(raw.get("user")).get("login") != login
             or raw.get("state") not in {"open", "closed"}
         ):
             raise ValueError(
                 f"evidence issue #{n}: unverifiable binding/label/publisher"
             )
-        parent = number(data["parent"])
-        if parent == n:
-            raise ValueError("evidence issue cannot be its own parent")
         url = f"https://github.com/{self.gh.repo}/issues/{n}"
         html_url = raw.get("html_url", url)
         if not isinstance(html_url, str) or html_url.casefold() != url.casefold():
@@ -258,43 +264,50 @@ class EvidenceIssues:
             labelled = self._closing_index(
                 self.gh.evidence_rows(), login, parent, unverified
             )
-            # Fetch without the label filter so the label index cannot hide a
-            # candidate (including a closed duplicate) on its own.
-            inventory = self._closing_index(
-                (
-                    raw
-                    for raw in self.gh.rows(f"repos/{self.gh.repo}/issues?state=all")
-                    if any(label["name"] == EVIDENCE_LABEL for label in raw["labels"])
-                ),
-                login,
-                parent,
-                unverified,
-            )
-            parents = (
-                [parent]
-                if parent is not None
-                else sorted(labelled.keys() | inventory.keys())
-            )
-            for current in parents:
+            inventory: dict[int, dict[int, EvidenceIssue]] = {}
+            if parent is None:
+                inventory = self._closing_index(
+                    (
+                        raw
+                        for raw in self.gh.rows(
+                            f"repos/{self.gh.repo}/issues?state=all"
+                        )
+                        if any(
+                            label["name"] == EVIDENCE_LABEL for label in raw["labels"]
+                        )
+                    ),
+                    login,
+                    None,
+                    unverified,
+                )
+                corroborating = {issue: set(rows) for issue, rows in inventory.items()}
+                source = "repository_evidence"
+            else:
+                corroborating = {parent: self._timeline_evidence_numbers(parent, login)}
+                source = "timeline_evidence"
+
+            for current in sorted(labelled.keys() | corroborating.keys()):
                 expected = labelled.get(current, {})
-                observed = inventory.get(current, {})
-                if expected.keys() != observed.keys():
+                observed = corroborating.get(current, set())
+                if expected.keys() != observed:
                     results.append(
                         {
                             "parent": current,
                             "status": "binding_listing_mismatch",
                             "labelled_evidence": sorted(expected),
-                            "repository_evidence": sorted(observed),
+                            source: sorted(observed),
                         }
                     )
                     continue
                 if not expected:
-                    results.append({"parent": current, "status": "binding_not_found"})
+                    results.append({"parent": current, "status": "no_binding"})
                     continue
                 for binding in expected.values():
                     if (
                         parent is None
-                        and binding.state == observed[binding.number].state == "closed"
+                        and binding.state
+                        == inventory[current][binding.number].state
+                        == "closed"
                     ):
                         continue
                     target = {"parent": binding.parent, "evidence": binding.number}
@@ -307,6 +320,29 @@ class EvidenceIssues:
                         result = {"status": "error", "reason": str(exc)}
                     results.append({**target, **result})
         return [*unverified.values(), *results]
+
+    def _timeline_evidence_numbers(self, parent: int, login: str) -> set[int]:
+        """Observe the backlinks generated by issue_body, even while labels lag."""
+        endpoint = f"repos/{self.gh.repo}/issues/{parent}/timeline"
+        repository_url = f"https://api.github.com/repos/{self.gh.repo}".casefold()
+        candidates = set()
+        for event in self.gh.rows(endpoint):
+            if event.get("event") != "cross-referenced":
+                continue
+            raw = object_value(object_value(event.get("source")).get("issue"))
+            url = raw.get("repository_url")
+            if (
+                "pull_request" in raw
+                or not isinstance(url, str)
+                or url.casefold() != repository_url
+                or not is_evidence_issue(raw)
+                or object_value(raw.get("user")).get("login") != login
+            ):
+                continue
+            issue = self.gh.identity(raw)
+            if self._marker_parent(raw, issue) == parent:
+                candidates.add(issue)
+        return candidates
 
     def _closing_index(
         self,

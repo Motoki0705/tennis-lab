@@ -287,7 +287,17 @@ if comment_edit:
 timeline = re.fullmatch(r"repos/o/r/issues/(\d+)/timeline", path)
 if timeline:
     rows = [{"event": "cross-referenced", "created_at": "2026-10-24T00:00:00Z", "source": {"issue": {"id": p["number"] + 10000, "number": p["number"], "body": p.get("body", ""), "repository_url": "https://api.github.com/repos/o/r", "pull_request": {"url": "pr"}}}} for p in state["prs"] if re.search(r"#" + timeline[1] + r"\b", p.get("body", ""))]
-    response(rows[(page-1)*100:page*100])
+    references_parent = re.compile(r"#" + timeline[1] + r"\b")
+    overrides = state.get("issue_listing_overrides", {})
+    for issue in state["issues"].values():
+        source = {**issue, **overrides.get(str(issue["number"]), {})}
+        body = source.get("body") or ""
+        if body.startswith("<!-- parent-evidence:") and references_parent.search(body):
+            rows.append({
+                "event": "cross-referenced", "created_at": source["created_at"],
+                "source": {"type": "issue", "issue": source},
+            })
+    response(paged(rows))
 if path == "repos/o/r/pulls":
     if os.environ.get("PARENT_CHANGE_CLOSING_ON_READ"):
         state["closing_reads"] = state.get("closing_reads", 0) + 1

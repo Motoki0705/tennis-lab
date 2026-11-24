@@ -25,6 +25,7 @@ WORKFLOW = (
 def _evidence(p: ParentEnv, issue: int, parent: int, **fields: Any) -> dict[str, Any]:
     row: dict[str, Any] = evidence_issue(p, issue)
     row["body"] = row["body"].replace('"parent": 1', f'"parent": {parent}')
+    row["body"] += f"\n\n親 #{parent} の証拠です。"
     row.update(fields)
     return row
 
@@ -265,20 +266,32 @@ def test_close_rejects_a_binding_changed_since_listing(parent_env: ParentEnv) ->
     assert not any("PATCH" in call for call in p.calls())
 
 
-def test_scoped_close_reports_missing_binding(parent_env: ParentEnv) -> None:
+def _assert_scoped_reads(calls: list[list[str]], *, attempts: int) -> None:
+    paths = [part for call in calls if "GET" in call for part in call]
+    assert (
+        sum(path.startswith("repos/o/r/issues/1/timeline?") for path in paths)
+        == attempts
+    )
+    assert not any(
+        path.startswith("repos/o/r/issues?") and "labels=parent-evidence" not in path
+        for path in paths
+    )
+
+
+def test_issue_closed_workflow_without_evidence_is_a_noop(
+    parent_env: ParentEnv,
+) -> None:
     p = parent_env
     state = p.state()
-    state["issues"]["1"]["state"] = "closed"
+    state["issues"]["1"].update(state="closed", labels=[{"name": "issue:child"}])
+    state["issues"]["8"] = _evidence(p, 8, 2)
+    state["issues"]["8"]["body"] += "\n\n関連 Issue #1。"
     p.save(state)
 
-    result = p.cli("evidence-close", "--apply", ok=None)
-    assert result.returncode == 3, result.stdout + result.stderr
-    assert json.loads(result.stdout)["results"] == [
-        {"parent": 1, "status": "binding_not_found"}
-    ]
     run = _run_close_workflow(p, parent=1)
-    assert run.returncode == 3, run.stdout + run.stderr
-    assert run.stdout.count("binding_not_found") == 3
+    assert run.returncode == 0, run.stdout + run.stderr
+    assert json.loads(run.stdout)["results"] == [{"parent": 1, "status": "no_binding"}]
+    _assert_scoped_reads(p.calls(), attempts=1)
     assert p.state() == state
     assert not any("PATCH" in call for call in p.calls())
 
@@ -293,9 +306,21 @@ def test_issue_closed_workflow_retries_after_lagged_listing(
     state["unlisted_evidence"] = [8]
     p.save(state)
 
+    result = p.cli("evidence-close", "--apply", ok=None)
+    assert result.returncode == 3, result.stdout + result.stderr
+    assert json.loads(result.stdout)["results"] == [
+        {
+            "parent": 1,
+            "status": "binding_listing_mismatch",
+            "labelled_evidence": [],
+            "timeline_evidence": [8],
+        }
+    ]
+    assert p.state() == state
     run = _run_close_workflow(p, parent=1, reveal_on_retry=True)
     assert run.returncode == 0, run.stdout + run.stderr
     assert "binding_listing_mismatch" in run.stdout
+    _assert_scoped_reads(p.calls(), attempts=3)
     assert p.state()["issues"]["8"]["state"] == "closed"
     assert [call[-3] for call in p.calls() if "PATCH" in call] == ["repos/o/r/issues/8"]
 
@@ -309,7 +334,10 @@ def test_partial_listing_cannot_hide_duplicate_binding(parent_env: ParentEnv) ->
     state["unlisted_evidence"] = [9]
     p.save(state)
 
-    for scope in ("1", None):
+    for scope, observation in (
+        ("1", "timeline_evidence"),
+        (None, "repository_evidence"),
+    ):
         result = p.cli("evidence-close", "--apply", parent=scope, ok=None)
         assert result.returncode == 3, result.stdout + result.stderr
         assert json.loads(result.stdout)["results"] == [
@@ -317,7 +345,7 @@ def test_partial_listing_cannot_hide_duplicate_binding(parent_env: ParentEnv) ->
                 "parent": 1,
                 "status": "binding_listing_mismatch",
                 "labelled_evidence": [8],
-                "repository_evidence": [8, 9],
+                observation: [8, 9],
             }
         ]
         assert p.state() == state
@@ -326,5 +354,22 @@ def test_partial_listing_cannot_hide_duplicate_binding(parent_env: ParentEnv) ->
     confirmed = p.cli("evidence-close", "--apply", ok=None)
     assert confirmed.returncode == 2, confirmed.stdout + confirmed.stderr
     assert json.loads(confirmed.stdout)["results"][0]["status"] == "duplicate_binding"
+    assert p.state() == state
+    assert not any("PATCH" in call for call in p.calls())
+
+
+def test_issue_closed_workflow_reports_unconfirmed_timeline(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    state = p.state()
+    state["issues"]["1"]["state"] = "closed"
+    state["issues"]["8"] = evidence_issue(p, 8)
+    p.save(state)
+
+    run = _run_close_workflow(p, parent=1)
+    assert run.returncode == 3, run.stdout + run.stderr
+    assert run.stdout.count("binding_listing_mismatch") == 3
+    _assert_scoped_reads(p.calls(), attempts=3)
     assert p.state() == state
     assert not any("PATCH" in call for call in p.calls())

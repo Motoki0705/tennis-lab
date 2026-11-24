@@ -527,9 +527,7 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                 parent is not None and "duplicate_binding" in statuses
             ):
                 return 2
-            return (
-                3 if statuses & {"binding_listing_mismatch", "binding_not_found"} else 0
-            )
+            return 3 if "binding_listing_mismatch" in statuses else 0
         if args.command == "handoff" and args.recover and not args.accept:
             raise ValueError("--recover requires handoff --accept")
         # Missing identity is a configuration error before any network/state write.

@@ -15,7 +15,7 @@
 
 [Close parent evidence](../../../.github/workflows/parent-evidence-close.yml) は、手動操作や PR マージに伴う GitHub の `issues.closed` イベントで起動する。
 証拠用Issueは、リポジトリ所有者が発行し、単独の `parent-evidence` ラベルと同じリポジトリを指す `parent-evidence:v1` マーカーを持つものを照合する。
-ラベル付き一覧とラベル条件を付けない全 Issue 一覧を読み、open と closed を含む証拠用Issueの候補番号を親ごとに照合する。両方の一覧で紐付けが一意で、親の現在の状態が `closed` なら、対応する証拠用Issueを閉じる。クローズ後もコメントの permalink と親CLIの履歴から同じ証拠を読める。
+親を指定する処理は、証拠用Issue本文の親への参照から GitHub が作る `cross-referenced` イベントを対象の親のタイムラインで調べ、ラベル付き一覧の候補番号と照合する。両方で紐付けが一意で、親の現在の状態が `closed` なら、対応する証拠用Issueを閉じる。クローズ後もコメントの permalink と親CLIの履歴から同じ証拠を読める。
 
 親のクローズ後に作られた証拠用Issueや、イベントで処理されなかった分は `parent evidence-close` で照合できる。既定は dry-run で、`would_close` に親と証拠用Issueの番号、発行者、親のクローズ日時を表示する。
 
@@ -24,8 +24,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent evidence-close
 PYTHONPATH=.agents/ops .venv/bin/python -m parent evidence-close --apply
 ```
 
-`--apply` はその時点の状態と紐付けを照合する。`--parent` を操作名の前に指定すると親1件だけが対象になる。両一覧の候補が一致しないときは `binding_listing_mismatch`、指定した親の候補が両一覧にないときは `binding_not_found` を出力し、終了コード `3` を返す。ワークフローは終了コード `3` のとき同じ親を15秒後と、その45秒後に再照合する。
-一覧で確認できた重複、紐付け未確認、親が open の場合も判定を出力する。API エラーと、`--parent` で指定した親の確認済み重複は終了コード `2` を返す。
+`--apply` はその時点の状態と紐付けを照合する。一括処理ではラベル条件を付けない全 Issue 一覧とラベル付き一覧を照合する。`--parent` を操作名の前に指定すると親1件だけが対象になり、タイムラインとラベル付き一覧の両方に候補がなければ `no_binding` を返して正常終了する。
+照合元の候補番号が一致しない場合は `binding_listing_mismatch` と終了コード `3` を返す。ワークフローは同じ親を15秒後と、その45秒後に再照合する。API エラーと、`--parent` で指定した親の確認済み重複は終了コード `2` を返す。
 
 ## 排他とI/O
 
