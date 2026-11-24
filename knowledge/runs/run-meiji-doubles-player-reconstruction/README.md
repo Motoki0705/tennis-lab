@@ -17,6 +17,20 @@
 
 2並列でのCPUパイロット全体は102.65秒。clip_000では保存済みGVHMRを使ったCPU試験で身体配置まで検証し、root 1,410件とメッシュ1,407件を得た。共有datasetへの公開用成果物には、キューで実行する #2363 と同じデバイス設定を適用する。
 
+## 全69 clipのCPU結果
+
+| 指標 | #2458 | ダブルス幅のCPU結果 |
+| --- | ---: | ---: |
+| 3D選手フレーム | 133,887 | 147,105 |
+| 選手の3D関節が得られたclip | 55 | 58 |
+| 停止clip | 14 | 11 |
+
+clip_012（4,060選手フレーム）、clip_020（2,579）、clip_058（3,052）が回復し、各clipで4人を復元した。残る11件は選手の確定が曖昧な9件と、視点間の対応が曖昧な2件。全276視点の選別maskを読み戻し、#2440のダブルス幅と一致した。旧幅から変化したのは72視点だった。
+
+28件は保存済みの選手結果を再利用できる。22件は保存済みのGVHMRから身体配置へ進み、8件はHMR2から実行する。clip別に選手数、フレーム数、停止理由と処理時間を記録した。CPUのclip別処理時間の合計は3,812.03秒で、並列実行時間も加算している。 [clip別のCPU記録](cpu-clips.csv)、[集計](cpu-summary.json)
+
+69件の公開参照を#2458の記録に照合し、前段1,104件のartifact ID、成功55件と停止14件で固定したカメラ幾何、ボール成果物を確認した。GPUパイロットと実datasetへの切替は後続工程。 [前段のartifact ID](cpu-upstream.csv)
+
 ## CPUとGPUの実行
 
 同じworktreeから、`MEIJI_FIXED_DATASET` に #2458版の `i2363-all-v1/inputs/dataset`、`I2440_REPLAY_ROOT` に #2440 の `i2440/replay` を指定する。CPUの出力を後続の段でも使う。
@@ -65,3 +79,5 @@ CUDA_VISIBLE_DEVICES='' "${reconstruct[@]}" verify "${inputs[@]}"
 - 選別の幅・滞在率・外見モデルの契約は、既存の `test_membership_boundary_is_doubles_width_and_baseline_plus_five_metres`、`test_doubles_width_and_shorter_dwell_recover_different_real_observations`、`test_tracking_features_require_the_same_model_identity` を再利用する。実データでは両パイロットから始め、#2440 のmaskとartifact IDを全4視点で照合する。 [選別テスト](../../../tests/unit/tennis_scene/pipeline/components/test_player_selection.py)
 - 既存の `test_the_decided_side_places_the_camera_local_courts` と `test_separated_features_preserve_body_parameters_placement_and_asset_loads` で、半回転の向きと身体推定の入力契約を検証する。 [人物対応テスト](../../../tests/unit/tennis_scene/pipeline/test_player_association_component.py)、[身体推定テスト](../../../tests/integration/tennis_scene/test_gvhmr_input_from_stored_selection.py)
 - 参照切替用のintegrationテストを1件追加する。#2458の参照から切り替える途中で2つ目のrenameを中断し、再実行で公開できることを確認する。ボール配列と幾何のartifact ID、#2458版への復元も確認する。GPUや実データ資産を使わず、既存の短いclip fixtureで実行する。 [公開テスト](../../../tests/integration/tennis_scene/test_external_ball_update.py)
+
+関連pytestは391件が66.34秒で通過した。増分は1件で、単独実行のpytest計時は7.09秒だった。一時ストアを使った実データ検査では、clip_002とclip_006で切替、ボール5配列のバイト一致、復元を確認した。GPUで使用するHMR2・GVHMR・身体モデル資産16ファイルのSHA-256は#2363の記録と一致した。
