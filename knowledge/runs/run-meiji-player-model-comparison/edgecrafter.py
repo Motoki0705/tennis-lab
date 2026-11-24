@@ -202,7 +202,7 @@ def _infer(
     raw = (
         forward(device_pixels)
         if stages is None
-        else stages.forward(backend, lambda: forward(device_pixels), name=model_id)
+        else stages.measure_forward(backend, lambda: forward(device_pixels), name=model_id)
     )
     decoded = stage(
         Stage.POSTPROCESS,
