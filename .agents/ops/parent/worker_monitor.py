@@ -1,4 +1,4 @@
-"""Detached controller for manual worker CI and queue follow-ups."""
+"""Detached controller for manual worker CI, queue, and local job follow-ups."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ import json
 import os
 import re
 import shutil
-import socket
 import subprocess
 import sys
 import time
@@ -26,9 +25,10 @@ from lib.ops_review.review_locks import pr_lease
 
 from . import worker_followup, worker_slots
 from .github import GitHub
+from .local_jobs import LOCAL_JOB_ENV_VAR, notify_ready
 from .snapshot import git
 from .state import Store
-from .worker_wait_sources import ci_result, queue_result
+from .worker_wait_sources import ci_result, local_result, queue_result
 
 POLL_SECONDS = 10
 FORWARDED_ENV = (
@@ -122,10 +122,9 @@ def start(
     # A transient service is forked by the user manager. setsid alone would
     # still leave a descendant of an agent runner subject to subreaper cleanup.
     options = [f"--setenv={name}" for name in FORWARDED_ENV if name in os.environ]
-    queue = os.environ.get("TRAINING_QUEUE_DIR")
-    options.append(
-        f"--setenv=TRAINING_QUEUE_DIR={Path(queue).resolve() if queue else ''}"
-    )
+    for var in ("TRAINING_QUEUE_DIR", LOCAL_JOB_ENV_VAR):
+        value = os.environ.get(var)
+        options.append(f"--setenv={var}={Path(value).resolve() if value else ''}")
     result = subprocess.run(
         [
             "systemd-run",
@@ -164,13 +163,24 @@ def start(
         )
 
 
-def _notify_ready() -> None:
-    address = os.environ.get("NOTIFY_SOCKET")
-    if address:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as channel:
-            channel.sendto(
-                b"READY=1", "\0" + address[1:] if address[0] == "@" else address
-            )
+_notify_ready = notify_ready
+
+
+def _observe_jobs(
+    kind: str,
+    job_ids: list[str],
+    poll: Callable[[str, float, dict[str, float]], dict[str, Any] | None],
+) -> Callable[[], dict[str, Any] | None]:
+    missing_completion_since: dict[str, float] = {}
+
+    def observe() -> dict[str, Any] | None:
+        now = time.monotonic()
+        results = [poll(job, now, missing_completion_since) for job in job_ids]
+        if any(result is None for result in results):
+            return None
+        return {"kind": kind, "jobs": results}
+
+    return observe
 
 
 @dataclass(frozen=True)
@@ -246,7 +256,7 @@ class Monitor:
                 ci_result, backend, request, task["branch"], root=Path(task["worktree"])
             )
             deadline = time.monotonic() + CI_TIMEOUT
-        else:
+        elif request["kind"] == "queue":
             configured = os.environ.get("TRAINING_QUEUE_DIR")
             root = (
                 Path(configured)
@@ -264,25 +274,33 @@ class Monitor:
                 / ".training_queue"
             )
             lease = nullcontext()
-            missing_completion_since: dict[str, float] = {}
-
-            def observe_queue() -> dict[str, Any] | None:
-                now = time.monotonic()
-                results = [
-                    queue_result(
-                        root,
-                        job,
-                        now=now,
-                        missing_completion_since=missing_completion_since,
-                    )
-                    for job in request["job_ids"]
-                ]
-                if any(result is None for result in results):
-                    return None
-                return {"kind": "queue", "jobs": results}
-
-            observe = observe_queue
+            observe = _observe_jobs(
+                "queue",
+                request["job_ids"],
+                lambda job, now, missing: queue_result(
+                    root, job, now=now, missing_completion_since=missing
+                ),
+            )
             deadline = None
+        elif request["kind"] == "local":
+            configured = os.environ.get(LOCAL_JOB_ENV_VAR)
+            if configured:
+                root = Path(configured)
+                if not root.is_absolute():
+                    raise ValueError(f"{LOCAL_JOB_ENV_VAR} must be absolute")
+            else:
+                root = self.store.directory / "local-jobs"
+            lease = nullcontext()
+            observe = _observe_jobs(
+                "local",
+                request["job_ids"],
+                lambda job, now, missing: local_result(
+                    root, job, now=now, missing_completion_since=missing
+                ),
+            )
+            deadline = None
+        else:
+            raise ValueError(f"unknown wait kind: {request['kind']}")
 
         next_check = time.monotonic()
         with lease:
@@ -415,6 +433,12 @@ def resume_prompt(wait: dict[str, Any], result: dict[str, Any]) -> str:
         action = (
             "全jobが終端した。成果物を検証し、指定された記録を更新する。"
             "失敗・取消は原因と残件を確認する。再投入した場合は新しいjob IDを宣言する。"
+        )
+    elif wait["kind"] == "local":
+        action = (
+            "全ローカルコマンドが終了した。各jobの exit_code・log・log_excerpt を確認し、"
+            "失敗や取消があれば原因を修正して再実行する。"
+            "問題がなければ commit・push・CI待ち、または後続jobの登録へ進む。"
         )
     elif result["status"] == "conflict":
         base = result.get("base_ref")
