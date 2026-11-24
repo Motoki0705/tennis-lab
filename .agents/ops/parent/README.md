@@ -11,6 +11,22 @@
 | 証拠用Issue | 機械イベントと人間の元発言への参照。保存先のbindingと公開再送を照合する。[evidence.py](evidence.py) |
 | ワーカー・親のログ | [ワーカーの各ターン](../worker_logs/README.md) と [親の判断](../decision_logs/README.ja.md) を別々に保存する。 |
 
+## 証拠用Issueのクローズ
+
+[Close parent evidence](../../../.github/workflows/parent-evidence-close.yml) は、手動操作や PR マージに伴う GitHub の `issues.closed` イベントで起動する。
+証拠用Issueは、リポジトリ所有者が発行し、単独の `parent-evidence` ラベルと同じリポジトリを指す `parent-evidence:v1` マーカーを持つものを照合する。
+親を指定する処理は、証拠用Issue本文の親への参照から GitHub が作る `cross-referenced` イベントを対象の親のタイムラインで調べ、ラベル付き一覧の候補番号と照合する。両方で紐付けが一意で、親の現在の状態が `closed` なら、対応する証拠用Issueを閉じる。クローズ後もコメントの permalink と親CLIの履歴から同じ証拠を読める。
+
+親のクローズ後に作られた証拠用Issueや、イベントで処理されなかった分は `parent evidence-close` で照合できる。既定は dry-run で、`would_close` に親と証拠用Issueの番号、発行者、親のクローズ日時を表示する。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent evidence-close
+PYTHONPATH=.agents/ops .venv/bin/python -m parent evidence-close --apply
+```
+
+`--apply` はその時点の状態と紐付けを照合する。一括処理ではラベル条件を付けない全 Issue 一覧とラベル付き一覧を照合する。`--parent` を操作名の前に指定すると親1件だけが対象になり、タイムラインとラベル付き一覧の両方に候補がなければ `no_binding` を返して正常終了する。
+照合元の候補番号が一致しない場合は `binding_listing_mismatch` と終了コード `3` を返す。ワークフローは同じ親を15秒後と、その45秒後に再照合する。API エラーと、`--parent` で指定した親の確認済み重複は終了コード `2` を返す。
+
 ## 排他とI/O
 
 担当変更と掲示板配送は同じownership fenceを使う。取得順は操作lock、ownership、registry。GitHub・runnerへのI/O中はregistryを解放し、復帰後に担当・対象記録を照合する。読取はsnapshotを使う。版移行と競合時の再検証は [state.py](state.py)、GitHubの取得範囲とキャッシュ境界は [github.py](github.py) を参照。

@@ -31,7 +31,7 @@ TOPICS = {
     ),
     "recovery": (
         "照合と復旧",
-        "reconcile stop-worker cancel-worker-launch refresh-worker-plan record-worker-run record-worker-ended evidence worker-log-status publish-worker-log decision-log-status retry-decision-capture publish-decision-log state-migrate",
+        "reconcile stop-worker cancel-worker-launch refresh-worker-plan record-worker-run record-worker-ended evidence evidence-close worker-log-status publish-worker-log decision-log-status retry-decision-capture publish-decision-log state-migrate",
     ),
 }
 
@@ -100,6 +100,7 @@ DESCRIPTIONS = {
     "record-worker-ended": "確認済みの終了証拠を委任IDへ結び付けて枠を解放する。",
     "cancel-worker-launch": "ランナーが終了し、run dirが作られていない手動起動を取り消す。",
     "evidence": "この親の機械証拠の保存先を照合する。--create で不足時に作成する。",
+    "evidence-close": "クローズ済みの親に紐付く証拠用Issueを照合する。--apply で閉じる。--parent を省くとリポジトリ全体を照合する。",
     "worker-log-status": "ワーカーのターン単位の公開状況を読み取る。",
     "publish-worker-log": "保存済みの委任・ターンから公開を続ける。--dry-run で変更前に確認する。",
     "decision-log-status": "親の判断ログの捕捉・公開状況を確認する。",
