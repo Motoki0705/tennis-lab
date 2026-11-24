@@ -49,6 +49,27 @@ The shared PyTorch `2.13.0+cu130` environment completed the two-row real-checkpo
 
 The verified run used commit `0860ce5e12c953dc5520f02a502cc50cc2b3381b` and local job `20261124T123234Z_03845a48192c_i2490-pmpose-parity-export`. Under `outputs/pmpose/`, `*-official-parity.json` contains the CPU comparison, `*-export.json` the conversion timing, and `*-engine/export.json` the verified checkpoints, ONNX hashes and tensor bindings. The import warning about an optional CPU 4-bit GEMM kernel appeared before the successful FP32 smoke and FP16 export.
 
+## GPU accuracy and rescoring
+
+All six conditions produced 26,276 native-pixel COCO17 rows at batch 8 on the RTX 5060 Ti. Each array contained 446,692 finite joint predictions. The TensorRT plans used version `10.14.1.48.post1`, profile batches 1/4/8 and 1,536 MiB builder workspace. Build times were 85.092 s for L and 109.279 s for H. The batch-8 TensorRT inspector shows FP32 bindings on the Sparsemax sort, cumulative sum and threshold computation, and on portions of layer normalization. The original score files and the plan hashes are in the per-condition receipts under `outputs/pmpose/`.
+
+Rescore the original queue outputs through the canonical matcher from #2498. Supply the six job filenames from this accuracy run.
+
+```bash
+run=knowledge/runs/run-meiji-topdown-pose-comparison
+media=data/tennis_multiview/processed/meiji_4cam/benchmarks
+queue="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.training_queue"
+CUDA_VISIBLE_DEVICES='' PYTHONPATH="$PWD:$PWD/$run" .venv/bin/python -B "$run/pmpose_results.py" \
+  --queue "$queue" --assets outputs/pmpose \
+  --bundle "$media/multiview-player-evaluation-v1" \
+  --bundle-sha256 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580 \
+  --output outputs/pmpose/accuracy-rescored "${job_ids[@]}"
+```
+
+The script writes new score files, retains the original scores for verification, and summarizes coordinate and confidence differences against the matching PT32 predictions. Speed-protocol parity uses the common speed input and the shared thresholds.
+
 ## Tests
 
 Use small CPU fixtures with no weight or GPU requirement. Compare the rectangle contour against the demo’s raster-plus-OpenCV calculation, including fractional and edge-clipped boxes. An asymmetric pose with two boxes from one frame exercises row order, native-pixel decoding, flip restoration of eyes and limbs, the full 23-joint auxiliary axis and a missing heatmap. Inject distinct scores including zero to detect silent score filtering. Run the same assertion through the accuracy stages and the shared timing stages to check that both count the two real forwards. Loader tests exercise explicit rejection of an absent source, wrong checkpoint and absent TRT engine. Reuse `tests/unit/utils/test_inference_benchmark.py::test_exact_backend_selection_never_loads_another_backend` and the shared pose scorer tests for backend selection and fixed-denominator coverage. Measure the focused tests with `--durations=0 --durations-min=0`. The real-asset smoke will compare the adapter’s PT32 output against the upstream API on the same images, rectangles and weights.
+
+For rescore verification, check every saved prediction hash, ordered row address and input BBox against the published cohort. Keep the original score files to compare with the canonical matcher. Use a small CPU case with an exchanged person order and a mismatched expected OKS to verify that the archive checks reject incorrect input assignments. The full six-condition run verifies the real queue receipts and engine artifacts.

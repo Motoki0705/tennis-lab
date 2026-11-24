@@ -9,6 +9,7 @@ import pytest
 import torch
 from evaluate import AccuracyStages
 from pmpose import (
+    EXTRA_FIELDS,
     HEATMAP_HW,
     JOINT_ORDER,
     NATIVE_JOINTS,
@@ -17,6 +18,7 @@ from pmpose import (
     _verify_joint_schema,
     make_adapter,
 )
+from pmpose_results import validate_predictions
 from pose_contract import PoseInput
 
 from src.utils.inference_benchmark import (
@@ -199,3 +201,32 @@ def test_unavailable_assets_are_reported_on_load(tmp_path, backend, source, reas
     with pytest.raises(ConditionUnavailable, match=reason) as error:
         adapter.load()
     assert error.value.status is Status.UNAVAILABLE
+
+
+@pytest.mark.parametrize("broken", ["row order", "expected oks"])
+def test_saved_outputs_verify_fixed_rows_and_confidence(broken):
+    players = np.array([1, 3])
+    boxes = np.array([[5, 6, 20, 22], [8, 2, 30, 11]], dtype=np.float32)
+    expected = {"player_id": players, "bbox_xyxy": boxes}
+    extras = {
+        name: np.zeros((2, 23), dtype=np.float32)
+        for name in (*EXTRA_FIELDS, "heatmap_peak")
+    }
+    points = np.zeros((2, 17, 3), dtype=np.float32)
+    points[1, 4, 1] = 9
+    points[1, 4, 2] = 0.625
+    extras["native_keypoints_xy"] = np.pad(points[..., :2], ((0, 0), (0, 6), (0, 0)))
+    extras["expected_oks"][1, 4] = 0.625
+    arrays = {
+        **expected,
+        "keypoints_xyc": points,
+        **{f"extra__{name}": data for name, data in extras.items()},
+    }
+    verified = validate_predictions(arrays, expected)
+    np.testing.assert_array_equal(verified.keypoints_xyc[1, 4], [0, 9, 0.625])
+    if broken == "row order":
+        arrays["player_id"] = players[::-1]
+    else:
+        arrays["extra__expected_oks"][1, 4] = 0.75
+    with pytest.raises(AssertionError):
+        validate_predictions(arrays, expected)
