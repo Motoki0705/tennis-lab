@@ -2,6 +2,7 @@
 
 from importlib import import_module
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -20,6 +21,28 @@ RUN = (
 def adapter(monkeypatch):
     monkeypatch.syspath_prepend(str(RUN))
     return import_module("rtdetrv4")
+
+
+def test_loads_release_serialization_and_selects_ema_weights(adapter, tmp_path):
+    class Deployable(nn.Linear):
+        def deploy(self):
+            return self
+
+    path = tmp_path / "official.pth"
+    torch.save(
+        {
+            "ema": {"module": {"weight": torch.tensor([[1.0, -2.0]])}},
+            "model": {"weight": torch.tensor([[3.0, 4.0]])},
+        },
+        path,
+        _use_new_zipfile_serialization=False,
+    )
+    assets = adapter.Assets("rtdetrv4-l", tmp_path, path)
+    config = SimpleNamespace(model=Deployable(2, 1, bias=False))
+
+    loaded = adapter._load_pt_model(assets, config)
+
+    assert loaded.model(torch.tensor([[5.0, 3.0]])).item() == -1.0
 
 
 def test_prepare_preserves_wh_and_uses_rgb_unit_range(adapter):
@@ -74,7 +97,7 @@ def test_detector_wires_native_sizes_to_postprocessing_and_declares_forward(adap
             calls.append(stage.value)
             return operation()
 
-        def forward(self, backend, operation):
+        def measure_forward(self, backend, operation):
             calls.append(backend.value)
             return operation()
 
@@ -102,3 +125,23 @@ def test_detector_wires_native_sizes_to_postprocessing_and_declares_forward(adap
     np.testing.assert_array_equal(second.boxes_xyxy, [[25, 3, 75, 9]])
     np.testing.assert_allclose([first.scores[0], second.scores[0]], [0.5, 0.880797])
     assert calls == ["preprocess", "h2d", "PT32", "postprocess", "d2h", "postprocess"]
+
+
+def test_parity_matches_reordered_boxes_and_counts_threshold_drop(adapter):
+    reference = adapter.Predictions(
+        np.array([[0.0, 0.0, 10.0, 10.0], [30.0, 30.0, 40.0, 40.0]]),
+        np.array([0.8, 0.9]),
+    )
+    reordered = adapter.Predictions(reference.boxes_xyxy[::-1], np.array([0.89, 0.8]))
+    below_cutoff = adapter.Predictions(reordered.boxes_xyxy, np.array([0.24, 0.8]))
+
+    parity = adapter.detection_parity([(reference, reordered)])
+    assert parity.passed
+    assert parity.metrics["matched"] == 2
+    assert parity.metrics["matched_iou"]["p05"] == 1.0
+    assert parity.metrics["score_abs_error"]["p95"] == pytest.approx(0.0095)
+
+    mismatch = adapter.detection_parity([(reference, below_cutoff)])
+    assert not mismatch.passed
+    assert mismatch.metrics["missing"] == 1
+    assert mismatch.metrics["extra"] == 0
