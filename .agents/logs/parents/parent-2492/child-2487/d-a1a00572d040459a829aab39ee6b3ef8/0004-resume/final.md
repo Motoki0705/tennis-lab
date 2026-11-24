@@ -1,0 +1,7 @@
+更新後の #2495 採点器で ECDet の9条件を再採点し、全集計値が一致しました。各条件は6,844画像・26,276選手BBoxで、生予測と再採点結果の SHA-256 も照合済みです。[再採点結果](https://github.com/Motoki0705/tennis-lab/blob/a14fcf329973b364eeb2ee7f83ca47d274952140/knowledge/runs/run-meiji-player-model-comparison/edgecrafter-rescore.json)
+
+#2496 の固定96画像を使う速度・VRAM 計測を実装し、batch 1 と 2 で画像IDと順序が同じことを確認しました。`codex/parent-2492-issue-2487-edgecrafter` の HEAD は `a14fcf329973b364eeb2ee7f83ca47d274952140` です。pytest 52件と pre-commit が通過しました。[#2487 の検証記録](https://github.com/Motoki0705/tennis-lab/issues/2487#issuecomment-7133735626)
+
+6モデルの計測と ECPose の本採点を共有キューに登録しました。今回の TensorRT engine は batch 2 でトレースし、batch 1 で PT32 との差分基準を満たした条件を全画像の採点へ進めます。速度値と再変換後の差分判定は実行結果待ちです。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204471045365663576_2026-11-24T14-02-34-634336423Z_2327240_i2487-ecpose-l-o365-fixed-speed.job","0-8204471045097838945_2026-11-24T14-02-34-902161054Z_2327320_i2487-ecpose-x-o365-fixed-speed.job","0-8204471044820273571_2026-11-24T14-02-35-179726428Z_2327406_i2487-ecdet-l-coco-fixed-speed.job","0-8204471044551923843_2026-11-24T14-02-35-448076156Z_2327478_i2487-ecdet-x-coco-fixed-speed.job","0-8204471044281587453_2026-11-24T14-02-35-718412546Z_2327553_i2487-ecdet-l-o365-fixed-speed.job","0-8204471044005986519_2026-11-24T14-02-35-994013480Z_2327637_i2487-ecdet-x-o365-fixed-speed.job"]}}
