@@ -19,27 +19,46 @@ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 PYTHONPATH=. \
 
 The stored baseline covers 6,844 images and 26,276 eligible player boxes. DINO's Recall@0.50 is 96.67% and Recall@0.75 is 47.07%. For DINO + ViTPose-H, coverage-inclusive mean OKS is 0.7631 and PCK@0.10 is 77.95%. Joint coverage is 429,996/437,714. The [accuracy receipt](baseline-trt16.json) records the counts, size strata and raw output hashes. The full accuracy reports contain camera, clip and player strata and the archived artifact identities. These results describe agreement with the SMPL-derived reference, which uses some of the same 2D observations during reconstruction.
 
-The archived DINO input is 750 by 1,333 pixels, batch 1, person confidence at least 0.30, and duplicate merging disabled. ViTPose-H uses 256 by 192 pixels, batch up to 8 crops before flip testing, flip testing enabled and a 1.2 box enlargement. Both models use TensorRT FP16 on the RTX 5060 Ti. Speed and VRAM for comparison will come from the shared #2496 protocol. PT32 and PT16 accuracy conditions are pending.
+The archived DINO input is 750 by 1,333 pixels, batch 1, person confidence at least 0.30, and duplicate merging disabled. ViTPose-H uses 256 by 192 pixels, batch up to 8 crops before flip testing, flip testing enabled and a 1.2 box enlargement. Both models use TensorRT FP16 on the RTX 5060 Ti. PT32 and PT16 full-cohort accuracy conditions are pending.
 
-## Candidate evidence
+## Accuracy and speed snapshot
 
-| Candidate | Accuracy evidence on the fixed cohort | Shared speed and VRAM |
-|---|---|---|
-| RF-DETR-L | PT32, PT16 and TRT16 on all 6,844 images. Recall@0.50 is 96.81%, 96.82% and 96.81%. | Pending |
-| RF-DETR-2XL | All three backend conditions excluded by the user's license decision. | Excluded |
-| ECDet-L/X, COCO and O365 | Six-weight EdgeCrafter smoke includes four ECDet release checkpoints. Fixed-cohort scores pending. | Pending |
-| ECPose-L/X, O365 | Both pose releases produced native-pixel COCO17 and aligned boxes on the smoke frames. Fixed-cohort scores pending. | Pending |
-| RT-DETRv4-L/X | Both release weights and FP16 ONNX exports pinned. Fixed-cohort scores pending. | Pending |
+The [condition table](conditions.csv) covers the 30 candidate and six baseline conditions. Full-cohort results include RF-DETR-L at PT32/PT16/TRT16 and the four ECDet weights at PT32/PT16. ECDet-L O365 has 98.19% Recall@0.50 in both PyTorch conditions. The ECDet-L COCO TRT16 attempt has 74.68% Recall@0.50 and failed PT32 parity. At score 0.25, only 66.40% of boxes matched in both directions and absolute score error P95 was 0.313. The three RF-DETR-2XL rows record the user's license exclusion. The table keeps each model's inference-time cutoff and includes Recall@0.50 with a common extra cutoff of score 0.50.
+
+The #2496 speed manifest has 96 ordered native BGR images. All image IDs, native shapes and file hashes were checked against the fixed evaluation cohort. At batch 1, DINO PT32 and PT16 measured median stage wall times of 289.97 ms/image and 167.68 ms/image, with sampled NVML peak increases of 2,309 MiB and 2,406 MiB. DINO TRT16 failed the shared PT32 parity gate in the timing run. These are the available #2496 receipts while the baseline sweep is in progress.
+
+Pareto assessment minimizes batch-1 stage wall P50 and maximizes Recall@0.50 for detection or coverage-inclusive mean OKS for detection plus pose. At this snapshot, paired conditions with qualifying speed and accuracy are still pending. The comparison command produces a plot per workload as qualifying points arrive. [Artifact and manifest pins](comparison-evidence.json)
 
 The [RF-DETR-L accuracy record](../run-meiji-rfdetr-large-accuracy/results.json) contains the complete accuracy, candidate-versus-PT32 parity and box-margin sensitivity results. [RF-DETR licensing and reproduction](rfdetr.md) · [EdgeCrafter evidence](EDGECRAFTER.md) · [RT-DETRv4 evidence](rtdetrv4.md)
 
 The five measured baseline and RF-DETR-L conditions were rescored from their pinned predictions with the #2495 equal-IoU ordering rule. Every metric and stratum was identical to its previous value. The [rescoring receipt](accuracy-recheck.json) identifies the scorer commit and the fresh full-score files.
+
+## Representative frames
+
+Each grid uses the preselected cam0 frame from one representative clip and the same source pixels for the SMPL-derived reference, DINO + ViTPose-H TRT16, RF-DETR-L TRT16 and ECDet-L O365 PT32. Model overlays show detections with score at least 0.30. Unlabelled people can appear in model panels. The GPU candidate reports will supply the ECPose panels and the broader synchronized comparison. [Six image paths, counts and hashes](representative-cam0-index.json)
+
+```bash
+run=knowledge/runs/run-meiji-player-model-comparison
+artifacts="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.worktree-outputs"
+media=data/tennis_multiview/processed/meiji_4cam/benchmarks
+PYTHONPATH=. .venv/bin/python -B "$run/compare_conditions.py" \
+  --artifacts "$artifacts" --evidence "$run/comparison-evidence.json" \
+  --output outputs/player-model-comparison/comparison
+OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 PYTHONPATH=. \
+  .venv/bin/python -B "$run/render_comparison.py" \
+  --artifacts "$artifacts" --evidence "$run/comparison-evidence.json" \
+  --reference "$media/multiview-player-evaluation-v1" --source "$media/multiview-v1" \
+  --model dino-swin-l-vitpose-h/trt16 --model rfdetr-l/trt16 --model ecdet-l-o365/pt32 \
+  --output outputs/player-model-comparison/representative-cam0
+```
 
 ## ECPose recipe contract
 
 The [ECPose configuration and output contract](../../../src/tennis_scene/pipeline/ECPOSE.md) uses the [shared recipe design](https://github.com/Motoki0705/tennis-lab/issues/2491#issuecomment-7129950015). The tests run the real decoder with a fake model and verify rows through the component store.
 
 The published ECPose-L checkpoint ran through the pipeline component on CPU for the first three consecutive source frames of `clip_003/cam0`. Batch size 2 exercised the partial final batch. With confidence 0.30 and box margin 0.10, each frame produced two positive-area boxes with corresponding COCO17 rows. [Component execution receipt](ecpose-recipe-smoke.json)
+
+The ECPose-L TRT16 plan and B=1/B=2 smoke receipts were verified with the same engine reader used by the recipe. On `clip_003/cam0` source frame 0, the plan produced two detections at score 0.30 or above in B=1 and zero in B=2. Full-cohort precision parity and the repaired ONNX trace remain pending. The end-to-end comparison through the #1739 3D tracking and placement path depends on PRs #2449, #2469, #2461 and #2470. [TRT16 plan and smoke receipts](ecpose-trt16-smoke.json)
 
 The recipe tests use the existing pipeline runtime and component store on CPU. A fake network produces two differently placed people, an empty frame and a trailing partial batch. The actual decoder and compatibility components must preserve source-pixel coordinates, the shared frame boundaries and detection rows through persisted artifacts, with one inference pass. The active graph must keep appearance, tracking and body recovery on their existing input contracts. The tests reject a different recipe or decoding policy in the cache and verify prior standard publication and node identities with the archived FP32 fixture. The small fixture requires no weights or GPU. Run the component tests and the archived-cache integration test separately and measure their durations.
 
@@ -48,3 +67,4 @@ The recipe tests use the existing pipeline runtime and component store on CPU. A
 - Reuse the fixed-cohort scorer's matching, missing-keypoint coverage and checksum tests. The comparison-specific CPU tests check the serialized row contract with two distinguishable people and an empty frame. Duplicate, missing or extra frame keys and a candidate from a different manifest must fail before scoring.
 - Check archived row alignment with detection source IDs that begin at a nonzero offset. Pose features with a different source row or frame boundary must fail even when the box and pose counts agree. The real-data run also checks media and dependency pins for all 24 videos and uses the original source frame numbers.
 - Run these small unit fixtures without checkpoints or a GPU. Report test counts and durations from pytest. Record the real-data coverage and artifact hashes from the generated scoring receipts.
+- For the comparison, use CPU fixtures with an equal-latency tie, an equal-quality tie, a failed parity check and an incomplete condition. A faster joint model must stay in the detector-plus-pose workload. Validate timing reports against the pinned order of native images, batch size and common protocol. Representative panels use the previously chosen frame per clip and share the same unmodified source pixels and display cutoff.
