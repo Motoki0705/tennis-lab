@@ -1,5 +1,6 @@
 """CPU fixtures for the RT-DETRv4 comparison adapter's image and box contracts."""
 
+import sys
 from importlib import import_module
 from pathlib import Path
 from types import SimpleNamespace
@@ -20,6 +21,7 @@ RUN = (
 @pytest.fixture
 def adapter(monkeypatch):
     monkeypatch.syspath_prepend(str(RUN))
+    monkeypatch.setattr(sys, "dont_write_bytecode", True)
     return import_module("rtdetrv4")
 
 

@@ -13,7 +13,7 @@ The code carries Apache-2.0. The model zoo links to public, ungated downloads fo
 
 - Decode the source frame in BGR and convert to RGB. Stretch the whole native image to 640 × 640 using PIL bilinear interpolation, then convert to `[0,1]` without mean or standard-deviation normalization. The original width and height restore native box coordinates. [Upstream inference](https://github.com/AIMIA-PKU/RT-DETRv4/blob/55fefaaed7efe2a5f72d0a18fd4e05965e35c292/tools/inference/torch_inf.py)
 - Strictly restore the official EMA detector and call its deployment conversion with backbone auto-download disabled. Use the upstream focal-loss postprocessor in FP32 for all backends. Its scores are sigmoid probabilities for the global top 300 query/class pairs. Retain the internal class 0 (COCO person/category 1), clip native `xyxy` to the image, and remove boxes with zero area after clipping. Retain the scores for the shared scorer's cutoff sweep. The upstream visualization draws scores above 0.4. The inference graph applies no NMS. [Upstream postprocessor](https://github.com/AIMIA-PKU/RT-DETRv4/blob/55fefaaed7efe2a5f72d0a18fd4e05965e35c292/engine/rtv4/postprocessor.py)
-- PT32 uses CUDA with TF32 disabled. PT16 uses CUDA float16 autocast for the detector forward, including the PyTorch autocast policy for operations that require FP32. TRT16 runs the exported detector graph using typed FP16 internals and FP32 input/output bindings. The same GPU Torch FP32 postprocessor follows all three forwards. ONNX export uses a variable batch axis and fixed 640 × 640 input.
+- PT32 uses CUDA with TF32 disabled. PT16 uses CUDA float16 autocast for the detector forward, including the PyTorch autocast policy for operations that require FP32. TRT16 runs the exported detector graph using typed FP16 internals and FP32 input/output bindings. The same GPU Torch FP32 postprocessor follows all three forwards. The original ONNX export declares a variable batch axis and fixes the spatial input at 640 × 640. Its trace selects the upstream decoder's batch-one anchor branch, so qualify this export with a batch-one profile.
 
 ## Local setup
 
@@ -57,7 +57,18 @@ PYTHONPATH=".:$assets/python-deps" OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
   export --engine-dir "$trt/engine" --receipt "$trt/onnx-export.json"
 ```
 
+Use `build --device cuda:0 --engine-dir "$trt/engine" --receipt "$trt/engine-build.json" --opt-batch 1 --max-batch 1 --workspace-gib 1` after the same model and asset arguments, in the queue. This build uses a 1 GiB TensorRT workspace limit and a profile with min/opt/max all at batch 1. The multi-image profile will need an export that preserves the decoder's batch-dependent anchor expansion.
+
 `accuracy.json` records agreement with the fixed SMPL-derived reference. `parity.json` compares same-image detector outputs with their PT32 counterpart after a 0.25 person-score cutoff. It stores missing/extra boxes and one-to-one matched IoU, pixel and score errors. The numerical acceptance limits are at least 99% matched on both sides at IoU ≥0.50, matched IoU P05 ≥0.90 and absolute score error P95 ≤0.025. The resulting PT32 parity measure is independent of pseudo-GT recall.
+
+## ONNX conversion evidence
+
+Both exports completed at `9fe7b3987e52b7dd0f0d255e633bb310b0120861`. The common TensorRT exporter checked the graphs. A second read verified the per-file SHA-256 digests in `export.json`, ONNX opset 19, 18 GridSample nodes per network and FP16 for all floating-point initializers. The manifest below pins both the graph and its external weight file under `outputs/player-model-comparison/<model-id>/trt16/engine/`.
+
+| Model | ONNX export wall time | `export.json` SHA-256 | Local job |
+| --- | ---: | --- | --- |
+| L | 23.265 s | `83d24e3485ef95e1d8ad9358ad0a0b6e487837df73cf361487f2bae8b4411e44` | `20261124T114215Z_5ea907a8d63a_rtdetrv4-l-onnx` |
+| X | 32.411 s | `6b29778f5a14d3a57aa8405b03d0777afce586531496610af8caf5659f7ae64b` | `20261124T114215Z_9940a8133486_rtdetrv4-x-onnx` |
 
 ## Test design
 

@@ -540,6 +540,15 @@ def _accuracy(args: argparse.Namespace, assets: Assets, device: torch.device) ->
             "condition": header.as_json(),
             "weight_sha256": assets.weight_sha256,
             "upstream_commit": UPSTREAM_COMMIT,
+            "runtime": {
+                "job_id": os.environ["TENNIS_RUN_ID"],
+                "device": str(device),
+                "gpu": torch.cuda.get_device_name(device),
+                "torch": str(torch.__version__),
+                "cuda": torch.version.cuda,
+                "batch_size": 1,
+                "tf32": False,
+            },
             "engine_sha256": (
                 dual_sha256(args.engine_dir / PLAN_FILE)
                 if args.backend is Backend.TRT16
