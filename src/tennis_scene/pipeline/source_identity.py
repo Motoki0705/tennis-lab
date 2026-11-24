@@ -16,6 +16,7 @@ def compatible_source_digests(
     sources: dict[str, str], *, ball_court_side: bool = False, tensorrt: bool = False
 ) -> dict[str, str]:
     """Keep the baseline identity for exact, compatible source changes."""
+    sources = _compatible_patch(sources, "multiview_tracking_cache_compatibility.json")
     sources = _compatible_patch(sources, "multiview_pose_cache_compatibility.json")
     if not tensorrt:
         sources = _compatible_patch(sources, "batched_tensorrt_fp32_cache_compatibility.json")

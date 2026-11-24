@@ -264,6 +264,22 @@ def test_exact_multiview_pose_patch_preserves_the_standard_recipe_identity() -> 
     assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
 
 
+def test_exact_multiview_tracking_patch_preserves_the_standard_recipe_identity() -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    source = Path(source_identity.__file__).parent
+    pose = json.loads((source / "multiview_pose_cache_compatibility.json").read_text())["files"]
+    tracking = json.loads((source / "multiview_tracking_cache_compatibility.json").read_text())["files"]
+    current = {path: pair["after"] for path, pair in pose.items()}
+    current.update({path: pair["after"] for path, pair in tracking.items()})
+    baseline = {
+        path: pair["before"] for path, pair in pose.items() if pair["before"] is not None
+    }
+    assert source_identity.compatible_source_digests(current, tensorrt=True) == baseline
+    changed = {**current, "tennis_scene/multiview_tracking/association.py": "0" * 64}
+    assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
+
+
 def test_exact_tensorrt_patch_preserves_the_previous_fp32_source_identity() -> None:
     from src.tennis_scene.pipeline import source_identity
 

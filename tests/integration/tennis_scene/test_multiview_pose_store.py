@@ -9,6 +9,13 @@ from src.tennis_scene.multiview_pose.__main__ import main
 from src.tennis_scene.multiview_pose.inputs import PinnedCourtSide, read_saved_inputs
 from src.tennis_scene.multiview_pose.reconstruct import DEFAULT_CONFIG, reconstruct
 from src.tennis_scene.multiview_pose.storage import publish_candidates, read_candidates
+from src.tennis_scene.multiview_tracking.__main__ import main as tracking_main
+from src.tennis_scene.multiview_tracking.schema import (
+    SampleEvent,
+    TrackEnd,
+    TrackingConfig,
+)
+from src.tennis_scene.multiview_tracking.storage import read_tracks, track_store
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
@@ -131,6 +138,71 @@ def test_cli_writes_candidates_from_only_raw_ports_and_pinned_side(
     evidence = result_store.descriptor(ref)["provenance"]
     assert evidence["court_side"]["digest"] == decision.digest
     assert "camera_alignment" not in evidence["observations"]
+
+
+def test_tracking_cli_pins_candidates_and_preserves_their_source_timeline(
+    saved_inputs, tmp_path, monkeypatch
+):
+    store, source, _, _, _, side = saved_inputs
+    inputs = read_saved_inputs(store.root, side)
+    candidates = reconstruct(inputs.observations)
+    upstream, output = tmp_path / "pose", tmp_path / "tracking"
+    pose_ref = publish_candidates(
+        upstream, store.root, inputs, candidates, DEFAULT_CONFIG
+    )
+    input_index = (upstream / "scene.json").read_bytes()
+    monkeypatch.setattr(
+        "sys.argv",
+        [
+            argv[0],
+            "--candidates",
+            str(upstream),
+            "--candidate-artifact",
+            pose_ref.artifact_id,
+            "--output",
+            str(output),
+            "--players-per-side",
+            "1",
+        ],
+    )
+    tracking_main()
+
+    result = read_tracks(output)
+    tracking = ClipStore(output, json_value(source))
+    ref = tracking.references()["multiview_tracking"]
+    assert (ref.schema, ref.version) == ("multiview_pose_tracks", 1)
+    assert tracking.descriptor(ref)["provenance"][
+        "frame_pose_candidates"
+    ] == json_value(pose_ref)
+    assert result.camera_ids == source.camera_ids
+    np.testing.assert_array_equal(result.track_ids, np.zeros(source.num_frames))
+    np.testing.assert_array_equal(
+        result.frame_offsets, np.arange(source.num_frames + 1)
+    )
+    np.testing.assert_array_equal(result.source_rows[15], [15, 15, 15])
+    np.testing.assert_allclose(
+        result.positions_m[15], person() + [0.0, -3.0, 0.0], atol=1e-5
+    )
+    assert result.event[0] == SampleEvent.BORN
+    assert result.event[-1] == SampleEvent.OBSERVED
+    assert result.end_reasons.tolist() == [TrackEnd.CLIP_BOUNDARY]
+    assert result.selection.selected_track_ids == (0,)
+    assert result.selection.missing_per_side == (0, 1)
+
+    assert (
+        track_store(
+            upstream,
+            output,
+            TrackingConfig(1),
+            expected_artifact_id=pose_ref.artifact_id,
+        )
+        == ref
+    )
+    before = tracking.index_path.read_bytes()
+    with pytest.raises(ValueError, match="pinned artifact"):
+        track_store(upstream, output, TrackingConfig(1), expected_artifact_id="0" * 64)
+    assert tracking.index_path.read_bytes() == before
+    assert (upstream / "scene.json").read_bytes() == input_index
 
 
 @pytest.mark.parametrize(

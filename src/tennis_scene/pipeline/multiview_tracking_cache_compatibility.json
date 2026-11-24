@@ -1,0 +1,41 @@
+{
+  "baseline_commit": "590c2377810762fdea0d5485d10307e612de51eb",
+  "files": {
+    "tennis_scene/multiview_tracking/__init__.py": {
+      "before": null,
+      "after": "7a71becf14926719a370ec45be6a8ded47b1a3278b0a22d4a38f76bea9e2630b"
+    },
+    "tennis_scene/multiview_tracking/__main__.py": {
+      "before": null,
+      "after": "fed67c99e55132bd0c537294dc101fec2e424391ab81fc61fcba50a962155ce3"
+    },
+    "tennis_scene/multiview_tracking/association.py": {
+      "before": null,
+      "after": "ec978ca742c6f5d3309d8d8ee7ce0a47333137a8b3567b10c7c39fbdfd98b350"
+    },
+    "tennis_scene/multiview_tracking/schema.py": {
+      "before": null,
+      "after": "334a7741a7e7cb7dcab70c119449806eb6b85174caebcf04a69e9de25b53ff4a"
+    },
+    "tennis_scene/multiview_tracking/selection.py": {
+      "before": null,
+      "after": "2cac07ea34dae646dd72ef32bd1a3a0b0a14c27c07aa3161c0ad2e2d59435871"
+    },
+    "tennis_scene/multiview_tracking/storage.py": {
+      "before": null,
+      "after": "c8215b4a664ca6023901cec650ca41617c0ca7d10b240c6e4ad3f90c097ef09f"
+    },
+    "tennis_scene/multiview_tracking/tracking.py": {
+      "before": null,
+      "after": "53a47df8f3899f91953f2693c74d1b73df789fea5066748057cda40d94b2382a"
+    },
+    "tennis_scene/pipeline/source_identity.py": {
+      "before": "3a608ef31c5d0d396e514eef1c23d106e37dfa8b406e3a1467c347958e218bd6",
+      "after": "9f188a08744de5bade386dd7b2db3bfed7d1c9a629c78069ad9d56e576f4bf1d"
+    },
+    "utils/configuration/inventory.py": {
+      "before": "d1f78faac1ef561bfff0d6fe594ad93c8ea17804b7cd28067d5d43608c13a4eb",
+      "after": "f4f71f6cc205a424d01ffad14e46f15c0169293b9af1cfa5fbc3f6995c8bc940"
+    }
+  }
+}
