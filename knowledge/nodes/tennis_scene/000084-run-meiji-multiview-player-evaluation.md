@@ -117,3 +117,9 @@ BBox の除外は選手の GVHMR 欠測 908、SMPL 無効 80、画像内関節�
 動画は公開先の `clips/<clip>/cam0.mp4` から `cam3.mp4` に全 24 本。元画像サイズは 1,920 × 1,080、表示は約 29.97 fps。代表静止画は同名の PNG で、003 は元 frame 120、057 は 142、004 は 294、013 は 234、040 は 208、028 は 643。003/cam0 と 057/cam1 の代表 PNG で座標、box、重ね描きの色とフレーム表示を確認した。24 本の人間による目視確認は親に引き継ぐ。 [全動画と静止画のパス・SHA-256](../../runs/run-meiji-multiview-player-evaluation/publication.json)
 
 身体配置には ViTPose 由来の三角測量と GVHMR の事前分布が入り、pose 採点対象も観測支持で絞る。この smoke が示すのは、採点経路の動作と現行モデル由来の疑似 GT への一致度である。遮蔽判定は手前側の別選手の胴体と観測欠損による近似で、自己遮蔽や審判による遮蔽は判定不能に残り得る。近似 pinhole、選手対応の誤り、SMPL が有効な区間への偏りも比較の制約になる。候補比較前の入力と指標を確定した実行なので `summary_impact: none`。
+
+## 同率 IoU の採点規約と再検証
+
+正式レビューで、同一 BBox の予測を反転させると対応先が変わり、未検出を含む OKS と PCK が 1.0 から 0.0 に変わるケースが見つかった。割当前に、検出スコア降順、BBox の `(x_min,y_min,x_max,y_max)` の辞書順、COCO17 の関節順で展開した x/y/confidence の辞書順で候補を並べる。NaN は各キーで末尾に置く。score 閾値で絞った割当にも同じ順序を使う。割当件数と各選手に割り当てた IoU を保ち、同率の候補から優先順位の早いものを選ぶ。 [採点 API の規約](../../../src/tennis_scene/evaluation/player_pose/README.md)
+
+単体テストは同一 BBox の 2 順序、対応候補のない選手を含む場面、BBox と関節の辞書順、複数選手・候補を 12 通りに並べ替えた全指標の一致を確認した。公開済み ViTPose の 6,844 画像を読む専用の再採点では、Recall@0.50/0.75 は 0.9757/0.7770、未検出を含む平均 OKS は 0.7707。保存済み結果と全指標・全集計が厳密に一致した。採点レポートの規約欄に同率時の順序を追加した。公開物 66 件の SHA-256 と両 manifest の pin を再照合した。 [公開時の smoke 指標](../../runs/run-meiji-multiview-player-evaluation/vitpose_smoke_summary.json)・[#2498 の実行証拠](https://github.com/Motoki0705/tennis-lab/pull/2498)
