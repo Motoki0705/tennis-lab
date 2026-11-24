@@ -34,6 +34,11 @@ from src.tennis_scene.pipeline.components.court_side import (
     CourtSideModule,
     PlayerCourtSideModule,
 )
+from src.tennis_scene.pipeline.components.ecpose import (
+    ECPoseDetectionsModule,
+    ECPoseFeaturesModule,
+    ECPoseModule,
+)
 from src.tennis_scene.pipeline.components.fasthmr import FastHMRModule
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRModule
 from src.tennis_scene.pipeline.components.hmr2_features import HMR2FeaturesModule
@@ -72,6 +77,10 @@ from src.tennis_scene.pipeline.input_assembly.body import (
     GVHMRInputAssembler,
     HMR2FeaturesInputAssembler,
 )
+from src.tennis_scene.pipeline.input_assembly.ecpose import (
+    ECPoseDetectionsAssembler,
+    ECPoseFeaturesAssembler,
+)
 from src.tennis_scene.pipeline.input_assembly.preprocessing import (
     BallDetectionInputAssembler,
     CourtCalibrationInputAssembler,
@@ -96,6 +105,7 @@ from src.tennis_scene.pipeline.model_assets import asset_identities as asset_ide
 from src.tennis_scene.pipeline.model_assets import file_identity as file_identity
 from src.tennis_scene.pipeline.model_resources import appearance_model, model_identities
 from src.tennis_scene.pipeline.recipes import (
+    ECPOSE_RECIPE,
     FASTHMR_RECIPE,
     STANDARD_RECIPE,
     RecipeName,
@@ -142,7 +152,21 @@ def standard_model_components(cfg: PipelineRuntimeConfig, ids: tuple[str, ...]) 
 
     encoder = None if not people or name is None or cfg.association_encoder_weights is None else appearance(name, cfg.association_encoder_weights)
     tracking = None if not people else appearance(cfg.tracking.encoder, cfg.tracking_encoder_weights)
-    pose = PersonPoseFeaturesModule(cfg.people, cfg.tracking.features, enabled=people)
+    if cfg.ecpose is None:
+        pose = PersonPoseFeaturesModule(cfg.people, cfg.tracking.features, enabled=people)
+        pose_spec, pose_preprocessing = pose.model_specs().get("pose"), None
+        people_inference: dict[str, Any] = {
+            "person_detection": PersonDetectionModule(cfg.people, enabled=people, merge_duplicates=cfg.merge_duplicate_person_boxes),
+            "person_pose_features": pose,
+        }
+    else:
+        ecpose = ECPoseModule(cfg.ecpose)
+        pose_spec, pose_preprocessing = ecpose.spec, ecpose.cache_identity()
+        people_inference = {
+            ECPOSE_RECIPE: ecpose,
+            "person_detection": ECPoseDetectionsModule(),
+            "person_pose_features": ECPoseFeaturesModule(),
+        }
     selection, sampling = LinkingConfig(max_candidates=cfg.max_tracks_per_camera), CropSamplingConfig()
     body_inference = ({
         "hmr2_features": HMR2FeaturesModule(cfg.people, enabled=body),
@@ -152,12 +176,11 @@ def standard_model_components(cfg: PipelineRuntimeConfig, ids: tuple[str, ...]) 
         "court_detection": CourtKPModule(cfg.court_kp),
         **({"ball_detection": ImportedBallAnnotationModule() if cfg.ball_detection is None else BallDetectionModule(cfg.ball_detection)}
            if not cfg.omit_ball_components else {}),
-        "person_detection": PersonDetectionModule(cfg.people, enabled=people, merge_duplicates=cfg.merge_duplicate_person_boxes),
-        "person_pose_features": pose,
+        **people_inference,
         "person_appearance_features": PersonAppearanceFeaturesModule(tracking, cfg.tracking.features, enabled=people,
             capture_frame_sha256=cfg.reuse_clip_embeddings),
         "person_tracking": PersonTrackingModule(cfg.tracking, aflink_checkpoint=cfg.aflink_checkpoint, enabled=people,
-            expected_pose=pose.model_specs().get('pose'), expected_encoder=tracking),
+            expected_pose=pose_spec, expected_encoder=tracking, pose_preprocessing=pose_preprocessing),
         "player_selection": PlayerSelectionModule(selection, footpoints=association.footpoints, sampling=sampling,
             encoder=encoder, encoder_name=name if encoder is not None else None, device=cfg.device, enabled=people),
         "pose_estimation": PoseEstimationModule(cfg.people, require_evidence=people, enabled=people),
@@ -216,6 +239,8 @@ def validate_override_names(overrides: Mapping[str, Any], recipe: RecipeName = S
     if recipe == FASTHMR_RECIPE:
         stages.difference_update(("hmr2_features", "gvhmr"))
         stages.add(FASTHMR_RECIPE)
+    if recipe == ECPOSE_RECIPE:
+        stages.add(ECPOSE_RECIPE)
     unknown = {name for name in overrides if name.split('/')[0] not in stages}
     if unknown:
         raise ValueError(f'Unknown component override: {sorted(unknown)}')
@@ -386,17 +411,28 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         court_schema_version=3 if video_court is not None else 2), CourtCalibrationInputAssembler(),
         {c: f"court_detection/{c}" for c in ids}, lambda: {"geometry": cfg.camera_geometry, "roi": cfg.person_roi_margins, "enabled": people_enabled})
     for camera in ids:
-        add(f"person_detection/{camera}", components["person_detection"], PersonDetectionInputAssembler(),
-            {}, lambda: {"detector": "dino",
-             "assets": bound_assets(people_enabled, {"checkpoint": cfg.people.dino_checkpoint}),
-             **detector_runtime,
-             "scope": "full_frame", "enabled": people_enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
-             "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera)
-        add(f"person_pose_features/{camera}", components["person_pose_features"],
-            PersonPoseFeaturesInputAssembler(), {"detections": f"person_detection/{camera}"},
-            lambda: {**components['person_pose_features'].cache_identity(), **pose_runtime,
-                "assets": bound_assets(people_enabled, {"pose": cfg.people.vitpose_checkpoint})}, camera=camera,
-            after_components=('person_detection',))
+        detection_node = f"person_detection/{camera}"
+        if cfg.ecpose is None:
+            add(detection_node, components["person_detection"], PersonDetectionInputAssembler(),
+                {}, lambda: {"detector": "dino",
+                 "assets": bound_assets(people_enabled, {"checkpoint": cfg.people.dino_checkpoint}),
+                 **detector_runtime,
+                 "scope": "full_frame", "enabled": people_enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
+                 "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera)
+            add(f"person_pose_features/{camera}", components["person_pose_features"],
+                PersonPoseFeaturesInputAssembler(), {"detections": detection_node},
+                lambda: {**components['person_pose_features'].cache_identity(), **pose_runtime,
+                    "assets": bound_assets(people_enabled, {"pose": cfg.people.vitpose_checkpoint})}, camera=camera,
+                after_components=('person_detection',))
+        else:
+            joint_node = f"{ECPOSE_RECIPE}/{camera}"
+            ecpose_module = components[ECPOSE_RECIPE]
+            add(joint_node, ecpose_module, PersonDetectionInputAssembler(),
+                {}, ecpose_module.cache_identity, camera=camera)
+            add(detection_node, components["person_detection"], ECPoseDetectionsAssembler(),
+                {"joint": joint_node}, lambda: {"recipe": cfg.recipe}, camera=camera)
+            add(f"person_pose_features/{camera}", components["person_pose_features"], ECPoseFeaturesAssembler(),
+                {"joint": joint_node, "detections": detection_node}, lambda: {"recipe": cfg.recipe}, camera=camera)
         add(f"person_appearance_features/{camera}", components["person_appearance_features"],
             PersonAppearanceFeaturesInputAssembler(expected_decoder=decoders.get(camera)), {"detections": f"person_detection/{camera}"},
             lambda: {**components['person_appearance_features'].cache_identity(), "encoder": cfg.tracking.encoder,
@@ -510,10 +546,12 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
     body_assets = (cfg.people.body_assets() if cfg.fasthmr is None else
                    {f"fasthmr_{name}": path for name, path in
                     {**cfg.fasthmr.inference_weights, **cfg.fasthmr.geometry_weights}.items()})
+    person_assets = ({"detector": cfg.people.dino_checkpoint, "vitpose": cfg.people.vitpose_checkpoint}
+                     if cfg.ecpose is None else {"ecpose": cfg.ecpose.checkpoint})
     return {
         **({"court": cfg.court_kp.checkpoint} if cfg.direct_annotation is None and cfg.video_court is None else {}),
         **({"ball": cfg.ball_detection.checkpoint} if cfg.ball_detection is not None and not cfg.omit_ball_components else {}),
-        **({"detector": cfg.people.dino_checkpoint, "vitpose": cfg.people.vitpose_checkpoint} if people else {}),
+        **(person_assets if people else {}),
         **({"association_encoder": cfg.association_encoder_weights} if people and cfg.association_encoder_weights is not None else {}),
         **({"tracking_encoder": cfg.tracking_encoder_weights, "aflink": cfg.aflink_checkpoint} if people else {}),
         **(body_assets if body else {}),

@@ -26,7 +26,7 @@ The official release assets are public. The pinned EdgeCrafter source license gr
 Run from the repository root. The cohort arguments pin the shared 6-clip evaluation and the command checks the original camera video checksums. The smoke command runs one batch and writes a JSON receipt. GPU evaluation runs through the shared training queue with an exclusive GPU reservation.
 
 ```bash
-export PYTHONPATH=.
+export PYTHONPATH=. PYTHONDONTWRITEBYTECODE=1
 runner=knowledge/runs/run-meiji-player-model-comparison/edgecrafter.py
 manifest_sha=3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580
 output=outputs/player-model-comparison

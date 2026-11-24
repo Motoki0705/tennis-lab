@@ -9,10 +9,16 @@ from tempfile import TemporaryDirectory
 
 import onnx
 import torch
-from edgecrafter import ASSETS, HEADS, INPUT_NAME, ONNX_OPSET, export_settings
+from edgecrafter import ASSETS
 
 from src.submodules.models.ecpose.inference import load_network
 from src.submodules.models.ecpose.releases import IMAGE_SIZE, RELEASES
+from src.submodules.models.ecpose.runtime import (
+    HEADS,
+    INPUT_NAME,
+    ONNX_OPSET,
+    export_settings,
+)
 from src.utils.inference_benchmark import Conversion, measure_conversion
 from src.utils.io import write_json_atomic
 from src.utils.models.tensorrt_artifacts import InputProfile

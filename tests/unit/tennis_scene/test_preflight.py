@@ -179,6 +179,24 @@ def test_normalized_sample_spelling_keeps_byte_pins_and_companion_files(installa
     assert all(item.sha256 is not None for item in sample)
 
 
+def test_ecpose_inventory_selects_the_pinned_model_and_explicit_engine(installation_config: DictConfig) -> None:
+    installation_config.recipe = "ecpose"
+    with open_dict(installation_config):
+        installation_config.ecpose = dict(
+            repository="EdgeCrafter", checkpoint="ecpose/x.pth", model="ecpose-x-o365",
+            backend="trt16", engine="ecpose/x-engine", batch_size=2, confidence=0.3, box_margin=0.1,
+        )
+    runtime = PipelineRuntimeConfig.from_config(installation_config)
+    assert runtime.ecpose is not None
+    requirements = {item.name: item for item in preflight.configured_requirements(installation_config)}
+    assert requirements == {item.name: item for item in standard_requirements(runtime)}
+    assert requirements["ecpose"].sha256 == runtime.ecpose.release.sha256
+    assert requirements["ecpose_engine.plan"].path.name == "engine.plan"
+    assert requirements["ecpose_model_config"].path.name == "ecpose_x_coco.yml"
+    assert not {"detector", "vitpose", "dino_models", "dino_ops"} & requirements.keys()
+    assert {"hmr2", "gvhmr", "tracking_encoder", "aflink"} <= requirements.keys()
+
+
 def test_unreadable_association_recipe_does_not_hide_independent_assets(
     installation_config: DictConfig, tmp_path: Path,
 ) -> None:

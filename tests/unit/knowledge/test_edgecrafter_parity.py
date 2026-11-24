@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import runpy
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -22,6 +23,7 @@ def script(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
         / "knowledge/runs/run-meiji-player-model-comparison"
     )
     monkeypatch.syspath_prepend(str(directory))
+    monkeypatch.setattr(sys, "dont_write_bytecode", True)
     return runpy.run_path(str(directory / "edgecrafter_parity.py"))
 
 

@@ -21,11 +21,25 @@ The stored baseline covers 6,844 images and 26,276 eligible player boxes. DINO's
 
 The archived DINO input is 750 by 1,333 pixels, batch 1, person confidence at least 0.30, and duplicate merging disabled. ViTPose-H uses 256 by 192 pixels, batch up to 8 crops before flip testing, flip testing enabled and a 1.2 box enlargement. Both models use TensorRT FP16 on the RTX 5060 Ti. Speed and VRAM for comparison will come from the shared #2496 protocol. PT32 and PT16 accuracy conditions are pending.
 
+## Candidate evidence
+
+| Candidate | Accuracy evidence on the fixed cohort | Shared speed and VRAM |
+|---|---|---|
+| RF-DETR-L | PT32, PT16 and TRT16 on all 6,844 images. Recall@0.50 is 96.81%, 96.82% and 96.81%. | Pending |
+| RF-DETR-2XL | All three backend conditions excluded by the user's license decision. | Excluded |
+| ECDet-L/X, COCO and O365 | Six-weight EdgeCrafter smoke includes four ECDet release checkpoints. Fixed-cohort scores pending. | Pending |
+| ECPose-L/X, O365 | Both pose releases produced native-pixel COCO17 and aligned boxes on the smoke frames. Fixed-cohort scores pending. | Pending |
+| RT-DETRv4-L/X | Both release weights and FP16 ONNX exports pinned. Fixed-cohort scores pending. | Pending |
+
+The [RF-DETR-L accuracy record](../run-meiji-rfdetr-large-accuracy/results.json) contains the complete accuracy, candidate-versus-PT32 parity and box-margin sensitivity results. [RF-DETR licensing and reproduction](rfdetr.md) · [EdgeCrafter evidence](EDGECRAFTER.md) · [RT-DETRv4 evidence](rtdetrv4.md)
+
 ## ECPose recipe contract
 
-The [shared recipe design](https://github.com/Motoki0705/tennis-lab/issues/2491#issuecomment-7129950015) selects the route through `recipe=ecpose`. One full-frame model call supplies detections and aligned COCO17 rows. The same source row IDs and frame offsets flow to the two existing artifact contracts and on to appearance, tracking and selection. The ECPose store and publication namespace carry a distinct identity, with the official checkpoint, source, backend and preprocessing in the producing node's identity.
+The [ECPose configuration and output contract](../../../src/tennis_scene/pipeline/ECPOSE.md) uses the [shared recipe design](https://github.com/Motoki0705/tennis-lab/issues/2491#issuecomment-7129950015). The tests run the real decoder with a fake model and verify rows through the component store.
 
-The recipe tests will verify the active dependency graph, current standard publication and node identities, and reuse of the existing detection and pose artifacts by downstream code. Empty frames and multiple detections require one shared frame and row axis. A changed pose model, weight, or decode setting requires a distinct cache key. The ECPose runtime and full-scene qualification depend on the official adapter and the new downstream route.
+The published ECPose-L checkpoint ran through the pipeline component on CPU for the first three consecutive source frames of `clip_003/cam0`. Batch size 2 exercised the partial final batch. With confidence 0.30 and box margin 0.10, each frame produced two positive-area boxes with corresponding COCO17 rows. [Component execution receipt](ecpose-recipe-smoke.json)
+
+The recipe tests use the existing pipeline runtime and component store on CPU. A fake network produces two differently placed people, an empty frame and a trailing partial batch. The actual decoder and compatibility components must preserve source-pixel coordinates, the shared frame boundaries and detection rows through persisted artifacts, with one inference pass. The active graph must keep appearance, tracking and body recovery on their existing input contracts. The tests reject a different recipe or decoding policy in the cache and verify prior standard publication and node identities with the archived FP32 fixture. The small fixture requires no weights or GPU. Run the component tests and the archived-cache integration test separately and measure their durations.
 
 ## Test design
 

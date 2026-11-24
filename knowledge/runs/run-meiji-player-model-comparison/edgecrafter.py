@@ -16,11 +16,9 @@ from typing import Any, TypeVar, cast
 import numpy as np
 import torch
 from numpy.typing import NDArray
-from pydantic import JsonValue
 
 from src.submodules.models.ecpose.inference import (
     decode_predictions,
-    load_network,
     preprocess_images,
     require_source,
     require_weight,
@@ -31,6 +29,10 @@ from src.submodules.models.ecpose.releases import (
     RELEASES,
     SOURCE_COMMIT,
     SOURCE_URL,
+)
+from src.submodules.models.ecpose.runtime import (
+    EdgeCrafterInference,
+    load_backend,
 )
 from src.tennis_scene.evaluation.player_pose.bundle import (
     load_manifest,
@@ -45,16 +47,12 @@ from src.tennis_scene.evaluation.player_pose.scoring import (
 from src.utils.checksum import dual_sha256
 from src.utils.inference_benchmark import Backend, BatchStages, BenchmarkAdapter, Stage
 from src.utils.io import write_json_atomic
-from src.utils.models.tensorrt_artifacts import PLAN_FILE, EngineBundle, TensorSpec
-from src.utils.models.tensorrt_runtime import TensorRTRunner
+from src.utils.models.tensorrt_artifacts import PLAN_FILE
 from src.utils.video.reader import OpenCVVideoFrameReader
 from src.utils.video.types import FramePacket
 from src.utils.video.windows import chunked
 
 PREDICTION_SCHEMA = "player_model_predictions_v1"
-HEADS = ("logits", "coordinates")
-INPUT_NAME = "pixels"
-ONNX_OPSET = 19
 ASSETS = Path("outputs/player-model-comparison/assets")
 SOURCE = Path("data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v1")
 COHORT = SOURCE.with_name("multiview-player-evaluation-v1")
@@ -62,18 +60,7 @@ BACKENDS = {backend.value.lower(): backend for backend in Backend}
 SCORE_THRESHOLD = 0.0  # Keep all positive-scoring person rows from the official top-k.
 
 Frames = tuple[NDArray[np.uint8], ...]
-Forward = Callable[[torch.Tensor], tuple[torch.Tensor, torch.Tensor]]
 Value = TypeVar("Value")
-
-
-def export_settings() -> dict[str, JsonValue]:
-    return {
-        "source_commit": SOURCE_COMMIT,
-        "image_size_hw": list(IMAGE_SIZE),
-        "opset": ONNX_OPSET,
-        "precision_policy": "cuda_fp16_autocast",
-        "batch_axis": "dynamic",
-    }
 
 
 def fetch_assets(directory: Path, models: list[str]) -> None:
@@ -153,64 +140,19 @@ def _load_forward(
     backend: Backend,
     device: torch.device,
     engine: Path | None,
-) -> Forward:
+) -> EdgeCrafterInference:
     release = RELEASES[model_id]
-    weights = assets / release.filename
-    if backend is Backend.TRT16:
-        if engine is None:
-            raise ValueError("TRT16 requires an explicit engine directory")
-        require_weight(weights, release)
-        bundle = EngineBundle.read(engine)
-        shapes = (
-            ((-1, 60, 2), (-1, 60, 17, 2))
-            if release.has_pose
-            else ((-1, 300, 80), (-1, 300, 4))
-        )
-        outputs = {}
-        for name, shape in zip(HEADS, shapes, strict=True):
-            spec = bundle.export.outputs[name]
-            if spec.dtype not in {"float16", "float32"}:
-                raise ValueError(
-                    f"Unexpected EdgeCrafter TensorRT output dtype {name}={spec.dtype}"
-                )
-            outputs[name] = TensorSpec(dtype=spec.dtype, shape=shape)
-        bundle = bundle.for_model(
-            model=model_id,
-            settings=export_settings(),
-            sources={"weights": release.sha256},
-            inputs={
-                INPUT_NAME: TensorSpec(dtype="float32", shape=(-1, 3, *IMAGE_SIZE))
-            },
-            outputs=outputs,
-        )
-        runner = TensorRTRunner(bundle, device)
-
-        def forward_trt(pixels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-            outputs = runner({INPUT_NAME: pixels})
-            return outputs[HEADS[0]], outputs[HEADS[1]]
-
-        return forward_trt
-    if engine is not None:
-        raise ValueError(f"{backend} accepts no engine directory")
-    if backend is Backend.PT16 and device.type != "cuda":
-        raise ValueError("PT16 requires CUDA")
-    network = load_network(assets / "EdgeCrafter", weights, release).to(device)
-
-    def forward_pt(pixels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
-        with torch.autocast(
-            device.type, dtype=torch.float16, enabled=backend is Backend.PT16
-        ):
-            logits, coordinates = network(pixels)
-        return logits, coordinates
-
-    return forward_pt
+    return load_backend(
+        assets / "EdgeCrafter", assets / release.filename, model_id,
+        backend.value.lower(), device, engine,
+    )
 
 
 def _infer(
     frames: Frames,
     stages: BatchStages | None,
     *,
-    forward: Forward,
+    forward: EdgeCrafterInference,
     model_id: str,
     backend: Backend,
     device: torch.device,
