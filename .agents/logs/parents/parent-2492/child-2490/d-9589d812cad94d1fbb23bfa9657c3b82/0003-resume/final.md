@@ -1,0 +1,6 @@
+PMPose-L/Hは公式APIとの実重み比較で、元画像座標の最大差がともに **0.000008 px未満**でした。presence・visibility・期待OKS・heatmap peakは完全に一致し、両モデルのFP16 ONNX出力も検証を通過しました。 [検証記録](https://github.com/Motoki0705/tennis-lab/blob/d8c5b8e3b8654037ffc2823a8d027748e6da2de1/knowledge/runs/run-meiji-topdown-pose-comparison/PMPose.md)
+
+- ブランチ `codex/parent-2492-issue-2490-pmpose`、HEAD `d8c5b8e3b8654037ffc2823a8d027748e6da2de1`。`measure_forward()` へ統一し、#2495・#2496の最新公開HEADを含むことを確認しました。37テスト成功（12.08秒）。Ruff、mypy、knowledge検査も通過しました。
+- 固定6 clipの26,276 BBoxについて、L/H × PT32・PT16・TRT16の精度評価をbatch 8で登録しました。TRT16は各ジョブ内でbatch 1/4/8のエンジンを先にビルドします。GPU精度は結果待ちで、速度・VRAMは#2496の共通速度入力の公開後に計測します。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204475510644762815_2026-11-24T12-48-09-355237184Z_1705468_i2490-pmpose-l-pt32-accuracy.job","0-8204475510298679819_2026-11-24T12-48-09-701320180Z_1705545_i2490-pmpose-h-pt32-accuracy.job","0-8204475510001433469_2026-11-24T12-48-09-998566530Z_1705618_i2490-pmpose-l-pt16-accuracy.job","0-8204475509698316964_2026-11-24T12-48-10-301683035Z_1705686_i2490-pmpose-h-pt16-accuracy.job","0-8204475509361403194_2026-11-24T12-48-10-638596805Z_1705761_i2490-pmpose-l-trt16-accuracy.job","0-8204475509022600370_2026-11-24T12-48-10-977399629Z_1705835_i2490-pmpose-h-trt16-accuracy.job"]}}
