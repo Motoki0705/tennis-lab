@@ -433,8 +433,8 @@ class PipelineRuntimeConfig:
     video_court_unobservable_policy: str
     video_court_side: VideoArtifactConfig | None
     court_side_unobservable_policy: str
-    recipe: RecipeName = STANDARD_RECIPE
-    fasthmr: FastHMRConfig | None = None
+    recipe: RecipeName
+    fasthmr: FastHMRConfig | None
 
     def __post_init__(self) -> None:
         parse_recipe(self.recipe)

@@ -10,7 +10,7 @@
 | --- | --- | --- | --- |
 | HMR2特徴＋GVHMR | #2496で計測 | #2496で計測 | #2496で計測 |
 | FastHMR CameraHMR | 公式補助資産の取得後に検証 | 公式補助資産の取得後に検証 | 同等な変換とparityの確認待ち |
-| FastHMR HMR 2.0 | Mask-ToMe付きの公開構成を再現できない | 同左 | 同左 |
+| FastHMR HMR 2.0 | 実行不能（公開版のMask-ToMe非対応） | 同左 | 同左 |
 
 公式重みには両backboneのlayer-mergedチェックポイント、専用diffusion decoder、共通VAEがある。公開デモのMask-ToMeパッチはCameraHMR側のBlockとAttentionにだけ適用される。HMR 2.0で同じ公開デモを呼ぶとlayer mergingとdiffusionは動く構成だが、Mask-ToMeは適用されない。TensorRT用には、person maskの有無で分岐するtoken mergingや `scatter_reduce` を含む処理の同等性確認が要る。[デモ](https://github.com/TaatiTeam/FastHMR/blob/dc5c8daf0beea56a419c631f494ef7bd7ce35d3c/demo.py)・[Mask-ToMe](https://github.com/TaatiTeam/FastHMR/blob/dc5c8daf0beea56a419c631f494ef7bd7ce35d3c/model/hmr2_tools/patch_vit.py)・[論文](https://arxiv.org/abs/2510.10868)
 
@@ -29,7 +29,29 @@ body_models/SMPL_NEUTRAL.pkl
 body_models/J_regressor_h36m.npy
 ```
 
-CameraHMRの `cam_model_cleaned.ckpt`、`smpl_mean_params.npz`、`SMPL_NEUTRAL.pkl` は、同意済みの利用者がCameraHMRのDownloadsから取得する。FastHMRのモデルカードはApache-2.0を表示する。CameraHMRの資産と該当コードは非商用目的に制限され、再配布には許諾が要る。FastHMR公式コードの固定版にはリポジトリ全体のLICENSEが見つからず、この経路は外部checkoutを参照する。マスク用重みはUltralyticsのAGPL-3.0公開版。COCO17にはシーン側で設定済みの6890頂点用回帰行列を使う。[CameraHMRの登録](https://camerahmr.is.tue.mpg.de/register.php)・[ライセンス](https://camerahmr.is.tue.mpg.de/license.html)・[補助資産の出典](https://github.com/TaatiTeam/FastHMR/blob/dc5c8daf0beea56a419c631f494ef7bd7ce35d3c/download_hmr_dependencies.sh)・[YOLO11モデルカード](https://huggingface.co/Ultralytics/YOLO11)
+CameraHMRの `cam_model_cleaned.ckpt`、`smpl_mean_params.npz`、`SMPL_NEUTRAL.pkl` は、同意済みの利用者がCameraHMRのDownloadsから取得する。CameraHMRの資産と該当コードは非商用目的に制限され、再配布には許諾が要る。[CameraHMRの登録](https://camerahmr.is.tue.mpg.de/register.php)・[ライセンス](https://camerahmr.is.tue.mpg.de/license.html)
+
+| 公開資産 | 配布元と利用条件 |
+| --- | --- |
+| `camerahmr.pth.tr`、`camerahmr_diffdecoder.pth.tr`、`vae.pth.tr` | FastHMRの固定revision。モデルカードはApache-2.0を表示する。固定版コードにはリポジトリ全体のLICENSEが見つからないため、コードは外部checkoutとして参照する。[FastHMRモデルカード](https://huggingface.co/SoroushMehraban/FastHMR/blob/898332e1059fc0579f986e03cab11471d4e27b65/README.md) |
+| `yolo11x-seg.pt` | Ultralyticsの固定revision、AGPL-3.0。ローカルの評価用。提供形態を決める本番統合時にはAGPL-3.0の条件またはUltralyticsの商用ライセンスを別に確認する。[配布重み](https://huggingface.co/Ultralytics/YOLO11/blob/8b8ac7d1fae7468f85dbf89670dd66f41f485aab/yolo11x-seg.pt)・[モデルカード](https://huggingface.co/Ultralytics/YOLO11) |
+| `J_regressor_h36m.npy` | FastHMRの取得スクリプトが指定するOpenMMLabの版付き公開オブジェクト。配布元にこのファイル単体のライセンス表記は確認できていない。比較用に取得し、Gitには同梱しない。[FastHMRの取得スクリプト](https://github.com/TaatiTeam/FastHMR/blob/dc5c8daf0beea56a419c631f494ef7bd7ce35d3c/download_hmr_dependencies.sh#L19)・[MMHuman3Dの資産説明](https://mmhuman3d.readthedocs.io/en/stable/getting_started.html#body-model-preparation) |
+
+COCO17にはシーン側で設定済みの6890頂点用回帰行列を使う。
+
+公式推論モジュールを動かす追加のPython依存はworktreeの `outputs/fasthmr-setup/python` に置き、実行時に `PYTHONPATH=outputs/fasthmr-setup/python` を渡す。次は検証した追加パッケージとchumpyのビルド手順。既存環境からPyTorch、Ultralytics、NumPyなどを読み込む。
+
+```sh
+uv pip install --python .venv/bin/python --target outputs/fasthmr-setup/python --no-deps \
+  diffusers==0.37.1 easydict==1.13 yacs==0.1.8 scikit-image==0.25.2 tifffile==2025.6.11 lazy-loader==0.4
+uv venv --python .venv/bin/python outputs/fasthmr-setup/chumpy-builder
+uv pip install --python outputs/fasthmr-setup/chumpy-builder/bin/python pip==25.3 setuptools==81.0.0 wheel==0.45.1
+outputs/fasthmr-setup/chumpy-builder/bin/python -m pip wheel --no-deps --no-build-isolation \
+  --wheel-dir outputs/fasthmr-setup/wheels \
+  'chumpy @ git+https://github.com/mattloper/chumpy.git@580566eafc9ac68b2614b64d6f7aaa84eebb70da'
+uv pip install --python .venv/bin/python --target outputs/fasthmr-setup/python --no-deps \
+  outputs/fasthmr-setup/wheels/chumpy-0.71-py3-none-any.whl
+```
 
 取得済み資産を持つ環境で、既存のpipeline CLIまたはdataset用のpipeline overridesに次を追加する。既存の身体復元フラグ `gvhmr.enabled=true` は身体復元段の有効化を表す。
 

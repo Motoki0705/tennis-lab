@@ -50,6 +50,8 @@ def _official_imports(config: FastHMRConfig) -> Iterator[None]:
 
 def load_official_smpl(config: FastHMRConfig) -> Any:
     weights = config.geometry_weights
+    if dual_sha256(weights["h36m"]) != CHECKPOINT_SHA256["h36m"]:
+        raise ValueError(f"FastHMR official Human3.6M regressor SHA-256 mismatch: {weights['h36m']}")
     with _official_imports(config):
         order = import_module("configs.constants").KEYPOINTS.H36M_TO_J14
         layer = import_module("model.smpl.SMPL").SMPL_layer

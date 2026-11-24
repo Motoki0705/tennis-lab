@@ -16,6 +16,7 @@ CHECKPOINT_SHA256 = {
     "diffusion": "ba9dcf7dfa3bed46c01fb814c25b88cece68919328ea7b757bbf30a20b1fcccc",
     "vae": "218055d749b0a00118cfaf26efc4dac8b1c7c6840884e083b108d3da33c95b07",
     "segmentor": "4e53a5f5fd3ee2ae3361c62169c6bb3ed4ae251dd0e57606e230955aa52d919c",
+    "h36m": "c655cd7013d7829eb9acbebf0e43f952a3fa0305a53c35880e39192bfb6444a0",
     "hmr2_backbone": "07a3bc7fca47010b3f4e0dbe75a4a1341b832955e42ca97ddf228a2e1ff5be30",
     "hmr2_diffusion": "603e56b947cb51867c03b285a6b9a55095b241530ff3541b492f6e9b09aca2f8",
 }
