@@ -8,14 +8,16 @@ import json
 from collections import Counter, defaultdict
 from math import isclose, isfinite
 from pathlib import Path
+from shutil import copyfile
 from statistics import median, quantiles
 from tempfile import TemporaryDirectory
 
 import numpy as np
 from run import CASE_UNITS, GROUPS, SWEEPS
-from speed_inputs import BODY_LENGTH, INPUT_ID, require_sha
+from speed_inputs import BODY_LENGTH, WORKLOAD_INDEX, InputSet, require_sha
 
 from src.utils.checksum import dual_sha256
+from src.utils.inference_benchmark_inputs import TimingSchedule
 from src.utils.io import write_json_atomic
 
 BACKENDS = ("PT32", "PT16", "TRT16")
@@ -37,6 +39,9 @@ CASE_FIELDS = (
     "batch_size",
     "item_unit",
     "status",
+    "failure_code",
+    "failure_phase",
+    "failure_reason",
     "samples",
     "distinct_inputs",
     "timed_clips",
@@ -58,49 +63,26 @@ def read_json(path: Path):
     return json.loads(path.read_bytes())
 
 
-def pinned_inputs(source: Path, destination: Path):
-    directory = source / "inputs"
-    manifest_path = directory / "manifest.json"
-    manifest = read_json(manifest_path)
-    digest = dual_sha256(manifest_path)
-    if manifest["id"] != INPUT_ID:
-        raise ValueError(f"Wrong input collection: {manifest['id']}")
-    exports = {manifest_path}
-    indexes, verified = {}, {}
-    for name, expected in manifest["indexes"].items():
-        index_path = require_sha(directory / expected["path"], expected["sha256"])
-        rows = read_json(index_path)
-        ids = [row["id"] for row in rows]
-        if len(set(ids)) != expected["records"] or len(ids) != expected["records"]:
-            raise ValueError(f"Wrong record count or duplicate ID: {index_path}")
-        for row in rows:
+def pinned_inputs(directory: Path, destination: Path):
+    fixed = InputSet(directory)
+    exports = {"manifest.json": fixed.sha256}
+    verified = {}
+    for name, spec in fixed.manifest["indexes"].items():
+        for row in fixed.rows(name):
             relative, expected_hash = row["path"], row["sha256"]
             if relative in verified and verified[relative] != expected_hash:
                 raise ValueError(f"Duplicate path with conflicting hashes: {relative}")
             if relative not in verified:
-                require_sha(directory / relative, expected_hash)
+                fixed.pins.verified_asset(row)
                 verified[relative] = expected_hash
-        indexes[name] = ids
-        exports.add(index_path)
-
-    keep = manifest["pose_sweep_crop_count"]
-    if indexes["crops"][keep:] != manifest["pose_sweep_tail_ids"]:
-        raise ValueError("Crop sweep and tail IDs disagree")
-    for path in sorted(exports):
-        (destination / "inputs").mkdir(exist_ok=True)
-        (destination / "inputs" / path.name).write_bytes(path.read_bytes())
-    print(f"Verified {len(verified)} fixed input files and manifest {digest}")
-    return (
-        digest,
-        {
-            "dino": indexes["frames"],
-            "dino-vitpose": indexes["frames"],
-            "vitpose": indexes["crops"][:keep],
-            "vitpose-flip": indexes["crops"][:keep],
-            "body": indexes["body_sequences"],
-        },
-        len(verified),
-    )
+        exports[spec["path"]] = spec["sha256"]
+    (destination / "inputs").mkdir(exist_ok=True)
+    for path, expected in exports.items():
+        target = destination / "inputs" / path
+        copyfile(directory / path, target)
+        require_sha(target, expected)
+    print(f"Verified {len(verified)} fixed input files and manifest {fixed.sha256}")
+    return fixed, len(verified)
 
 
 def sample_stats(pairs):
@@ -124,25 +106,34 @@ def sample_stats(pairs):
     }
 
 
-def verify_samples(report, pinned_ids, csv_writer):
+def verify_samples(report, schedule: TimingSchedule, csv_writer):
     case, protocol = report["case"], report["protocol"]
     size = case["batch_size"]
-    if protocol["batch_sizes"] != list(SWEEPS[case["name"]]) or (
-        protocol["warmup"],
-        protocol["iterations_per_block"],
-        protocol["blocks"],
-    ) != (30, 100, 3):
+    expected = schedule.protocol
+    if (
+        protocol
+        != {
+            "batch_sizes": list(expected.batch_sizes),
+            "warmup": expected.warmup,
+            "iterations_per_block": expected.iterations_per_block,
+            "blocks": expected.blocks,
+        }
+        or case["settings"]["timed_input_ids_sha256"] != schedule.timed_ids_sha256
+    ):
         raise ValueError(f"Benchmark protocol changed: {case}")
-    ids = [pinned_ids[i : i + size] for i in range(0, len(pinned_ids), size)]
-    if any(len(row) != size for row in ids) or len(report["samples"]) != 300:
-        raise ValueError(f"Missing full batches or expected repetitions: {case}")
+    ids = schedule.batch_ids
+    count = len(report["samples"])
+    expected_count = expected.iterations_per_block * expected.blocks
+    measured = report["status"] != "infeasible"
+    if count > expected_count or (measured and count != expected_count):
+        raise ValueError(f"Unexpected number of repetitions: {case}")
     timings, forwards, covered = defaultdict(list), defaultdict(list), set()
     expected_items = size * (BODY_LENGTH if case["name"] == "body" else 1)
     for index, sample in enumerate(report["samples"]):
         block = index // protocol["iterations_per_block"] + 1
         batch = index % len(ids)
         if (
-            sample["ids"] != ids[batch]
+            tuple(sample["ids"]) != ids[batch]
             or sample["block"] != block
             or (sample["items"], sample["processed_items"])
             != (expected_items, expected_items)
@@ -179,15 +170,19 @@ def verify_samples(report, pinned_ids, csv_writer):
         )
     summary = {name: sample_stats(values) for name, values in timings.items()}
     official = report["summary"]
-    if report["status"] == "ok":
-        if official.keys() != summary.keys() or any(
-            not isclose(value, official[group][metric], rel_tol=1e-11)
-            for group, metrics in summary.items()
-            for metric, value in metrics.items()
+    if measured:
+        if (
+            official is None
+            or official.keys() != summary.keys()
+            or any(
+                not isclose(value, official[group][metric], rel_tol=1e-11)
+                for group, metrics in summary.items()
+                for metric, value in metrics.items()
+            )
         ):
             raise ValueError(f"Raw samples disagree with the accepted summary: {case}")
     elif official is not None:
-        raise ValueError(f"A failed case exposes accepted timing statistics: {case}")
+        raise ValueError(f"An infeasible case exposes a timing summary: {case}")
     return {
         "distinct_inputs": len(covered),
         "timed_clips": sorted({"/".join(ident.split("/")[:2]) for ident in covered}),
@@ -212,23 +207,32 @@ def archive_asset_paths(assets, source):
             asset["path"] = "${PERSON_RUN_OUTPUT}/" + str(
                 Path(path).resolve().relative_to(source.resolve())
             )
+        elif name == "vitpose" and Path(path).parts[-3:-1] == ("engines", "vitpose-b1"):
+            asset["path"] = "${PERSON_POSE_ENGINE_RUN}/" + str(
+                Path(*Path(path).parts[-3:])
+            )
         elif name == "dino_msda_cuda":
             asset["path"] = "${TENNIS_LAB_DINO_EXTENSION}"
         else:
             raise ValueError(f"Unknown weight or engine asset path: {path}")
 
 
-def pelvis_aligned_joint_error_p95(source: Path) -> float:
-    reference = read_json(source / "results/body/PT32-b1/predictions.json")
-    candidate = read_json(source / "results/body/TRT16-b1/predictions.json")
-    if reference.keys() != candidate.keys():
-        raise ValueError("Body prediction IDs differ")
+def pelvis_aligned_joint_error_p95(source: Path) -> float | None:
+    pt32 = source / "results/body/PT32-b1/predictions.json"
+    trt16 = source / "results/body/TRT16-b1/predictions.json"
+    if not (pt32.is_file() and trt16.is_file()):
+        return None
+    reference, candidate = read_json(pt32), read_json(trt16)
+    if not reference or reference.keys() != candidate.keys():
+        return None
     distances = []
     for key, value in reference.items():
         first, second = (
             np.asarray(value["joints"]),
             np.asarray(candidate[key]["joints"]),
         )
+        if first.shape != second.shape or first.ndim != 3 or first.shape[-1] != 3:
+            return None
         distances.append(
             np.linalg.norm(
                 (first - first[:, :1]) - (second - second[:, :1]), axis=-1
@@ -237,8 +241,30 @@ def pelvis_aligned_joint_error_p95(source: Path) -> float:
     return 1000 * float(np.percentile(np.concatenate(distances), 95))
 
 
-def record(source: Path, destination: Path):
-    digest, ids_by_workload, file_count = pinned_inputs(source, destination)
+def verify_outcome(report, schedule: TimingSchedule, path: Path):
+    status, failure, parity = report["status"], report["failure"], report["parity"]
+    if status == "ok":
+        if failure is not None or parity is None or parity["passed"] is not True:
+            raise ValueError(f"Missing successful parity outcome: {path}")
+    elif status in ("parity_failed", "infeasible"):
+        if not failure or not failure["message"]:
+            raise ValueError(f"Missing condition failure reason: {path}")
+        if status == "parity_failed" and (
+            failure["phase"] != "parity" or (parity is not None and parity["passed"])
+        ):
+            raise ValueError(f"Mismatched parity outcome: {path}")
+    else:
+        raise ValueError(f"Unknown condition status {status}: {path}")
+    if (
+        parity is not None
+        and not parity["metrics"].get("invalid")
+        and parity["metrics"]["checked_ids"] != sum(map(len, schedule.batch_ids))
+    ):
+        raise ValueError(f"Incomplete parity input coverage: {path}")
+
+
+def record(source: Path, destination: Path, *, input_dir: Path | None = None):
+    fixed, file_count = pinned_inputs(input_dir or source / "inputs", destination)
     defined = {
         (workload, backend, size)
         for workload, sweep in SWEEPS.items()
@@ -271,42 +297,48 @@ def record(source: Path, destination: Path):
                     report = read_json(path)
                     case = report["case"]
                     if (
-                        case["name"],
-                        case["backend"],
-                        case["batch_size"],
-                        case["item_unit"],
-                        case["input_manifest_sha256"],
-                    ) != (
-                        workload,
-                        backend,
-                        size,
-                        CASE_UNITS[workload],
-                        digest,
-                    ) or report["status"] != attempt["status"]:
+                        (
+                            case["name"],
+                            case["backend"],
+                            case["batch_size"],
+                            case["item_unit"],
+                            case["input_manifest_sha256"],
+                        )
+                        != (
+                            workload,
+                            backend,
+                            size,
+                            CASE_UNITS[workload],
+                            fixed.sha256,
+                        )
+                        or report["status"] != attempt["status"]
+                        or (
+                            case["settings"]["timing_protocol_sha256"]
+                            != fixed.pins.timing_sha256
+                        )
+                    ):
                         raise ValueError(
                             f"Report disagrees with frozen input, attempt or condition: {path}"
                         )
-                    if report["status"] != (
-                        "ok" if report["parity"]["passed"] else "parity_failed"
-                    ):
-                        raise ValueError(f"Mismatched parity outcome: {path}")
-                    if report["parity"]["metrics"]["checked_ids"] != len(
-                        ids_by_workload[workload]
-                    ):
-                        raise ValueError(f"Incomplete parity input coverage: {path}")
-                    coverage = verify_samples(report, ids_by_workload[workload], writer)
+                    schedule = fixed.pins.schedule(WORKLOAD_INDEX[workload], size)
+                    verify_outcome(report, schedule, path)
+                    coverage = verify_samples(report, schedule, writer)
                     count = len(report.pop("samples"))
-                    accepted = report["summary"] or {}
+                    summary = report["summary"] or {}
                     gpu, wall = (
-                        accepted.get("model_gpu", {}),
-                        accepted.get("stage_wall", {}),
+                        summary.get("model_gpu", {}),
+                        summary.get("stage_wall", {}),
                     )
+                    failure = report["failure"] or {}
                     row = {
                         "workload": workload,
                         "backend": backend,
                         "batch_size": size,
                         "item_unit": case["item_unit"],
                         "status": report["status"],
+                        "failure_code": failure.get("status"),
+                        "failure_phase": failure.get("phase"),
+                        "failure_reason": failure.get("message"),
                         "samples": count,
                         "distinct_inputs": coverage["distinct_inputs"],
                         "timed_clips": len(coverage["timed_clips"]),
@@ -316,8 +348,8 @@ def record(source: Path, destination: Path):
                         "wall_p95_ms": wall.get("p95_ms"),
                         "wall_items_per_second": wall.get("items_per_second"),
                         **{key: report[key] for key in CASE_FIELDS if "bytes" in key},
-                        "load_ms": report["setup_wall_ms"]["load"],
-                        "cold_start_ms": report["setup_wall_ms"]["cold_start"],
+                        "load_ms": report["setup_wall_ms"].get("load"),
+                        "cold_start_ms": report["setup_wall_ms"].get("cold_start"),
                     }
                     for group in ("weights", "engines"):
                         archive_asset_paths(report[group], source)
@@ -344,7 +376,8 @@ def record(source: Path, destination: Path):
         destination / "cases.json",
         {
             "measurement_commit": commits.pop(),
-            "input_manifest_sha256": digest,
+            "input_manifest_sha256": fixed.sha256,
+            "timing_protocol_sha256": fixed.pins.timing_sha256,
             "fixed_input_files_verified": file_count,
             "conditions": cases,
             "diagnostics": {
@@ -355,7 +388,8 @@ def record(source: Path, destination: Path):
         },
     )
     build = source / "vitpose-b1-build.json"
-    (destination / build.name).write_bytes(build.read_bytes())
+    if build.is_file():
+        copyfile(build, destination / build.name)
     counts = Counter(row["status"] for row in summaries)
     print(
         f"Verified {len(cases)} conditions, {sum(row['samples'] for row in summaries)} raw repetitions: {dict(counts)}"
@@ -366,13 +400,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path)
     parser.add_argument("destination", type=Path)
+    parser.add_argument("--input-dir", type=Path)
     args = parser.parse_args()
     args.destination.parent.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(
         prefix=".person-speed-record-", dir=args.destination.parent
     ) as staging:
         staging = Path(staging)
-        record(args.source, staging)
+        record(args.source, staging, input_dir=args.input_dir)
         for path in sorted(staging.rglob("*")):
             if path.is_file():
                 target = args.destination / path.relative_to(staging)

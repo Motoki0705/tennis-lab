@@ -48,6 +48,7 @@ class _Cuda:
     def __init__(self) -> None:
         self.host_ns = 0
         self.gpu_ms = 0.0
+        self.pending_ms = 0
         self.event_count = 0
         self.events = _Event(self), _Event(self)
         self.used = iter((400, 520, 570, 580, 550, 630, 610))
@@ -57,7 +58,8 @@ class _Cuda:
         self.gpu_ms += gpu_ms
 
     def synchronize(self) -> None:
-        self.step(1)
+        self.step(1 + self.pending_ms, self.pending_ms)
+        self.pending_ms = 0
 
     def memory_used_bytes(self) -> int:
         return next(self.used)
@@ -72,7 +74,10 @@ def cuda(monkeypatch: pytest.MonkeyPatch) -> _Cuda:
 
     @contextmanager
     def open_runtime(
-        device: str | torch.device, environment: dict[str, object]
+        device: str | torch.device,
+        environment: dict[str, object],
+        *,
+        dedicated_stream: bool,
     ) -> Iterator[_Cuda]:
         assert str(device) == "cuda:0"
         environment["gpu"] = "test device"
@@ -178,13 +183,13 @@ def test_composite_stage_and_gpu_times_use_full_batch_counts(
     assert calls == [1, 1, 1, 3, 1, 3]  # cold, warm-up, two blocks, then parity
     assert cuda.event_count == 8  # one pair per measured forward
     assert report.status is Status.OK
-    assert report.setup_wall_ms == {"load": 8, "cold_start": 17}
+    assert report.setup_wall_ms == {"load": 8, "cold_start": 18}
     assert report.summary is not None
     assert [sample.block for sample in report.samples] == [1, 2]
     assert [sample.processed_items for sample in report.samples] == [3, 5]
-    assert report.summary["stage_wall"].p50_ms == 20
-    assert report.summary["stage_wall"].p95_ms == pytest.approx(22.7)
-    assert report.summary["stage_wall"].items_per_second == 125
+    assert report.summary["stage_wall"].p50_ms == 21
+    assert report.summary["stage_wall"].p95_ms == pytest.approx(23.7)
+    assert report.summary["stage_wall"].items_per_second == pytest.approx(5000 / 42)
     assert report.summary["model_gpu"].p50_ms == 6
     assert report.summary["model_gpu"].p95_ms == pytest.approx(8.7)
     assert report.summary["model_gpu"].p95_ms_per_item == pytest.approx(2.925)
@@ -202,6 +207,31 @@ def test_composite_stage_and_gpu_times_use_full_batch_counts(
     assert result["nvml_peak_minus_before_load_bytes"] == 230
     assert result["torch_peak_allocated_bytes"] == 180
     assert result["torch_peak_reserved_bytes"] == 240
+
+
+def test_batch_end_waits_for_unstaged_cuda_work_in_same_sample(cuda: _Cuda) -> None:
+    def infer(tail_ms: int, stages: BatchStages) -> int:
+        assert cuda.pending_ms == 0
+        stages.measure_forward(Backend.PT32, lambda: cuda.step(1, 1))
+        cuda.pending_ms = tail_ms
+        return tail_ms
+
+    report = benchmark(
+        _case(Backend.PT32),
+        [Batch(("short",), 10), Batch(("long",), 30)],
+        {Backend.PT32: BenchmarkAdapter(Backend.PT32, lambda: infer, {})},
+        protocol=SHORT,
+    )
+
+    assert cuda.pending_ms == 0
+    assert report.setup_wall_ms["cold_start"] == 13
+    assert [(sample.ids, sample.wall_ms) for sample in report.samples] == [
+        (("short",), 13),
+        (("long",), 33),
+    ]
+    assert report.summary is not None
+    assert report.summary["model_gpu"].p95_ms == 1
+    assert report.summary["stage_wall"].items_per_second == pytest.approx(2000 / 46)
 
 
 @pytest.mark.parametrize("phase", ["load", "measure"])
@@ -237,7 +267,8 @@ def test_allocator_oom_stops_condition_and_keeps_completed_samples(
         protocol=SHORT,
     )
     assert report.failure is not None
-    assert report.status is Status.OOM
+    assert report.status is Status.INFEASIBLE
+    assert report.failure.status is Status.OOM
     assert report.failure.phase == phase
     assert "allocation failed" in report.failure.message
     assert report.summary is None
@@ -273,8 +304,9 @@ def test_conversion_failure_never_reaches_a_backend(
         protocol=SHORT,
         conversion=[conversion],
     )
-    assert report.status is status
+    assert report.status is Status.INFEASIBLE
     assert report.failure is not None
+    assert report.failure.status is status
     assert report.failure.phase == "onnx_export"
     assert str(error) in report.failure.message
     assert report.summary is None
@@ -293,11 +325,12 @@ def test_exact_backend_selection_never_loads_another_backend(
     report = benchmark(
         _case(Backend.TRT16), [Batch(("a",), 1)], backends, protocol=SHORT
     )
-    assert report.status is (
-        Status.BACKEND_MISMATCH if wrong_registration else Status.UNAVAILABLE
-    )
+    assert report.status is Status.INFEASIBLE
     assert report.summary is None
     assert report.failure is not None and report.failure.phase == "backend"
+    assert report.failure.status is (
+        Status.BACKEND_MISMATCH if wrong_registration else Status.UNAVAILABLE
+    )
 
 
 def test_forward_cannot_recover_a_failed_trt_call_with_pt(
@@ -328,13 +361,14 @@ def test_forward_cannot_recover_a_failed_trt_call_with_pt(
         {Backend.TRT16: adapter},
         protocol=SHORT,
     )
-    assert report.status is Status.UNSUPPORTED
+    assert report.status is Status.INFEASIBLE
     assert report.failure is not None and report.failure.phase == "cold_start"
+    assert report.failure.status is Status.UNSUPPORTED
     assert report.summary is None and not report.samples
 
 
 @pytest.mark.parametrize("has_reference", [False, True])
-def test_parity_failure_withholds_success_summary(
+def test_parity_failure_retains_completed_speed_summary(
     cuda: _Cuda, has_reference: bool
 ) -> None:
     def infer(value: int, stages: BatchStages) -> int:
@@ -355,11 +389,13 @@ def test_parity_failure_withholds_success_summary(
         protocol=SHORT,
         check_parity=check if has_reference else None,
     )
-    assert report.status is (
+    assert report.status is Status.PARITY_FAILED
+    assert report.failure is not None and report.failure.phase == "parity"
+    assert report.failure.status is (
         Status.PARITY_FAILED if has_reference else Status.PARITY_UNAVAILABLE
     )
-    assert report.failure is not None and report.failure.phase == "parity"
-    assert report.summary is None and len(report.samples) == SHORT.blocks
+    assert report.summary is not None and len(report.samples) == SHORT.blocks
+    assert report.summary["model_gpu"].p50_ms == 1
     if has_reference:
         assert report.parity is not None and report.parity.metrics == {"error_px": 5}
 
@@ -415,7 +451,7 @@ def test_build_time_is_separate_from_trt_load_and_inference(
     )
     assert report.status is Status.OK and report.summary is not None
     assert report.conversion[0].wall_ms == 12
-    assert report.setup_wall_ms == {"load": 1, "cold_start": 5}
+    assert report.setup_wall_ms == {"load": 1, "cold_start": 6}
     assert report.summary["model_gpu"].p50_ms == 2
     assert (
         report.engines["model"]["sha256"]
