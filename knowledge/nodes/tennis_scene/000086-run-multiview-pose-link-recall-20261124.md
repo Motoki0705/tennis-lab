@@ -27,15 +27,11 @@ metrics:
   meiji4_populated_frames: 46228
   meiji4_assignment_rate: 0.8589779372374955
   meiji4_wall_seconds: 367.6801645469968
-  meiji4_pseudo_frames: 1205
-  meiji4_pseudo_micro_pair_f1: 0.7467637670233073
-  meiji4_pseudo_player_micro_pair_f1: 0.9543665436654366
   unseen_score_attempts: 0
 artifacts:
   run_dir: knowledge/runs/run-multiview-pose-link-recall-20261124
   meiji3: knowledge/runs/run-multiview-pose-link-recall-20261124/meiji3.json
   meiji4: knowledge/runs/run-multiview-pose-link-recall-20261124/meiji4.json
-  pseudo4cam: knowledge/runs/run-multiview-pose-link-recall-20261124/pseudo4cam.json
   losses: knowledge/runs/run-multiview-pose-link-recall-20261124/losses.json
   holdout_inputs: knowledge/runs/run-multiview-pose-link-recall-20261124/holdout-inputs.json
   holdout_camera_recovery: knowledge/runs/run-multiview-pose-link-recall-20261124/holdout-camera-recovery.json
@@ -60,6 +56,6 @@ repro:
 
 Meiji 3camの開発4 clipでは、初回全身版の取りこぼし増分1,478件が、2,458件の消失と980件の新規採用から生じた。骨長で1,280件、MILP競合で1,142件失った。肩・腰のスコアと全身の品質判定を分けると、micro pair F1は0.8050から0.8515、FPは906から1,045件になった。試作のF1 0.8485とFP上限1,102件を満たした。未使用視点で採点できる関節は増え、P90再投影誤差は27.81 pxから43.64 pxに上がった。
 
-meiji_4camは全69 clip・46,228フレームで候補を生成し、85.90%のDINO行を割り当てた。4 CPUプロセスで367.68秒。#2442の1,205フレームを全件照合し、micro pair F1は既存指標で0.7468、選手同士で0.9544。疑似正解の人手誤り率は未記録のため暫定値。標準パイプラインの採用判断は据え置く。 [設定選択と実データ結果](../../runs/run-multiview-pose-link-recall-20261124/README.md)
+meiji_4camは全69 clip・46,228フレームで候補を生成し、85.90%のDINO行を割り当てた。4 CPUプロセスで367.68秒。標準パイプラインの採用判断は据え置く。 [設定選択と実データ結果](../../runs/run-multiview-pose-link-recall-20261124/README.md)
 
-同じ映像の過去のCourt投影点を使ったcam0の復元はRMSE 3.13 pxで校正上限を通過した。r18のcam1・cam2と組み合わせると、同一clipのボール注釈でhalf-turnが `[false, false, true]`、次点との差が0.475となった。親はこの補完を承認した。ViTPoseは3 clip・9視点の38,421行を計画で固定した。共有GPUロックのディレクトリがアクセス拒否のため本推論は未投入で、予約人物ラベルの採点は0回。
+同じ映像の過去のCourt投影点を使ったcam0の復元はRMSE 3.13 pxで校正上限を通過した。r18のcam1・cam2と組み合わせると、同一clipのボール注釈でhalf-turnが `[false, false, true]`、次点との差が0.475となった。親はこの補完を承認した。ViTPoseは3 clip・9視点の38,421行を計画で固定した。共有GPUロック4ファイルの読み書き権限が復旧待ちのため本推論は未投入で、予約人物ラベルの採点は0回。

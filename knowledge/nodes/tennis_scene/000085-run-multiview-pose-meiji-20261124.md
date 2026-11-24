@@ -55,4 +55,4 @@ tags: [meiji, multiview, cpu, frame_pose]
 
 全身の関節と骨長を検査して排他割当したところ、Meiji 3camの4開発clipでmicro pair F1は肩・腰試作の0.8485から0.8050になった。FPは1,102→906、FNは4,500→5,978。3視点のLOVOでは251,343 / 332,112関節を採点でき、再投影誤差は中央値9.59 px、P90 27.81 pxだった。 [採点と未使用視点の条件](../../runs/run-multiview-pose-meiji-20261124/README.md)
 
-meiji_4camではボール由来の共有判定をpinして69 clip・46,228元frameすべてで候補を保存した。4 CPUプロセスでの入力照合から公開確認まで329.00秒。ダブルスの割当精度は#2442の疑似正解で評価する。今回の新経路はフレーム別の候補までを対象とし、標準pipelineの採用判断は据え置く。 [全69 clipの結果](../../runs/run-multiview-pose-meiji-20261124/meiji4.json)
+meiji_4camではボール由来の共有判定をpinして69 clip・46,228元frameすべてで候補を保存した。4 CPUプロセスでの入力照合から公開確認まで329.00秒。今回の新経路はフレーム別の候補までを対象とし、標準pipelineの採用判断は据え置く。 [全69 clipの結果](../../runs/run-multiview-pose-meiji-20261124/meiji4.json)
