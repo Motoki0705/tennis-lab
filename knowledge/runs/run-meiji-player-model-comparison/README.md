@@ -33,6 +33,8 @@ The archived DINO input is 750 by 1,333 pixels, batch 1, person confidence at le
 
 The [RF-DETR-L accuracy record](../run-meiji-rfdetr-large-accuracy/results.json) contains the complete accuracy, candidate-versus-PT32 parity and box-margin sensitivity results. [RF-DETR licensing and reproduction](rfdetr.md) · [EdgeCrafter evidence](EDGECRAFTER.md) · [RT-DETRv4 evidence](rtdetrv4.md)
 
+The five measured baseline and RF-DETR-L conditions were rescored from their pinned predictions with the #2495 equal-IoU ordering rule. Every metric and stratum was identical to its previous value. The [rescoring receipt](accuracy-recheck.json) identifies the scorer commit and the fresh full-score files.
+
 ## ECPose recipe contract
 
 The [ECPose configuration and output contract](../../../src/tennis_scene/pipeline/ECPOSE.md) uses the [shared recipe design](https://github.com/Motoki0705/tennis-lab/issues/2491#issuecomment-7129950015). The tests run the real decoder with a fake model and verify rows through the component store.
