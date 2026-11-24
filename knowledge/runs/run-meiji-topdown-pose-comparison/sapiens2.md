@@ -10,19 +10,19 @@ the local file size and digest before loading. [Official pose releases](https://
 | Sapiens2-5B | [facebook/sapiens2-pose-5b](https://huggingface.co/facebook/sapiens2-pose-5b/tree/ada1f29aa1fd454ca28665c700923a0101b6b24f) | 20,480,899,148 | 5,120,198,663 |
 
 The model cards list pose estimation and human-centric vision research as
-intended uses. The project requires user acceptance of the Meta agreement before
-using the materials for this evaluation. Both Hugging Face repositories returned
-`gated=false` and an unauthenticated redirect for the pinned checkpoint name.
+intended uses. On 2026-11-24, the user accepted the pinned Meta Sapiens2 License
+for this evaluation, including conversion to ONNX and TensorRT. Both Hugging
+Face repositories returned `gated=false` and an unauthenticated redirect
+for the pinned checkpoint name.
+[User decision in #2492](https://github.com/Motoki0705/tennis-lab/issues/2492)
 [1B metadata](https://huggingface.co/api/models/facebook/sapiens2-pose-1b?blobs=true)
 [5B metadata](https://huggingface.co/api/models/facebook/sapiens2-pose-5b?blobs=true)
 
-Discuss production use under the same agreement when evaluating an adoption
-proposal. The agreement restricts surveillance and biometric processing,
-requires compliance with applicable privacy and trade rules, and requires
-acknowledging the use of the materials when publishing research results.
-Third-party distribution of the materials or derivatives requires the Meta terms
-and a copy of the agreement. Treat checkpoints and their derived ONNX graphs
-and TensorRT engines as licensed materials. [Meta Sapiens2 License](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/LICENSE.md)
+### Production adoption
+
+1. Determine whether the prohibition on biometric processing covers this use of pose estimation. [License §1(b)(vi)](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/LICENSE.md#1-license-rights-and-redistribution)
+2. Include a copy of the Sapiens2 License when redistributing the materials or derivatives under its terms, including derived ONNX models and TensorRT engines. [License §1(b)(i)](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/LICENSE.md#1-license-rights-and-redistribution)
+3. Acknowledge use of Sapiens2 when publishing the research results. [License §1(b)(ii)](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/LICENSE.md#1-license-rights-and-redistribution)
 
 ## Input and output
 
@@ -57,10 +57,10 @@ verification.
 
 ## Reproduction
 
-After project approval under the Meta agreement, use the pinned source and
-official weight names. The source package declares Python 3.12 or newer. Use
-an isolated environment to preserve the shared repository environment and
-record the resolved PyTorch, CUDA, TensorRT, and exporter versions with the run.
+Use the pinned source and official checkpoint names. The source package
+declares Python 3.12 or newer. The isolated environment uses the GPU package
+versions from the shared benchmark environment. Keep the exported package
+versions with the run.
 [Upstream requirements](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/pyproject.toml)
 
 ```bash
@@ -71,8 +71,14 @@ export PYTHONPATH="$PWD:$run"
 mkdir -p "$assets"
 git clone https://github.com/facebookresearch/sapiens2.git "$assets/upstream"
 git -C "$assets/upstream" checkout --detach 7e5bae88456ac418ff0e58e74106c9fe192055d4
-UV_PROJECT_ENVIRONMENT="$assets/runtime" uv sync --locked --python 3.12 --extra tensorrt
-uv pip install --python "$assets/runtime/bin/python" "$assets/upstream" onnxscript
+uv pip freeze --python .venv/bin/python --exclude-editable |
+  rg '^(torch|torchvision|triton|cuda-[^=]+|nvidia-[^=]+|tensorrt-cu13[^=]*)==' \
+  > "$assets/gpu-runtime-constraints.txt"
+uv venv --python 3.12 "$assets/runtime"
+uv pip install --python "$assets/runtime/bin/python" \
+  --constraint "$assets/gpu-runtime-constraints.txt" \
+  '.[tensorrt]' "$assets/upstream" onnxscript nvidia-ml-py
+uv pip freeze --python "$assets/runtime/bin/python" > "$assets/runtime-freeze.txt"
 .venv/bin/hf download facebook/sapiens2-pose-1b sapiens2_1b_pose.safetensors \
   --revision f5fed8b97b99698d5eea1d14ff0855d0b4c3f000 --local-dir "$assets/weights"
 .venv/bin/hf download facebook/sapiens2-pose-5b sapiens2_5b_pose.safetensors \
@@ -124,8 +130,8 @@ parity status and the reason the PT32 reference is unavailable.
 
 | Model | PT32 | PT16 | TRT16 |
 |---|---|---|---|
-| Sapiens2-1B | Pending checkpoint use and GPU run | Pending checkpoint use and GPU run | Pending checkpoint use, conversion and GPU run |
-| Sapiens2-5B | Pending CUDA allocation attempt | Pending checkpoint use and GPU run | Pending checkpoint use, conversion and GPU run |
+| Sapiens2-1B | Pending checkpoint verification and GPU run | Pending checkpoint verification and GPU run | Pending checkpoint verification, conversion and GPU run |
+| Sapiens2-5B | Pending CUDA allocation attempt | Pending checkpoint verification and GPU run | Pending checkpoint verification, conversion and GPU run |
 
 The 5B checkpoint contains 20,480,794,652 bytes (19.074 GiB) of FP32
 tensors. The RTX 5060 Ti reported 16,311 MiB. The checkpoint therefore
