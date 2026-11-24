@@ -1,0 +1,251 @@
+<!doctype html>
+<html lang="ja">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>meiji_4cam · 旧経路と新経路の比較</title>
+  <style>
+    :root {
+      color-scheme: light dark;
+      --bg: #eef2f1; --panel: #fff; --ink: #152921; --muted: #4f655b;
+      --line: #cbd9d2; --accent: #175d47; --tint: #e0ece6; --canvas: #17191b;
+    }
+    @media (prefers-color-scheme: dark) {
+      :root {
+        --bg: #101a17; --panel: #172520; --ink: #e4efe9; --muted: #acc1b7;
+        --line: #385147; --accent: #a5e1c9; --tint: #223a31;
+      }
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; background: var(--bg); color: var(--ink); font: 16px/1.6 system-ui, sans-serif; }
+    main { width: min(100% - 2rem, 1888px); margin: 1.75rem auto 3rem; }
+    h1, h2, p { margin: 0; }
+    h1 { font-size: clamp(1.5rem, 3vw, 2.4rem); letter-spacing: -.035em; line-height: 1.2; }
+    h2 { font-size: 1.07rem; }
+    a { color: var(--accent); text-underline-offset: .2em; }
+    code { font-size: .87em; overflow-wrap: anywhere; }
+    .muted { color: var(--muted); }
+    .tabular { font-variant-numeric: tabular-nums; }
+    .intro { margin: .55rem 0 1.15rem; }
+    .card { background: var(--panel); border: 1px solid var(--line); border-radius: .7rem; overflow: hidden; }
+    .chooser { display: flex; align-items: flex-end; gap: .5rem; padding: .85rem 1rem; flex-wrap: wrap; }
+    .field { display: grid; gap: .2rem; font-size: .8rem; font-weight: 650; }
+    select, button { min-height: 2.6rem; border: 1px solid var(--line); border-radius: .4rem; background: var(--bg); color: var(--ink); font: inherit; }
+    select { padding: .3rem 1.8rem .3rem .55rem; }
+    button { min-width: 2.6rem; cursor: pointer; }
+    button:disabled { cursor: default; opacity: .45; }
+    :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .spacer { flex: 1; }
+    #stage-name { align-self: center; color: var(--accent); font-size: .86rem; font-weight: 650; }
+    .panels { display: grid; grid-template-columns: 1fr 1fr; background: var(--tint); border-top: 1px solid var(--line); }
+    .panels div { padding: .35rem 1rem; }
+    .panels div + div { border-left: 1px solid var(--line); }
+    video { width: 100%; display: block; background: var(--canvas); }
+    .legend { display: flex; gap: .4rem 1rem; flex-wrap: wrap; padding: .65rem 1rem; font-size: .82rem; }
+    .mark { display: inline-block; min-width: 1.2rem; padding: 0 .16rem; margin-right: .3rem; text-align: center; border-radius: .16rem; background: var(--canvas); font-weight: 700; }
+    .swatch { display: inline-block; width: 1rem; height: .1rem; margin-right: .35rem; vertical-align: middle; border-top: 2px dashed #a47314; }
+    .content { display: grid; grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); gap: .85rem; margin-top: .85rem; align-items: start; }
+    .block { padding: .9rem 1rem; }
+    .scroll { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; text-align: left; margin-top: .45rem; font-size: .85rem; }
+    th, td { vertical-align: top; padding: .45rem .6rem; border-bottom: 1px solid var(--line); }
+    th:first-child { padding-left: 0; }
+    th[scope="row"] { min-width: 9rem; }
+    thead th { color: var(--accent); }
+    .counts { display: flex; flex-wrap: wrap; gap: .1rem .65rem; }
+    .counts span { white-space: nowrap; }
+    details { margin-top: .75rem; padding-top: .65rem; border-top: 1px solid var(--line); font-size: .85rem; }
+    summary { cursor: pointer; color: var(--accent); font-weight: 650; }
+    dl { margin: .5rem 0 0; }
+    dt { font-weight: 650; }
+    dd { margin: 0 0 .5rem; }
+    .note { margin-top: .55rem; font-size: .82rem; }
+    .error { color: var(--ink); font-weight: 600; padding: .6rem 1rem; }
+    [hidden] { display: none !important; }
+    @media (max-width: 780px) {
+      main { width: calc(100% - 1rem); margin-top: 1rem; }
+      .content { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+<main>
+  <header>
+    <h1>meiji_4cam の3D人物比較</h1>
+    <p id="intro" class="intro muted"></p>
+  </header>
+  <section class="card" aria-label="旧経路と新経路の同期動画">
+    <div class="chooser">
+      <label id="stage-field" class="field" hidden>比較段階<select id="stage"></select></label>
+      <label class="field">clip<select id="clip"></select></label>
+      <button id="previous" type="button" aria-label="前のclip">←</button>
+      <button id="next" type="button" aria-label="次のclip">→</button>
+      <span class="spacer"></span>
+      <span id="stage-name"></span>
+    </div>
+    <div class="panels">
+      <div><h2>旧経路</h2></div>
+      <div><h2>新経路</h2></div>
+    </div>
+    <video id="video" controls playsinline preload="metadata" aria-label="4視点とコート上面図の同期比較"></video>
+    <p id="video-error" class="error" role="status" hidden></p>
+    <div id="legend" class="legend" aria-label="動画の凡例"></div>
+  </section>
+  <div class="content">
+    <section class="card block" aria-labelledby="metrics-title">
+      <h2 id="metrics-title">clip別の指標</h2>
+      <div class="scroll">
+        <table class="tabular">
+          <thead><tr><th scope="col">指標</th><th scope="col">旧経路</th><th scope="col">新経路</th></tr></thead>
+          <tbody id="metrics"></tbody>
+        </table>
+      </div>
+      <p class="note muted">分母は間引き前の元フレームです。3D被覆は有効な3D関節のある骨格が1体以上ある割合です。人数とコア内人数はフレーム数で集計します。新経路にはコート外の人物も含まれます。</p>
+      <p class="note muted">旧経路の時間は初回の実行済みノードの合計（並行区間を含む）、新経路は保存済み2D観測からの骨格復元と割当です。未使用視点の残差を測る対応観測はこの比較の保存データに含まれていません。</p>
+    </section>
+    <section class="card block" aria-labelledby="details-title">
+      <h2 id="details-title">表示したデータ</h2>
+      <dl id="details" aria-live="polite"></dl>
+      <details><summary>clipの選定と動画の設定</summary><p id="selection" class="note"></p></details>
+      <details id="stop-details"><summary>初回の停止記録</summary><p id="stop" class="note"></p></details>
+      <p class="note"><a href="manifest.json">選定・版・指標の記録（JSON）</a> · <a id="open-video">動画を単体で開く</a></p>
+    </section>
+  </div>
+  <noscript><p class="error">clipの切替にはJavaScriptを有効にしてください。</p></noscript>
+</main>
+<script id="comparison-data" type="application/json"><!-- MANIFEST --></script>
+<script>
+  const manifest = JSON.parse(document.getElementById('comparison-data').textContent);
+  const get = id => document.getElementById(id);
+  const video = get('video');
+  const clipSelect = get('clip');
+  const stageSelect = get('stage');
+  const number = new Intl.NumberFormat('ja-JP');
+  const count = value => number.format(value);
+
+  function legendMark(text, color, label) {
+    const item = document.createElement('span');
+    const mark = document.createElement('span');
+    mark.className = 'mark';
+    mark.style.color = color;
+    mark.textContent = text;
+    item.append(mark, label);
+    return item;
+  }
+
+  const core = document.createElement('span');
+  const swatch = document.createElement('i');
+  swatch.className = 'swatch';
+  core.append(swatch, 'コア領域 |x| ≤ 5.485 m・|y| ≤ 16.885 m');
+  get('legend').append(core, legendMark('?', manifest.legend.ambiguous, '割当の接戦'),
+    legendMark('●', manifest.legend.ball, '両側で共有するボール3D'));
+  for (const row of manifest.legend.unassigned) {
+    get('legend').append(legendMark(row.letter, row.color, `未割当・${row.label}`));
+  }
+
+  function metric(label, left, right) {
+    const tr = document.createElement('tr');
+    const th = document.createElement('th');
+    th.scope = 'row';
+    th.textContent = label;
+    tr.append(th);
+    for (const value of [left, right]) {
+      const td = document.createElement('td');
+      td.append(value);
+      tr.append(td);
+    }
+    return tr;
+  }
+
+  function distribution(histogram) {
+    const line = document.createElement('div');
+    line.className = 'counts';
+    for (const [people, frames] of Object.entries(histogram)) {
+      const item = document.createElement('span');
+      item.textContent = `${people}人 ${count(frames)} f`;
+      line.append(item);
+    }
+    return line;
+  }
+
+  function detail(label, text, isCode = false) {
+    const title = document.createElement('dt');
+    title.textContent = label;
+    const value = document.createElement('dd');
+    if (isCode) {
+      const code = document.createElement('code');
+      code.textContent = text;
+      value.append(code);
+    } else {
+      value.textContent = text;
+    }
+    get('details').append(title, value);
+  }
+
+  function showClip() {
+    const stage = manifest.stages[stageSelect.selectedIndex];
+    const clip = stage.clips[clipSelect.selectedIndex];
+    const {legacy, new: current, source_frames: frames, ball_valid_frames: ball} = clip.metrics;
+    get('video-error').hidden = true;
+    video.pause();
+    video.poster = clip.poster;
+    video.src = clip.video;
+    get('open-video').href = clip.video;
+    get('previous').disabled = clipSelect.selectedIndex === 0;
+    get('next').disabled = clipSelect.selectedIndex === stage.clips.length - 1;
+
+    const coverage = value => `${(100 * value / frames).toFixed(1)}% (${count(value)} / ${count(frames)} f)`;
+    const projection = stats => stats === null ? '未計測' : `中央値 ${stats.median_px.toFixed(1)} px（${count(stats.points)}点）`;
+    const oldStatus = legacy.status === 'stopped' ? `停止 · ${legacy.baseline_stop_label}` : '生成済み';
+    get('metrics').replaceChildren(
+      metric('人物再構成', oldStatus, current.status === 'complete' ? '出力あり' : '停止'),
+      metric('3D被覆', coverage(legacy.populated_frames), coverage(current.populated_frames)),
+      metric('骨格数の分布', distribution(legacy.count_histogram), distribution(current.count_histogram)),
+      metric('コア内骨格数の分布', distribution(legacy.core_count_histogram), distribution(current.core_count_histogram)),
+      metric('未使用視点への再投影', projection(legacy.unused_view_reprojection), projection(current.unused_view_reprojection)),
+      metric('処理時間', `${legacy.node_seconds.toFixed(2)}秒`, `${current.reconstruction_seconds.toFixed(2)}秒`),
+      metric('接戦のあるフレーム', '—', coverage(current.ambiguous_frames)),
+    );
+
+    get('details').replaceChildren();
+    const provenance = clip.provenance;
+    detail('旧経路の scene_assembly ID', provenance.legacy_scene_assembly?.artifact_id ?? '採用シーンなし', true);
+    detail('新経路の frame_pose_candidates ID', provenance.candidate_artifact.artifact_id, true);
+    detail('ボール3D', ball > 0 ? `採用シーンから両側に表示 · ${coverage(ball)}` : '採用シーンに有効な3D球なし');
+    detail('動画', `${count(clip.video_frames)} f · ${clip.video_fps.toFixed(2)} fps · ${(clip.video_bytes / 1e6).toFixed(2)} MB`);
+    get('stop-details').hidden = legacy.baseline_stop_code === null;
+    get('stop').textContent = [legacy.baseline_stop_code, legacy.baseline_error].filter(Boolean).join(' · ');
+  }
+
+  function showStage() {
+    const selected = clipSelect.value;
+    const stage = manifest.stages[stageSelect.selectedIndex];
+    const {selection} = manifest;
+    get('stage-name').textContent = stage.label;
+    get('intro').textContent = `${stage.clips.length} clipの4視点とコート上面図を同期再生します。${stage.description}`;
+    clipSelect.replaceChildren(...stage.clips.map(clip => new Option(
+      `${clip.id.split('/').at(-1)} · ${clip.metrics.legacy.baseline_stop_code ? '初回停止' : '無作為抽出'}`, clip.id)));
+    if (stage.clips.some(clip => clip.id === selected)) clipSelect.value = selected;
+    const successes = selection.sampled_successes.map(path => path.split('/').at(-1)).join('、');
+    const {encoding} = stage;
+    video.style.aspectRatio = `${encoding.width} / ${encoding.height}`;
+    get('selection').textContent = `初回に停止した${selection.stopped.length}本と、成功${selection.success_population}本を名前順に並べてseed ${selection.seed}で抽出した${successes}。H.264 ${encoding.width}×${encoding.height}、元の${encoding.frame_step}フレームごと、CRF ${encoding.crf}。`;
+    showClip();
+  }
+
+  stageSelect.replaceChildren(...manifest.stages.map(stage => new Option(stage.label, stage.id)));
+  get('stage-field').hidden = manifest.stages.length < 2;
+  get('stage-name').hidden = manifest.stages.length > 1;
+  stageSelect.addEventListener('change', showStage);
+  clipSelect.addEventListener('change', showClip);
+  get('previous').addEventListener('click', () => { clipSelect.selectedIndex -= 1; showClip(); });
+  get('next').addEventListener('click', () => { clipSelect.selectedIndex += 1; showClip(); });
+  video.addEventListener('error', () => {
+    const message = get('video-error');
+    message.textContent = '動画を読み込めません。同じフォルダの動画ファイルとH.264の再生環境を確認してください。';
+    message.hidden = false;
+  });
+  showStage();
+</script>
+</body>
+</html>
