@@ -24,7 +24,8 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.tasks.player_association.evaluation.labels import AMBIGUOUS, CameraLabels
-from src.utils.geometry.bbox import match_iou, pairwise_iou
+from src.utils.geometry.bbox import match_iou as _unit_matches
+from src.utils.geometry.bbox import pairwise_iou
 
 _COUNTS = (
     "frames", "labelled_frames", "detections", "known_player_units", "known_non_player_units",
@@ -75,7 +76,7 @@ class PartialDetectionMetrics:
         overlaps = pairwise_iou(boxes, label_boxes)
         iou = np.column_stack([overlaps[:, people == person].max(axis=1) for person in units]) \
             if len(units) else np.empty((len(boxes), 0), np.float64)
-        assigned_detections, assigned_units = match_iou(iou, self.min_iou)
+        assigned_detections, assigned_units = _unit_matches(iou, self.min_iou)
         assigned: set[int] = set(assigned_detections.tolist())
         for detection, unit in zip(assigned_detections, assigned_units, strict=True):
             role = str(unit_roles[unit])
