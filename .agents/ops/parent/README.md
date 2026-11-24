@@ -27,7 +27,8 @@ v2 の更新は索引と親レコードの新しい内容を先に準備する�
 
 - [session.py](session.py) と [execution.py](execution.py) が担当と実行根拠を照合する。
 - [launch.py](launch.py)・[manual_workers.py](manual_workers.py)・[development.py](development.py) が委任予約、手動実行、dispatcherとの接続を扱う。
-- [worker_monitor.py](worker_monitor.py) は、固定した起動元HEADから運用コードを一時のdetached worktreeに展開するsystemd user serviceを起動する。service停止時にworktreeを回収する。監視中のレジストリ処理はGit共通lockを使い、CI・queueや空き枠を待つ間はlockを解放する。queueの終端ファイルから60秒以内に完了記録を観測できなければ、`wait-worker` にエラーを返す。
+- [local_jobs.py](local_jobs.py) は、GPU不要の長時間ローカルコマンドを独立したsystemd user transient service（`tennis-lab-local-job-<job_id>`）として実行し、`PARENT_LOCAL_JOBS_DIR` または `<state_dir>/local-jobs/<job_id>/` に実行記録・ログ・完了記録を保存する。
+- [worker_monitor.py](worker_monitor.py) は、固定した起動元HEADから運用コードを一時のdetached worktreeに展開するsystemd user serviceを起動する。service停止時にworktreeを回収する。監視中のレジストリ処理はGit共通lockを使い、CI・queue・`local` jobや空き枠を待つ間はlockを解放する。queueの終端ファイルから60秒以内、`local` jobのプロセス消滅から10秒以内に完了記録を観測できなければ、`wait-worker` にエラーを返す。
 - [review_handoff.py](review_handoff.py) が [マージ自動進行](../review/README.md) へ渡す。
 - [completion.py](completion.py) と [improvements.py](improvements.py) が全体の受入・次回改善を記録する。改善提案の期限処理は [systemd](systemd/) にある。
 
