@@ -61,6 +61,26 @@ The accuracy artifacts live under `rfdetr-l/<backend>/`. The checked ONNX, engin
 
 The completed L accuracy run records all three backends, including the TensorRT plan, output hashes and exact queue commands. [Run findings](../../nodes/player_detection/000009-run-meiji-rfdetr-large-accuracy.md) · [Artifact inventory and metrics](../run-meiji-rfdetr-large-accuracy/results.json)
 
+## Fixed speed comparison
+
+Use #2496's 96 native BGR images in manifest order. The CLI checks the manifest, frame index and image hashes and measures batches 1 and 2 on a non-default CUDA stream. Each case uses a fresh process, 30 warmups and three blocks of 100 timed batches. The benchmark reads the PT32 batch-1 reference for RF-DETR-L and applies #2496's DINO output criteria. Those criteria require matched box IoU P05 ≥0.98, score absolute error P95 ≤0.01, and missing and extra rates ≤1%. The pseudo-GT recall run has its own recorded output comparison. [Fixed input and baseline protocol](../run-person-model-speed-baseline/README.md) · [Baseline parity implementation](../run-person-model-speed-baseline/parity.py)
+
+Use the reproduction environment above with `OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2` for speed. The existing batch-1 TensorRT plan is reusable. Export and build the same checkpoint with `--batch-size 2` to prepare the batch-2 plan. Run the build and each speed invocation through the shared training queue. Run PT32 batch 1 first.
+
+```bash
+checkout_root=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+speed_inputs="$checkout_root/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs"
+"${rf[@]}" export --batch-size 2
+"${rf[@]}" build --batch-size 2
+for mode in pt32 pt16 trt16; do
+  for batch in 1 2; do
+    "${rf[@]}" speed --backend "$mode" --batch-size "$batch" --speed-inputs "$speed_inputs"
+  done
+done
+```
+
+Reports at `rfdetr-l/<backend>/speed-b<batch>.json` include the case status, timings, VRAM and parity. The corresponding `speed-b<batch>-predictions.json` records the ordered image IDs and decoded outputs for parity. The harness includes the available export and engine-build receipts for TRT16.
+
 ## CPU preflight
 
 - The official L checkpoint loaded on CPU with 33,933,218 parameters, 300 queries and 91 sparse COCO logit slots. At `video_000/clip_003`, `cam0`, source frame 120, the adapter's 10 person boxes and scores exactly matched the vendor API at cutoff 0.25.

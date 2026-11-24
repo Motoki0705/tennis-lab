@@ -6,6 +6,7 @@ import json
 import runpy
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
@@ -14,7 +15,12 @@ from numpy.typing import NDArray
 
 from src.tennis_scene.evaluation.player_pose.scoring import FrameKey, Predictions
 from src.utils.checksum import dual_sha256
-from src.utils.inference_benchmark import Backend
+from src.utils.inference_benchmark import (
+    Backend,
+    ConditionUnavailable,
+    Conversion,
+    Status,
+)
 from src.utils.io import write_json_atomic
 from src.utils.models.tensorrt_artifacts import (
     ONNX_FILE,
@@ -182,3 +188,72 @@ def test_existing_large_engine_accepts_only_empty_retired_metadata(
     )
     with pytest.raises(ValueError, match="export settings mismatch"):
         _SCRIPT["load_engine"](model, tmp_path, 1)
+
+
+def test_speed_batches_use_manifest_order_and_full_image_counts(
+    monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    ids = tuple(f"frame_{frame}" for frame in range(95, -1, -1))
+    fixed = SimpleNamespace(
+        sha256=_SCRIPT["SPEED_MANIFEST_SHA256"],
+        manifest={"id": "meiji_4cam/person-model-speed-v1"},
+        rows=lambda index: [{"id": key} for key in ids],
+        frame=lambda key: np.full((1, 1, 3), int(key.split("_")[1]), np.uint8),
+    )
+    speed_batches = _SCRIPT["speed_batches"]
+    monkeypatch.setitem(
+        speed_batches.__globals__,
+        "import_module",
+        lambda name: SimpleNamespace(InputSet=lambda directory: fixed),
+    )
+    _, batches = speed_batches(tmp_path, 2)
+    assert len(batches) == 48
+    assert tuple(key for batch in batches for key in batch.ids) == ids
+    assert [image[0, 0, 0] for image in batches[0].data] == [95, 94]
+    assert all(batch.item_count == batch.processed_items == 2 for batch in batches)
+
+    fixed.sha256 = "0" * 64
+    with pytest.raises(ValueError, match="Unexpected fixed speed manifest SHA-256"):
+        speed_batches(tmp_path, 2)
+
+
+def test_speed_reference_rejects_a_changed_prediction_file(tmp_path: Path) -> None:
+    pins = {"input_manifest_sha256": _SCRIPT["SPEED_MANIFEST_SHA256"]}
+    ids = ["frame_a"]
+    output = tmp_path / "speed-b1-predictions.json"
+    rows = {"frame_a": {"boxes": [[1, 2, 3, 4]], "scores": [0.5]}}
+    write_json_atomic(output, {**pins, "input_ids": ids, "rows": rows})
+    write_json_atomic(
+        tmp_path / "speed-b1.json",
+        {
+            "status": "ok",
+            "case": {**pins, "name": "rfdetr-l", "backend": "PT32", "batch_size": 1},
+            "weights": {"model": {"sha256": "a" * 64}},
+            "parity": {"metrics": {"predictions_sha256": dual_sha256(output)}},
+        },
+    )
+    read = _SCRIPT["read_speed_reference"]
+    assert read(tmp_path, ids, "a" * 64) == rows
+    write_json_atomic(output, {**pins, "input_ids": ids, "rows": {}})
+    with pytest.raises(ConditionUnavailable, match="checksum differs") as caught:
+        read(tmp_path, ids, "a" * 64)
+    assert caught.value.status is Status.PARITY_UNAVAILABLE
+
+
+def test_failed_engine_conversion_is_passed_to_the_benchmark(tmp_path: Path) -> None:
+    write_json_atomic(
+        tmp_path / "engine_build.json",
+        {
+            "phase": "engine_build",
+            "wall_ms": None,
+            "failure": {
+                "status": "oom",
+                "phase": "engine_build",
+                "message": "builder OOM",
+            },
+        },
+    )
+    (result,) = _SCRIPT["speed_conversion"](tmp_path)
+    assert result.phase is Conversion.ENGINE_BUILD
+    assert result.failure.status is Status.OOM
+    assert result.failure.message == "builder OOM"
