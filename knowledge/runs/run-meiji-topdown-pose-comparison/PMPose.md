@@ -38,6 +38,17 @@ For the GPU commands use the shared training queue’s exclusive reservation. To
 
 Use the [common accuracy runner](README.md#accuracy-command) with `--model pmpose-l` or `pmpose-h`, the matching checkpoint and SHA-256 from `pmpose_assets.py`, and `--source-root "$source_root"`. Record both the scores against the pinned #2495 bundle and coordinate differences from that model’s PT32 predictions.
 
+## CPU preflight
+
+The shared PyTorch `2.13.0+cu130` environment completed the two-row real-checkpoint comparison against upstream `inference_topdown` for each model. The COCO17 and extra axes were checked, including the 23 native coordinates. Presence, visibility, expected OKS and heatmap peak agreed exactly. The maximum difference for the normalized error head was `2.33e-11`. Both FP16 ONNX files passed the ONNX checker and expose `pixels` as FP16 and `heatmaps` as FP32, with a dynamic batch axis.
+
+| Model | Parameters | Maximum absolute native-coordinate difference | ONNX export wall time |
+| --- | ---: | ---: | ---: |
+| PMPose-L | 421,922,675 | 0.000007183 px | 78.333 s |
+| PMPose-H | 814,320,243 | 0.000007487 px | 152.827 s |
+
+The verified run used commit `0860ce5e12c953dc5520f02a502cc50cc2b3381b` and local job `20261124T123234Z_03845a48192c_i2490-pmpose-parity-export`. Under `outputs/pmpose/`, `*-official-parity.json` contains the CPU comparison, `*-export.json` the conversion timing, and `*-engine/export.json` the verified checkpoints, ONNX hashes and tensor bindings. The import warning about an optional CPU 4-bit GEMM kernel appeared before the successful FP32 smoke and FP16 export.
+
 ## Tests
 
 Use small CPU fixtures with no weight or GPU requirement. Compare the rectangle contour against the demo’s raster-plus-OpenCV calculation, including fractional and edge-clipped boxes. An asymmetric pose with two boxes from one frame exercises row order, native-pixel decoding, flip restoration of eyes and limbs, the full 23-joint auxiliary axis and a missing heatmap. Inject distinct scores including zero to detect silent score filtering. Run the same assertion through the accuracy stages and the shared timing stages to check that both count the two real forwards. Loader tests exercise explicit rejection of an absent source, wrong checkpoint and absent TRT engine. Reuse `tests/unit/utils/test_inference_benchmark.py::test_exact_backend_selection_never_loads_another_backend` and the shared pose scorer tests for backend selection and fixed-denominator coverage. Measure the focused tests with `--durations=0 --durations-min=0`. The real-asset smoke will compare the adapter’s PT32 output against the upstream API on the same images, rectangles and weights.

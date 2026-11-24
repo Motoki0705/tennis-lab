@@ -26,7 +26,6 @@ from pose_contract import PoseBatch, PoseInput, PoseStages
 from src.utils.checksum import FileIntegrityError
 from src.utils.inference_benchmark import (
     Backend,
-    BatchStages,
     BenchmarkAdapter,
     ConditionUnavailable,
     Stage,
@@ -85,7 +84,7 @@ OUTPUT_SPEC = {
 }
 TensorOutputs = tuple[torch.Tensor, ...]
 ArrayOutputs = tuple[NDArray[np.float32], ...]
-Infer = Callable[[tuple[PoseInput, ...], PoseStages | BatchStages], PoseBatch]
+Infer = Callable[[tuple[PoseInput, ...], PoseStages], PoseBatch]
 
 
 def benchmark_settings(model_id: str, backend: Backend) -> dict[str, Any]:
@@ -309,9 +308,7 @@ def _infer(
     device: torch.device,
     dtype: torch.dtype,
 ) -> Infer:
-    def infer(
-        rows: tuple[PoseInput, ...], stages: PoseStages | BatchStages
-    ) -> PoseBatch:
+    def infer(rows: tuple[PoseInput, ...], stages: PoseStages) -> PoseBatch:
         if not rows:
             raise ValueError("PMPose requires at least one input row")
         cpu, metadata = stages.stage(
@@ -319,13 +316,12 @@ def _infer(
         )
         pixels = stages.stage(Stage.H2D, lambda: cpu.to(device=device, dtype=dtype))
         flipped = stages.stage(Stage.PREPROCESS, lambda: pixels.flip(-1), name="flip")
-        measure = (
-            stages.measure_forward
-            if isinstance(stages, BatchStages)
-            else stages.forward
+        normal = stages.measure_forward(
+            backend, lambda: forward(pixels), name="original"
         )
-        normal = measure(backend, lambda: forward(pixels), name="original")
-        mirror = measure(backend, lambda: forward(flipped), name="flipped")
+        mirror = stages.measure_forward(
+            backend, lambda: forward(flipped), name="flipped"
+        )
         fused = stages.stage(
             Stage.POSTPROCESS, lambda: _fuse(normal, mirror), name="flip_restore"
         )

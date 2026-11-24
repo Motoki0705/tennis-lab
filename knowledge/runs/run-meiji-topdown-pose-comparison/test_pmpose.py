@@ -7,6 +7,7 @@ import cv2
 import numpy as np
 import pytest
 import torch
+from evaluate import AccuracyStages
 from pmpose import (
     HEATMAP_HW,
     JOINT_ORDER,
@@ -84,19 +85,6 @@ def test_right_eye_metadata_cannot_be_replaced_by_left_eye():
         _verify_joint_schema(meta)
 
 
-class ObservedStages:
-    def __init__(self) -> None:
-        self.forwards = []
-
-    def stage(self, stage, operation, *, name=""):
-        assert stage is not Stage.FORWARD
-        return operation()
-
-    def forward(self, backend, operation, *, name=""):
-        self.forwards.append((backend, name))
-        return operation()
-
-
 @pytest.mark.parametrize("timed", [False, True], ids=["accuracy", "shared-speed"])
 def test_flip_decode_keeps_original_row_order_and_auxiliary_joints(timed):
     frame = np.zeros((11, 20, 3), dtype=np.uint8)
@@ -164,7 +152,11 @@ def test_flip_decode_keeps_original_row_order_and_auxiliary_joints(timed):
     )
     event = SimpleNamespace(record=lambda: None, elapsed_time=lambda other: 1.0)
     cuda = SimpleNamespace(events=(event, event), synchronize=lambda: None)
-    stages = BatchStages(cuda, Backend.PT32, timed=True) if timed else ObservedStages()
+    stages = (
+        BatchStages(cuda, Backend.PT32, timed=True)
+        if timed
+        else AccuracyStages(Backend.PT32)
+    )
     output = infer(rows, stages)
     if isinstance(stages, BatchStages):
         names = [
@@ -172,10 +164,7 @@ def test_flip_decode_keeps_original_row_order_and_auxiliary_joints(timed):
         ]
         assert names == ["original", "flipped"]
     else:
-        assert stages.forwards == [
-            (Backend.PT32, "original"),
-            (Backend.PT32, "flipped"),
-        ]
+        assert stages.forward_count == 2
     assert output.keypoints_xyc.shape == (2, 17, 3)
     assert output.keypoints_xyc.dtype == np.float32
     np.testing.assert_array_equal(output.keypoints_xyc[0, 1], [27, 44, 0.5])

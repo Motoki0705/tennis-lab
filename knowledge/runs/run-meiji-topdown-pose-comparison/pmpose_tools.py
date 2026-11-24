@@ -3,10 +3,8 @@
 from __future__ import annotations
 
 import argparse
-from collections.abc import Callable
 from dataclasses import asdict
 from pathlib import Path
-from typing import TypeVar
 
 import numpy as np
 import torch
@@ -25,26 +23,10 @@ from pmpose import (
 from pmpose_assets import WEIGHTS, verify_checkpoint
 from pose_contract import PoseInput
 
-from src.utils.inference_benchmark import Backend, Conversion, Stage, measure_conversion
+from src.utils.inference_benchmark import Backend, Conversion, measure_conversion
 from src.utils.io import write_json_atomic
 from src.utils.models.tensorrt_artifacts import InputProfile
 from src.utils.models.tensorrt_build import build_bundle, export_bundle
-
-Value = TypeVar("Value")
-
-
-class _ParityStages:
-    def stage(
-        self, stage: Stage, operation: Callable[[], Value], *, name: str = ""
-    ) -> Value:
-        return operation()
-
-    def forward(
-        self, backend: Backend, operation: Callable[[], Value], *, name: str = ""
-    ) -> Value:
-        if backend is not Backend.PT32:
-            raise ValueError("The upstream API smoke must use PT32")
-        return operation()
 
 
 def _export(args: argparse.Namespace) -> None:
@@ -102,6 +84,8 @@ def _build(args: argparse.Namespace) -> None:
 
 
 def _smoke(args: argparse.Namespace) -> None:
+    from evaluate import AccuracyStages
+
     weight = WEIGHTS[args.model]
     verify_checkpoint(args.checkpoint, weight)
     upstream = load_official_pipeline(args.model, args.source_root)
@@ -125,7 +109,10 @@ def _smoke(args: argparse.Namespace) -> None:
             upstream, args.checkpoint, dtype=torch.float32, device=device
         )
         adapter = _infer(upstream, model, Backend.PT32, device, torch.float32)
-        observed = adapter(rows, _ParityStages())
+        stages = AccuracyStages(Backend.PT32)
+        observed = adapter(rows, stages)
+        if stages.forward_count != 2:
+            raise ValueError("PMPose flip-test parity requires two forwards")
         np.testing.assert_array_equal(frame, original_frame)
         np.testing.assert_array_equal(boxes, original_boxes)
         samples = upstream.api.inference_topdown(
