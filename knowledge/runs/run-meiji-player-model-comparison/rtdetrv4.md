@@ -13,7 +13,7 @@ The code carries Apache-2.0. The model zoo links to public, ungated downloads fo
 
 - Decode the source frame in BGR and convert to RGB. Stretch the whole native image to 640 × 640 using PIL bilinear interpolation, then convert to `[0,1]` without mean or standard-deviation normalization. The original width and height restore native box coordinates. [Upstream inference](https://github.com/AIMIA-PKU/RT-DETRv4/blob/55fefaaed7efe2a5f72d0a18fd4e05965e35c292/tools/inference/torch_inf.py)
 - Strictly restore the official EMA detector and call its deployment conversion with backbone auto-download disabled. Use the upstream focal-loss postprocessor in FP32 for all backends. Its scores are sigmoid probabilities for the global top 300 query/class pairs. Retain the internal class 0 (COCO person/category 1), clip native `xyxy` to the image, and remove boxes with zero area after clipping. Retain the scores for the shared scorer's cutoff sweep. The upstream visualization draws scores above 0.4. The inference graph applies no NMS. [Upstream postprocessor](https://github.com/AIMIA-PKU/RT-DETRv4/blob/55fefaaed7efe2a5f72d0a18fd4e05965e35c292/engine/rtv4/postprocessor.py)
-- PT32 uses CUDA with TF32 disabled. PT16 uses CUDA float16 autocast for the detector forward, including the PyTorch autocast policy for operations that require FP32. TRT16 runs the exported detector graph using typed FP16 internals and FP32 input/output bindings. The same GPU Torch FP32 postprocessor follows all three forwards. The original ONNX export declares a variable batch axis and fixes the spatial input at 640 × 640. Its trace selects the upstream decoder's batch-one anchor branch, so qualify this export with a batch-one profile.
+- PT32 uses CUDA with TF32 disabled. PT16 uses CUDA float16 autocast for the detector forward, including the PyTorch autocast policy for operations that require FP32. TRT16 runs the exported detector graph using typed FP16 internals and FP32 input/output bindings. The same GPU Torch FP32 postprocessor follows all three forwards. Trace ONNX with two images to capture the decoder's batch-dependent anchor expansion. Its batch axis remains variable with fixed 640 × 640 spatial dimensions.
 
 ## Local setup
 
@@ -50,29 +50,43 @@ PYTHONPATH=".:$assets/python-deps" OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
 For TensorRT preparation, run the CPU `export` step first. It creates the ONNX graph, the binding manifest and a timing or failure receipt. Run `build` in the shared training queue with the profile chosen for the speed sweep.
 
 ```bash
-trt=outputs/player-model-comparison/rtdetrv4-l/trt16
+trt=outputs/player-model-comparison/rtdetrv4-l/trt16/trace-b2
 PYTHONPATH=".:$assets/python-deps" OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 \
   .venv/bin/python -B knowledge/runs/run-meiji-player-model-comparison/rtdetrv4.py \
   --model-id rtdetrv4-l --upstream "$assets/RT-DETRv4" --weights "$assets/RTv4-L-hgnet.pth" \
   export --engine-dir "$trt/engine" --receipt "$trt/onnx-export.json"
 ```
 
-Use `build --device cuda:0 --engine-dir "$trt/engine" --receipt "$trt/engine-build.json" --opt-batch 1 --max-batch 1 --workspace-gib 1` after the same model and asset arguments, in the queue. This build uses a 1 GiB TensorRT workspace limit and a profile with min/opt/max all at batch 1. The multi-image profile will need an export that preserves the decoder's batch-dependent anchor expansion.
+Use `build --device cuda:0 --engine-dir "$trt/engine" --receipt "$trt/engine-build.json" --opt-batch 2 --max-batch 2 --workspace-gib 1` after the same model and asset arguments, in the queue. This sets a 1 GiB workspace limit and the same min/opt/max image batches of 1/2/2 as the #2496 DINO engine. This plan is shared by the batch-one accuracy and both speed cases.
 
 `accuracy.json` records agreement with the fixed SMPL-derived reference. `parity.json` compares same-image detector outputs with their PT32 counterpart after a 0.25 person-score cutoff. It stores missing/extra boxes and one-to-one matched IoU, pixel and score errors. The numerical acceptance limits are at least 99% matched on both sides at IoU ≥0.50, matched IoU P05 ≥0.90 and absolute score error P95 ≤0.025. The resulting PT32 parity measure is independent of pseudo-GT recall.
 
 ## ONNX conversion evidence
 
-Both exports completed at `9fe7b3987e52b7dd0f0d255e633bb310b0120861`. The common TensorRT exporter checked the graphs. A second read verified the per-file SHA-256 digests in `export.json`, ONNX opset 19, 18 GridSample nodes per network and FP16 for all floating-point initializers. The manifest below pins both the graph and its external weight file under `outputs/player-model-comparison/<model-id>/trt16/engine/`.
+Both initial batch-one traces completed at `9fe7b3987e52b7dd0f0d255e633bb310b0120861`. The common TensorRT exporter checked the graphs. A second read verified the per-file SHA-256 digests in `export.json`, ONNX opset 19, 18 GridSample nodes per network and FP16 for all floating-point initializers. The manifest below pins both the graph and its external weight file under `outputs/player-model-comparison/<model-id>/trt16/engine/`.
 
 | Model | ONNX export wall time | `export.json` SHA-256 | Local job |
 | --- | ---: | --- | --- |
 | L | 23.265 s | `83d24e3485ef95e1d8ad9358ad0a0b6e487837df73cf361487f2bae8b4411e44` | `20261124T114215Z_5ea907a8d63a_rtdetrv4-l-onnx` |
 | X | 32.411 s | `6b29778f5a14d3a57aa8405b03d0777afce586531496610af8caf5659f7ae64b` | `20261124T114215Z_9940a8133486_rtdetrv4-x-onnx` |
 
+The initial GPU attempt at `fb0c76e6f7a0ca6afa035f995b500c18c8ff1c95` stopped at the first PT32 forward in each model. The upstream encoder stores position tensors as plain CPU attributes. The adapter now registers those existing tensors as nonpersistent buffers after strictly loading the EMA state, so they follow the model to CUDA and keep their values. The initial TensorRT build selected a fixed batch-one binding from a symbolic ONNX input and failed the shared engine validation. The retry traces batch two and uses a profile spanning batches 1 and 2, keeping its conversion receipts under `trt16/trace-b2/`. PT16 and TRT16 accuracy in the initial attempt stopped at their missing prerequisites.
+
+## Shared speed input
+
+The [fixed baseline bundle](../run-person-model-speed-baseline/README.md) publishes `meiji_4cam/person-model-speed-v1`, SHA-256 `64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62`. Use its 96 decoded full frames and their order for every case, with image batches 1 and 2. The suite uses #2496's input loader and common timing harness, a non-default stream, and separate processes per timing case. `speed-b1.json` and `speed-b2.json` retain the full timing report with memory, environment and parity. Each case compares against its variant's timed PT32 batch-one outputs by image ID; those outputs and their SHA-256 are saved alongside the timing reports.
+
+For each variant, give the fixed speed bundle's `inputs/` directory and both manifest digests to the following command in the shared GPU queue. The accuracy manifest SHA-256 is `3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580`.
+
+```bash
+bash knowledge/runs/run-meiji-player-model-comparison/rtdetrv4_run.sh \
+  rtdetrv4-l "$SHARED_PERSON_SPEED_INPUTS" "$SPEED_SHA256" "$COHORT_SHA256"
+```
+
 ## Test design
 
 - The CPU unit fixtures check source width/height order and input channel scaling on unequal native image sizes. A stage-level fixture with two images and hand-computed pixel boxes checks alignment and the declared forward backend.
 - A two-image fixture checks that COCO person rows retain their score order and valid clipped coordinates, including a score below the demo threshold. The fixture also checks an empty result. A separate malformed output catches non-finite boxes becoming finite through clipping.
 - A fixture saved in the release's old format reproduces the original load failure and verifies that the EMA state is selected. The parity fixture reorders the same two detections and also exercises a candidate crossing the score cutoff.
+- The encoder test checks that the same cached tensors enter nonpersistent buffers and move with `.to()`. The speed reference test checks that a valid PT32 output can be used only with its original frame order and file contents.
 - Reuse `test_exact_backend_selection_never_loads_another_backend` for the shared benchmark's backend routing, `test_one_detection_cannot_match_two_players_and_an_unlabelled_box_has_no_fp` for partial-label scoring, and `test_pose_rows_keep_both_people_and_zero_detection_frames` for JSONL rows. The fixtures run on CPU with generated data. Measure with `pytest --durations=0 --durations-min=0.01` and qualify the upstream adapter separately with the actual L/X checkpoints.

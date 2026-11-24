@@ -33,14 +33,20 @@ from src.tennis_scene.evaluation.player_pose.scoring import (
     describe,
     score_players,
 )
-from src.utils.checksum import dual_sha256
+from src.utils.checksum import FileIntegrityError, dual_sha256
 from src.utils.geometry.bbox import match_iou, pairwise_iou
 from src.utils.inference_benchmark import (
     Backend,
+    Batch,
     BenchmarkAdapter,
+    BenchmarkCase,
+    BenchmarkProtocol,
+    ConditionUnavailable,
     Conversion,
     ParityResult,
     Stage,
+    Status,
+    benchmark,
     measure_conversion,
 )
 from src.utils.io import write_json_atomic
@@ -69,6 +75,7 @@ WEIGHT_SHA256 = {
     "rtdetrv4-x": "2925ec2e53d48e6141db8601c8656566219e696cd63bf8d6955190cae6bfd3f9",
 }
 ONNX_OPSET = 19
+TRACE_BATCH = 2
 INPUT_NAME = "pixels"
 OUTPUT_NAMES = ("pred_logits", "pred_boxes")
 GIB = 1024**3
@@ -182,6 +189,15 @@ def _load_pt_model(assets: Assets, config: _UpstreamConfig) -> _RawDetector:
     wrapper = _RawDetector(model.deploy())
     wrapper.eval()
     return wrapper
+
+
+def _register_encoder_positions(encoder: nn.Module) -> None:
+    # Upstream caches the fixed spatial positions as plain CPU attributes.
+    for index in encoder.use_encoder_idx:
+        name = f"pos_embed{index}"
+        position = getattr(encoder, name)
+        delattr(encoder, name)
+        encoder.register_buffer(name, position, persistent=False)
 
 
 def preprocess(rows: Sequence[ImageBGR]) -> tuple[torch.Tensor, torch.Tensor]:
@@ -338,6 +354,7 @@ def _export_settings() -> dict[str, JsonValue]:
         "upstream_commit": UPSTREAM_COMMIT,
         "mode": "official_deploy_raw",
         "opset": ONNX_OPSET,
+        "trace_batch": TRACE_BATCH,
         "input_hw": [IMAGE_SIDE, IMAGE_SIDE],
         "io_dtype": "float32",
     }
@@ -378,7 +395,9 @@ def load_detector(
         model = trt
     else:
         config, postprocessor = assets.config_and_postprocessor()
-        model = _load_pt_model(assets, config).to(device)
+        eager = _load_pt_model(assets, config)
+        _register_encoder_positions(eager.model.encoder)
+        model = eager.to(device)
     return Detector(backend, device, model, postprocessor.to(device))
 
 
@@ -417,7 +436,8 @@ def _export(assets: Assets, directory: Path) -> None:
                 with torch.no_grad():
                     torch.onnx.export(
                         wrapper,
-                        (torch.zeros(1, 3, IMAGE_SIDE, IMAGE_SIDE),),
+                        # Trace the upstream anchor repeat with a symbolic batch size.
+                        (torch.zeros(TRACE_BATCH, 3, IMAGE_SIDE, IMAGE_SIDE),),
                         str(fp32),
                         input_names=[INPUT_NAME],
                         output_names=list(OUTPUT_NAMES),
@@ -446,8 +466,8 @@ def _export(assets: Assets, directory: Path) -> None:
 
 
 def _build(args: argparse.Namespace, device: torch.device) -> None:
-    if not 1 <= args.opt_batch <= args.max_batch:
-        raise ValueError("Expected 1 <= --opt-batch <= --max-batch")
+    if not 1 <= args.opt_batch <= TRACE_BATCH or args.max_batch != TRACE_BATCH:
+        raise ValueError(f"Expected a profile covering batches 1 to {TRACE_BATCH}")
     chw = (3, IMAGE_SIDE, IMAGE_SIDE)
     build_bundle(
         args.engine_dir,
@@ -573,6 +593,147 @@ def _accuracy(args: argparse.Namespace, assets: Assets, device: torch.device) ->
         )
 
 
+def _speed_reference(
+    directory: Path, case: BenchmarkCase, ids: tuple[str, ...], weight_sha256: str
+) -> tuple[dict[str, Predictions], str]:
+    report_path = directory / "speed-b1.json"
+    if not report_path.is_file():
+        raise ConditionUnavailable(
+            Status.PARITY_UNAVAILABLE, f"Missing PT32 batch-one report: {report_path}"
+        )
+    report = json.loads(report_path.read_bytes())
+    if (
+        report["status"] != "ok"
+        or report["case"]["name"] != case.name
+        or report["case"]["backend"] != Backend.PT32
+        or report["case"]["batch_size"] != 1
+        or report["case"]["input_manifest_sha256"] != case.input_manifest_sha256
+        or report["weights"]["model"]["sha256"] != weight_sha256
+    ):
+        raise ConditionUnavailable(
+            Status.PARITY_UNAVAILABLE, f"Incompatible PT32 reference: {report_path}"
+        )
+    digest = report["parity"]["metrics"]["predictions_sha256"]
+    try:
+        path = pinned_file(
+            directory, {"path": "speed-b1-predictions.json", "sha256": digest}
+        )
+    except (ValueError, FileIntegrityError) as error:
+        raise ConditionUnavailable(Status.PARITY_UNAVAILABLE, str(error)) from error
+    artifact = json.loads(path.read_bytes())
+    if tuple(artifact["input_ids"]) != ids or artifact["rows"].keys() != set(ids):
+        raise ConditionUnavailable(
+            Status.PARITY_UNAVAILABLE, f"PT32 input IDs differ: {path}"
+        )
+    rows = {
+        key: Predictions(
+            np.asarray(row["boxes_xyxy"], np.float32).reshape(-1, 4),
+            np.asarray(row["scores"], np.float32),
+        )
+        for key, row in artifact["rows"].items()
+    }
+    return rows, digest
+
+
+def _speed(args: argparse.Namespace, assets: Assets, device: torch.device) -> None:
+    # Use #2496's loader and batching, including the published input order and hashes.
+    baseline = import_module("run")
+    fixed = baseline.InputSet(args.inputs)
+    if fixed.sha256 != args.inputs_sha256:
+        raise ValueError(f"Speed manifest SHA-256 mismatch: {args.inputs}")
+    batches = baseline.inputs(fixed, "dino", args.batch_size)
+    ids = tuple(key for batch in batches for key in batch.ids)
+    protocol = BenchmarkProtocol(batch_sizes=baseline.SWEEPS["dino"])
+    conversion = tuple(baseline.load_conversion(path) for path in args.conversion)
+    engine_profiles = {}
+    if args.backend is Backend.TRT16 and args.engine_dir is not None:
+        manifest = args.engine_dir / "engine.json"
+        if manifest.is_file():
+            engine_profiles = json.loads(manifest.read_bytes())["profiles"]
+    case = BenchmarkCase(
+        assets.model_id,
+        args.backend,
+        args.batch_size,
+        "image",
+        fixed.sha256,
+        {
+            "dataset_id": fixed.manifest["id"],
+            "input_decode": "predecoded BGR",
+            "input_hw": [IMAGE_SIDE, IMAGE_SIDE],
+            "cuda_stream": "non-default",
+            "host_threads": torch.get_num_threads(),
+            "num_queries": NUM_QUERIES,
+            "postprocessor": "official PyTorch FP32 sigmoid/global top-k",
+            "pytorch_autocast_fp16": args.backend is Backend.PT16,
+            "engine_profiles": engine_profiles,
+            "upstream_commit": UPSTREAM_COMMIT,
+        },
+    )
+    adapter = benchmark_adapter(assets, args.backend, device, args.engine_dir)
+
+    def parity(
+        outputs: Iterable[tuple[Batch[Sequence[ImageBGR]], list[Predictions]]],
+    ) -> ParityResult:
+        predicted = {
+            key: row
+            for batch, values in outputs
+            for key, row in zip(batch.ids, values, strict=True)
+        }
+        if tuple(predicted) != ids:
+            raise ConditionUnavailable(
+                Status.PARITY_FAILED,
+                "Predictions do not cover the ordered fixed speed cohort",
+            )
+        path = args.output / f"speed-b{args.batch_size}-predictions.json"
+        write_json_atomic(
+            path,
+            {
+                "input_ids": ids,
+                "rows": {
+                    key: {
+                        "boxes_xyxy": row.boxes_xyxy.tolist(),
+                        "scores": row.scores.tolist(),
+                    }
+                    for key, row in predicted.items()
+                },
+            },
+        )
+        digest = dual_sha256(path)
+        reference, reference_digest = (predicted, digest)
+        if args.backend is not Backend.PT32 or args.batch_size != 1:
+            reference, reference_digest = _speed_reference(
+                args.pt32_dir, case, ids, assets.weight_sha256
+            )
+        result = detection_parity((reference[key], predicted[key]) for key in ids)
+        return ParityResult(
+            result.passed,
+            {
+                **result.metrics,
+                "predictions_sha256": digest,
+                "reference_predictions_sha256": reference_digest,
+            },
+            result.reason,
+        )
+
+    with torch.cuda.stream(torch.cuda.Stream(device=device)):
+        report = benchmark(
+            case,
+            batches,
+            {args.backend: adapter},
+            device=device,
+            protocol=protocol,
+            conversion=conversion,
+            check_parity=parity,
+        )
+    write_json_atomic(args.output / f"speed-b{args.batch_size}.json", report.to_dict())
+    print(
+        f"{assets.model_id}/{args.backend}/B{args.batch_size} {report.status}",
+        flush=True,
+    )
+    if report.failure is not None:
+        raise SystemExit(report.failure.message)
+
+
 def _parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model-id", required=True, choices=WEIGHT_SHA256)
@@ -600,7 +761,18 @@ def _parser() -> argparse.ArgumentParser:
     )
     accuracy.add_argument("--engine-dir", type=Path)
     accuracy.add_argument("--pt32-dir", type=Path)
-    for cuda in (build, accuracy):
+    speed = modes.add_parser("speed")
+    speed.add_argument("--inputs", type=Path, required=True)
+    speed.add_argument("--inputs-sha256", required=True)
+    speed.add_argument("--batch-size", type=int, required=True)
+    speed.add_argument("--output", type=Path, required=True)
+    speed.add_argument(
+        "--backend", type=lambda value: Backend(value.upper()), required=True
+    )
+    speed.add_argument("--engine-dir", type=Path)
+    speed.add_argument("--conversion", type=Path, action="append", default=[])
+    speed.add_argument("--pt32-dir", type=Path, required=True)
+    for cuda in (build, accuracy, speed):
         cuda.add_argument("--device", required=True, type=torch.device)
     return parser
 
@@ -628,6 +800,9 @@ def main() -> None:
     else:
         if args.device.type != "cuda" or not os.environ.get("TENNIS_RUN_ID"):
             raise ValueError("Run this CUDA command in the shared training queue")
+        if args.mode == "speed":
+            _speed(args, assets, args.device)
+            return
         if args.mode == "accuracy":
             torch.backends.cuda.matmul.fp32_precision = "ieee"
             torch.backends.cudnn.fp32_precision = "ieee"

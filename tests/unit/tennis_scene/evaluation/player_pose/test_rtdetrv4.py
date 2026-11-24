@@ -1,5 +1,6 @@
 """CPU fixtures for the RT-DETRv4 comparison adapter's image and box contracts."""
 
+import json
 import sys
 from importlib import import_module
 from pathlib import Path
@@ -45,6 +46,23 @@ def test_loads_release_serialization_and_selects_ema_weights(adapter, tmp_path):
     loaded = adapter._load_pt_model(assets, config)
 
     assert loaded.model(torch.tensor([[5.0, 3.0]])).item() == -1.0
+
+
+def test_cached_positional_embeddings_move_and_do_not_enter_state_dict(adapter):
+    encoder = nn.Module()
+    encoder.use_encoder_idx = (1, 3)
+    first, second = torch.tensor([[1.0, 2.0]]), torch.tensor([[3.0, -8.0, 2.0]])
+    encoder.pos_embed1 = first
+    encoder.pos_embed3 = second
+
+    adapter._register_encoder_positions(encoder)
+
+    assert encoder.pos_embed1 is first
+    assert encoder.pos_embed3 is second
+    assert not encoder.state_dict()
+    encoder.to("meta")
+    assert encoder.pos_embed1.device.type == "meta"
+    assert encoder.pos_embed3.device.type == "meta"
 
 
 def test_prepare_preserves_wh_and_uses_rgb_unit_range(adapter):
@@ -147,3 +165,51 @@ def test_parity_matches_reordered_boxes_and_counts_threshold_drop(adapter):
     assert not mismatch.passed
     assert mismatch.metrics["missing"] == 1
     assert mismatch.metrics["extra"] == 0
+
+
+def test_speed_reference_pins_bytes_and_order(adapter, tmp_path):
+    input_ids = ("frame-2", "frame-1")
+    path = tmp_path / "speed-b1-predictions.json"
+    path.write_text(
+        json.dumps(
+            {
+                "input_ids": input_ids,
+                "rows": {
+                    "frame-1": {"boxes_xyxy": [], "scores": []},
+                    "frame-2": {"boxes_xyxy": [[2, 7, 11, 19]], "scores": [0.75]},
+                },
+            }
+        )
+    )
+    digest = adapter.dual_sha256(path)
+    case = adapter.BenchmarkCase(
+        "rtdetrv4-l", adapter.Backend.PT16, 2, "image", "1" * 64
+    )
+    weight_digest = "f" * 64
+    (tmp_path / "speed-b1.json").write_text(
+        json.dumps(
+            {
+                "status": "ok",
+                "case": {
+                    "name": case.name,
+                    "backend": "PT32",
+                    "batch_size": 1,
+                    "input_manifest_sha256": "1" * 64,
+                },
+                "parity": {"metrics": {"predictions_sha256": digest}},
+                "weights": {"model": {"sha256": weight_digest}},
+            }
+        )
+    )
+
+    rows, reference_digest = adapter._speed_reference(
+        tmp_path, case, input_ids, weight_digest
+    )
+
+    assert reference_digest == digest
+    np.testing.assert_array_equal(rows["frame-2"].boxes_xyxy, [[2, 7, 11, 19]])
+    with pytest.raises(adapter.ConditionUnavailable, match="PT32 input IDs differ"):
+        adapter._speed_reference(tmp_path, case, input_ids[::-1], weight_digest)
+    path.write_text("{}")
+    with pytest.raises(adapter.ConditionUnavailable, match="SHA-256 differs"):
+        adapter._speed_reference(tmp_path, case, input_ids, weight_digest)
