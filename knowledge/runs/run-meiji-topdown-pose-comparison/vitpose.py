@@ -106,7 +106,9 @@ def make_adapter(
             model.batch_size = len(rows)
             # Use production crop, flip and decode as one operation for accuracy.
             # The stage timings for this model come from #2496.
-            result = stages.forward(backend, lambda: model.predict(_request(rows)))
+            result = stages.measure_forward(
+                backend, lambda: model.predict(_request(rows))
+            )
             return PoseBatch(result.keypoints.detach().cpu().numpy())
 
         return infer
