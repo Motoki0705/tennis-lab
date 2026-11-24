@@ -18,7 +18,7 @@ augmentation:
   camera_calibration_noise:
     enabled: true
     prob: 1.0
-    focal_rel_std: 0.03
-    principal_point_rel_std: 0.015
-    rotation_deg_std: 0.75
-    translation_m_std: 0.15
+    focal_rel_std: 0.0025
+    principal_point_rel_std: 0.0012
+    rotation_deg_std: 0.08
+    translation_m_std: 0.03

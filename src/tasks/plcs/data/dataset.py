@@ -370,6 +370,11 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
         # Build COCO17 world targets from raw NPZ data
         # scene.data["meta"] is a raw numpy scalar (JSON string); use scene.meta
         # (already parsed dict) so build_coco17_world_targets gets a plain dict.
+        if self.is_monocular and "human_kp_3d" not in scene.data:
+            raise ValueError(
+                "Monocular PLCS scenes require explicit physical COCO-17 "
+                "'human_kp_3d' (T, 17, 3) targets."
+            )
         payload_for_targets = {**scene.data, "meta": scene.meta}
         human_kp_3d = build_coco17_world_targets(payload_for_targets)
         sample["human_kp_3d"] = world_joints_physical_to_target(
@@ -428,12 +433,14 @@ class SceneDataset(SceneDatasetBase[dict[str, Tensor]]):
     def augment_sample(self, sample: dict[str, Any]) -> dict[str, Any]:
         if not self.augment:
             return sample
-        augmented: dict[str, Any] = self.augmentation.forward(sample)
+        tracking = self.augmentation.forward_with_tracking_provenance(sample)
+        augmented: dict[str, Any] = tracking.sample
         if self.is_monocular:
             generator = torch.Generator(device="cpu")
             generator.manual_seed(int(self.rng.integers(0, 2**31 - 1)))
             populate_monocular_sample_fields(
                 augmented,
+                bbox_source_vis=tracking.human_visibility_before_false_positive,
                 bbox_cfg=self.monocular_bbox_cfg,
                 bbox_aug_cfg=self.monocular_bbox_aug_cfg,
                 calibration_noise_cfg=self.calibration_noise_cfg,
@@ -460,6 +467,7 @@ _MONOCULAR_SAMPLE_KEYS = (
 def populate_monocular_sample_fields(
     sample: dict[str, Any],
     *,
+    bbox_source_vis: Tensor | None = None,
     bbox_cfg: SyntheticBBoxConfig = _DEFAULT_DATASET_BBOX_CFG,
     bbox_aug_cfg: BBoxAugmentationConfig = _DISABLED_DATASET_BBOX_AUG_CFG,
     calibration_noise_cfg: CalibrationNoiseConfig = _DISABLED_DATASET_CALIB_NOISE_CFG,
@@ -469,6 +477,7 @@ def populate_monocular_sample_fields(
     """Compute synthetic ``bbx_xys``, bbox-normalized 2D pose, CLIFF, and camera tokens."""
     human_kp = cast(Tensor, sample["human_kp"])
     human_vis = cast(Tensor, sample["human_vis"])
+    vis_for_bbox = human_vis if bbox_source_vis is None else bbox_source_vis
     camera_R = cast(Tensor, sample["camera_R"])
     camera_C = cast(Tensor, sample["camera_C"])
     camera_f = cast(Tensor, sample["camera_f"])
@@ -481,7 +490,7 @@ def populate_monocular_sample_fields(
     kp2d_px = human_kp * wh[:, None, None, :]
     bbx_xys, frame_observed = compute_synthetic_bbx_xys(
         kp2d_px,
-        human_vis,
+        vis_for_bbox,
         config=bbox_cfg,
     )
     if "padding_mask" in sample:

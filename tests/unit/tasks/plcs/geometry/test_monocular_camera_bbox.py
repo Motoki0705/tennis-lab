@@ -160,35 +160,46 @@ class TestSyntheticBBoxAndNormalization:
         assert bool(joint_vis[0, 0, 0]) and bool(joint_vis[0, 0, 1])
 
     def test_bbox_augmentation_drift_resets_across_missing_gaps(self) -> None:
-        bbx_a = torch.tensor(
+        base = torch.tensor(
             [[[600.0, 360.0, 200.0]] * 8], dtype=torch.float32
         )
-        bbx_b = bbx_a.clone()
-        # Different values before the unobserved gap at t=3..4 must not change drift state
-        # accumulation semantics, and unobserved frames must remain strictly zero.
-        obs = torch.tensor([[True, True, True, False, False, True, True, True]])
-        bbx_a[0, ~obs[0]] = 0.0
-        bbx_b[0, ~obs[0]] = 0.0
-        bbx_b[0, :3, 0] += 150.0
+        # Use DIFFERENT pre-gap observation masks (t=0..2 observed vs unobserved)
+        # followed by a shared unobserved gap at t=3..4 and observed frames at t=5..7.
+        # If AR(1) drift failed to reset on unobserved frames, pre-gap drift from t=0..2
+        # would leak into t=5..7 and aug_a[:, 5:] would differ from aug_b[:, 5:]!
+        obs_a = torch.tensor([[True, True, True, False, False, True, True, True]])
+        obs_b = torch.tensor([[False, False, False, False, False, True, True, True]])
+        bbx_a = torch.where(obs_a.unsqueeze(-1), base, torch.zeros_like(base))
+        bbx_b = torch.where(obs_b.unsqueeze(-1), base, torch.zeros_like(base))
 
         cfg = BBoxAugmentationConfig(
             enabled=True,
             prob=1.0,
             scale_range=(1.1, 1.25),
             shift_xy_frac=0.05,
-            scale_drift_std=0.04,
-            center_drift_frac_std=0.04,
+            scale_drift_std=0.06,
+            center_drift_frac_std=0.06,
             drift_decay=0.9,
             partial_crop_prob=0.0,
         )
         gen_a = torch.Generator().manual_seed(1234)
         gen_b = torch.Generator().manual_seed(1234)
-        aug_a = augment_bbx_xys(bbx_a, obs, config=cfg, generator=gen_a)
-        aug_b = augment_bbx_xys(bbx_b, obs, config=cfg, generator=gen_b)
+        aug_a = augment_bbx_xys(bbx_a, obs_a, config=cfg, generator=gen_a)
+        aug_b = augment_bbx_xys(bbx_b, obs_b, config=cfg, generator=gen_b)
 
         torch.testing.assert_close(aug_a[0, 3:5], torch.zeros((2, 3)))
-        # Post-gap frames (t=5..7) have identical inputs and reset drift -> identical outputs!
+        torch.testing.assert_close(aug_b[0, :5], torch.zeros((5, 3)))
+        # Post-gap frames (t=5..7) must match exactly because AR(1) drift reset at t=3..4.
         torch.testing.assert_close(aug_a[0, 5:], aug_b[0, 5:], atol=1e-6, rtol=0.0)
+        # Sanity check: without a gap (all True on t=0..7), t=5..7 DOES differ from obs_b!
+        obs_no_gap = torch.ones((1, 8), dtype=torch.bool)
+        aug_no_gap = augment_bbx_xys(
+            base,
+            obs_no_gap,
+            config=cfg,
+            generator=torch.Generator().manual_seed(1234),
+        )
+        assert not torch.allclose(aug_no_gap[0, 5:], aug_b[0, 5:], atol=1e-4)
 
 
 class TestCLIFFWorldRoundTripAndProjection:
@@ -384,4 +395,223 @@ class TestCameraFeaturesAndCalibrationNoise:
                 cy0=cy0,
                 image_w=w,
                 image_h=h,
+            )
+
+    def test_equal_batch_and_seq_len_camera_broadcast_isolation(self) -> None:
+        """When B == T (e.g., B=2, T=2) with mixed fixed+broadcast cameras, each sample uses its own camera."""
+        projector = _build_mixed_projector()
+        cams = projector.cameras()
+        cam_fixed = cams[0]
+        cam_bcast = cams[6]
+
+        seq = _sample_court_coco17_sequence(seq_len=2)
+        world_batch = torch.stack([seq, seq + torch.tensor([0.5, 1.0, 0.0])], dim=0)  # (2, 2, 17, 3)
+        R_batch = torch.stack([cam_fixed.R, cam_bcast.R], dim=0)  # (2, 3, 3)
+        C_batch = torch.stack([cam_fixed.C, cam_bcast.C], dim=0)  # (2, 3)
+        fx_batch = torch.tensor([cam_fixed.f, cam_bcast.f], dtype=torch.float32)  # (2,)
+        fy_batch = fx_batch * torch.tensor([1.0, 1.03], dtype=torch.float32)
+        cx_batch = torch.tensor([cam_fixed.cx, cam_bcast.cx], dtype=torch.float32)
+        cy_batch = torch.tensor([cam_fixed.cy, cam_bcast.cy], dtype=torch.float32)
+        w_batch = torch.tensor([float(cam_fixed.w), float(cam_bcast.w)], dtype=torch.float32)
+        h_batch = torch.tensor([float(cam_fixed.h), float(cam_bcast.h)], dtype=torch.float32)
+
+        uv_batch, front_batch = project_world_coco17_to_pixel(
+            world_batch,
+            R_w2c=R_batch,
+            C_w=C_batch,
+            fx=fx_batch,
+            fy=fy_batch,
+            cx0=cx_batch,
+            cy0=cy_batch,
+        )
+        feat_batch = compute_camera_features(
+            R_batch,
+            C_batch,
+            fx=fx_batch,
+            fy=fy_batch,
+            cx0=cx_batch,
+            cy0=cy_batch,
+            image_w=w_batch,
+            image_h=h_batch,
+            seq_len=2,
+        )
+        bbx_batch, obs_batch = compute_synthetic_bbx_xys(
+            uv_batch, front_batch.float(), config=SyntheticBBoxConfig(min_visible_joints=1)
+        )
+        cliff_batch = compute_cliffcam_features(
+            bbx_batch, obs_batch, fx=fx_batch, fy=fy_batch, cx0=cx_batch, cy0=cy_batch
+        )
+        pred_cam_b, local_b = world_coco17_to_cliff_and_local_pose(
+            world_batch,
+            bbx_batch,
+            R_w2c=R_batch,
+            C_w=C_batch,
+            fx=fx_batch,
+            fy=fy_batch,
+            cx0=cx_batch,
+            cy0=cy_batch,
+        )
+        rec_batch = cliff_and_local_pose_to_world_coco17(
+            pred_cam_b,
+            local_b,
+            bbx_batch,
+            R_w2c=R_batch,
+            C_w=C_batch,
+            fx=fx_batch,
+            fy=fy_batch,
+            cx0=cx_batch,
+            cy0=cy_batch,
+        )
+
+        # Verify each sample in B=2 matches independent single-sample B=1 calls!
+        for b in range(2):
+            uv_single, front_single = project_world_coco17_to_pixel(
+                world_batch[b : b + 1],
+                R_w2c=R_batch[b : b + 1],
+                C_w=C_batch[b : b + 1],
+                fx=fx_batch[b : b + 1],
+                fy=fy_batch[b : b + 1],
+                cx0=cx_batch[b : b + 1],
+                cy0=cy_batch[b : b + 1],
+            )
+            torch.testing.assert_close(uv_batch[b], uv_single[0], atol=1e-5, rtol=1e-5)
+            assert torch.equal(front_batch[b], front_single[0])
+
+            feat_single = compute_camera_features(
+                R_batch[b : b + 1],
+                C_batch[b : b + 1],
+                fx=fx_batch[b : b + 1],
+                fy=fy_batch[b : b + 1],
+                cx0=cx_batch[b : b + 1],
+                cy0=cy_batch[b : b + 1],
+                image_w=w_batch[b : b + 1],
+                image_h=h_batch[b : b + 1],
+                seq_len=2,
+            )
+            torch.testing.assert_close(feat_batch[b], feat_single[0], atol=1e-6, rtol=0.0)
+
+            cliff_single = compute_cliffcam_features(
+                bbx_batch[b : b + 1],
+                obs_batch[b : b + 1],
+                fx=fx_batch[b : b + 1],
+                fy=fy_batch[b : b + 1],
+                cx0=cx_batch[b : b + 1],
+                cy0=cy_batch[b : b + 1],
+            )
+            torch.testing.assert_close(cliff_batch[b], cliff_single[0], atol=1e-6, rtol=0.0)
+
+            pred_cam_s, local_s = world_coco17_to_cliff_and_local_pose(
+                world_batch[b : b + 1],
+                bbx_batch[b : b + 1],
+                R_w2c=R_batch[b : b + 1],
+                C_w=C_batch[b : b + 1],
+                fx=fx_batch[b : b + 1],
+                fy=fy_batch[b : b + 1],
+                cx0=cx_batch[b : b + 1],
+                cy0=cy_batch[b : b + 1],
+            )
+            torch.testing.assert_close(pred_cam_b[b], pred_cam_s[0], atol=1e-5, rtol=1e-5)
+            torch.testing.assert_close(local_b[b], local_s[0], atol=1e-5, rtol=1e-5)
+            torch.testing.assert_close(rec_batch[b], world_batch[b], atol=1e-5, rtol=1e-5)
+
+    def test_public_entrypoints_reject_uncalibrated_or_nan_cameras(self) -> None:
+        projector = _build_mixed_projector()
+        cam = projector.cameras()[0]
+        world_kp = _sample_court_coco17_sequence(seq_len=3).unsqueeze(0)
+        bbx = torch.tensor([[[640.0, 360.0, 200.0]] * 3], dtype=torch.float32)
+        obs = torch.ones((1, 3), dtype=torch.bool)
+        pred_cam = torch.tensor([[[1.0, 0.0, 0.0]] * 3], dtype=torch.float32)
+        local_pose = torch.zeros((1, 3, 17, 3), dtype=torch.float32)
+
+        R_ok = cam.R.unsqueeze(0)
+        C_ok = cam.C.unsqueeze(0)
+        fx_ok = torch.tensor([cam.f])
+        cx_ok = torch.tensor([cam.cx])
+        cy_ok = torch.tensor([cam.cy])
+
+        zero_R = torch.zeros_like(R_ok)
+        nan_cx = torch.tensor([float("nan")])
+
+        for fn in (
+            lambda: cliff_and_local_pose_to_world_coco17(
+                pred_cam, local_pose, bbx, R_w2c=zero_R, C_w=C_ok, fx=fx_ok, fy=fx_ok, cx0=cx_ok, cy0=cy_ok
+            ),
+            lambda: world_coco17_to_cliff_and_local_pose(
+                world_kp, bbx, R_w2c=zero_R, C_w=C_ok, fx=fx_ok, fy=fx_ok, cx0=cx_ok, cy0=cy_ok
+            ),
+            lambda: project_world_coco17_to_pixel(
+                world_kp, R_w2c=zero_R, C_w=C_ok, fx=fx_ok, fy=fx_ok, cx0=cx_ok, cy0=cy_ok
+            ),
+        ):
+            with pytest.raises(ValueError, match="orthonormal"):
+                fn()
+
+        for fn_nan in (
+            lambda: cliff_and_local_pose_to_world_coco17(
+                pred_cam, local_pose, bbx, R_w2c=R_ok, C_w=C_ok, fx=fx_ok, fy=fx_ok, cx0=nan_cx, cy0=cy_ok
+            ),
+            lambda: project_world_coco17_to_pixel(
+                world_kp, R_w2c=R_ok, C_w=C_ok, fx=fx_ok, fy=fx_ok, cx0=nan_cx, cy0=cy_ok
+            ),
+            lambda: compute_cliffcam_features(
+                bbx, obs, fx=fx_ok, fy=fx_ok, cx0=nan_cx, cy0=cy_ok
+            ),
+        ):
+            with pytest.raises(ValueError, match="non-finite"):
+                fn_nan()
+
+    def test_default_calibration_noise_court_reprojection_rmse_within_few_pixels(self) -> None:
+        projector = _build_mixed_projector()
+        court_kp = projector.court_kp_3d  # (20, 3)
+        cfg = CalibrationNoiseConfig()
+        gen = torch.Generator().manual_seed(2026)
+
+        for idx, cam in enumerate(projector.cameras()):
+            n_trials = 128
+            R = cam.R.unsqueeze(0).expand(n_trials, 3, 3).clone()
+            C = cam.C.unsqueeze(0).expand(n_trials, 3).clone()
+            fx = torch.full((n_trials,), cam.f, dtype=torch.float32)
+            cx = torch.full((n_trials,), cam.cx, dtype=torch.float32)
+            cy = torch.full((n_trials,), cam.cy, dtype=torch.float32)
+            w = torch.full((n_trials,), float(cam.w), dtype=torch.float32)
+            h = torch.full((n_trials,), float(cam.h), dtype=torch.float32)
+
+            pert = perturb_camera_calibration(
+                R,
+                C,
+                fx=fx,
+                fy=fx,
+                cx0=cx,
+                cy0=cy,
+                image_w=w,
+                image_h=h,
+                config=cfg,
+                generator=gen,
+            )
+            pts = court_kp.view(1, 1, 20, 3).expand(n_trials, 1, 20, 3)
+            uv_gt, front_gt = project_world_coco17_to_pixel(
+                pts, R_w2c=R, C_w=C, fx=fx, fy=fx, cx0=cx, cy0=cy
+            )
+            uv_pt, _ = project_world_coco17_to_pixel(
+                pts,
+                R_w2c=pert.R_w2c,
+                C_w=pert.C_w,
+                fx=pert.fx,
+                fy=pert.fy,
+                cx0=pert.cx0,
+                cy0=pert.cy0,
+            )
+            vis = (
+                front_gt
+                & (uv_gt[..., 0] >= 0.0)
+                & (uv_gt[..., 0] <= w[:, None, None])
+                & (uv_gt[..., 1] >= 0.0)
+                & (uv_gt[..., 1] <= h[:, None, None])
+            )
+            sq_err = ((uv_pt - uv_gt) ** 2).sum(dim=-1)
+            rmse_px = torch.sqrt(
+                (sq_err * vis).sum(dim=-1) / vis.sum(dim=-1).clamp(min=1)
+            ).mean()
+            assert 1.0 <= float(rmse_px.item()) <= 8.0, (
+                f"Camera {idx} court RMSE {float(rmse_px.item()):.2f} px out of few-px range"
             )

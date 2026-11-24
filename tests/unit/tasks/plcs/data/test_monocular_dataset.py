@@ -329,3 +329,86 @@ def test_monocular_datamodule_collation_and_padding_invariants(tmp_path: Path) -
     del broken["cliffcam"]
     with pytest.raises(ValueError, match="complete group"):
         collate_plcs_batch([broken])
+
+
+def test_false_positive_joints_do_not_fabricate_bbox_on_unobserved_frames(
+    tmp_path: Path,
+) -> None:
+    """Synthetic false-positive 2D keypoints must never create bboxes or bridge AR(1) gaps."""
+    _write_mixed_synthetic_dataset(tmp_path)
+    cfg = _compose_monocular_config(tmp_path)
+    with open_dict(cfg):
+        cfg.data.augmentation.false_positive.enabled = True
+        cfg.data.augmentation.false_positive.prob = 1.0
+        cfg.data.augmentation.false_positive.human_prob_absent = 1.0
+        cfg.data.augmentation.false_positive.human_prob_after_dropout = 1.0
+        cfg.data.augmentation.visibility_dropout.enabled = False
+        cfg.data.augmentation.burst_dropout.enabled = False
+        cfg.data.augmentation.edge_degradation.enabled = False
+
+    ds = SceneDataset(
+        scene_dir=Path(cfg.paths.data_root) / cfg.data.scene_dir,
+        split_file="train.txt",
+        config=cfg,
+        seed=42,
+        augment=True,
+    )
+    raw = ds._load_base_sample(0) if hasattr(ds, "_load_base_sample") else None
+    del raw
+
+    # Construct a base sample with a clean missing gap on frames 4..7 and inject FPs via augment_sample.
+    clean_ds = SceneDataset(
+        scene_dir=Path(cfg.paths.data_root) / cfg.data.scene_dir,
+        split_file="train.txt",
+        config=cfg,
+        seed=42,
+        augment=False,
+    )
+    base_sample = clean_ds[0]
+    base_sample["human_vis"][:, 4:8, :] = False
+    base_sample["human_kp"][:, 4:8, :, :] = 0.0
+
+    augmented = ds.augment_sample(base_sample)
+    # Even though false_positive flips human_vis True on frames 4..7, frame_observed & bbx_xys
+    # come from pre-FP visibility, so frames 4..7 stay strictly unobserved!
+    assert bool(augmented["human_vis"][:, 4:8, :].any())
+    assert not bool(augmented["frame_observed"][:, 4:8].any())
+    torch.testing.assert_close(
+        augmented["bbx_xys"][:, 4:8], torch.zeros_like(augmented["bbx_xys"][:, 4:8])
+    )
+    torch.testing.assert_close(
+        augmented["cliffcam"][:, 4:8], torch.zeros_like(augmented["cliffcam"][:, 4:8])
+    )
+    torch.testing.assert_close(
+        augmented["kp2d_norm"][:, 4:8],
+        torch.zeros_like(augmented["kp2d_norm"][:, 4:8]),
+    )
+
+
+def test_missing_human_kp_3d_rejected_instead_of_reinterpreting_coco17_as_smplh(
+    tmp_path: Path,
+) -> None:
+    """Scenes lacking human_kp_3d must fail loudly rather than indexing 17-joint canonical_pose_3d as SMPL-H."""
+    from src.tasks.plcs.data.targets import build_coco17_world_targets
+
+    with pytest.raises(ValueError, match=">=22 joints"):
+        build_coco17_world_targets(
+            {
+                "canonical_pose_3d": np.ones((4, 17, 3), dtype=np.float32),
+                "position": np.zeros((4, 3), dtype=np.float32),
+                "rotation": np.tile(np.array([[1.0, 0.0]], dtype=np.float32), (4, 1)),
+            }
+        )
+
+    dataset_dir = _write_mixed_synthetic_dataset(tmp_path)
+    (dataset_dir / "scenes" / "scene_000000" / "human_kp_3d.npy").unlink()
+    cfg = _compose_monocular_config(tmp_path)
+    ds = SceneDataset(
+        scene_dir=dataset_dir,
+        split_file="val.txt",
+        config=cfg,
+        seed=0,
+        augment=False,
+    )
+    with pytest.raises(ValueError, match="human_kp_3d"):
+        _ = ds[0]

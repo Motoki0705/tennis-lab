@@ -134,14 +134,14 @@ class BBoxAugmentationConfig:
 
 @dataclass(frozen=True, slots=True)
 class CalibrationNoiseConfig:
-    """Train-time court camera calibration perturbation settings."""
+    """Train-time court camera calibration perturbation settings (~few-px court RMSE)."""
 
     enabled: bool = True
     prob: float = 1.0
-    focal_rel_std: float = 0.03
-    principal_point_rel_std: float = 0.015
-    rotation_deg_std: float = 0.75
-    translation_m_std: float = 0.15
+    focal_rel_std: float = 0.0025
+    principal_point_rel_std: float = 0.0012
+    rotation_deg_std: float = 0.08
+    translation_m_std: float = 0.03
 
     def __post_init__(self) -> None:
         if not 0.0 <= self.prob <= 1.0:
@@ -535,17 +535,81 @@ def normalize_kp2d_bbox(
     return torch.cat([xy_norm, conf.unsqueeze(-1)], dim=-1), joint_visible
 
 
-def _broadcast_camera_time(param: Tensor, *, seq_len: int, trailing_dims: int) -> Tensor:
-    """Broadcast static ``(...)`` or time-varying ``(..., T, ...)`` camera tensors."""
-    if trailing_dims == 0:
-        if param.ndim >= 1 and param.shape[-1] == seq_len:
-            return param
-        return param.unsqueeze(-1).expand(*param.shape, seq_len)
-    lead = param.shape[:-trailing_dims]
-    tail = param.shape[-trailing_dims:]
-    if len(lead) >= 1 and lead[-1] == seq_len:
+def _validate_intrinsics_tensors(
+    *,
+    fx: Tensor,
+    fy: Tensor,
+    cx0: Tensor,
+    cy0: Tensor,
+) -> None:
+    """Validate finite, strictly positive focal lengths and finite principal points."""
+    for name, tensor in (("fx", fx), ("fy", fy), ("cx0", cx0), ("cy0", cy0)):
+        if not torch.isfinite(tensor).all():
+            raise ValueError(f"Camera parameter {name!r} contains non-finite values.")
+    if bool((fx <= 0).any()) or bool((fy <= 0).any()):
+        raise ValueError("Focal lengths fx and fy must be strictly positive.")
+
+
+def _validate_extrinsics_and_intrinsics(
+    R_w2c: Tensor,
+    C_w: Tensor,
+    *,
+    fx: Tensor,
+    fy: Tensor,
+    cx0: Tensor,
+    cy0: Tensor,
+) -> None:
+    """Validate calibrated extrinsics (proper SO(3) R_w2c, finite C_w) and intrinsics."""
+    _validate_intrinsics_tensors(fx=fx, fy=fy, cx0=cx0, cy0=cy0)
+    for name, tensor in (("R_w2c", R_w2c), ("C_w", C_w)):
+        if not torch.isfinite(tensor).all():
+            raise ValueError(f"Camera parameter {name!r} contains non-finite values.")
+    if R_w2c.ndim < 2 or R_w2c.shape[-2:] != (3, 3):
+        raise ValueError(
+            f"R_w2c must have shape (..., 3, 3), got {tuple(R_w2c.shape)}."
+        )
+    if C_w.ndim < 1 or C_w.shape[-1] != 3:
+        raise ValueError(f"C_w must have shape (..., 3), got {tuple(C_w.shape)}.")
+    eye = torch.eye(3, device=R_w2c.device, dtype=R_w2c.dtype)
+    ortho_err = (R_w2c @ R_w2c.transpose(-1, -2) - eye).abs().amax()
+    if float(ortho_err.item()) > 1e-3:
+        raise ValueError(
+            f"R_w2c must be orthonormal (max |R R^T - I| = {float(ortho_err.item()):.3e})."
+        )
+    det = torch.linalg.det(R_w2c)
+    if bool(((det - 1.0).abs() > 1e-3).any()):
+        raise ValueError("R_w2c must be a proper rotation matrix with det(R) == +1.")
+
+
+def _broadcast_camera_time(
+    param: Tensor,
+    *,
+    batch_shape: tuple[int, ...],
+    seq_len: int,
+    trailing_dims: int,
+    name: str,
+) -> Tensor:
+    """Broadcast static ``(*batch_shape, *tail)`` or per-frame ``(*batch_shape, T, *tail)`` camera tensors.
+
+    Matching against the explicit ``batch_shape`` (which has length ``k``) vs
+    ``(*batch_shape, seq_len)`` (length ``k + 1``) eliminates all ambiguity even
+    when ``batch_size == seq_len``.
+    """
+    lead = param.shape if trailing_dims == 0 else param.shape[:-trailing_dims]
+    tail = () if trailing_dims == 0 else param.shape[-trailing_dims:]
+    expected_time_lead = (*batch_shape, seq_len)
+    if lead == expected_time_lead:
         return param
-    return param.reshape(*lead, 1, *tail).expand(*lead, seq_len, *tail)
+    if lead == batch_shape:
+        if trailing_dims == 0:
+            return param.unsqueeze(-1).expand(*batch_shape, seq_len)
+        return param.reshape(*batch_shape, 1, *tail).expand(
+            *batch_shape, seq_len, *tail
+        )
+    raise ValueError(
+        f"Camera parameter {name!r} leading shape {tuple(lead)} does not match "
+        f"static batch shape {batch_shape} or time-varying shape {expected_time_lead}."
+    )
 
 
 def compute_cliffcam_features(
@@ -558,14 +622,32 @@ def compute_cliffcam_features(
     cy0: Tensor,
 ) -> Tensor:
     """Compute generalized CLIFF camera-bbox features ``[(cx-cx0)/fx, (cy-cy0)/fy, s/sqrt(fx*fy)]``."""
-    seq_len = bbx_xys.shape[-2]
-    fx_t = _broadcast_camera_time(fx, seq_len=seq_len, trailing_dims=0)
-    fy_t = _broadcast_camera_time(fy, seq_len=seq_len, trailing_dims=0)
-    cx0_t = _broadcast_camera_time(cx0, seq_len=seq_len, trailing_dims=0)
-    cy0_t = _broadcast_camera_time(cy0, seq_len=seq_len, trailing_dims=0)
+    if bbx_xys.ndim < 2 or bbx_xys.shape[-1] != BBX_XYS_DIM:
+        raise ValueError(
+            f"bbx_xys must have shape (..., T, 3), got {tuple(bbx_xys.shape)}."
+        )
+    if frame_observed.shape != bbx_xys.shape[:-1] or frame_observed.dtype != torch.bool:
+        raise ValueError(
+            "frame_observed must be a bool tensor matching bbx_xys[..., 0]."
+        )
+    if not torch.isfinite(bbx_xys).all():
+        raise ValueError("bbx_xys must contain only finite values.")
+    _validate_intrinsics_tensors(fx=fx, fy=fy, cx0=cx0, cy0=cy0)
 
-    if bool((fx_t <= 0).any()) or bool((fy_t <= 0).any()):
-        raise ValueError("CLIFF feature computation requires fx > 0 and fy > 0.")
+    batch_shape = tuple(bbx_xys.shape[:-2])
+    seq_len = int(bbx_xys.shape[-2])
+    fx_t = _broadcast_camera_time(
+        fx, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fx"
+    )
+    fy_t = _broadcast_camera_time(
+        fy, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fy"
+    )
+    cx0_t = _broadcast_camera_time(
+        cx0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cx0"
+    )
+    cy0_t = _broadcast_camera_time(
+        cy0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cy0"
+    )
 
     f_eff = torch.sqrt(fx_t * fy_t)
     cliff_x = (bbx_xys[..., 0] - cx0_t) / fx_t
@@ -588,6 +670,7 @@ def compute_camera_features(
     image_w: Tensor,
     image_h: Tensor,
     seq_len: int,
+    batch_shape: tuple[int, ...] | None = None,
 ) -> Tensor:
     """Build 21-D dimensionless camera intrinsics + court-extrinsics features per frame.
 
@@ -610,15 +693,66 @@ def compute_camera_features(
         image_w=image_w,
         image_h=image_h,
     )
+    resolved_batch_shape = (
+        tuple(image_w.shape) if batch_shape is None else tuple(batch_shape)
+    )
 
-    R_t = _broadcast_camera_time(R_w2c, seq_len=seq_len, trailing_dims=2)
-    C_t = _broadcast_camera_time(C_w, seq_len=seq_len, trailing_dims=1)
-    fx_t = _broadcast_camera_time(fx, seq_len=seq_len, trailing_dims=0)
-    fy_t = _broadcast_camera_time(fy, seq_len=seq_len, trailing_dims=0)
-    cx0_t = _broadcast_camera_time(cx0, seq_len=seq_len, trailing_dims=0)
-    cy0_t = _broadcast_camera_time(cy0, seq_len=seq_len, trailing_dims=0)
-    w_t = _broadcast_camera_time(image_w, seq_len=seq_len, trailing_dims=0)
-    h_t = _broadcast_camera_time(image_h, seq_len=seq_len, trailing_dims=0)
+    R_t = _broadcast_camera_time(
+        R_w2c,
+        batch_shape=resolved_batch_shape,
+        seq_len=seq_len,
+        trailing_dims=2,
+        name="R_w2c",
+    )
+    C_t = _broadcast_camera_time(
+        C_w,
+        batch_shape=resolved_batch_shape,
+        seq_len=seq_len,
+        trailing_dims=1,
+        name="C_w",
+    )
+    fx_t = _broadcast_camera_time(
+        fx,
+        batch_shape=resolved_batch_shape,
+        seq_len=seq_len,
+        trailing_dims=0,
+        name="fx",
+    )
+    fy_t = _broadcast_camera_time(
+        fy,
+        batch_shape=resolved_batch_shape,
+        seq_len=seq_len,
+        trailing_dims=0,
+        name="fy",
+    )
+    cx0_t = _broadcast_camera_time(
+        cx0,
+        batch_shape=resolved_batch_shape,
+        seq_len=seq_len,
+        trailing_dims=0,
+        name="cx0",
+    )
+    cy0_t = _broadcast_camera_time(
+        cy0,
+        batch_shape=resolved_batch_shape,
+        seq_len=seq_len,
+        trailing_dims=0,
+        name="cy0",
+    )
+    w_t = _broadcast_camera_time(
+        image_w,
+        batch_shape=resolved_batch_shape,
+        seq_len=seq_len,
+        trailing_dims=0,
+        name="image_w",
+    )
+    h_t = _broadcast_camera_time(
+        image_h,
+        batch_shape=resolved_batch_shape,
+        seq_len=seq_len,
+        trailing_dims=0,
+        name="image_h",
+    )
 
     r6d = R_t[..., :2, :].reshape(*R_t.shape[:-2], 6)
     c_norm = normalize_court_position(C_t)
@@ -765,13 +899,26 @@ def cliff_to_camera_translation(
     cy0: Tensor,
 ) -> Tensor:
     """Convert CLIFF weak-perspective ``[s, tx, ty]`` + ``bbx_xys`` to metric camera ``[X_c, Y_c, Z_c]``."""
-    if pred_cam.shape != bbx_xys.shape or pred_cam.shape[-1] != 3:
+    if pred_cam.ndim < 2 or pred_cam.shape != bbx_xys.shape or pred_cam.shape[-1] != 3:
         raise ValueError("pred_cam and bbx_xys must share shape (..., T, 3).")
-    seq_len = pred_cam.shape[-2]
-    fx_t = _broadcast_camera_time(fx, seq_len=seq_len, trailing_dims=0)
-    fy_t = _broadcast_camera_time(fy, seq_len=seq_len, trailing_dims=0)
-    cx0_t = _broadcast_camera_time(cx0, seq_len=seq_len, trailing_dims=0)
-    cy0_t = _broadcast_camera_time(cy0, seq_len=seq_len, trailing_dims=0)
+    if not torch.isfinite(pred_cam).all() or not torch.isfinite(bbx_xys).all():
+        raise ValueError("pred_cam and bbx_xys must contain only finite values.")
+    _validate_intrinsics_tensors(fx=fx, fy=fy, cx0=cx0, cy0=cy0)
+
+    batch_shape = tuple(pred_cam.shape[:-2])
+    seq_len = int(pred_cam.shape[-2])
+    fx_t = _broadcast_camera_time(
+        fx, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fx"
+    )
+    fy_t = _broadcast_camera_time(
+        fy, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fy"
+    )
+    cx0_t = _broadcast_camera_time(
+        cx0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cx0"
+    )
+    cy0_t = _broadcast_camera_time(
+        cy0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cy0"
+    )
 
     s = pred_cam[..., 0]
     tx = pred_cam[..., 1]
@@ -800,13 +947,26 @@ def camera_translation_to_cliff(
     cy0: Tensor,
 ) -> Tensor:
     """Exact analytical inverse of :func:`cliff_to_camera_translation`."""
-    if cam_t.shape != bbx_xys.shape or cam_t.shape[-1] != 3:
+    if cam_t.ndim < 2 or cam_t.shape != bbx_xys.shape or cam_t.shape[-1] != 3:
         raise ValueError("cam_t and bbx_xys must share shape (..., T, 3).")
-    seq_len = cam_t.shape[-2]
-    fx_t = _broadcast_camera_time(fx, seq_len=seq_len, trailing_dims=0)
-    fy_t = _broadcast_camera_time(fy, seq_len=seq_len, trailing_dims=0)
-    cx0_t = _broadcast_camera_time(cx0, seq_len=seq_len, trailing_dims=0)
-    cy0_t = _broadcast_camera_time(cy0, seq_len=seq_len, trailing_dims=0)
+    if not torch.isfinite(cam_t).all() or not torch.isfinite(bbx_xys).all():
+        raise ValueError("cam_t and bbx_xys must contain only finite values.")
+    _validate_intrinsics_tensors(fx=fx, fy=fy, cx0=cx0, cy0=cy0)
+
+    batch_shape = tuple(cam_t.shape[:-2])
+    seq_len = int(cam_t.shape[-2])
+    fx_t = _broadcast_camera_time(
+        fx, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fx"
+    )
+    fy_t = _broadcast_camera_time(
+        fy, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fy"
+    )
+    cx0_t = _broadcast_camera_time(
+        cx0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cx0"
+    )
+    cy0_t = _broadcast_camera_time(
+        cy0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cy0"
+    )
 
     tz = cam_t[..., 2]
     box_s = bbx_xys[..., 2]
@@ -847,13 +1007,28 @@ def cliff_and_local_pose_to_world_coco17(
     cy0: Tensor,
 ) -> Tensor:
     """Transform CLIFF ``pred_cam`` + hip-centered ``local_pose_cam`` to court 3D COCO-17 [m]."""
+    if pred_cam.ndim < 2 or pred_cam.shape[-1] != 3:
+        raise ValueError(
+            f"pred_cam must have shape (..., T, 3), got {tuple(pred_cam.shape)}."
+        )
     if local_pose_cam.shape != (*pred_cam.shape[:-1], NUM_HUMAN_KP, 3):
         raise ValueError(
             "local_pose_cam must have shape (..., T, 17, 3) matching pred_cam."
         )
-    seq_len = pred_cam.shape[-2]
-    R_t = _broadcast_camera_time(R_w2c, seq_len=seq_len, trailing_dims=2)
-    C_t = _broadcast_camera_time(C_w, seq_len=seq_len, trailing_dims=1)
+    if not torch.isfinite(local_pose_cam).all():
+        raise ValueError("local_pose_cam must contain only finite values.")
+    _validate_extrinsics_and_intrinsics(
+        R_w2c, C_w, fx=fx, fy=fy, cx0=cx0, cy0=cy0
+    )
+
+    batch_shape = tuple(pred_cam.shape[:-2])
+    seq_len = int(pred_cam.shape[-2])
+    R_t = _broadcast_camera_time(
+        R_w2c, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=2, name="R_w2c"
+    )
+    C_t = _broadcast_camera_time(
+        C_w, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=1, name="C_w"
+    )
 
     root_cam = cliff_to_camera_translation(
         pred_cam, bbx_xys, fx=fx, fy=fy, cx0=cx0, cy0=cy0
@@ -880,9 +1055,20 @@ def world_coco17_to_cliff_and_local_pose(
         raise ValueError(
             f"world_kp_3d must have shape (..., T, 17, 3), got {tuple(world_kp_3d.shape)}."
         )
-    seq_len = world_kp_3d.shape[-3]
-    R_t = _broadcast_camera_time(R_w2c, seq_len=seq_len, trailing_dims=2)
-    C_t = _broadcast_camera_time(C_w, seq_len=seq_len, trailing_dims=1)
+    if not torch.isfinite(world_kp_3d).all():
+        raise ValueError("world_kp_3d must contain only finite values.")
+    _validate_extrinsics_and_intrinsics(
+        R_w2c, C_w, fx=fx, fy=fy, cx0=cx0, cy0=cy0
+    )
+
+    batch_shape = tuple(world_kp_3d.shape[:-3])
+    seq_len = int(world_kp_3d.shape[-3])
+    R_t = _broadcast_camera_time(
+        R_w2c, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=2, name="R_w2c"
+    )
+    C_t = _broadcast_camera_time(
+        C_w, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=1, name="C_w"
+    )
 
     rel_world = world_kp_3d - C_t.unsqueeze(-2)
     kp_cam = torch.einsum("...ij,...kj->...ki", R_t, rel_world)
@@ -911,13 +1097,32 @@ def project_world_coco17_to_pixel(
         raise ValueError(
             f"world_kp_3d must have shape (..., T, J, 3), got {tuple(world_kp_3d.shape)}."
         )
-    seq_len = world_kp_3d.shape[-3]
-    R_t = _broadcast_camera_time(R_w2c, seq_len=seq_len, trailing_dims=2)
-    C_t = _broadcast_camera_time(C_w, seq_len=seq_len, trailing_dims=1)
-    fx_t = _broadcast_camera_time(fx, seq_len=seq_len, trailing_dims=0).unsqueeze(-1)
-    fy_t = _broadcast_camera_time(fy, seq_len=seq_len, trailing_dims=0).unsqueeze(-1)
-    cx0_t = _broadcast_camera_time(cx0, seq_len=seq_len, trailing_dims=0).unsqueeze(-1)
-    cy0_t = _broadcast_camera_time(cy0, seq_len=seq_len, trailing_dims=0).unsqueeze(-1)
+    if not torch.isfinite(world_kp_3d).all():
+        raise ValueError("world_kp_3d must contain only finite values.")
+    _validate_extrinsics_and_intrinsics(
+        R_w2c, C_w, fx=fx, fy=fy, cx0=cx0, cy0=cy0
+    )
+
+    batch_shape = tuple(world_kp_3d.shape[:-3])
+    seq_len = int(world_kp_3d.shape[-3])
+    R_t = _broadcast_camera_time(
+        R_w2c, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=2, name="R_w2c"
+    )
+    C_t = _broadcast_camera_time(
+        C_w, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=1, name="C_w"
+    )
+    fx_t = _broadcast_camera_time(
+        fx, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fx"
+    ).unsqueeze(-1)
+    fy_t = _broadcast_camera_time(
+        fy, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fy"
+    ).unsqueeze(-1)
+    cx0_t = _broadcast_camera_time(
+        cx0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cx0"
+    ).unsqueeze(-1)
+    cy0_t = _broadcast_camera_time(
+        cy0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cy0"
+    ).unsqueeze(-1)
 
     kp_cam = torch.einsum(
         "...ij,...kj->...ki", R_t, world_kp_3d - C_t.unsqueeze(-2)
@@ -927,7 +1132,9 @@ def project_world_coco17_to_pixel(
     z_safe = torch.where(in_front, z, torch.ones_like(z))
     u_px = fx_t * (kp_cam[..., 0] / z_safe) + cx0_t
     v_px = fy_t * (kp_cam[..., 1] / z_safe) + cy0_t
-    return torch.stack([u_px, v_px], dim=-1), in_front
+    uv_px = torch.stack([u_px, v_px], dim=-1)
+    uv_px = torch.where(in_front.unsqueeze(-1), uv_px, torch.zeros_like(uv_px))
+    return uv_px, in_front
 
 
 __all__ = [
