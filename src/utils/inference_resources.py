@@ -43,11 +43,44 @@ class NvmlSampler:
             error_string.restype = ctypes.c_char_p
             raise RuntimeError(f"NVML {name}: {error_string(result).decode()} ({result})")
 
+    def _memory(self, handle: ctypes.c_void_p) -> _NvmlMemory:
+        memory = _NvmlMemory()
+        self._call("nvmlDeviceGetMemoryInfo", handle, ctypes.byref(memory))
+        return memory
+
+    def memory_used_bytes(self, device: str) -> int:
+        return int(self._memory(self._handles[device]).used)
+
+    def device_state(self, device: str) -> dict[str, object]:
+        """Read driver, clock and power telemetry once, preserving unavailable fields."""
+        driver = ctypes.create_string_buffer(96)
+        self._call("nvmlSystemGetDriverVersion", driver, len(driver))
+        handle = self._handles[device]
+        result: dict[str, object] = {"driver": driver.value.decode("ascii")}
+        errors: dict[str, str] = {}
+        for field, function, args in (
+            ("sm_clock_mhz", "nvmlDeviceGetClockInfo", (1,)),
+            ("memory_clock_mhz", "nvmlDeviceGetClockInfo", (2,)),
+            ("max_sm_clock_mhz", "nvmlDeviceGetMaxClockInfo", (1,)),
+            ("max_memory_clock_mhz", "nvmlDeviceGetMaxClockInfo", (2,)),
+            ("power_mw", "nvmlDeviceGetPowerUsage", ()),
+            ("power_limit_mw", "nvmlDeviceGetEnforcedPowerLimit", ()),
+        ):
+            value = ctypes.c_uint()
+            try:
+                self._call(function, handle, *args, ctypes.byref(value))
+            except (AttributeError, RuntimeError) as error:
+                errors[field] = str(error)
+                result[field] = None
+            else:
+                result[field] = value.value
+        result["telemetry_errors"] = errors
+        return result
+
     def sample(self) -> dict[str, dict[str, int]]:
         result = {}
         for device, handle in self._handles.items():
-            memory, utilization = _NvmlMemory(), _NvmlUtilization()
-            self._call("nvmlDeviceGetMemoryInfo", handle, ctypes.byref(memory))
+            memory, utilization = self._memory(handle), _NvmlUtilization()
             self._call("nvmlDeviceGetUtilizationRates", handle, ctypes.byref(utilization))
             result[device] = {
                 "utilization_percent": utilization.gpu,
