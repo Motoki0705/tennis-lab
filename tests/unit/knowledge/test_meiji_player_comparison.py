@@ -8,7 +8,11 @@ from pathlib import Path
 
 import numpy as np
 import pytest
+import torch
 from numpy.typing import NDArray
+
+from src.submodules.models.dino.person_detector import PersonDetectionResult
+from src.submodules.models.vitpose.pose2d import Pose2DResult
 
 RUN = (
     Path(__file__).resolve().parents[3]
@@ -125,3 +129,42 @@ def test_panel_keeps_source_pixels_and_does_not_draw_invalid_joints(
     assert panel[34 + 35, 80].tolist() == [0, 0, 0]
     assert panel[34 + 10, 11, 1] > 100
     assert image.sum() == 0
+
+
+def test_baseline_crops_only_detected_people_in_source_order(monkeypatch) -> None:
+    monkeypatch.syspath_prepend(str(RUN))
+    monkeypatch.setattr(sys, "dont_write_bytecode", True)
+    infer_frame = runpy.run_path(str(RUN / "baseline_pytorch.py"))["infer_frame"]
+    image: NDArray[np.uint8] = np.full((40, 60, 3), 16, np.uint8)
+    boxes = np.array([[3, 7, 13, 27], [20, 2, 50, 12]], np.float32)
+    scores = np.array([0.81, 0.65], np.float32)
+    poses = torch.zeros(2, 17, 3)
+    poses[:, 0] = torch.tensor([[9.0, 15.0, 1.4], [33.0, 6.0, 0.6]])
+    poses[0, 1] = torch.tensor([8.0, 8.0, -0.1])
+
+    class Detector:
+        def predict(self, request):
+            assert request.frame_bgr is image
+            return PersonDetectionResult(boxes, scores)
+
+    class Pose:
+        def predict(self, request):
+            (frame,) = request.frames_bgr
+            assert frame[0] == 142 and frame[1] is image
+            assert request.frame_indices.tolist() == [142, 142]
+            torch.testing.assert_close(
+                request.bbx_xys, torch.tensor([[8.0, 17.0, 24.0], [35.0, 7.0, 36.0]])
+            )
+            return Pose2DResult(poses)
+
+    row = infer_frame(142, image, Detector(), Pose())
+    np.testing.assert_array_equal(row.boxes_xyxy, boxes)
+    np.testing.assert_array_equal(row.scores, scores)
+    assert row.keypoints_xyc is not None
+    np.testing.assert_array_equal(row.keypoints_xyc[:, 0], poses[:, 0])
+    assert row.keypoints_xyc[0, 1].tolist() == [0.0, 0.0, 0.0]
+
+    boxes, scores = boxes[:0], scores[:0]
+    row = infer_frame(142, image, Detector(), Pose())
+    assert row.boxes_xyxy.shape == (0, 4)
+    assert row.keypoints_xyc is not None and row.keypoints_xyc.shape == (0, 17, 3)

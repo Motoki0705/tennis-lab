@@ -46,6 +46,22 @@
     },
     {
       "model_id": "dino-swin-l-vitpose-h",
+      "backend": "pt16",
+      "timing": {
+        "path": "parent-2492-issue-2496-primary/person-model-speed-baseline-v1/results/dino-vitpose/PT16-b1/report.json",
+        "sha256": "49cb2ab434fea1c318145911a849b24fb1bed9aea7779955d68005d035c2b9ea"
+      }
+    },
+    {
+      "model_id": "dino-swin-l-vitpose-h",
+      "backend": "pt32",
+      "timing": {
+        "path": "parent-2492-issue-2496-primary/person-model-speed-baseline-v1/results/dino-vitpose/PT32-b1/report.json",
+        "sha256": "06721676b540eb7fd205c33bdd1bc25c8161e421da2338904b3da2a9351ada90"
+      }
+    },
+    {
+      "model_id": "dino-swin-l-vitpose-h",
       "backend": "trt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/rescored-0d4bf0990/dino-swin-l-vitpose-h/trt16/accuracy.json",
@@ -54,6 +70,10 @@
       "predictions": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l-vitpose-h/trt16/predictions.jsonl",
         "sha256": "3b8f03e27c7a9f2f15327ec4788841b65d4eb977a58cdb4a12ab3f0034cb4dae"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2496-primary/person-model-speed-baseline-v1/results/dino-vitpose/TRT16-b1/report.json",
+        "sha256": "88c01b11b9ae94761e2df4f62cb39e8926c5129945a3126b43f6593a0cb3659a"
       }
     },
     {

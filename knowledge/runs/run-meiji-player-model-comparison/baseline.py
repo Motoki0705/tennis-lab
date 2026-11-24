@@ -17,6 +17,7 @@ from src.tennis_scene.evaluation.player_pose.bundle import (
 from src.tennis_scene.evaluation.player_pose.scoring import (
     FrameKey,
     Predictions,
+    ReferenceFrame,
     score_players,
 )
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
@@ -77,9 +78,9 @@ def _model_record(
 def load_archived_predictions(
     dataset: Path, manifest: dict[str, Any]
 ) -> tuple[dict[FrameKey, Predictions], dict[str, Any]]:
-    result = {}
+    result: dict[FrameKey, Predictions] = {}
     sources = {}
-    models = {}
+    models: dict[str, Any] = {}
     for clip in manifest["clips"]:
         clip_id = clip["clip_id"]
         index = (
@@ -157,6 +158,48 @@ def load_archived_predictions(
     return result, {"models": models, "archives": sources}
 
 
+def write_baseline_outputs(
+    output: Path,
+    benchmark_id: str,
+    manifest_sha256: str,
+    backend: str,
+    references: dict[FrameKey, ReferenceFrame],
+    paired: dict[FrameKey, Predictions],
+    provenance: dict[str, Any],
+    *,
+    scorer_commit: str | None = None,
+) -> None:
+    detections = {
+        key: Predictions(row.boxes_xyxy, row.scores) for key, row in paired.items()
+    }
+    for model_id, has_pose, predictions in (
+        ("dino-swin-l", False, detections),
+        ("dino-swin-l-vitpose-h", True, paired),
+    ):
+        header = PredictionHeader(
+            benchmark_id, manifest_sha256, model_id, backend, has_pose
+        )
+        directory = output / model_id / backend
+        rows_path = directory / "predictions.jsonl"
+        write_predictions(rows_path, header, predictions, expected_frames=references)
+        score = score_players(references, predictions)
+        receipt = {
+            "condition": header.as_json(),
+            "predictions_sha256": dual_sha256(rows_path),
+            "provenance": provenance,
+            "score": score,
+        }
+        if scorer_commit is not None:
+            receipt["scorer_commit"] = scorer_commit
+        write_json_atomic(directory / "accuracy.json", receipt)
+        print(
+            model_id,
+            score["images"],
+            score["overall"]["detection"]["recall_by_iou"],
+            flush=True,
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--benchmark", type=Path, required=True)
@@ -169,30 +212,15 @@ def main() -> None:
         args.benchmark, expected_sha256=args.manifest_sha256
     )
     paired, provenance = load_archived_predictions(args.dataset, manifest)
-    detections = {
-        key: Predictions(row.boxes_xyxy, row.scores) for key, row in paired.items()
-    }
-    for model_id, has_pose, predictions in (
-        ("dino-swin-l", False, detections),
-        ("dino-swin-l-vitpose-h", True, paired),
-    ):
-        header = PredictionHeader(
-            manifest["benchmark_id"], args.manifest_sha256, model_id, "trt16", has_pose
-        )
-        directory = args.output / model_id / "trt16"
-        rows_path = directory / "predictions.jsonl"
-        write_predictions(rows_path, header, predictions, expected_frames=references)
-        score = score_players(references, predictions)
-        write_json_atomic(
-            directory / "accuracy.json",
-            {
-                "condition": header.as_json(),
-                "predictions_sha256": dual_sha256(rows_path),
-                "provenance": provenance,
-                "score": score,
-            },
-        )
-        print(model_id, score["images"], score["overall"]["detection"]["recall_by_iou"])
+    write_baseline_outputs(
+        args.output,
+        manifest["benchmark_id"],
+        args.manifest_sha256,
+        "trt16",
+        references,
+        paired,
+        provenance,
+    )
 
 
 if __name__ == "__main__":
