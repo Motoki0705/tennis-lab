@@ -94,7 +94,7 @@
       "before": "f1e465fc33237bc114360c85fe436981b77c417f20f069d8d22a300d45070129"
     },
     "utils/configuration/inventory.py": {
-      "after": "e952cad30dd7a330ed4611082ed4503539ba3b72afb6e0dbeb253d6f4ed22a52",
+      "after": "3676fb72efcfe89ed89777625d4d86980b542cc14cacc6b988628f362309912f",
       "before": "fd2a87977aeaeda5e1b53fb3b914738c96aa2e7bbe06ba75d5d9b8c6acec10ee"
     },
     "utils/inference_recording.py": {

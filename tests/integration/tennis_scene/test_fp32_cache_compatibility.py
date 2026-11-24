@@ -226,8 +226,9 @@ def test_batched_tensorrt_fp32_compatibility_requires_the_exact_sources(phase2_s
     compatible = source_identity.compatible_source_digests(phase2_sources)
     assert document_digest(compatible) == _PHASE2_MAIN_FP32_CODE_SHA256
     assert source_identity.compatible_source_digests(phase2_sources, tensorrt=True) == phase2_sources
-    changed = {**phase2_sources, "utils/video/prefetch.py": "0" * 64}
-    assert source_identity.compatible_source_digests(changed) == changed
+    for path in ("utils/video/prefetch.py", "utils/configuration/inventory.py"):
+        changed = {**phase2_sources, path: "0" * 64}
+        assert source_identity.compatible_source_digests(changed) == changed
     unrelated = {"tennis_scene/schema.py": "a" * 64}
     assert source_identity.compatible_source_digests({**phase2_sources, **unrelated}) == {**compatible, **unrelated}
 
