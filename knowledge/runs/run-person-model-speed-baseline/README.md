@@ -38,6 +38,20 @@ for phase in prepare detection pose body; do
 done
 ```
 
-`inputs/manifest.json` が固定入力の正本。依存するindexが全画面、人物crop、身体系列、身体用frameのID・パス・SHA-256を持つ。`results/<workload>/<backend>-b<batch>/report.json` に環境、資産hash、raw samples、VRAM、集計とparityを出力する。`attempts-<group>.json` が各条件と子プロセス終了値を記録する。`vitpose-b1-build.json` に追加planのbuild receiptを保存する。
+計測commitは `0ee6f8dde06c078b6ab40324f5416b68a9eaefc0`。共有queueの4ジョブの開始時に同じcommitと空の差分を確認した。`PERSON_TRT_ROOT` には `.worktree-outputs/parent-2278-issue-2363-primary/tensorrt` を使った。実行時の引数と環境変数はメインcheckoutからの `.training_queue/repro/<job ID>/run.json` にある。 [queueの実行記録](queue-receipts.json)
+
+## 記録された成果物
+
+- [固定入力manifest](inputs/manifest.json)が `meiji_4cam/person-model-speed-v1` の正本。全画面96枚、人物crop 384件、身体24系列、身体用224枚のID・パス・SHA-256をindexに保存した。manifestのSHA-256は `64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62`。実データ728ファイルはメインcheckoutの `.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs/` にある。各indexの `path` はこの入力ディレクトリ相対。
+- ViTPoseのB=1計時は固定順の先頭300 cropで、clip_003・057・004・013・040をカバーした。B=4/8の計時と全ViTPose条件のparityは6 clipの384 cropをカバーした。候補比較では同じmanifestとbatchごとの巡回順を使う。[条件別計時対象](cases.json)
+- [全39条件の表](cases.csv)には判定、P50/P95、items/s、VRAM、load・cold startがある。実行不能行の速度欄は空欄。同期済みの各反復は `measurements/<workload>-<backend>.csv` に保存した。同一反復中の複数forwardはCUDA event時間を合算し、同種stageのhost時刻も反復単位で合算する。0始まりの `batch_index` は、workloadに対応する入力indexをbatch sizeごとに先頭から区切った順序を指す。
+- 環境、重みとplanのSHA-256、parity、各計測の元JSONとログのSHA-256は [条件別記録](cases.json) にある。絶対パスは `ckpt/` または再現用環境変数を起点に記した。`PERSON_RUN_OUTPUT` は再現コマンドの `output`。個別stage呼び出しを含む元JSONと予測は同じ永続出力の `results/<workload>/<backend>-b<batch>/` にある。追加planのbuildは [receipt](vitpose-b1-build.json) に記録した。
+- 代表値、parityで実行不能になった理由、先行値との比較は [runノード](../../nodes/tennis_scene/000085-run-person-model-speed-baseline.md) にある。
+
+728ファイルの内容と、39条件11,700反復の入力ID・集計を再照合し、公開用の計測記録を生成するCPUコマンド。
+
+```bash
+PYTHONPATH="$PWD" .venv/bin/python -B "$bundle/record.py" "$output" "$bundle"
+```
 
 このbundleのCPU検証は `PYTHONPATH="$PWD:$PWD/$bundle" .venv/bin/python -m pytest -n 0 "$bundle/test_speed_baseline.py"`。現行DINOと一致する検出復号、観測を使ったcrop選択とSHA-256、px単位のparityを確認する。
