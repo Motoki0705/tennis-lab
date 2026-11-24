@@ -11,6 +11,7 @@ MMPose code is Apache-2.0. The official zoo supplies both checkpoints by public 
 - Small CPU unit fixtures exercise two distinct boxes, asymmetric left/right joints and unequal x/y SimCC peaks. The checks cover native-pixel reprojection, input order, the model's missing-coordinate sentinel and preservation of its raw score. A malformed Halpe keypoint order must be rejected. These cases require no model files and fit the unit-test timing limit.
 - Reuse `test_pose_reports_missing_person_and_missing_joint_in_coverage_denominators` for the treatment of NaN coordinates after scoring, and `test_open_keeps_empty_images_and_rejects_changed_files` for the pinned reference loader. The adapter tests exercise the RTMPose-specific transformations and backend boundaries that those tests do not call.
 - Compare the staged CPU FP32 adapter with the official `inference_topdown` on two real pseudo-BBoxes from one pinned camera frame for each checkpoint. Verify both native positions and raw scores. This covers affine cropping, RGB normalization, flip fusion and the output slice. Report GPU parity separately against CUDA PT32 on the fixed comparison inputs.
+- Verify the six accuracy receipts against the published row order and fixed boxes before pairing outputs. Use an asymmetric CPU fixture with a 3–4–5 pixel displacement and missing joints to check that the backend comparison measures Euclidean distance and counts missing predictions separately. Check the shared benchmark's two declared forwards in an actual timing case.
 
 ## Inference and export settings
 
@@ -96,3 +97,57 @@ Both FP16 ONNX exports passed the ONNX checker under PyTorch 2.13.0+cu130 and ON
 | RTMPose-X | `0a374c720fc1551fb35fce8fb240cd467511844a4de569202708b1e1c0c6df54` |
 
 The focused CPU suite passed 24 tests in 8.60 seconds. That includes three new RTMPose tests and 21 existing tests for the comparison, reference scoring, bundle and timing contracts.
+
+## GPU accuracy on the #2495 reference
+
+RTX 5060 Ti、CUDA 13.0、PyTorch 2.13.0+cu130、TensorRT 10.14.1.48.post1 で3 backendを実行した。Batch 8の全条件で固定BBox 26,276件のキーと座標が一致した。有効な採点関節は437,714点。pixel L2は出力のある点の統計で、OKS・PCKは固定母数で欠測を失敗として扱う。実行HEAD、重み・engine・予測・採点・生ログのSHA-256と格納場所を記録した。 [実行記録](rtmpose_accuracy.json)
+
+| Model | Backend | Mean OKS | PCK@0.10 | PCK@0.20 | L2 mean (px) | L2 median (px) | L2 P95 (px) |
+|---|---|---:|---:|---:|---:|---:|---:|
+| M | PT32 | 0.75205 | 0.76122 | 0.94517 | 4.995 | 3.627 | 13.690 |
+| M | PT16 | 0.75193 | 0.76119 | 0.94509 | 4.995 | 3.628 | 13.688 |
+| M | TRT16 | 0.75181 | 0.76116 | 0.94488 | 4.999 | 3.627 | 13.712 |
+| X | PT32 | 0.76835 | 0.77804 | 0.95660 | 4.720 | 3.473 | 12.776 |
+| X | PT16 | 0.76831 | 0.77813 | 0.95664 | 4.720 | 3.471 | 12.779 |
+| X | TRT16 | 0.76826 | 0.77801 | 0.95651 | 4.722 | 3.473 | 12.788 |
+
+PT32でXはMより疑似GTの平均OKSが0.01630高く、平均L2が0.275 px小さかった。各モデル内の平均OKSの変化は最大0.000242。M TRT16で採点関節1点が欠測し、他の5条件は全採点関節を出力した。疑似GTの生成には既存モデルの観測と身体モデルを用いているため、この差は独立した人手GTでの優劣を表さない。 [疑似GTの作成と限界](../run-meiji-multiview-player-evaluation/README.md)
+
+### Output differences from the same checkpoint's PT32
+
+固定26,276行すべてで、同じ行・同じCOCO17関節の座標と生スコアを比較した。M TRT16の欠測1点は差分の母数から除いた。各条件ともP95は0.34 px未満で、5 pxを超える変位も観測された。最大変位のclip・camera・frame・player・関節を記録した。 [同一重みの出力差](rtmpose_accuracy.json)
+
+| Model | Backend | Finite pairs | XY P95 (px) | XY maximum (px) | Above 5 px | Score absolute P95 |
+|---|---|---:|---:|---:|---:|---:|
+| M | PT16 | 446,692 | 0.272 | 157.363 | 720 | 0.00714 |
+| M | TRT16 | 446,691 | 0.336 | 119.325 | 1,066 | 0.00932 |
+| X | PT16 | 446,692 | 0.212 | 72.167 | 171 | 0.00222 |
+| X | TRT16 | 446,692 | 0.292 | 93.559 | 277 | 0.00408 |
+
+TensorRTのbuildはM 55.12秒、X 64.74秒。planは30,040,084／102,454,292 bytes。Batch 8のEngine InspectorでMの315件、Xの469件のlayer入力・出力形式はすべて`Half`だった。tactic名に`f32`を明示するGEMMもM 4件、X 5件あり、channel attention・MLP・GAUで使用された。該当layer名とtactic名を保存した。 [変換記録](rtmpose_accuracy.json)
+
+同じsummaryを再生成するには、再現手順の`run`・`bundle`・`bundle_sha`と、共有queueのパス`queue_dir`を設定する。
+
+```bash
+mapfile -t jobs < <(jq -r '.conditions[][] | .job_id' "$run/rtmpose_accuracy.json")
+PYTHONPATH="$PWD/$run:$PWD" .venv/bin/python -B "$run/rtmpose_accuracy.py" \
+  --queue "$queue_dir" --bundle "$bundle" --bundle-sha256 "$bundle_sha" \
+  --output outputs/rtmpose/accuracy-reproduced.json "${jobs[@]}"
+```
+
+## Speed on the #2496 workload
+
+Use the published #2496 speed bundle and digest. This workload supplies predecoded native frames and fixed DINO crop rows. RTMPose reads the raw `xyxy` field before applying its official aspect ratio and padding. The baseline uses the same rows with ViTPose's crop transform. The common batch sizes are 1, 4 and 8. Batch 16 exercises the RTMPose engine's profile maximum when the published cohort fills complete batches. The #2496 default settings use a non-default CUDA stream, 30 warm-up iterations and three blocks of 100 samples. [Speed baseline](https://github.com/Motoki0705/tennis-lab/pull/2497)
+
+After merging #2495 and #2496, the focused suite passed 81 tests in 14.43 seconds, including the seven FP32 scene cache tests and a new test for the backend delta and missing counts. With the real RTMPose-M CPU graph and stand-in CUDA events, `BatchStages` received both named forwards. A fixture using #2496's `InputSet` read the original `xyxy` values in frozen order and rejected a changed PT32 reference file.
+
+Run each case in its own process in the exclusive training queue. Start each checkpoint with its PT32 batch 1 reference, then use the same manifest and output root for its other results. The shared pose check uses limits of 1 px at P95, 5 px maximum and 0.02 at P95 for the change in same-model raw scores. It also requires identical crop IDs. Use `--engine "$engine"` for TRT16.
+
+```bash
+speed=knowledge/runs/run-person-model-speed-baseline
+PYTHONPATH="$PWD/$speed:$PYTHONPATH" OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 \
+  .venv/bin/python -B "$run/rtmpose_speed.py" --inputs "$speed_inputs" \
+  --input-sha256 "$speed_sha256" --model "$model" --backend PT32 --batch 1 \
+  --checkpoint "$weight" --source-root "$source_root" --device cuda:0 \
+  --output outputs/rtmpose/speed-v1
+```

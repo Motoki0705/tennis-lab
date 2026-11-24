@@ -93,3 +93,28 @@ def test_trt_load_needs_an_engine_and_pt_rejects_unpinned_weights(
     ) as wrong_weights:
         eager.load()
     assert wrong_weights.value.status is Status.UNAVAILABLE
+
+
+@pytest.mark.usefixtures("rtmpose")
+def test_backend_delta_counts_missing_and_measures_native_pixel_distance() -> None:
+    summarize = import_module("rtmpose_accuracy").paired_delta
+    pt32: NDArray[np.float32] = np.zeros((1, 17, 3), dtype=np.float32)
+    fp16 = pt32.copy()
+    fp16[..., 2] = -0.5
+    fp16[0, 9, :2] = (3, 4)
+    pt32[0, [0, 1], :2] = np.nan
+    fp16[0, [0, 2], :2] = np.nan
+
+    summary = summarize(pt32, fp16)
+
+    assert summary["paired_joints"] == 14
+    assert (
+        summary["missing_in_candidate_only"]
+        == summary["missing_in_reference_only"]
+        == 1
+    )
+    assert summary["missing_in_both"] == 1
+    assert summary["xy_px"]["max"] == 5
+    assert summary["xy_above_1px"] == 1 and summary["xy_above_5px"] == 0
+    assert summary["score_abs_p95"] == 0.5
+    assert summary["worst"] == {"row_index": 0, "joint": "left_wrist"}
