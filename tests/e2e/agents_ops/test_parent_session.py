@@ -62,6 +62,10 @@ if args == ["--version"]:
     sys.exit(0)
 if args[:2] == ["run", "watch"]:
     assert "--repo" in args and args[args.index("--repo") + 1] == "o/r"
+    if os.environ.get("PARENT_EXPECT_UNLOCKED_WATCH"):
+        import fcntl
+        with open(".git/ops-code.lock", "a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     if state.get("watch_label"):
         state["issues"]["1"]["labels"].append({"name": state["watch_label"]})
         save()
@@ -873,7 +877,14 @@ def test_wait_supplement_watches_latest_exact_title_and_refreshes_labels(
         watch_label=final,
     )
     p.save(state)
-    result = p.cli("wait-supplement", extra={"CLAUDE_CODE_SESSION_ID": ""})
+    env = {"CLAUDE_CODE_SESSION_ID": ""}
+    if final == "supplement:done":
+        ops = p.repo / ".agents/ops"
+        shutil.copytree(OPS, ops, ignore=shutil.ignore_patterns("__pycache__"))
+        run_git(p.repo, "add", ".agents/ops")
+        run_git(p.repo, "commit", "-m", "install native parent for supplement wait")
+        env.update(PYTHONPATH=str(ops), PARENT_EXPECT_UNLOCKED_WATCH="1")
+    result = p.cli("wait-supplement", extra=env)
     assert json.loads(result.stdout) == {
         "parent": 1,
         "supplement_state": final.removeprefix("supplement:"),

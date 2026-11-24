@@ -40,11 +40,8 @@ from tests.support.d_capacity import GIB, set_available
 from tests.unit.agents_ops.test_repair_turn import report as repair_report
 
 ROOT = Path(__file__).resolve().parents[3]
-WAIT_ENTRY = (
-    """
-import os, socket, sys, time
-if os.environ.get("WAIT_LAUNCH_GATED"):
-    assert sys.stdin.buffer.read(1) == b"S"
+WAIT_SLEEP_PROBE = """
+import os, socket, time
 if os.environ.get("WAIT_PENDING_SOCKET"):
     from parent import worker_wait
     original_wait = worker_wait.wait_worker
@@ -61,6 +58,13 @@ if os.environ.get("WAIT_PENDING_SOCKET"):
         return original_wait(*args, sleep=pause, **kwargs)
     worker_wait.wait_worker = wait
 """
+WAIT_ENTRY = (
+    """
+import os, sys
+if os.environ.get("WAIT_LAUNCH_GATED"):
+    assert sys.stdin.buffer.read(1) == b"S"
+"""
+    + WAIT_SLEEP_PROBE
     + ENTRY
     + "\n# run-worker --child 10 --resume\n"
 )

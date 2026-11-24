@@ -454,6 +454,7 @@ class LiveBackend:
             return (
                 {"outcome": "running"}
                 if proof["record"].get("result") == "running"
+                and proof["summary"]["runner_alive"]
                 else None
             )
         if proof["record"].get("result") != "completed":

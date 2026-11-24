@@ -55,20 +55,23 @@ def _exec_property(setting: str, *argv: str | Path) -> str:
     return f"--property={setting}=:{quoted}"
 
 
+def _monitor_checkout(store: Store, chain: str) -> Path:
+    if not re.fullmatch(r"[0-9a-f]{32}", chain):
+        raise ValueError("invalid worker follow-up ID")
+    return store.directory.resolve() / "worker-monitor-checkouts" / chain
+
+
 def start(
     store: Store, repo: str, parent: int, child: int, worker: str, chain: str
 ) -> None:
-    if not re.fullmatch(r"[0-9a-f]{32}", chain):
-        raise ValueError("invalid worker follow-up ID")
+    checkout = _monitor_checkout(store, chain)
     source = Path(__file__).resolve().parents[3]
     head = git("rev-parse", "--verify", "HEAD^{commit}", cwd=source).decode().strip()
     if git("status", "--porcelain", "--", *MONITOR_SOURCE_PATHS, cwd=source).strip():
         raise ValueError("commit the worker monitor source before starting a follow-up")
     common = common_directory(source)
     directory = store.directory.resolve()
-    pins = directory / "worker-monitor-checkouts"
-    pins.mkdir(mode=0o700, parents=True, exist_ok=True)
-    checkout = pins / chain
+    checkout.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     if checkout.exists():
         raise ValueError("worker follow-up checkout already exists")
     git_bin, ln = shutil.which("git"), shutil.which("ln")
@@ -474,9 +477,6 @@ def resume_prompt(wait: dict[str, Any], result: dict[str, Any]) -> str:
 
 
 def main() -> int:
-    from lib.checkout_lock import guard_interactive_cli
-
-    guard_interactive_cli()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("state_dir", type=Path)
     parser.add_argument("repo")
@@ -485,8 +485,27 @@ def main() -> int:
     parser.add_argument("worker")
     parser.add_argument("chain")
     args = parser.parse_args()
+    store = Store(args.state_dir)
+    source = Path(__file__).resolve().parents[3]
+    try:
+        if source != _monitor_checkout(store, args.chain):
+            raise ValueError("start the follow-up service from its pinned worktree")
+        git_dir, common, head = git(
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-dir",
+            "--git-common-dir",
+            "--abbrev-ref",
+            "HEAD",
+            cwd=source,
+        ).splitlines()
+        if git_dir == common or head != b"HEAD":
+            raise ValueError("worker follow-up checkout must be a detached worktree")
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        print(f"worker follow-up checkout refused: {exc}", file=sys.stderr)
+        return 75
     monitor = Monitor(
-        Store(args.state_dir),
+        store,
         args.repo,
         args.parent,
         args.child,
