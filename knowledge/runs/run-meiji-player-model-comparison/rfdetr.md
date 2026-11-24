@@ -59,6 +59,8 @@ common=(--source "$benchmarks/multiview-v1"
 
 The accuracy artifacts live under `rfdetr-l/<backend>/`. The checked ONNX, engine and conversion receipts live under `rfdetr-l/trt16/batch-1/`. Use a fresh output root to reproduce a conversion from scratch.
 
+The completed L accuracy run records all three backends, including the TensorRT plan, output hashes and exact queue commands. [Run findings](../../nodes/player_detection/000009-run-meiji-rfdetr-large-accuracy.md) · [Artifact inventory and metrics](../run-meiji-rfdetr-large-accuracy/results.json)
+
 ## CPU preflight
 
 - The official L checkpoint loaded on CPU with 33,933,218 parameters, 300 queries and 91 sparse COCO logit slots. At `video_000/clip_003`, `cam0`, source frame 120, the adapter's 10 person boxes and scores exactly matched the vendor API at cutoff 0.25.
