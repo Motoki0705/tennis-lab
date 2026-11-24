@@ -12,13 +12,13 @@ from . import worker_result
 from .policy import digest
 
 ACTIVE = ("running", "waiting", "resuming")
-RESUME_LIMIT = 3
+RESUME_LIMIT = 10
 
 
 def event_key(wait: dict[str, Any]) -> str:
     if wait["kind"] == "ci":
-        return digest(["ci", wait["pr"], wait["head"]])
-    return digest(["queue", sorted(wait["job_ids"])])
+        return str(digest(["ci", wait["pr"], wait["head"]]))
+    return str(digest(["queue", sorted(wait["job_ids"])]))
 
 
 def current(task: dict[str, Any]) -> dict[str, Any] | None:
