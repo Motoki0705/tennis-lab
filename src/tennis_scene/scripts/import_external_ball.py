@@ -21,6 +21,74 @@ from src.tennis_scene.pipeline.imports.external_ball_publication import (
 from src.tennis_scene.pipeline.imports.external_ball_update import update_clip
 from src.tennis_scene.pipeline.source_identity import source_digests
 from src.utils.checksum import FileIntegrityError, dual_sha256
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathContractError,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
+from src.utils.paths import PROJECT_ROOT
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.external_ball_import",
+    fields=(
+        BoundaryPathField(
+            "dataset",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+        ),
+        BoundaryPathField(
+            "positions",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+            required=False,
+        ),
+        BoundaryPathField(
+            "side_store",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+            required=False,
+        ),
+        BoundaryPathField(
+            "court_store",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+            required=False,
+        ),
+        BoundaryPathField(
+            "drift_store",
+            PathRole.ARTIFACT,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+            required=False,
+        ),
+        BoundaryPathField(
+            "report",
+            PathRole.OUTPUT,
+            PathDirection.OUTPUT,
+            PathKind.FILE,
+            required=False,
+        ),
+    ),
+)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -53,7 +121,33 @@ def _parser() -> argparse.ArgumentParser:
 def main(argv: list[str] | None = None) -> int:
     args = _parser().parse_args(argv)
     start = time.perf_counter()
-    dataset = args.dataset.resolve()
+    arguments: dict[str, Path] = {"dataset": args.dataset.expanduser().absolute()}
+    if args.command == "publish":
+        arguments.update(
+            positions=args.positions.expanduser().absolute(),
+            side_store=args.side_store.expanduser().absolute(),
+            court_store=args.court_store.expanduser().absolute(),
+            report=args.report.expanduser().absolute(),
+        )
+        if args.drift_store is not None:
+            arguments["drift_store"] = args.drift_store.expanduser().absolute()
+    roots = RuntimePathRoots(
+        project_root=PROJECT_ROOT,
+        data_root=arguments["positions"].resolve()
+        if "positions" in arguments
+        else PROJECT_ROOT,
+        checkpoint_root=PROJECT_ROOT,
+        artifact_root=PROJECT_ROOT,
+        output_root=arguments["report"].parent.resolve()
+        if "report" in arguments
+        else PROJECT_ROOT,
+        cache_root=PROJECT_ROOT,
+        external_asset_root=PROJECT_ROOT,
+    )
+    paths = PATH_BOUNDARY.validate(
+        arguments, resolver=PathResolver(roots), independent_artifact_inputs=True
+    )
+    dataset = paths.declared("dataset").path
     dataset_sha256 = dual_sha256(dataset / "dataset.json")
     video = validate_id_component(args.video, field_name="video")
     requested = (
@@ -92,19 +186,24 @@ def main(argv: list[str] | None = None) -> int:
             )
         return 0
 
+    report = paths.declared("report").path
+    if report.exists() and not report.is_file():
+        raise PathContractError(f"External ball report output must be a file: {report}")
     court = PinnedBallCourt.load(
-        args.side_store, args.side_digest, args.court_store, args.drift_store
+        paths.declared("side_store").path,
+        args.side_digest,
+        paths.declared("court_store").path,
+        paths.declared("drift_store").path if "drift_store" in paths else None,
     )
     if requested is None and set(selected) != set(court.side.clips):
         raise ValueError(
             "The selected dataset video differs from the pinned side clip membership"
         )
-    implementation = document_digest(
-        source_digests(Path(__file__).resolve().parents[2])
-    )
+    implementation = document_digest(source_digests(PROJECT_ROOT / "src"))
+    positions = paths.declared("positions").path
     outputs: list[dict[str, Any]] = []
     for record in records:
-        path = args.positions / f"{record.clip_name}_ball_positions.json"
+        path = positions / f"{record.clip_name}_ball_positions.json"
         try:
             result = update_clip(dataset, record, path, court, implementation)
         except (
@@ -131,7 +230,7 @@ def main(argv: list[str] | None = None) -> int:
 
     dataset_unchanged = dual_sha256(dataset / "dataset.json") == dataset_sha256
     write_json_atomic(
-        args.report,
+        report,
         {
             "dataset_sha256": dataset_sha256,
             "dataset_unchanged": dataset_unchanged,

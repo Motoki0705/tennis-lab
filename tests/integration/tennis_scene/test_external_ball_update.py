@@ -9,7 +9,10 @@ import numpy as np
 import pytest
 
 from src.tennis_scene.archive import load_scene_result
-from src.tennis_scene.generate_dataset.manifest import DatasetClipRecord
+from src.tennis_scene.generate_dataset.manifest import (
+    DatasetClipRecord,
+    DatasetManifest,
+)
 from src.tennis_scene.pipeline.artifacts import json_value, write_json_atomic
 from src.tennis_scene.pipeline.assembly import assemble_automatic_scene
 from src.tennis_scene.pipeline.clip_inputs import resolve_dataset_clip
@@ -41,6 +44,9 @@ from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
 from src.tennis_scene.schema import SceneResult
+from src.tennis_scene.scripts.import_external_ball import main
+from src.utils.configuration import PathContractError
+from src.utils.io import load_json
 from src.utils.video import VideoInfo
 from tests.integration.tennis_scene.test_video_court_side import build, prefix_stores
 
@@ -302,3 +308,46 @@ def test_external_ball_swaps_both_pointers_and_reuses_the_saved_scene(
     assert ScenePointers.read(store.root) == before
     assert path.is_file()
     assert not restore_publication(store.root)
+
+
+def test_external_ball_cli_validates_paths_before_publishing(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    court, record, _, store, _, _ = _saved_clip(tmp_path, monkeypatch, "fallback")
+    DatasetManifest("fixture", {record.clip_id: record}).save(tmp_path / "dataset")
+    before = ScenePointers.read(store.root)
+    monkeypatch.chdir(tmp_path)
+    selection = [
+        "--dataset",
+        "dataset",
+        "--video",
+        record.video_id,
+        "--clip",
+        record.clip_name,
+    ]
+    publish = [
+        "publish",
+        *selection,
+        "--positions",
+        ".",
+        "--side-store",
+        "side",
+        "--side-digest",
+        court.side.digest,
+        "--court-store",
+        str(court.court.root),
+    ]
+    with pytest.raises(PathContractError, match="report output must be a file"):
+        main([*publish, "--report", "dataset"])
+    assert ScenePointers.read(store.root) == before
+    assert not (store.root / "components/external_ball_positions").exists()
+
+    assert main([*publish, "--report", "report.json"]) == 0
+    report = load_json(tmp_path / "report.json")
+    assert (
+        report["clips"][0]["scene_assembly"]["artifact_id"]
+        == ScenePointers.read(store.root).revision()
+    )
+    assert report["clips"][0]["valid_3d"] == record.num_frames - 1
+    assert main(["restore", *selection]) == 0
+    assert ScenePointers.read(store.root) == before
