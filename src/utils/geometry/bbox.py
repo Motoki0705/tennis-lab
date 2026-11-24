@@ -37,4 +37,20 @@ def pairwise_iou(first: NDArray[np.floating], second: NDArray[np.floating]) -> N
     return np.divide(intersection, union, out=np.zeros_like(intersection), where=union > 0)
 
 
-__all__ = ["bbox_max_side_ratio", "pairwise_iou"]
+def match_iou(
+    iou: NDArray[np.float64], minimum: float
+) -> tuple[NDArray[np.int64], NDArray[np.int64]]:
+    """Find one-to-one row/column pairs, maximizing count above cutoff then IoU."""
+    from scipy.optimize import linear_sum_assignment
+
+    if iou.ndim != 2 or not 0 < minimum <= 1:
+        raise ValueError("Matching requires a pairwise IoU matrix and a cutoff in (0, 1]")
+    valid = iou >= minimum
+    # A single additional valid pair outweighs any difference in total IoU.
+    reward = np.where(valid, iou + min(iou.shape) + 1.0, 0.0)
+    rows, columns = linear_sum_assignment(-reward)
+    keep = valid[rows, columns]
+    return rows[keep].astype(np.int64), columns[keep].astype(np.int64)
+
+
+__all__ = ["bbox_max_side_ratio", "match_iou", "pairwise_iou"]

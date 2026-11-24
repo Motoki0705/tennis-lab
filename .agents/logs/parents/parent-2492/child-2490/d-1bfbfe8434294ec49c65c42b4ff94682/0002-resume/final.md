@@ -1,0 +1,5 @@
+RTMPose-M/X の6条件で固定疑似BBox 26,276件の精度評価を完了しました。PT32の平均OKSは M が **0.75205**、X が **0.76835** でした。同じ重みのPT32からの座標差は全条件でP95が0.34 px未満でしたが、5 pxを超える例もあり、MのTRT16では採点関節が1点欠測しました。両TensorRT engineのビルドを確認し、出力差、予測・採点・engineのハッシュ、再現手順を保存しました。[測定記録](https://github.com/Motoki0705/tennis-lab/blob/f94399147a507a1d7e17bf639f3ee69e23dbdaae/knowledge/runs/run-meiji-topdown-pose-comparison/rtmpose_accuracy.json) · [集計と再現手順](https://github.com/Motoki0705/tennis-lab/blob/f94399147a507a1d7e17bf639f3ee69e23dbdaae/knowledge/runs/run-meiji-topdown-pose-comparison/rtmpose.md)
+
+統合用 branch は `codex/parent-2492-issue-2490-rtmpose`、commit は `f94399147a507a1d7e17bf639f3ee69e23dbdaae` です。#2495・#2496 の最新公開headを取り込んだ状態で、scene cacheを含む81テストとpre-commitが通過しました。速度・VRAMの実測は、#2496の既存 `person-speed-prepare` job が固定入力を生成するまで待機します。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204477064386375676_2026-11-24T12-22-15-613624323Z_1489359_person-speed-prepare.job"]}}
