@@ -43,6 +43,40 @@ OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python "$runner" smoke \
 
 The evaluation records `predictions.jsonl` with every fixed `FrameKey` and `metrics.json` with the cohort, backend, settings, artifact checksums and shared scorer results. Use `make_benchmark_adapter` in `edgecrafter.py` with the #2496 harness for fixed speed inputs. Each timed invocation receives already decoded native BGR images and measures resize and normalization, H2D, forward, decode and D2H through the harness.
 
+For TensorRT, run export and build as separate Python processes in the training queue. The exporter traces the official deployed network under CUDA FP16 autocast, with an FP32 image binding and dynamic batch axis. It records the graph's FP16 and FP32 initializer and cast counts. Postprocessing uses FP32 and the same implementation for all backends. TensorRT uses a strongly typed graph and an explicit workspace and batch profile. `--engine` points to the profile to use during evaluation.
+
+```bash
+conversion=knowledge/runs/run-meiji-player-model-comparison/edgecrafter_trt.py
+condition="$output/ecdet-l-coco/trt16"
+
+.venv/bin/python "$conversion" export --model ecdet-l-coco \
+  --engine "$condition/engine" --receipt "$condition/onnx-export.json"
+.venv/bin/python "$conversion" build --max-batch 16 \
+  --engine "$condition/engine" --receipt "$condition/engine-build.json"
+.venv/bin/python "$runner" evaluate --model ecdet-l-coco --backend trt16 \
+  --manifest-sha256 "$manifest_sha" --engine "$condition/engine" --output "$condition"
+
+.venv/bin/python knowledge/runs/run-meiji-player-model-comparison/edgecrafter_parity.py \
+  --pt32 "$output/ecdet-l-coco/pt32" --candidate "$condition"
+```
+
+CUDA PT32 fixes matmul and cuDNN convolution to IEEE precision. PT16 uses CUDA FP16 autocast with FP32 weights and input tensors. The separate PT32 parity receipt aligns the exact same source frames and verifies prediction hashes and evaluation settings. It uses one-to-one IoU 0.50 matching for rows with score ≥0.25, then requires at least 98% matches in both directions, matched IoU P05 ≥0.90, and absolute score error P95 ≤0.025. Pose parity adds ≥98% joint availability agreement and paired joint error P95 ≤8 native pixels. All precision conditions use the same partial-label pseudo-reference for accuracy.
+
+## CPU integration check
+
+On the adapter revision `bf9cf828f6508c48da90e220743e06b330be47ff`, the detached local job `20261124T113947Z_a94715bdcac9_edgecrafter-assets-and-cpu-smoke` exited successfully. All six downloaded weights matched the official release byte sizes and digests. A two-image CPU batch used the original frames 0 and 2 from `video_000/clip_003`, `cam0`. ECPose used margin `0.10` for this contract check. Each model wrote `outputs/player-model-comparison/<model_id>/smoke-pt32.json` in the worker worktree. [CPU result paths and checksums](edgecrafter-cpu-smoke.json)
+
+| Model ID | Person rows at source frame 0 | Person rows at source frame 2 | COCO17 joints per row |
+|---|---:|---:|---:|
+| `ecdet-l-coco` | 90 | 91 | — |
+| `ecdet-x-coco` | 88 | 88 | — |
+| `ecdet-l-o365` | 72 | 70 | — |
+| `ecdet-x-o365` | 69 | 69 | — |
+| `ecpose-l-o365` | 59 | 59 | 17 |
+| `ecpose-x-o365` | 60 | 60 | 17 |
+
 ## Test coverage
 
 Four new CPU tests use small asymmetric image and model-output fixtures. They check native width and height, color channel order, the distinct person labels, selected-query order, positive-area boxes, aligned left and right wrist coordinates, the joint availability flag and the empty-result shape. The joint-envelope policy must be explicit. Existing `test_exact_backend_selection_never_loads_another_backend`, `test_forward_cannot_recover_a_failed_trt_call_with_pt`, `test_open_keeps_empty_images_and_rejects_changed_files` and `test_pose_reports_missing_person_and_missing_joint_in_coverage_denominators` exercise the shared harness and scorer boundaries.
+
+The parity tests use two rearranged detection rows, perturbations and missing joints on a single pose row, and two tiny JSONL files with different source frames. They check the pixel and score difference calculations, reject missing coverage and mismatched input identity, and reuse `test_build_time_is_separate_from_trt_load_and_inference` and `test_profile_bounds_include_tail_and_reject_oversize` for the conversion and engine boundaries.

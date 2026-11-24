@@ -16,6 +16,7 @@ from typing import Any, TypeVar, cast
 import numpy as np
 import torch
 from numpy.typing import NDArray
+from pydantic import JsonValue
 
 from src.submodules.models.ecpose.inference import (
     decode_predictions,
@@ -44,7 +45,7 @@ from src.tennis_scene.evaluation.player_pose.scoring import (
 from src.utils.checksum import dual_sha256
 from src.utils.inference_benchmark import Backend, BatchStages, BenchmarkAdapter, Stage
 from src.utils.io import write_json_atomic
-from src.utils.models.tensorrt_artifacts import PLAN_FILE, EngineBundle
+from src.utils.models.tensorrt_artifacts import PLAN_FILE, EngineBundle, TensorSpec
 from src.utils.models.tensorrt_runtime import TensorRTRunner
 from src.utils.video.reader import OpenCVVideoFrameReader
 from src.utils.video.types import FramePacket
@@ -53,6 +54,7 @@ from src.utils.video.windows import chunked
 PREDICTION_SCHEMA = "player_model_predictions_v1"
 HEADS = ("logits", "coordinates")
 INPUT_NAME = "pixels"
+ONNX_OPSET = 19
 ASSETS = Path("outputs/player-model-comparison/assets")
 SOURCE = Path("data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v1")
 COHORT = SOURCE.with_name("multiview-player-evaluation-v1")
@@ -62,6 +64,16 @@ SCORE_THRESHOLD = 0.0  # Keep all positive-scoring person rows from the official
 Frames = tuple[NDArray[np.uint8], ...]
 Forward = Callable[[torch.Tensor], tuple[torch.Tensor, torch.Tensor]]
 Value = TypeVar("Value")
+
+
+def export_settings() -> dict[str, JsonValue]:
+    return {
+        "source_commit": SOURCE_COMMIT,
+        "image_size_hw": list(IMAGE_SIZE),
+        "opset": ONNX_OPSET,
+        "precision_policy": "cuda_fp16_autocast",
+        "batch_axis": "dynamic",
+    }
 
 
 def fetch_assets(directory: Path, models: list[str]) -> None:
@@ -149,16 +161,28 @@ def _load_forward(
             raise ValueError("TRT16 requires an explicit engine directory")
         require_weight(weights, release)
         bundle = EngineBundle.read(engine)
-        if (
-            bundle.export.model != model_id
-            or bundle.export.sources != {"weights": release.sha256}
-            or bundle.export.settings.get("source_commit") != SOURCE_COMMIT
-            or bundle.export.inputs.keys() != {INPUT_NAME}
-            or bundle.export.outputs.keys() != set(HEADS)
-        ):
-            raise ValueError(
-                f"TensorRT engine differs from the pinned EdgeCrafter model: {engine}"
-            )
+        shapes = (
+            ((-1, 60, 2), (-1, 60, 17, 2))
+            if release.has_pose
+            else ((-1, 300, 80), (-1, 300, 4))
+        )
+        outputs = {}
+        for name, shape in zip(HEADS, shapes, strict=True):
+            spec = bundle.export.outputs[name]
+            if spec.dtype not in {"float16", "float32"}:
+                raise ValueError(
+                    f"Unexpected EdgeCrafter TensorRT output dtype {name}={spec.dtype}"
+                )
+            outputs[name] = TensorSpec(dtype=spec.dtype, shape=shape)
+        bundle = bundle.for_model(
+            model=model_id,
+            settings=export_settings(),
+            sources={"weights": release.sha256},
+            inputs={
+                INPUT_NAME: TensorSpec(dtype="float32", shape=(-1, 3, *IMAGE_SIZE))
+            },
+            outputs=outputs,
+        )
         runner = TensorRTRunner(bundle, device)
 
         def forward_trt(pixels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -202,7 +226,9 @@ def _infer(
     raw = (
         forward(device_pixels)
         if stages is None
-        else stages.measure_forward(backend, lambda: forward(device_pixels), name=model_id)
+        else stages.measure_forward(
+            backend, lambda: forward(device_pixels), name=model_id
+        )
     )
     decoded = stage(
         Stage.POSTPROCESS,
@@ -430,6 +456,15 @@ def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
             "source_commit": SOURCE_COMMIT,
             "input_size_hw": IMAGE_SIZE,
             "image_batch_size": args.batch_size,
+            "execution": {
+                "device": str(device),
+                "gpu": torch.cuda.get_device_name(device),
+                "torch_version": str(torch.__version__),
+                "torch_cuda_version": torch.version.cuda,
+                "fp32_matmul_and_cudnn_conv": "ieee",
+                "eager_autocast": "float16" if backend is Backend.PT16 else None,
+                "postprocess_dtype": "float32",
+            },
             "person_confidence_exclusive": SCORE_THRESHOLD,
             "pose_bbox_joint_margin": args.pose_box_margin,
             "engine_sha256": None
