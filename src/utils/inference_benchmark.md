@@ -30,7 +30,7 @@ def load_pt32():
     def infer(rows, stages):
         inputs = stages.stage(Stage.PREPROCESS, lambda: preprocess(rows))
         inputs = stages.stage(Stage.H2D, lambda: inputs.to(device))
-        outputs = stages.forward(Backend.PT32, lambda: model(inputs))
+        outputs = stages.measure_forward(Backend.PT32, lambda: model(inputs))
         decoded = stages.stage(Stage.POSTPROCESS, lambda: decode(outputs))
         return stages.stage(Stage.D2H, lambda: decoded.cpu())
 
@@ -50,7 +50,7 @@ write_json_atomic(Path("detector-pt32-b1.json"), report.to_dict())
 ```
 
 - PT16はモデル指定のFP16 castかautocastをforwardに適用する。TRT16は検証済みのFP16 planを使い、`BenchmarkAdapter.engines` にplanのpathを渡す。既存のTensorRT資産を使う際は `EngineBundle` と `TensorRTRunner` で重み・profile・環境を照合する。詳細NVTXを無効にし、エンジンの演算精度と補助処理のbackendも記録する。[TensorRT資産の契約](../tennis_scene/pipeline/README.md#tensorrt-fp16)
-- 複合stageは複数の `stages.forward(..., name="model")` を呼び、間に前処理・転送・復号を差し込める。例えば検出＋poseは検出された全人物を同じ呼び出しで処理し、`item_unit="image"` を使う。系列は `Batch.ids` を系列単位にし、`Batch.items` に有効person-frame数、`processed_items` にpaddingを含む処理数を渡せる。
+- 複合stageは複数の `stages.measure_forward(..., name="model")` を呼び、間に前処理・転送・復号を差し込める。例えば検出＋poseは検出された全人物を同じ呼び出しで処理し、`item_unit="image"` を使う。系列は `Batch.ids` を系列単位にし、`Batch.items` に有効person-frame数、`processed_items` にpaddingを含む処理数を渡せる。
 - `check_parity` は全固定batchを一度ずつ流した `(Batch, output)` のiteratorを受ける。PT32で参照出力をID付きで保存し、PT16/TRT16では同じIDの参照に対する数値差と比較基準を `ParityResult(passed, metrics, reason)` で返す。PT32のbatch間差も同じ口で評価できる。PT16/TRT16の成功にはPT32参照に対する全batchの確認が必要。参照欠測は `ConditionUnavailable(Status.PARITY_UNAVAILABLE, ...)` で理由を記録する。
 
 ## 計測と集計
