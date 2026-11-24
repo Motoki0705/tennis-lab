@@ -18,7 +18,13 @@ from pmpose import (
 )
 from pose_contract import PoseInput
 
-from src.utils.inference_benchmark import Backend, ConditionUnavailable, Stage, Status
+from src.utils.inference_benchmark import (
+    Backend,
+    BatchStages,
+    ConditionUnavailable,
+    Stage,
+    Status,
+)
 
 
 @pytest.mark.parametrize("box", [[1.25, 2.75, 5.3, 9], [-1.5, 4.25, 11.6, 12.4]])
@@ -91,7 +97,8 @@ class ObservedStages:
         return operation()
 
 
-def test_flip_decode_keeps_original_row_order_and_auxiliary_joints():
+@pytest.mark.parametrize("timed", [False, True], ids=["accuracy", "shared-speed"])
+def test_flip_decode_keeps_original_row_order_and_auxiliary_joints(timed):
     frame = np.zeros((11, 20, 3), dtype=np.uint8)
     rows = tuple(
         PoseInput(frame, np.array(box, dtype=np.float32))
@@ -155,9 +162,20 @@ def test_flip_decode_keeps_original_row_order_and_auxiliary_joints():
         torch.device("cpu"),
         torch.float32,
     )
-    stages = ObservedStages()
+    event = SimpleNamespace(record=lambda: None, elapsed_time=lambda other: 1.0)
+    cuda = SimpleNamespace(events=(event, event), synchronize=lambda: None)
+    stages = BatchStages(cuda, Backend.PT32, timed=True) if timed else ObservedStages()
     output = infer(rows, stages)
-    assert stages.forwards == [(Backend.PT32, "original"), (Backend.PT32, "flipped")]
+    if isinstance(stages, BatchStages):
+        names = [
+            sample.name for sample in stages._finish() if sample.stage is Stage.FORWARD
+        ]
+        assert names == ["original", "flipped"]
+    else:
+        assert stages.forwards == [
+            (Backend.PT32, "original"),
+            (Backend.PT32, "flipped"),
+        ]
     assert output.keypoints_xyc.shape == (2, 17, 3)
     assert output.keypoints_xyc.dtype == np.float32
     np.testing.assert_array_equal(output.keypoints_xyc[0, 1], [27, 44, 0.5])

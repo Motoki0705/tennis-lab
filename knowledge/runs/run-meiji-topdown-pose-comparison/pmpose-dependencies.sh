@@ -5,6 +5,8 @@ pmpose_site=$(realpath -m "${1:?Supply a private directory for PMPose dependenci
 pmpose_run=$(dirname "${BASH_SOURCE[0]}")
 export CUDA_VISIBLE_DEVICES=""
 export PYTHONPATH="$pmpose_site"
+# MMPretrain 1.2.0 imports legacy Transformers BERT utilities when registering
+# its models. Install the compatible version in this private directory.
 uv pip install --python .venv/bin/python --target "$pmpose_site" --link-mode=copy \
     --no-deps -r "$pmpose_run/pmpose-requirements.txt"
 

@@ -26,6 +26,7 @@ from pose_contract import PoseBatch, PoseInput, PoseStages
 from src.utils.checksum import FileIntegrityError
 from src.utils.inference_benchmark import (
     Backend,
+    BatchStages,
     BenchmarkAdapter,
     ConditionUnavailable,
     Stage,
@@ -84,7 +85,7 @@ OUTPUT_SPEC = {
 }
 TensorOutputs = tuple[torch.Tensor, ...]
 ArrayOutputs = tuple[NDArray[np.float32], ...]
-Infer = Callable[[tuple[PoseInput, ...], PoseStages], PoseBatch]
+Infer = Callable[[tuple[PoseInput, ...], PoseStages | BatchStages], PoseBatch]
 
 
 def benchmark_settings(model_id: str, backend: Backend) -> dict[str, Any]:
@@ -232,11 +233,11 @@ def load_model(
     model = upstream.api.init_model(upstream.config, device="cpu")
     # The caller has verified the published SHA-256. MMEngine metadata uses
     # Python objects that are outside torch.load's tensor-only allowlist.
-    weights = torch.load(checkpoint, map_location="cpu", weights_only=False)
+    weights = torch.load(checkpoint, map_location="cpu", weights_only=False, mmap=True)
     meta = weights.get("meta", {}).get("dataset_meta")
     if meta is not None:
         _verify_joint_schema(meta)
-    model.load_state_dict(weights["state_dict"], strict=True)
+    model.load_state_dict(weights["state_dict"], strict=True, assign=True)
     del weights
     if dtype == torch.float16:
         # The probability-map projection sorts and accumulates over 3,072
@@ -308,7 +309,9 @@ def _infer(
     device: torch.device,
     dtype: torch.dtype,
 ) -> Infer:
-    def infer(rows: tuple[PoseInput, ...], stages: PoseStages) -> PoseBatch:
+    def infer(
+        rows: tuple[PoseInput, ...], stages: PoseStages | BatchStages
+    ) -> PoseBatch:
         if not rows:
             raise ValueError("PMPose requires at least one input row")
         cpu, metadata = stages.stage(
@@ -316,8 +319,13 @@ def _infer(
         )
         pixels = stages.stage(Stage.H2D, lambda: cpu.to(device=device, dtype=dtype))
         flipped = stages.stage(Stage.PREPROCESS, lambda: pixels.flip(-1), name="flip")
-        normal = stages.forward(backend, lambda: forward(pixels), name="original")
-        mirror = stages.forward(backend, lambda: forward(flipped), name="flipped")
+        measure = (
+            stages.measure_forward
+            if isinstance(stages, BatchStages)
+            else stages.forward
+        )
+        normal = measure(backend, lambda: forward(pixels), name="original")
+        mirror = measure(backend, lambda: forward(flipped), name="flipped")
         fused = stages.stage(
             Stage.POSTPROCESS, lambda: _fuse(normal, mirror), name="flip_restore"
         )

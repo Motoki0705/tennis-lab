@@ -14,22 +14,22 @@ The upstream [source license](https://github.com/MiraPurkrabek/BBoxMaskPose/blob
 
 ## Reproduction
 
-Run from the repo root with its existing PyTorch environment. The download and native dependency builds run on the CPU. Install the extra packages in a private import directory that can be used alongside the shared PyTorch and NumPy.
+Run from the repo root with its existing PyTorch environment. The download and native dependency builds run on the CPU. Install the extra packages in a private import directory that can be used alongside the shared PyTorch and NumPy. MMPretrain 1.2.0 imports utilities from the legacy Transformers BERT API during registration. Its compatible Transformers build is pinned in `pmpose-requirements.txt`.
 
 ```bash
 run=knowledge/runs/run-meiji-topdown-pose-comparison
 assets=outputs/pmpose
-PYTHONPATH="$PWD" .venv/bin/python "$run/pmpose_assets.py" "$assets"
+PYTHONPATH="$PWD" .venv/bin/python -B "$run/pmpose_assets.py" "$assets"
 bash "$run/pmpose-dependencies.sh" "$assets/dependencies"
 
 export PYTHONPATH="$PWD:$PWD/$run:$PWD/$assets/dependencies"
 model=pmpose-l
 checkpoint="$assets/PMPose-${model##*-}-1.0.0.pth"
 source_root="$assets/BBoxMaskPose"
-OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python "$run/pmpose_tools.py" smoke \
+OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python -B "$run/pmpose_tools.py" smoke \
   --model "$model" --source-root "$source_root" --checkpoint "$checkpoint" \
   --receipt "$assets/$model-official-parity.json"
-OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python "$run/pmpose_tools.py" export \
+OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python -B "$run/pmpose_tools.py" export \
   --model "$model" --source-root "$source_root" --checkpoint "$checkpoint" \
   --directory "$assets/$model-engine" --receipt "$assets/$model-export.json"
 ```
@@ -40,4 +40,4 @@ Use the [common accuracy runner](README.md#accuracy-command) with `--model pmpos
 
 ## Tests
 
-Use small CPU fixtures with no weight or GPU requirement. Compare the rectangle contour against the demo’s raster-plus-OpenCV calculation, including fractional and edge-clipped boxes. An asymmetric pose with two boxes from one frame exercises row order, native-pixel decoding, flip restoration of eyes and limbs, the full 23-joint auxiliary axis and a missing heatmap. Inject distinct scores including zero to detect silent score filtering. Loader tests exercise explicit rejection of an absent source, wrong checkpoint and absent TRT engine. Reuse `tests/unit/utils/test_inference_benchmark.py::test_exact_backend_selection_never_loads_another_backend` and the shared pose scorer tests for backend selection and fixed-denominator coverage. Measure the focused tests with `--durations=0 --durations-min=0`. The real-asset smoke will compare the adapter’s PT32 output against the upstream API on the same images, rectangles and weights.
+Use small CPU fixtures with no weight or GPU requirement. Compare the rectangle contour against the demo’s raster-plus-OpenCV calculation, including fractional and edge-clipped boxes. An asymmetric pose with two boxes from one frame exercises row order, native-pixel decoding, flip restoration of eyes and limbs, the full 23-joint auxiliary axis and a missing heatmap. Inject distinct scores including zero to detect silent score filtering. Run the same assertion through the accuracy stages and the shared timing stages to check that both count the two real forwards. Loader tests exercise explicit rejection of an absent source, wrong checkpoint and absent TRT engine. Reuse `tests/unit/utils/test_inference_benchmark.py::test_exact_backend_selection_never_loads_another_backend` and the shared pose scorer tests for backend selection and fixed-denominator coverage. Measure the focused tests with `--durations=0 --durations-min=0`. The real-asset smoke will compare the adapter’s PT32 output against the upstream API on the same images, rectangles and weights.

@@ -1,5 +1,6 @@
 addict==2.4.0
 Cython==3.2.5
+huggingface-hub==0.26.5
 json-tricks==3.17.3
 mat4py==0.6.0
 mmdet==3.3.0
@@ -12,5 +13,7 @@ Shapely==2.1.2
 sparsemax==0.1.9
 tabulate==0.10.0
 terminaltables==3.1.10
+tokenizers==0.20.3
+transformers==4.45.2
 wheel==0.46.3
 yapf==0.43.0
