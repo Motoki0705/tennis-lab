@@ -559,13 +559,13 @@ def test_queue_waits_for_every_job_and_duplicate_controller_cannot_resume(
 
 @pytest.mark.parametrize(
     ("repeated", "count", "reason"),
-    [(False, 4, "automatic_resume_limit"), (True, 2, "event_already_consumed")],
+    [(False, 11, "automatic_resume_limit"), (True, 2, "event_already_consumed")],
 )
 def test_queue_deduplicates_events_and_stops_at_the_resume_limit(
     service: ParentEnv, repeated: bool, count: int, reason: str
 ) -> None:
     p = service
-    jobs = [f"{i}_1_run.job" for i in range(100, 104)]
+    jobs = [f"{i}_1_run.job" for i in range(100, 100 + count)]
     p.env["TRAINING_QUEUE_DIR"] = str(p.repo / ".training_queue")
     for job in jobs:
         set_job(p, job, "done")
