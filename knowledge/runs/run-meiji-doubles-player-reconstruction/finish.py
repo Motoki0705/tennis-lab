@@ -61,6 +61,7 @@ from src.tennis_scene.pipeline.dataset_publication import (
     validate_dataset_result,
 )
 from src.tennis_scene.pipeline.imports.external_ball_publication import (
+    ScenePointers,
     current_publication,
     publish_scene_revision,
     restore_publication,
@@ -166,7 +167,7 @@ def recover_body_batch(
         raise ValueError("Run the gpu phase through the shared training queue")
     pending = []
     for record in records:
-        clip = FrozenClip.bind(run.dataset, record, run.recipe)
+        clip = FrozenClip.bind(run.dataset, record, run.recipe_for(record))
         preparation = read_preparation(run, record, clip)
         if preparation["mode"] in NEEDS_PLACEMENT:
             if gpu_record(run, record).exists():
@@ -291,6 +292,11 @@ def recover_body_batch(
                     },
                 )
             clip.check_staged(clip.staged)
+            clip.clip.snapshot.assert_unchanged()
+            if ScenePointers.read(clip.store.root) != clip.current:
+                raise ValueError(
+                    f"{record.clip_id}: published pointers changed during body reconstruction"
+                )
             write_json_atomic(
                 gpu_record(run, record),
                 {
@@ -472,6 +478,7 @@ def publish_clip(
     script_sha: str,
 ) -> None:
     start = perf_counter()
+    report_path = run.preparation_path(record).with_name("publication.json")
     identity = {
         **clip.pinned,
         "cpu_sha256": dual_sha256(run.preparation_path(record)),
@@ -485,7 +492,9 @@ def publish_clip(
                 f"{record.clip_id}: published scene input identity differs"
             )
         if clip.current == clip.player_receipt.after:
-            verify_revision(clip)
+            verified = verify_revision(clip)
+            if not report_path.exists():
+                write_json_atomic(report_path, verified)
             return
     scene, module, bindings = assemble_revision(clip, preparation, gpu, cfg)
     counts = player_counts({name: getattr(scene, name) for name in SCENE_FIELDS})
@@ -524,9 +533,7 @@ def publish_clip(
     published = replace(clip, current=receipt.after, player_receipt=receipt, staged={})
     verified = verify_revision(published)
     verified["seconds"]["publish_and_verify"] = perf_counter() - start
-    write_json_atomic(
-        run.preparation_path(record).with_name("publication.json"), verified
-    )
+    write_json_atomic(report_path, verified)
     print(
         f"{record.clip_id} {verified['scene_assembly_id']} {stats['after']}", flush=True
     )
@@ -556,7 +563,7 @@ def complete_phase(
         cfg = run.config()
         ready = []
         for record in records:
-            clip = FrozenClip.bind(run.dataset, record, run.recipe)
+            clip = FrozenClip.bind(run.dataset, record, run.recipe_for(record))
             preparation = read_preparation(run, record, clip)
             gpu = (
                 load_gpu_record(run, record, clip, script_sha)
@@ -568,7 +575,7 @@ def complete_phase(
             publish_clip(run, record, clip, preparation, gpu, cfg, script_sha)
         return
     report = [
-        verify_revision(FrozenClip.bind(run.dataset, record, run.recipe))
+        verify_revision(FrozenClip.bind(run.dataset, record, run.recipe_for(record)))
         for record in records
     ]
     write_json_atomic(run.output / "verification.json", report)
@@ -650,7 +657,9 @@ def report_cpu(run: ReplayRun, records: Sequence[DatasetClipRecord]) -> None:
         pins = cpu["pinned"]
         if (
             cpu["clip_id"] != record.clip_id
-            or any(pins.get(key) != value for key, value in run.recipe.items())
+            or any(
+                pins.get(key) != value for key, value in run.recipe_for(record).items()
+            )
             or document_digest(baseline) != pins["previous_pointer_sha256"]
         ):
             raise ValueError(
@@ -689,6 +698,10 @@ def report_cpu(run: ReplayRun, records: Sequence[DatasetClipRecord]) -> None:
                 "alignment_artifact_id": pins["alignment"]["artifact_id"],
                 "ball_artifact_id": pins["ball"]["artifact_id"],
                 "comparison_sha256": cpu["selection_comparison_sha256"],
+                "missing_raw_appearance": sum(
+                    row.get("missing_raw_appearance", 0) for row in masks.values()
+                ),
+                "prepare_sha256": pins["cpu_script_sha256"]["prepare.py"],
             }
         )
         for node, ref in pins["upstream"].items():
@@ -729,5 +742,8 @@ def report_cpu(run: ReplayRun, records: Sequence[DatasetClipRecord]) -> None:
             ],
             "cpu_seconds_sum": sum(row["cpu_seconds"] for row in observations),
             "upstream_references": len(upstream_rows),
+            "prepare_versions": dict(
+                Counter(row["prepare_sha256"] for row in observations)
+            ),
         },
     )

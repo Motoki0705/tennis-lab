@@ -10,7 +10,7 @@ from typing import Any
 
 import numpy as np
 from frozen_clip import FrozenClip, read_json
-from omegaconf import OmegaConf
+from omegaconf import DictConfig, OmegaConf
 
 from src.tasks.person_tracking.court_linking import LinkingConfig
 from src.tasks.person_tracking.feature_tracks import evidence_appearance
@@ -80,6 +80,11 @@ from src.utils.video.reader import OpenCVDecodeIdentity
 
 SIDE_STORE = Path("knowledge/runs/run-court-side-video-shared-20261118/side-store")
 REPLAY_PREFIX = "doubles_players"
+# This revision rejected missing appearance even outside the selected carriers.
+# Its completed clips therefore satisfy the relaxed check without recomputation.
+PREVIOUS_PREPARE_SHA256 = (
+    "f6b410c0bc9798dafcbea7bbb17318db66fc1a823723c20ad3653d5c089e221f"
+)
 
 
 @dataclass(frozen=True)
@@ -114,6 +119,8 @@ class ReplayRun:
 
     def config(self) -> PipelineRuntimeConfig:
         config = OmegaConf.create(self.config_yaml)
+        if not isinstance(config, DictConfig):
+            raise ValueError("Expected a mapping in the archived pipeline config")
         config.paths.project_root = str(PROJECT_ROOT)
         cfg = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
         if cfg.player_association.players_per_side != 2 or not all(
@@ -127,6 +134,20 @@ class ReplayRun:
 
     def preparation_path(self, record: DatasetClipRecord) -> Path:
         return self.output / record.clip_name / "cpu.json"
+
+    def recipe_for(self, record: DatasetClipRecord) -> dict[str, Any]:
+        path = self.preparation_path(record)
+        if path.is_file():
+            previous = read_json(path)["pinned"]["cpu_script_sha256"]
+            if previous["prepare.py"] == PREVIOUS_PREPARE_SHA256:
+                return {
+                    **self.recipe,
+                    "cpu_script_sha256": {
+                        **self.recipe["cpu_script_sha256"],
+                        "prepare.py": PREVIOUS_PREPARE_SHA256,
+                    },
+                }
+        return self.recipe
 
 
 class SavedModels(ModelBorrower):
@@ -285,7 +306,7 @@ def read_preparation(
 
 def prepare_clip(run: ReplayRun, record: DatasetClipRecord) -> dict[str, Any]:
     started = perf_counter()
-    clip = FrozenClip.bind(run.dataset, record, run.recipe)
+    clip = FrozenClip.bind(run.dataset, record, run.recipe_for(record))
     target = run.preparation_path(record)
     comparison_path = run.comparison / record.clip_id / "selection.npz"
     comparison_sha = dual_sha256(comparison_path)
@@ -347,10 +368,7 @@ def prepare_clip(run: ReplayRun, record: DatasetClipRecord) -> dict[str, Any]:
         for camera in cameras:
             raw_node = f"person_tracking/{camera}"
             raw = clip.load(raw_node, PersonTrackingOutput, "person_tracks", 7)
-            if (
-                raw.evidence is None
-                or (raw.observed & ~raw.evidence.appearance_valid).any()
-            ):
+            if raw.evidence is None:
                 raise ValueError(
                     f"{source.clip_id}/{camera}: tracking lost appearance evidence"
                 )
@@ -425,6 +443,9 @@ def prepare_clip(run: ReplayRun, record: DatasetClipRecord) -> dict[str, Any]:
             masks[camera] = {
                 "same_mask_as_before": bool(mask_equal),
                 "same_pose_carriers_as_before": bool(carriers_equal),
+                "missing_raw_appearance": int(
+                    (raw.observed & ~raw.evidence.appearance_valid).sum()
+                ),
                 "before_observations": int(old.selected.sum()),
                 "after_observations": int(new.selected.sum()),
                 "selection_artifact_id": clip.ref(selected_node).artifact_id,

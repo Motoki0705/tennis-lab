@@ -8,6 +8,15 @@
 
 3D選手フレームは、有効な3D関節が1点以上ある選手と元フレームの組の数。身体配置後は有効なrootとメッシュの選手フレームも集計する。選手が復元できなかったclipは、空の選手軸、停止理由、#2458のボールを持つsceneとして公開する。
 
+## パイロット
+
+| clip | 選手数 #2458 → CPU | 3D選手フレーム #2458 → CPU | CPU処理秒 | 身体工程 |
+| --- | ---: | ---: | ---: | --- |
+| clip_000 | 4 → 4 | 1,416 → 1,416 | 50.14 | 保存済みGVHMRから身体配置 |
+| clip_020 | 0 → 4 | 0 → 2,579 | 86.67 | HMR2、GVHMR、身体配置 |
+
+2並列でのCPUパイロット全体は102.65秒。clip_000では保存済みGVHMRを使ったCPU試験で身体配置まで検証し、root 1,410件とメッシュ1,407件を得た。共有datasetへの公開用成果物には、キューで実行する #2363 と同じデバイス設定を適用する。
+
 ## CPUとGPUの実行
 
 同じworktreeから、`MEIJI_FIXED_DATASET` に #2458版の `i2363-all-v1/inputs/dataset`、`I2440_REPLAY_ROOT` に #2440 の `i2440/replay` を指定する。CPUの出力を後続の段でも使う。
@@ -25,7 +34,9 @@ CUDA_VISIBLE_DEVICES='' "${reconstruct[@]}" cpu "${inputs[@]}" --workers 2
 CUDA_VISIBLE_DEVICES='' "${reconstruct[@]}" cpu-report "${inputs[@]}"
 ```
 
-`cpu` はclip別の `cpu.json` と採用前のcomponentを保存する。`cpu-report` は、固定した参照と集計を `cpu-clips.csv`、`cpu-upstream.csv`、`cpu-summary.json` に書く。完了済みの `cpu.json` は同じ入力・コード・#2440 のmaskで再利用できる。バッチを再開する際は同じ `--output` を使う。
+`cpu` はclip別の `cpu.json` と採用前のcomponentを保存する。`cpu-report` は、固定した参照と集計を `cpu-clips.csv`、`cpu-upstream.csv`、`cpu-summary.json` に書く。バッチを再開する際は同じ `--output` を使う。保存済み結果は入力、コードの版、#2440 のmaskを照合して再利用する。
+
+初回のCPUバッチで025・054・059・062・064・065の6件に、選別前の追跡行で外見特徴の欠測が計31件あった。31件はいずれも #2440 の旧幅とダブルス幅の選別maskの外だった。保存済みの特徴で選別し、再対応付けで使用する観測の特徴を必須とする契約に直した。初回の完了結果は、準備コードのSHA-256と固定入力を確認して引き継いだ。欠測のあった6件を修正版で実行した。
 
 GPUロックの読み書きができ、親が共有queueの稼働を確認してから、まず代表2件を投入する。#2363と同じTensorRT planと身体モデルを使い、モデル資産を当時のSHA-256と照合する。stageが成功したclipに `gpu.json` が残る。
 
@@ -36,7 +47,8 @@ export TRAINING_QUEUE_DIR="$repo/.training_queue"
 queue=.agents/skills/training-queue/scripts/training_queue.sh
 printf -v command '%q ' env "PYTHONPATH=$PWD" OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
     "${reconstruct[@]}" gpu "${inputs[@]}" "${pilot[@]}"
-bash "$queue" add "$command" --name meiji-doubles-players-pilot --issue 2460 --resource all
+bash "$queue" add "$command" --name meiji-doubles-players-pilot --issue 2460 --resource all \
+    --provider codex --session "$CODEX_THREAD_ID"
 ```
 
 代表2件の結果を受け取ったら `publish` と `verify` を同じ対象で実行する。確認後は `--clip` を外して共有queueへ全件の `gpu` を投入する。全件の `publish` は対象のCPU成果物と必要な身体配置が揃ってから始まる。
