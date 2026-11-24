@@ -31,12 +31,15 @@ from src.tennis_scene.pipeline.imports.external_ball_geometry import (
     PinnedBallCourt,
 )
 from src.tennis_scene.pipeline.imports.external_ball_publication import (
+    PublicationKind,
     ScenePointers,
+    current_publication,
+    publish_scene_revision,
     restore_publication,
 )
 from src.tennis_scene.pipeline.imports.external_ball_update import update_clip
 from src.tennis_scene.pipeline.observation_types import GroupedObservations
-from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
@@ -302,3 +305,96 @@ def test_external_ball_swaps_both_pointers_and_reuses_the_saved_scene(
     assert ScenePointers.read(store.root) == before
     assert path.is_file()
     assert not restore_publication(store.root)
+
+
+def test_second_scene_revision_recovers_and_restores_the_external_ball_pointers(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    court, record, positions, store, _, _ = _saved_clip(tmp_path, monkeypatch, "saved")
+    dataset = tmp_path / "dataset"
+    original = ScenePointers.read(store.root)
+    update_clip(dataset, record, positions, court, "fixture-code")
+    baseline = ScenePointers.read(store.root)
+    baseline_path = baseline.verify(store.root)
+    assert baseline_path is not None
+    ball_scene = load_scene_result(baseline_path)
+    assert ball_scene.ball_3d_valid is not None and ball_scene.ball_3d_valid.any()
+    scene = replace(
+        ball_scene, metadata={**ball_scene.metadata, "doubles_selection": True}
+    )
+    old_refs = store.references()
+    dependencies = {
+        port: ArtifactRef(**ref)
+        for port, ref in store.descriptor(old_refs["scene_assembly"])[
+            "dependencies"
+        ].items()
+    }
+    revision = PublicationKind("doubles_players", "test_reconstruction")
+    identity = {
+        "test": "doubles reconstruction",
+        "previous": old_refs["scene_assembly"].artifact_id,
+    }
+    reference = store.publish(
+        "scene_assembly",
+        scene,
+        ArtifactCodec(SceneResult),
+        schema="scene_result",
+        version=2,
+        identity=identity,
+        dependencies=dependencies,
+        provenance={"origin": "component"},
+        adopt=False,
+    )
+    inputs = resolve_dataset_clip(dataset, record)
+
+    def publish(current: ScenePointers) -> None:
+        publish_scene_revision(
+            store.root,
+            current,
+            baseline,
+            {"scene_assembly": reference},
+            scene,
+            inputs,
+            inputs.snapshot,
+            identity,
+            {},
+            kind=revision,
+        )
+
+    replace_text = external_ball_publication._replace_text
+
+    def interrupt_annotation(path: Path, content: str | None) -> None:
+        if path.name == "annotation.json":
+            raise OSError("interrupted second revision")
+        replace_text(path, content)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(external_ball_publication, "_replace_text", interrupt_annotation)
+        with pytest.raises(OSError, match="interrupted second revision"):
+            publish(baseline)
+    interrupted, receipt = current_publication(store.root, revision)
+    assert receipt is not None and receipt.before == baseline
+    assert (
+        interrupted.scene == receipt.after.scene
+        and interrupted.annotation == baseline.annotation
+    )
+    publish(interrupted)
+
+    current, receipt = current_publication(store.root, revision)
+    assert receipt is not None and current == receipt.after
+    revised_path = current.verify(store.root)
+    assert (
+        revised_path is not None and revised_path.parent.name == reference.artifact_id
+    )
+    revised = load_scene_result(revised_path)
+    assert revised.metadata["doubles_selection"] is True
+    np.testing.assert_array_equal(revised.ball_3d, ball_scene.ball_3d)
+    assert store.references()["camera_alignment"] == old_refs["camera_alignment"]
+    assert store.references()["ball_triangulation"] == old_refs["ball_triangulation"]
+    with pytest.raises(ValueError, match="pointers changed independently"):
+        restore_publication(store.root)
+    assert restore_publication(store.root, revision)
+    assert ScenePointers.read(store.root) == baseline
+    assert restore_publication(store.root)
+    assert ScenePointers.read(store.root) == original
+    assert revised_path.is_file()

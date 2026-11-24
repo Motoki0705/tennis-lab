@@ -1,4 +1,4 @@
-"""Publish and restore the two pointers of an external ball scene revision."""
+"""Publish and restore the two pointers of a scene revision."""
 
 from __future__ import annotations
 
@@ -36,8 +36,27 @@ from src.tennis_scene.schema import SceneResult
 from src.utils.checksum import dual_sha256
 from src.utils.io import utc_now_iso
 
-PUBLICATION = "external_ball_publication"
-SCHEMA = "external_ball_publication_v1"
+
+@dataclass(frozen=True)
+class PublicationKind:
+    name: str
+    generator: str
+
+    @property
+    def key(self) -> str:
+        return f"{self.name}_publication"
+
+    @property
+    def schema(self) -> str:
+        return f"{self.key}_v1"
+
+    def receipt_path(self, root: Path, scene_id: str) -> Path:
+        return root / "updates" / self.name / f"{validate_digest(scene_id)}.json"
+
+
+EXTERNAL_BALL = PublicationKind(
+    "external_ball", "src.tennis_scene.scripts.import_external_ball"
+)
 
 
 def _encode(document: dict[str, Any]) -> str:
@@ -88,17 +107,15 @@ class ScenePointers:
     def marker(self) -> dict[str, Any] | None:
         return None if self.annotation is None else json.loads(self.annotation)
 
-    def revision(self) -> str | None:
+    def revision(self, kind: PublicationKind = EXTERNAL_BALL) -> str | None:
         marker = self.marker()
         names = {
             value
             for doc in (self.index(), marker or {})
-            if (value := doc.get(PUBLICATION)) is not None
+            if (value := doc.get(kind.key)) is not None
         }
         if len(names) > 1:
-            raise ValueError(
-                "Scene and annotation pointers name different external ball revisions"
-            )
+            raise ValueError("Scene and annotation pointers name different revisions")
         return validate_digest(names.pop()) if names else None
 
     def verify(self, root: Path) -> Path | None:
@@ -108,7 +125,7 @@ class ScenePointers:
                 raise ValueError("Saved scene export has no annotation marker")
             return None
         reference = index["artifacts"]["scene_assembly"]
-        path = resolve_indexed_scene(index, root)
+        path: Path = resolve_indexed_scene(index, root)
         if (
             index["exports"]["scene"]["inputs"] != {"scene_assembly": reference}
             or marker.get("scene_index") != "scene.json"
@@ -133,10 +150,12 @@ class PublicationReceipt:
     statistics: dict[str, Any]
 
     @classmethod
-    def read(cls, root: Path, scene_id: str) -> PublicationReceipt:
-        document = json.loads(_receipt_path(root, scene_id).read_text())
-        if document["schema"] != SCHEMA:
-            raise ValueError("Unsupported external ball publication receipt")
+    def read(
+        cls, root: Path, scene_id: str, kind: PublicationKind = EXTERNAL_BALL
+    ) -> PublicationReceipt:
+        document = json.loads(kind.receipt_path(root, scene_id).read_text())
+        if document["schema"] != kind.schema:
+            raise ValueError("Unsupported scene publication receipt")
         receipt = cls(
             ScenePointers(**document["before"]),
             ScenePointers(**document["after"]),
@@ -144,13 +163,13 @@ class PublicationReceipt:
             document["statistics"],
         )
         if (
-            receipt.before.revision() is not None
-            or receipt.after.revision() != scene_id
+            receipt.before.revision(kind) is not None
+            or receipt.after.revision(kind) != scene_id
             or receipt.after.index()["artifacts"]["scene_assembly"]["artifact_id"]
             != scene_id
             or document["pointer_digests"] != receipt.pointer_digests()
         ):
-            raise ValueError("Invalid external ball publication receipt")
+            raise ValueError("Invalid scene publication receipt")
         return receipt
 
     def pointer_digests(self) -> dict[str, Any]:
@@ -170,7 +189,7 @@ class PublicationReceipt:
             self.after.scene,
         ) or current.annotation not in (self.before.annotation, self.after.annotation):
             raise ValueError(
-                "Clip pointers changed independently of the recorded external ball update"
+                "Clip pointers changed independently of the recorded scene update"
             )
 
     def activate(self, root: Path, current: ScenePointers) -> None:
@@ -178,36 +197,34 @@ class PublicationReceipt:
         path = self.after.verify(root)
         marker = self.after.marker()
         if marker is None or path is None:
-            raise ValueError(
-                "External ball publication requires a complete scene and marker"
-            )
+            raise ValueError("Scene publication requires a complete scene and marker")
         self.after.replace(root, current)
         saved = ScenePointers.read(root)
         if saved != self.after or annotation_scene_path(root, marker) != path:
-            raise ValueError("External ball publication did not survive readback")
+            raise ValueError("Scene publication did not survive readback")
 
 
-def _receipt_path(root: Path, scene_id: str) -> Path:
-    return root / "updates" / "external_ball" / f"{validate_digest(scene_id)}.json"
-
-
-def current_publication(root: Path) -> tuple[ScenePointers, PublicationReceipt | None]:
+def current_publication(
+    root: Path, kind: PublicationKind = EXTERNAL_BALL
+) -> tuple[ScenePointers, PublicationReceipt | None]:
     with clip_store_lock(root):
         current = ScenePointers.read(root)
-        revision = current.revision()
-        receipt = None if revision is None else PublicationReceipt.read(root, revision)
+        revision = current.revision(kind)
+        receipt = (
+            None if revision is None else PublicationReceipt.read(root, revision, kind)
+        )
         if receipt is not None:
             receipt.require_current(current)
         return current, receipt
 
 
-def restore_publication(root: Path) -> bool:
+def restore_publication(root: Path, kind: PublicationKind = EXTERNAL_BALL) -> bool:
     with clip_store_lock(root):
         current = ScenePointers.read(root)
-        scene_id = current.revision()
+        scene_id = current.revision(kind)
         if scene_id is None:
             return False
-        receipt = PublicationReceipt.read(root, scene_id)
+        receipt = PublicationReceipt.read(root, scene_id, kind)
         receipt.require_current(current)
         receipt.before.verify(root)
         receipt.before.replace(root, current)
@@ -228,30 +245,28 @@ def publish_scene_revision(
     input_files: InputSnapshot,
     identity: dict[str, Any],
     statistics: dict[str, Any],
+    *,
+    kind: PublicationKind = EXTERNAL_BALL,
 ) -> PublicationReceipt:
     scene_ref = nodes["scene_assembly"]
     scene_id = scene_ref.artifact_id
-    journal = _receipt_path(root, scene_id)
+    journal = kind.receipt_path(root, scene_id)
     with clip_store_lock(root):
         if ScenePointers.read(root) != current:
-            raise ValueError(
-                "Clip pointers changed during external ball reconstruction"
-            )
+            raise ValueError("Clip pointers changed during reconstruction")
         input_files.assert_unchanged()
         if journal.exists():
-            receipt = PublicationReceipt.read(root, scene_id)
+            receipt = PublicationReceipt.read(root, scene_id, kind)
             if receipt.inputs != identity or receipt.before != before:
-                raise ValueError(
-                    "External ball receipt conflicts with the requested inputs"
-                )
+                raise ValueError("Scene receipt conflicts with the requested inputs")
         else:
             receipt = _stage_publication(
-                root, before, nodes, scene, clip, identity, statistics
+                root, before, nodes, scene, clip, identity, statistics, kind
             )
             write_json_atomic(
                 journal,
                 {
-                    "schema": SCHEMA,
+                    "schema": kind.schema,
                     **json_value(receipt),
                     "pointer_digests": receipt.pointer_digests(),
                     "previous_scene_assembly": before.index()["artifacts"].get(
@@ -272,6 +287,7 @@ def _stage_publication(
     clip: DatasetClipInputs,
     identity: dict[str, Any],
     statistics: dict[str, Any],
+    kind: PublicationKind,
 ) -> PublicationReceipt:
     reference = nodes["scene_assembly"]
     destination = root / "exports" / reference.artifact_id
@@ -288,7 +304,7 @@ def _stage_publication(
     _verify_archive(archive, scene, descriptor)
     doc["artifacts"].update(json_value(nodes))
     doc["revision"] += 1
-    doc[PUBLICATION] = reference.artifact_id
+    doc[kind.key] = reference.artifact_id
     doc["exports"]["scene"] = {
         "inputs": {"scene_assembly": json_value(reference)},
         "files": {
@@ -305,13 +321,13 @@ def _stage_publication(
     # previous reconstruction's immutable config.
     if config.exists():
         if json.loads(config.read_text()) != identity:
-            raise ValueError("Saved external ball publication recipe changed")
+            raise ValueError("Saved scene publication recipe changed")
     else:
         write_json_atomic(config, identity)
     annotation = {
         "version": ANNOTATION_SCHEMA_VERSION,
         "clip_id": clip.record.clip_id,
-        "generator": "src.tennis_scene.scripts.import_external_ball",
+        "generator": kind.generator,
         "generated_at": utc_now_iso(),
         "scene_result": str(archive.relative_to(root)),
         "scene_index": "scene.json",
@@ -323,7 +339,7 @@ def _stage_publication(
         "validity_statistics": scene.metadata["validity_statistics"],
         "publication_identity_sha256": identity_digest,
         "media_sha256": dict(clip.media_sha256),
-        PUBLICATION: reference.artifact_id,
+        kind.key: reference.artifact_id,
     }
     return PublicationReceipt(
         before, ScenePointers(_encode(doc), _encode(annotation)), identity, statistics
