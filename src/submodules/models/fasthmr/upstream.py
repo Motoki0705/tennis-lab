@@ -6,6 +6,7 @@ import sys
 from collections.abc import Iterator
 from contextlib import contextmanager
 from importlib import import_module
+from pathlib import Path
 from threading import RLock
 from typing import Any
 
@@ -24,6 +25,13 @@ from src.utils.models.loading.source_assets import validate_source_modules
 
 _PACKAGE_ROOTS = ("model", "configs", "data", "tome")
 _IMPORT_LOCK = RLock()
+
+
+def _require_pinned_asset(name: str, path: Path) -> None:
+    if not path.is_file():
+        raise FileNotFoundError(f"Required FastHMR asset is missing: {path}")
+    if dual_sha256(path) != CHECKPOINT_SHA256[name]:
+        raise ValueError(f"FastHMR official {name} SHA-256 mismatch: {path}")
 
 
 @contextmanager
@@ -50,8 +58,8 @@ def _official_imports(config: FastHMRConfig) -> Iterator[None]:
 
 def load_official_smpl(config: FastHMRConfig) -> Any:
     weights = config.geometry_weights
-    if dual_sha256(weights["h36m"]) != CHECKPOINT_SHA256["h36m"]:
-        raise ValueError(f"FastHMR official Human3.6M regressor SHA-256 mismatch: {weights['h36m']}")
+    for name in ("h36m", "smpl"):
+        _require_pinned_asset(name, weights[name])
     with _official_imports(config):
         order = import_module("configs.constants").KEYPOINTS.H36M_TO_J14
         layer = import_module("model.smpl.SMPL").SMPL_layer
@@ -65,12 +73,8 @@ def load_official_smpl(config: FastHMRConfig) -> Any:
 def load_official_camera_models(config: FastHMRConfig) -> tuple[Any, Any, Any, Any, Any]:
     """Load the released ECLM backbone, mask patch and diffusion/VAE decoder."""
     weights = config.inference_weights
-    for path in weights.values():
-        if not path.is_file():
-            raise FileNotFoundError(f"Required FastHMR asset is missing: {path}")
-    for name in ("backbone", "diffusion", "vae", "segmentor"):
-        if dual_sha256(weights[name]) != CHECKPOINT_SHA256[name]:
-            raise ValueError(f"FastHMR official {name} SHA-256 mismatch: {weights[name]}")
+    for name, path in weights.items():
+        _require_pinned_asset(name, path)
     with _official_imports(config):
         camera = import_module("data.preprocess.camerahmr.camerahmr_model")
         head = import_module("data.preprocess.camerahmr.heads.smpl_head_cliff")

@@ -101,7 +101,7 @@ def test_acquired_gvhmr_weights_keep_byte_pins_in_preflight(
     assert requirement.size_bytes == len(valid)
 
     def extension() -> Path:
-        return requirement.path.parent / "unused-extension.so"
+        return Path(requirement.path).parent / "unused-extension.so"
 
     accepted = check_assets([requirement], extension_validator=extension)
     assert all(check.status == "ok" for check in accepted)
@@ -164,7 +164,8 @@ def test_fasthmr_inventory_uses_native_assets(installation_config: DictConfig) -
     runtime = PipelineRuntimeConfig.from_config(installation_config)
     requirements = {item.name: item for item in preflight.configured_requirements(installation_config)}
     assert requirements == {item.name: item for item in standard_requirements(runtime)}
-    assert requirements["fasthmr_backbone"].sha256 == CHECKPOINT_SHA256["backbone"]
+    for asset in ("backbone", "fov", "mean_params", "smpl"):
+        assert requirements[f"fasthmr_{asset}"].sha256 == CHECKPOINT_SHA256[asset]
     assert requirements["fasthmr_smpl"].path.name == "SMPL_NEUTRAL.pkl"
     assert not {"hmr2", "gvhmr", "body_model"} & requirements.keys()
 
