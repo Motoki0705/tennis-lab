@@ -9,7 +9,7 @@ import re
 import subprocess
 import sys
 import tempfile
-from contextlib import nullcontext, suppress
+from contextlib import closing, nullcontext, suppress
 from pathlib import Path
 from typing import Any
 
@@ -115,6 +115,15 @@ def parser() -> argparse.ArgumentParser:
     commands.add_parser("note").add_argument("--body-file", required=True)
     commands.add_parser("notify").add_argument("--spec", required=True)
     commands.add_parser("evidence").add_argument("--create", action="store_true")
+    evidence_close = commands.add_parser(
+        "evidence-close"
+    ).add_mutually_exclusive_group()
+    evidence_close.add_argument(
+        "--dry-run", action="store_true", help="対象を表示する（既定）"
+    )
+    evidence_close.add_argument(
+        "--apply", action="store_true", help="照合済みの証拠用Issueを閉じる"
+    )
     publication = commands.add_parser("publish-decision-log")
     publication.add_argument("--dry-run", action="store_true")
     publication.add_argument("--retry", action="store_true")
@@ -490,6 +499,30 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
                     )
                 )
                 return 0
+        if args.command == "evidence-close":
+            with closing(GitHub(args.repo)) as gh:
+                parent = (
+                    issue_number(args.parent, gh.repo)
+                    if args.parent is not None
+                    else None
+                )
+                results = gh.evidence_issues().reconcile_closed(
+                    parent=parent, apply=args.apply
+                )
+                print(
+                    json.dumps(
+                        {
+                            "repo": gh.repo,
+                            "parent": parent,
+                            "dry_run": not args.apply,
+                            "results": results,
+                        },
+                        ensure_ascii=False,
+                        indent=2,
+                        sort_keys=True,
+                    )
+                )
+            return 2 if any(row["status"] == "error" for row in results) else 0
         if args.command == "handoff" and args.recover and not args.accept:
             raise ValueError("--recover requires handoff --accept")
         # Missing identity is a configuration error before any network/state write.

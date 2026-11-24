@@ -1,11 +1,12 @@
-"""One GitHub evidence issue per parent; uncertain POSTs are reconciled, not retried."""
+"""Verified GitHub evidence issues and their lifecycle."""
 
 from __future__ import annotations
 
 import json
 import subprocess
+from collections import defaultdict
 from contextlib import ExitStack
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
@@ -29,7 +30,9 @@ class EvidenceIssue:
     number: int
     url: str
     publisher: str
-    state: str
+    # The listing and the direct read can straddle a close. State is not
+    # part of the binding identity.
+    state: str = field(compare=False)
 
 
 def issue_body(repo: str, parent: int) -> str:
@@ -76,8 +79,8 @@ class EvidenceIssues:
 
     def _binding(self, raw: dict[str, Any], login: str) -> EvidenceIssue:
         n = self.gh.identity(raw)
-        body = raw.get("body") or ""
-        line = body.split("\n", 1)[0].rstrip("\r")
+        body = raw.get("body")
+        line = body.split("\n", 1)[0].rstrip("\r") if isinstance(body, str) else ""
         if not line.startswith(EVIDENCE_PREFIX) or not line.endswith(" -->"):
             raise ValueError(f"evidence issue #{n}: missing or unknown binding marker")
         data = object_value(read_json(line[len(EVIDENCE_PREFIX) : -4]))
@@ -95,7 +98,8 @@ class EvidenceIssues:
         if parent == n:
             raise ValueError("evidence issue cannot be its own parent")
         url = f"https://github.com/{self.gh.repo}/issues/{n}"
-        if raw.get("html_url", url).casefold() != url.casefold():
+        html_url = raw.get("html_url", url)
+        if not isinstance(html_url, str) or html_url.casefold() != url.casefold():
             raise ValueError("evidence issue URL mismatch")
         return EvidenceIssue(
             self.gh.repo.casefold(), parent, n, url, login, raw["state"]
@@ -238,3 +242,70 @@ class EvidenceIssues:
     ) -> dict[str, Any] | None:
         issue = self.ensure(parent, login) if create else self.find(parent, login)
         return asdict(issue) if issue else None
+
+    def reconcile_closed(
+        self, *, parent: int | None, apply: bool
+    ) -> list[dict[str, Any]]:
+        """Close open evidence for closed parents using GitHub alone."""
+        repo = object_value(self.gh.get(f"repos/{self.gh.repo}"))
+        # The Actions token is an installation token. The trusted publisher
+        # for this repository's evidence is the repository owner.
+        login = nonempty(object_value(repo.get("owner")).get("login"), "repo owner")
+        by_parent: dict[int, list[EvidenceIssue]] = defaultdict(list)
+        results: list[dict[str, Any]] = []
+        with self.gh.fresh_reads():
+            for raw in self.gh.evidence_rows():
+                try:
+                    binding = self._binding(raw, login)
+                except (ValueError, KeyError, TypeError) as exc:
+                    results.append(
+                        {
+                            "evidence": raw.get("number"),
+                            "status": "unverified_binding",
+                            "reason": str(exc),
+                        }
+                    )
+                    continue
+                if parent is None or binding.parent == parent:
+                    by_parent[binding.parent].append(binding)
+
+            for bindings in by_parent.values():
+                for binding in bindings:
+                    if binding.state != "open":
+                        continue
+                    target = {"parent": binding.parent, "evidence": binding.number}
+                    if len(bindings) != 1:
+                        results.append({**target, "status": "duplicate_binding"})
+                        continue
+                    try:
+                        result = self._close_binding(binding, apply=apply)
+                    except (ValueError, KeyError, TypeError, OSError) as exc:
+                        result = {"status": "error", "reason": str(exc)}
+                    results.append({**target, **result})
+        return results
+
+    def _close_binding(self, binding: EvidenceIssue, *, apply: bool) -> dict[str, Any]:
+        pinned = self._read_binding(binding.number, binding.publisher)
+        if pinned != binding:
+            raise ValueError("evidence issue binding changed since listing")
+        if pinned.state == "closed":
+            return {"status": "already_closed"}
+        parent = self.gh.issue(binding.parent)
+        if parent.get("state") == "open":
+            return {"status": "parent_open"}
+        if parent.get("state") != "closed":
+            raise ValueError("invalid parent state")
+        if apply:
+            response = self.gh.write(
+                "PATCH",
+                f"repos/{self.gh.repo}/issues/{pinned.number}",
+                {"state": "closed"},
+            )
+            closed = self._binding(response, pinned.publisher)
+            if closed != pinned or closed.state != "closed":
+                raise ValueError("evidence issue closure could not be verified")
+        return {
+            "status": "closed" if apply else "would_close",
+            "parent_closed_at": parent.get("closed_at"),
+            "publisher": pinned.publisher,
+        }
