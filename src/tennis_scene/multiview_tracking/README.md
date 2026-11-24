@@ -39,7 +39,7 @@
 | `event` | `S`。 `BORN=1`・ `OBSERVED=2`・ `OCCLUDED=3`・ `REAPPEARED=4`。 `observed` は候補を持つ行のmask |
 | `frame_competing`, `frame_gap`, `frame_ambiguous` | `S`。Cのフレーム内割当の競合・相対差・接戦 |
 | `temporal_margin`, `id_ambiguous` | `S`。連結・分離の代替損失とその接戦。比較対象なしは `-1`。遮蔽行には再出現リンクの値を入れる |
-| `end_frames`, `end_reasons` | `K`。IDごとに末尾実測の次のフレーム。リンク可能期間に再出現しなければ `DISAPPEARED=1`、clipが先に終われば `CLIP_BOUNDARY=2` |
+| `end_frames`, `end_reasons` | `K`。IDごとに末尾実測の次のフレーム。終了理由の観察期間は時間窓の欠測上限で、期間を満たす場合は `DISAPPEARED=1`、clipが先に終われば `CLIP_BOUNDARY=2` |
 | `selection` | 人数設定、必要滞在数、ID別の観測数・領域内数・側別数・アレー内数・移動量・順位スコア・採否理由。採用IDは `selected_track_ids` |
 
 統合版も `multiview_pose_tracks` v1で読み戻せます。記述子の `provenance.config.fragment_integration` が統合設定、 `provenance.fragment_integration.slots` が断片から出力IDへの対応です。各枠に核、時系列順の断片IDと、連結点の前後の実測frame・欠測フレーム数・ `long_gap`・位置残差・速度差・共通骨の数と長さの差を保存します。 `confidence` は幾何・時間の費用から求める0〜1の適合度で、 `objective_margin` はその枠のリンクを除いた場合の全体最適値との差です。差が0.08以下のリンクは `ambiguous` を立て、到着した実測行と隙間の補間行の `temporal_margin` と `id_ambiguous` に反映します。
