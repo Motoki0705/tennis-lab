@@ -38,9 +38,14 @@ from src.utils.schema.player import COCO_KP_NAMES
 SOURCE_COMMIT = "7e5bae88456ac418ff0e58e74106c9fe192055d4"
 INPUT_HW = (1024, 768)
 HEATMAP_CHW = (308, 256, 192)
+ROPE_CONFIG_DTYPE = "fp32"
 # The released COCO-WholeBody to Goliath mapping includes the face landmarks.
 COCO17_CHANNELS = (0, 1, 2, 3, 4, 5, 6, 7, 8, 62, 41, 9, 10, 11, 12, 13, 14)
-TRT_SETTINGS = {"source_commit": SOURCE_COMMIT, "forward": "single_view"}
+TRT_SETTINGS = {
+    "source_commit": SOURCE_COMMIT,
+    "forward": "single_view",
+    "pos_embed_rope_dtype": ROPE_CONFIG_DTYPE,
+}
 TRT_INPUTS = {"pixels": TensorSpec(dtype="float16", shape=(-1, 3, *INPUT_HW))}
 TRT_OUTPUTS = {"heatmaps": TensorSpec(dtype="float16", shape=(-1, *HEATMAP_CHW))}
 
@@ -179,6 +184,7 @@ def load_official(spec: Checkpoint, source_root: Path | None) -> OfficialPose:
         )
         model_config = config.model
         model_config["backbone"].pop("init_cfg")
+        model_config["backbone"]["pos_embed_rope_dtype"] = ROPE_CONFIG_DTYPE
         codec = dict(config.codec)
         if (
             tuple(config.image_size) != INPUT_HW
@@ -225,7 +231,7 @@ def load_model(
         rope = model.backbone.rope_embed
         periods = rope.periods
         model.eval().requires_grad_(False).to(device=device, dtype=dtype)
-        # The pinned Sapiens2 config computes and applies RoPE in FP32.
+        # The comparison's FP32 RoPE configuration also needs the original periods.
         rope.periods = periods.to(device=device, dtype=torch.float32)
     except torch.OutOfMemoryError:
         raise

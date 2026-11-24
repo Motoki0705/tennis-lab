@@ -53,13 +53,15 @@ peak sentinel and other unusable coordinates appear as NaN in x/y. The
 comparison scorer accepts every finite confidence attached to a valid position.
 [Official joint definitions](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/sapiens/pose/configs/_base_/keypoints308.py#L3818-L3844)
 
-PT32 holds the model on CUDA in FP32 and uses the common IEEE precision settings.
-PT16 uses explicit FP16 model and input casts, with FP32 RoPE and heatmap
-averaging. TRT16 uses a strongly typed engine with FP16 inputs and outputs
-exported from the same model and FP32 RoPE. CPU UDP decoding and the two test
-views are shared across backends. Report engine layer precision from the built
-engine when available. The adapter's load time includes source and checkpoint
-verification.
+PT32 holds the model on CUDA in FP32 and uses the common IEEE precision
+settings. All three backends set the official backbone's `pos_embed_rope_dtype`
+to `fp32`. This also fixes the positional coordinate and rotation arithmetic
+for the half-precision conditions. PT16 uses explicit FP16 casts for the
+other model tensors and for the input. TRT16 uses a strongly typed engine
+with FP16 inputs and outputs. FP32 heatmap averaging, CPU UDP decoding and the
+two test views are shared across backends. Report engine layer precision
+from the built engine when available. The adapter's load time includes
+source and checkpoint verification. [Official RoPE configuration](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/sapiens/backbones/sapiens2.py#L520-L577)
 
 ## Reproduction
 
@@ -102,13 +104,13 @@ show a batch 1 build.
 size=1b
 py="$assets/runtime/bin/python"
 checkpoint="$assets/weights/sapiens2_${size}_pose.safetensors"
-engine="$assets/trt-$size-b1"
+engine="$assets/trt-$size-fp32-rope-b1"
 "$py" "$run/sapiens2_engine.py" onnx_export --model "sapiens2-$size" \
   --checkpoint "$checkpoint" --source-root "$assets/upstream" \
-  --directory "$engine" --receipt "$assets/export-$size-b1.json"
+  --directory "$engine" --receipt "$assets/export-$size-fp32-rope-b1.json"
 "$py" "$run/sapiens2_engine.py" engine_build --device cuda:0 \
   --optimum-batch 1 --maximum-batch 1 --workspace-mib 2048 \
-  --directory "$engine" --receipt "$assets/build-$size-b1.json"
+  --directory "$engine" --receipt "$assets/build-$size-fp32-rope-b1.json"
 ```
 
 For accuracy, use the common evaluator with the published #2495 manifest
@@ -135,6 +137,13 @@ parity status and the reason the PT32 reference is unavailable.
 
 ## Evidence available before execution
 
+The isolated runtime preflight passed with Python 3.12.3, PyTorch
+2.13.0+cu130 (CUDA 13.0), TensorRT 10.14.1.48.post1 and ONNX Script 0.7.2.
+The initial 1B ONNX export completed in 163.46 s and passed the ONNX checker.
+Graph inspection found seven BF16 casts in the official RoPE coordinate
+construction. The comparison exports use an explicit FP32 RoPE setting and
+a new output path.
+
 | Model | PT32 | PT16 | TRT16 |
 |---|---|---|---|
 | Sapiens2-1B | Pending GPU run | Pending GPU run | Pending conversion and GPU run |
@@ -150,5 +159,5 @@ The CPU tests exercise the named source joints and left/right reflection
 using asymmetric predictions, the crop inverse and short batch ordering,
 nonpositive peaks with preserved confidence, strict checkpoint binding, and
 TRT availability without a plan. They use synthetic inputs and weights.
-The official model forward, ONNX export, TensorRT build and fixed-cohort
+The official model forward, comparison exports, TensorRT builds and fixed-cohort
 measurements are pending.
