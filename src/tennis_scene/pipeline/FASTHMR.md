@@ -29,7 +29,7 @@ body_models/SMPL_NEUTRAL.pkl
 body_models/J_regressor_h36m.npy
 ```
 
-CameraHMRの `cam_model_cleaned.ckpt`、`smpl_mean_params.npz`、`SMPL_NEUTRAL.pkl` は、同意済みの利用者がCameraHMRのDownloadsから取得する。CameraHMRの資産と該当コードは非商用目的に制限され、再配布には許諾が要る。[CameraHMRの登録](https://camerahmr.is.tue.mpg.de/register.php)・[ライセンス](https://camerahmr.is.tue.mpg.de/license.html)
+CameraHMRの `cam_model_cleaned.ckpt`、`smpl_mean_params.npz`、`SMPL_NEUTRAL.pkl` は、利用者が2026-11-24に公式サイトで同意して取得した版を使う。取得済みの3ファイルのSHA-256を固定し、ロード前に照合する。利用は非商用研究に限り、再配布は禁止されている。[CameraHMRの配布元](https://camerahmr.is.tue.mpg.de/download.php)・[ライセンス](https://camerahmr.is.tue.mpg.de/license.html)
 
 | 公開資産 | 配布元と利用条件 |
 | --- | --- |
