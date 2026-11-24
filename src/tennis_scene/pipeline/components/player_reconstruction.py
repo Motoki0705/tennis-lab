@@ -23,6 +23,7 @@ from src.tennis_scene.pipeline.body_types import (
     BodyGeometry,
     BodyParameters,
 )
+from src.tennis_scene.pipeline.components.fasthmr import FastHMROutput
 from src.tennis_scene.pipeline.components.gvhmr import GVHMROutput, RecoveredBody
 from src.tennis_scene.pipeline.observation_types import (
     GroupedObservations,
@@ -306,7 +307,7 @@ def _place_player(
         dense_frames = dense_frames[eligible]
         for offset in range(0, len(dense_frames), 32):
             selected = dense_frames[offset : offset + 32]
-            dense_params = BodyParameters(
+            dense_params = type(params)(
                 interpolate_rotations(params.body_pose, source, selected),
                 interpolate_rotations(params.global_orient, source, selected),
                 np.repeat(betas[None], len(selected), axis=0),
@@ -341,7 +342,9 @@ def _place_player(
                 canonical.rotation,
             )
             segment_ids[selected] = segment_id
-            poses[selected] = dense_params.body_pose
+            # SceneResult stores the 21 joints shared by SMPL and SMPL-X.
+            # Geometry above consumes the full native pose, including SMPL's hands.
+            poses[selected] = dense_params.body_pose[:, : poses.shape[1]]
     weights = placement_weights(skeleton, grouped, player, placement_config)
     fitted = fit_supported_track(
         local_joints,
@@ -483,7 +486,7 @@ def reconstruct_player_bodies(
     raw: ObjectObservations,
     skeleton: PlayerSkeleton,
     cameras: tuple[PinholeCamera, ...],
-    recovered: GVHMROutput,
+    recovered: GVHMROutput | FastHMROutput,
     *,
     body: BodyGeometryModel | None,
     reprojection_px: float,
@@ -510,6 +513,8 @@ def reconstruct_player_bodies(
         "rejection_codes": {reason.name: int(reason) for reason in PlacementRejection},
         "raw_parameters": [],
     }
+    if isinstance(recovered, FastHMROutput):
+        diagnostics["body_model"] = "smpl"
     if body is not None and players:
         if raw.boxes_xys is None:
             raise ValueError("Body recovery requires recorded detector boxes")

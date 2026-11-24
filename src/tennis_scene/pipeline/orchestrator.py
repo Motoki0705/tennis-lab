@@ -30,6 +30,7 @@ from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.imports import BallAnnotationImporter
 from src.tennis_scene.pipeline.inference_runtime import ModelEventHook
 from src.tennis_scene.pipeline.model_assets import ModelAssetSnapshot
+from src.tennis_scene.pipeline.recipes import STANDARD_RECIPE, recipe_directory
 from src.tennis_scene.pipeline.runner import (
     ComponentNode,
     ComponentRunner,
@@ -82,7 +83,7 @@ class TennisSceneOrchestrator:
         self._video_court_side_key: tuple[object, ...] | None = None
         self.code_identity = document_digest(compatible_source_digests(
             source_digests(PROJECT_ROOT / "src"), ball_court_side=config.court_side_evidence == "ball",
-            tensorrt=config.people.runtime.uses_tensorrt))
+            tensorrt=config.people.runtime.uses_tensorrt, standard_recipe=config.recipe == STANDARD_RECIPE))
 
     @classmethod
     def from_runtime_config(cls, cfg: PipelineRuntimeConfig, *, model_event: ModelEventHook | None = None) -> TennisSceneOrchestrator:
@@ -96,7 +97,7 @@ class TennisSceneOrchestrator:
     def publication_identity(self) -> dict[str, Any]:
         cfg = self.config
         check_shared_side_execution(cfg, self.components)
-        validate_override_names(self.components or {})
+        validate_override_names(self.components or {}, cfg.recipe)
         overrides = {name: component_override_identity(cfg, component) for name, component in (self.components or {}).items()}
         shared = self.prepare_video_court()
         side = self.prepare_video_court_side(shared)
@@ -120,6 +121,7 @@ class TennisSceneOrchestrator:
             "checkpoints": {key: cfg.court_kp.asset_catalog.file_identity(path) for key, path in enabled_model_assets(cfg).items()},
             "models": publication_model_identities(cfg),
             "component_overrides": overrides,
+            **({"recipe": cfg.recipe} if cfg.recipe != STANDARD_RECIPE else {}),
             **({"appearance_preprocessing": appearance_feature_settings(cfg.tracking.features)}
                if cfg.enabled["person_observations"] else {}),
             **({"bind_appearance_media": True} if binds_appearance_media(cfg, self.components or {}) else {}),
@@ -205,12 +207,13 @@ class TennisSceneOrchestrator:
 
     def run(self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],
             store_root: Path | None, max_frames: int | None = None, clip_id: str | None = None) -> SceneResult:
-        """Run the standard recipe into an explicitly chosen component store.
+        """Run the selected recipe into an explicitly chosen component store.
 
         ``store_root`` is the clip-owned store (structured datasets keep it at
         ``<clip>/annotations/tennis_scene``); ``None`` selects
         ``cache.directory/<source digest>``. The store is never inferred from
-        the shape of the video paths.
+        the shape of the video paths. Alternate recipes scope their own store
+        under that root.
         """
         self._scene_export = None
         paths = tuple(self.config.resolver.validate(video_role, Path(p)) for p in video_paths)
@@ -220,7 +223,7 @@ class TennisSceneOrchestrator:
             raise ValueError("Reference camera is not a source camera")
         source_document = json_value(source)
         root = self.config.cache_directory / document_digest(source_document)[:20] if store_root is None else store_root
-        store = ClipStore(root, source_document)
+        store = ClipStore(recipe_directory(root, self.config.recipe), source_document)
         runner = None
         self.last_runner, self.last_store = None, store
         self.last_receipt = {"schema": "tennis_scene_run_v3", "status": "running", "clip_id": source.clip_id,

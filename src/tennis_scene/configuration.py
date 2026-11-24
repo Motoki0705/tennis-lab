@@ -16,6 +16,7 @@ from src.submodules.configuration import (
     SmplAssetPaths,
     SubmoduleRuntimeConfig,
 )
+from src.submodules.models.fasthmr.assets import FastHMRConfig
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
 from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
 from src.tasks.base.visualization import parse_view_3d
@@ -51,6 +52,13 @@ from src.tennis_scene.pipeline.feature_flags import (
     validate_requested_features,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.recipes import (
+    FASTHMR_RECIPE,
+    STANDARD_RECIPE,
+    RecipeName,
+    parse_recipe,
+    recipe_directory,
+)
 from src.tennis_scene.pipeline.video_artifact import VideoArtifactConfig
 from src.tennis_scene.pipeline.video_court.diagnostics import DriftReference
 from src.tennis_scene.pipeline.video_court.policy import validate_unobservable_policy
@@ -293,13 +301,22 @@ _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconst
     "enabled": ConfigField.of(bool), "reprojection_px": ConfigField.of(float, int), "min_frames": ConfigField.of(int),
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
-_EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={name: ConfigField.of(str) for name in STANDARD_COMPONENTS})
+_EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={
+    **{name: ConfigField.of(str) for name in STANDARD_COMPONENTS},
+    FASTHMR_RECIPE: ConfigField.of(str, required=False),
+})
+_FASTHMR_SCHEMA = StrictConfigSchema(name="tennis_scene.fasthmr", fields={
+    "repository": ConfigField.of(str), "assets": ConfigField.of(str), "backend": ConfigField.of(str),
+    "feature_batch_size": ConfigField.of(int), "seed": ConfigField.of(int),
+})
 _DIRECT_ANNOTATION_SCHEMA = StrictConfigSchema(name="tennis_scene.direct_annotation", fields={
     "request": ConfigField.of(str, type(None)), "request_sha256": ConfigField.of(str, type(None)),
     "bundle": ConfigField.of(str, type(None)), "bundle_sha256": ConfigField.of(str, type(None)),
     "court_detection": ConfigField.of(str), "publish_dataset": ConfigField.of(bool), "resume": ConfigField.of(str),
 })
 _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
+    "recipe": ConfigField.of(str, required=False),
+    "fasthmr": ConfigField.mapping(_FASTHMR_SCHEMA, required=False),
     "person_tracking": ConfigField.mapping(StrictConfigSchema(name='tennis_scene.person_tracking', fields={
         'method': ConfigField.of(str), 'encoder': ConfigField.of(str), 'aflink_checkpoint': ConfigField.of(str),
     })),
@@ -416,8 +433,18 @@ class PipelineRuntimeConfig:
     video_court_unobservable_policy: str
     video_court_side: VideoArtifactConfig | None
     court_side_unobservable_policy: str
+    recipe: RecipeName = STANDARD_RECIPE
+    fasthmr: FastHMRConfig | None = None
 
     def __post_init__(self) -> None:
+        parse_recipe(self.recipe)
+        if (self.recipe == FASTHMR_RECIPE) != (self.fasthmr is not None):
+            raise SemanticConfigurationError("FastHMR options require recipe=fasthmr, and vice versa")
+        if self.recipe == FASTHMR_RECIPE:
+            if not self.enabled["gvhmr"]:
+                raise SemanticConfigurationError("recipe=fasthmr requires body recovery enabled (gvhmr.enabled=true)")
+            if self.direct_annotation is not None:
+                raise SemanticConfigurationError("recipe=fasthmr is unavailable for direct_annotation")
         if self.omit_ball_components:
             requested = [f"execution.{stage}=load" for stage in ("ball_detection", "ball_points", "ball_triangulation")
                          if self.component_sources.get(stage) == "load"]
@@ -435,6 +462,7 @@ class PipelineRuntimeConfig:
     @classmethod
     def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
         value, roots, resolver = pipeline_asset_configuration(cfg)
+        recipe = parse_recipe(value.get("recipe", STANDARD_RECIPE))
         raw_videos = _sequence(value["video_paths"], name="video_paths") if bind_inputs else ()
         raw_cameras = _sequence(value["camera_ids"], name="camera_ids") if bind_inputs else ()
         if bind_inputs and (not 3 <= len(raw_videos) <= 5 or len(raw_videos) != len(raw_cameras)):
@@ -444,7 +472,8 @@ class PipelineRuntimeConfig:
             raise SemanticConfigurationError("Camera IDs must be nonempty and unique")
         video_paths = tuple(resolver.resolve(PathRole.DATA, cast(str, x)) for x in raw_videos)
         output_name = _single_component(cast(str, value["output_name"]), name="output_name")
-        output_path = resolver.resolve(PathRole.OUTPUT, cast(str, value["output_directory"]), f"{output_name}.npz")
+        output_directory = resolver.resolve(PathRole.OUTPUT, cast(str, value["output_directory"]))
+        output_path = resolver.validate(PathRole.OUTPUT, recipe_directory(output_directory, recipe) / f"{output_name}.npz")
         device = cast(str, value["device"])
         if not device.strip():
             raise SemanticConfigurationError("Pipeline device must be explicit")
@@ -586,13 +615,38 @@ class PipelineRuntimeConfig:
         component_sources = {name: str(mode) for name, mode in _mapping(value["execution"], name="execution").items()}
         if any(mode not in {"execute", "load"} for mode in component_sources.values()):
             raise SemanticConfigurationError("Component execution modes must be execute/load")
+        fasthmr = None
+        if recipe == FASTHMR_RECIPE:
+            if "fasthmr" not in value:
+                raise MissingConfigurationKeyError("recipe=fasthmr requires fasthmr configuration")
+            fast_options = _mapping(value["fasthmr"], name="fasthmr")
+            backend = fast_options["backend"]
+            if backend not in ("pt32", "pt16"):
+                raise SemanticConfigurationError("FastHMR supports pt32 and pt16; a TRT16 engine has not been validated")
+            batch_size = cast(int, fast_options["feature_batch_size"])
+            _positive(batch_size, name="fasthmr.feature_batch_size")
+            seed = cast(int, fast_options["seed"])
+            if not 0 <= seed < 2**63:
+                raise SemanticConfigurationError("fasthmr.seed must be a nonnegative signed 64-bit integer")
+            fasthmr = FastHMRConfig(
+                resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, fast_options["repository"])),
+                resolver.resolve(PathRole.CHECKPOINT, cast(str, fast_options["assets"])),
+                people.smpl_assets.smpl_coco17_regressor, device, backend, batch_size, seed,
+            )
+            for name in ("hmr2_features", "gvhmr"):
+                if component_sources.pop(name) == "load":
+                    raise SemanticConfigurationError(f"recipe=fasthmr has no execution.{name} stage")
+            component_sources.setdefault(FASTHMR_RECIPE, "execute")
+        elif "fasthmr" in value or FASTHMR_RECIPE in component_sources:
+            raise SemanticConfigurationError("FastHMR options and execution.fasthmr require recipe=fasthmr")
         if ball_method == "gpt_annotation":
             if not enabled["ball_reconstruction"]:
                 raise SemanticConfigurationError("GPT scene annotation requires ball reconstruction")
             component_sources.update(dict.fromkeys(("court_detection", "court_calibration", "court_side", "camera_alignment", "ball_detection"), "load"))
             if cache_source == "load" and direct_config is not None and direct_config.resume != "publication":
                 raise SemanticConfigurationError("Use direct_annotation.resume=publication for publication-only recovery")
-        settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids", "output_name", "output_directory", "cache", "max_frames"}}
+        settings = {key: item for key, item in value.items() if key not in {"paths", "video_paths", "camera_ids",
+            "output_name", "output_directory", "cache", "max_frames", "recipe"}}
         if isinstance(court_side, PlayerCourtSideConfig):
             settings["court_side"] = {"evidence": "player", "player": side["player"]}
         else:
@@ -608,7 +662,7 @@ class PipelineRuntimeConfig:
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
             tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing,
             ball_method, direct_config, cast(str | None, value["clip_id"]), video_court, video_court_drift, unobservable_policy,
-            video_court_side, side_policy)
+            video_court_side, side_policy, recipe, fasthmr)
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(

@@ -208,9 +208,12 @@ def phase2_sources() -> dict[str, str]:
         baseline = json.load(stream)
     assert baseline["commit"] == _PHASE2_BASE
     actual = source_identity.source_digests(PROJECT_ROOT / "src")
-    # Verify the changed files from this checkout against the fixed main tree.
-    # Later, unrelated files are allowed to change the real runtime identity.
-    return {**baseline["sources"], **{path: actual[path] for path in baseline["revised_paths"]}}
+    recipe_patch = Path(source_identity.__file__).with_name("standard_recipe_cache_compatibility.json")
+    recipe_paths = json.loads(recipe_patch.read_text(encoding="utf-8"))["files"]
+    # Exercise the exact current recipe patch against the previously pinned
+    # phase-2 tree. Unrelated file changes still affect the real runtime key.
+    paths = set(baseline["revised_paths"]) | recipe_paths.keys()
+    return {**baseline["sources"], **{path: actual[path] for path in paths}}
 
 
 def test_current_fp32_cache_is_adopted_in_execute_and_load_modes(
@@ -223,13 +226,18 @@ def test_current_fp32_cache_is_adopted_in_execute_and_load_modes(
 def test_batched_tensorrt_fp32_compatibility_requires_the_exact_sources(phase2_sources: dict[str, str]) -> None:
     from src.tennis_scene.pipeline import source_identity
 
-    compatible = source_identity.compatible_source_digests(phase2_sources)
+    compatible = source_identity.compatible_source_digests(phase2_sources, standard_recipe=True)
     assert document_digest(compatible) == _PHASE2_MAIN_FP32_CODE_SHA256
     assert source_identity.compatible_source_digests(phase2_sources, tensorrt=True) == phase2_sources
-    changed = {**phase2_sources, "utils/video/prefetch.py": "0" * 64}
-    assert source_identity.compatible_source_digests(changed) == changed
+    standard_trt = source_identity.compatible_source_digests(phase2_sources, tensorrt=True, standard_recipe=True)
+    edit = {"utils/video/prefetch.py": "0" * 64}
+    assert source_identity.compatible_source_digests(
+        {**phase2_sources, **edit}, standard_recipe=True,
+    ) == {**standard_trt, **edit}
     unrelated = {"tennis_scene/schema.py": "a" * 64}
-    assert source_identity.compatible_source_digests({**phase2_sources, **unrelated}) == {**compatible, **unrelated}
+    assert source_identity.compatible_source_digests(
+        {**phase2_sources, **unrelated}, standard_recipe=True,
+    ) == {**compatible, **unrelated}
 
 
 def test_exact_precision_patch_compatibility_does_not_hide_later_changes(tmp_path: Path) -> None:

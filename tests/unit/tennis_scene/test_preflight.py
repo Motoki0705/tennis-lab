@@ -8,8 +8,9 @@ from pathlib import Path
 
 import pytest
 from hydra import compose, initialize_config_dir
-from omegaconf import DictConfig
+from omegaconf import DictConfig, open_dict
 
+from src.submodules.models.fasthmr.assets import CHECKPOINT_SHA256
 from src.tennis_scene import preflight
 from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
@@ -152,6 +153,20 @@ def test_diagnostic_inventory_matches_typed_runtime(installation_config: DictCon
     runtime = PipelineRuntimeConfig.from_config(installation_config)
     diagnostic = preflight.configured_requirements(installation_config)
     assert {item.name: item for item in diagnostic} == {item.name: item for item in standard_requirements(runtime)}
+
+
+def test_fasthmr_inventory_uses_native_assets(installation_config: DictConfig) -> None:
+    installation_config.recipe = "fasthmr"
+    with open_dict(installation_config):
+        installation_config.fasthmr = dict(
+            repository="FastHMR", assets="fasthmr", backend="pt32", feature_batch_size=16, seed=0,
+        )
+    runtime = PipelineRuntimeConfig.from_config(installation_config)
+    requirements = {item.name: item for item in preflight.configured_requirements(installation_config)}
+    assert requirements == {item.name: item for item in standard_requirements(runtime)}
+    assert requirements["fasthmr_backbone"].sha256 == CHECKPOINT_SHA256["backbone"]
+    assert requirements["fasthmr_smpl"].path.name == "SMPL_NEUTRAL.pkl"
+    assert not {"hmr2", "gvhmr", "body_model"} & requirements.keys()
 
 
 def test_normalized_sample_spelling_keeps_byte_pins_and_companion_files(installation_config: DictConfig) -> None:
