@@ -311,9 +311,9 @@ if n is None:
             labels = set(params["labels"][0].split(","))
             rows = [r for r in rows if labels <= {label["name"] for label in r["labels"]}]
             if "parent-evidence" in labels:
-                overrides = state.get("listed_evidence_overrides", {})
-                rows = [{**r, **overrides.get(str(r["number"]), {})} for r in rows if r["number"] not in state.get("unlisted_evidence", [])]
-        response(paged(rows))
+                rows = [r for r in rows if r["number"] not in state.get("unlisted_evidence", [])]
+        overrides = state.get("issue_listing_overrides", {})
+        response(paged([{**r, **overrides.get(str(r["number"]), {})} for r in rows]))
     assert method == "POST", method
     if payload["labels"] == ["parent-evidence"]:
         if os.environ.get("PARENT_REJECT_EVIDENCE_CREATE"):

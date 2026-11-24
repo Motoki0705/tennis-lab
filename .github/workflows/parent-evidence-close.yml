@@ -32,5 +32,16 @@ jobs:
           PYTHONPATH: .agents/ops
         shell: bash
         run: |
-          uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 --with requests==2.34.2 \
-            python -m parent --repo "$GITHUB_REPOSITORY" --parent "${PARENT_ISSUE_NUMBER:?}" evidence-close --apply
+          # Exit 3 requests another observation of this issue's evidence binding.
+          for delay in 0 15 45; do
+            if (( delay > 0 )); then
+              sleep "$delay"
+            fi
+            status=0
+            uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 --with requests==2.34.2 \
+              python -m parent --repo "$GITHUB_REPOSITORY" --parent "${PARENT_ISSUE_NUMBER:?}" evidence-close --apply || status=$?
+            if (( status != 3 )); then
+              exit "$status"
+            fi
+          done
+          exit "$status"

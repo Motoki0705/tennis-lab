@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import subprocess
 from collections import defaultdict
+from collections.abc import Iterable
 from contextlib import ExitStack
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
@@ -251,30 +252,53 @@ class EvidenceIssues:
         # The Actions token is an installation token. The trusted publisher
         # for this repository's evidence is the repository owner.
         login = nonempty(object_value(repo.get("owner")).get("login"), "repo owner")
-        by_parent: dict[int, list[EvidenceIssue]] = defaultdict(list)
+        unverified: dict[int | None, dict[str, Any]] = {}
         results: list[dict[str, Any]] = []
         with self.gh.fresh_reads():
-            for raw in self.gh.evidence_rows():
-                try:
-                    binding = self._binding(raw, login)
-                except (ValueError, KeyError, TypeError) as exc:
+            labelled = self._closing_index(
+                self.gh.evidence_rows(), login, parent, unverified
+            )
+            # Fetch without the label filter so the label index cannot hide a
+            # candidate (including a closed duplicate) on its own.
+            inventory = self._closing_index(
+                (
+                    raw
+                    for raw in self.gh.rows(f"repos/{self.gh.repo}/issues?state=all")
+                    if any(label["name"] == EVIDENCE_LABEL for label in raw["labels"])
+                ),
+                login,
+                parent,
+                unverified,
+            )
+            parents = (
+                [parent]
+                if parent is not None
+                else sorted(labelled.keys() | inventory.keys())
+            )
+            for current in parents:
+                expected = labelled.get(current, {})
+                observed = inventory.get(current, {})
+                if expected.keys() != observed.keys():
                     results.append(
                         {
-                            "evidence": raw.get("number"),
-                            "status": "unverified_binding",
-                            "reason": str(exc),
+                            "parent": current,
+                            "status": "binding_listing_mismatch",
+                            "labelled_evidence": sorted(expected),
+                            "repository_evidence": sorted(observed),
                         }
                     )
                     continue
-                if parent is None or binding.parent == parent:
-                    by_parent[binding.parent].append(binding)
-
-            for bindings in by_parent.values():
-                for binding in bindings:
-                    if binding.state != "open":
+                if not expected:
+                    results.append({"parent": current, "status": "binding_not_found"})
+                    continue
+                for binding in expected.values():
+                    if (
+                        parent is None
+                        and binding.state == observed[binding.number].state == "closed"
+                    ):
                         continue
                     target = {"parent": binding.parent, "evidence": binding.number}
-                    if len(bindings) != 1:
+                    if len(expected) != 1:
                         results.append({**target, "status": "duplicate_binding"})
                         continue
                     try:
@@ -282,7 +306,31 @@ class EvidenceIssues:
                     except (ValueError, KeyError, TypeError, OSError) as exc:
                         result = {"status": "error", "reason": str(exc)}
                     results.append({**target, **result})
-        return results
+        return [*unverified.values(), *results]
+
+    def _closing_index(
+        self,
+        rows: Iterable[dict[str, Any]],
+        login: str,
+        parent: int | None,
+        unverified: dict[int | None, dict[str, Any]],
+    ) -> dict[int, dict[int, EvidenceIssue]]:
+        index: dict[int, dict[int, EvidenceIssue]] = defaultdict(dict)
+        for raw in rows:
+            try:
+                binding = self._binding(raw, login)
+            except (ValueError, KeyError, TypeError) as exc:
+                n = raw.get("number")
+                issue = n if type(n) is int else None
+                unverified[issue] = {
+                    "evidence": issue,
+                    "status": "unverified_binding",
+                    "reason": str(exc),
+                }
+                continue
+            if parent is None or binding.parent == parent:
+                index[binding.parent][binding.number] = binding
+        return index
 
     def _close_binding(self, binding: EvidenceIssue, *, apply: bool) -> dict[str, Any]:
         pinned = self._read_binding(binding.number, binding.publisher)
