@@ -43,6 +43,15 @@ OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python "$runner" smoke \
 
 The evaluation records `predictions.jsonl` with every fixed `FrameKey` and `metrics.json` with the cohort, backend, settings, artifact checksums and shared scorer results. Use `make_benchmark_adapter` in `edgecrafter.py` with the #2496 harness for fixed speed inputs. Each timed invocation receives already decoded native BGR images and measures resize and normalization, H2D, forward, decode and D2H through the harness.
 
+`edgecrafter_run.sh` runs one model in an exclusive queue reservation. It uses the #2496 `InputSet` and the identical 96 full images, batch 1 and 2, 30 warm-up iterations, 100 iterations in each of three blocks, and a non-default CUDA stream. Each case runs in a fresh process and saves `speed-b1.json` or `speed-b2.json` with the shared report schema. Its parity reference is the same model's PT32 batch-1 output on the fixed speed images. The driver writes both conversion receipts for the batch-2-traced TensorRT attempt to `trt16-trace2`. A TensorRT case that passes batch-1 parity advances to full-cohort scoring. The initial batch-1 trace and its outputs remain available under `trt16`.
+
+```bash
+# Register this command in the shared training queue from the worker checkout.
+bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh \
+  ecpose-l-o365 "$SHARED_PERSON_SPEED_INPUTS" \
+  64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62 "$manifest_sha"
+```
+
 For TensorRT, run export and build as separate Python processes in the training queue. The exporter traces the official deployed network under CUDA FP16 autocast, with an FP32 image binding and dynamic batch axis. It records the graph's FP16 and FP32 initializer and cast counts. Use an example batch of 2 to trace ECDet's anchor replication. A batch-1 trace dropped that branch and TensorRT warned about a batch extent of 1 in the decoder `GatherElements` at the maximum profile shape. Postprocessing uses FP32 and the same implementation for all backends. TensorRT uses a strongly typed graph and an explicit workspace and batch profile. `--engine` points to the profile to use during evaluation.
 
 ```bash
@@ -77,6 +86,8 @@ PYTHONPATH=.:"$helper" .venv/bin/python "$run/edgecrafter_rescore.py" \
   --manifest-sha256 "$manifest_sha" \
   --summary "$output/edgecrafter-rescore.json" "${conditions[@]}"
 ```
+
+All nine previously measured ECDet conditions retained their numeric aggregates after the `0d4bf0990` equal-IoU scoring change. Each report covers 6,844 images and 26,276 eligible boxes. The receipt contains paths and hashes for the original predictions, updated accuracy reports and PT32 parity reports. [Rescoring receipt](edgecrafter-rescore.json)
 
 ## First TensorRT precision check
 

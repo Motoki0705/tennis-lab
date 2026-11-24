@@ -7,7 +7,7 @@ import json
 import subprocess
 from collections.abc import Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import closing
+from contextlib import closing, nullcontext
 from functools import partial
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
@@ -459,6 +459,7 @@ def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
             "execution": {
                 "device": str(device),
                 "gpu": torch.cuda.get_device_name(device),
+                "cuda_stream": "non-default",
                 "torch_version": str(torch.__version__),
                 "torch_cuda_version": torch.version.cuda,
                 "fp32_matmul_and_cudnn_conv": "ieee",
@@ -508,7 +509,13 @@ def main() -> None:
     if args.command == "assets":
         fetch_assets(args.assets, args.model or list(RELEASES))
     else:
-        with torch.no_grad():
+        device = torch.device(args.device)
+        stream = (
+            torch.cuda.stream(torch.cuda.Stream(device=device))
+            if device.type == "cuda"
+            else nullcontext()
+        )
+        with stream, torch.no_grad():
             evaluate(args, smoke=args.command == "smoke")
 
 
