@@ -1,0 +1,106 @@
+{
+    "ball_arrays_byte_matched_per_pilot": 5,
+    "clips": [
+        {
+            "after": {
+                "joint_player_frames": 1416,
+                "mesh_player_frames": 1407,
+                "players": 4,
+                "root_player_frames": 1410
+            },
+            "alignment_artifact_id": "ff5465f9208c3bd9d587c559cc3fb6502ddf7a629831b98a3ebee20386bc95d6",
+            "ball_artifact_id": "28347c14b1ca1149cc1830e0731f1e031196862d4f14edf5eb5066a99a204edd",
+            "before": {
+                "joint_player_frames": 1416,
+                "mesh_player_frames": 1407,
+                "players": 4,
+                "root_player_frames": 1410
+            },
+            "before_stop": null,
+            "body_placement_artifact_id": "219cc0420f6ddddcce7ff6c94093ea00c5b4ae5b76968835b4721b70f92958c3",
+            "clip_id": "video_000/clip_000",
+            "gvhmr_artifact_id": "dca1d965cc413a6a27334bc432f9f1f5d2883106396a3c55d2741d38299dbcc1",
+            "gvhmr_segments": 4,
+            "mode": "place_saved_bodies",
+            "pointer_digests": {
+                "after": {
+                    "annotation_sha256": "c15e5621b09d64ac9c7ea9f44ea3ab520430da28819ca161607adb5398afe620",
+                    "scene_sha256": "9de5884c964777a727c22eec85292439771d542126497ec2bc4ecdf09941b112"
+                },
+                "before": {
+                    "annotation_sha256": "fd451937ffde84e5cdd4f2a3e8a59e54e2fb02cedf53c4115d922b1a138bb812",
+                    "scene_sha256": "87788c326816ae4ad69e10a18b2573d8b4d340b1c32d243dbf28a96d45d89f0a"
+                }
+            },
+            "previous_scene_assembly_id": "fb31672b03e221648f6e044712b7ba35e9d1580b6998768fb5d03b6f20aa3176",
+            "scene_assembly_id": "be586354d826001e9de46acc53d8b994711b0dd38556133091fa02d8e0df44a6",
+            "scene_path": "clip_000/tennis_scene/exports/be586354d826001e9de46acc53d8b994711b0dd38556133091fa02d8e0df44a6/scene.npz",
+            "seconds": {
+                "assembly": 2.3444780620047823,
+                "association": 2.768977163999807,
+                "body_placement": 14.019597573991632,
+                "body_view_selection": 0.08751561399549246,
+                "cpu": 50.14292471401859,
+                "gpu": 14.068874996999511,
+                "gvhmr": 0.0,
+                "hmr2_features": 0.0,
+                "publish_and_verify": 12.327839347999543,
+                "selection_and_input": 2.1822537860134616,
+                "triangulation": 45.09711505199084
+            },
+            "stop": null
+        },
+        {
+            "after": {
+                "joint_player_frames": 2579,
+                "mesh_player_frames": 2550,
+                "players": 4,
+                "root_player_frames": 2575
+            },
+            "alignment_artifact_id": "430e847b694e59cf0ba4a76807a419d705a4f1caadb0ff4516e6a50298f7738e",
+            "ball_artifact_id": "2d14beeb2ae8ac1bc20d12d622e5a47aadcd91a60753fc050c581f4fa86a629f",
+            "before": {
+                "joint_player_frames": 0,
+                "mesh_player_frames": 0,
+                "players": 0,
+                "root_player_frames": 0
+            },
+            "before_stop": "player_association_failed",
+            "body_placement_artifact_id": "0c68c5e496a44680fd1561c664f8416394f64286aefc54d4fd46758c457c0355",
+            "clip_id": "video_000/clip_020",
+            "gvhmr_artifact_id": "59d3f238bdac1a2b4598df16fa1a0ab8edf0f9d3748221d8aff7d149e1f253aa",
+            "gvhmr_segments": 4,
+            "mode": "recover_bodies",
+            "pointer_digests": {
+                "after": {
+                    "annotation_sha256": "3104d7346e09b088ae3e81e260cd91196e930ddd17fdd2620ea87fdd2f248c72",
+                    "scene_sha256": "d706f9dd1f3cd3487662090a05e6975a3f8eb4025f04687b6c369ed67b03d4da"
+                },
+                "before": {
+                    "annotation_sha256": "9c630f0377f20253870ca3ac7cf315d7c29aea657c8d3393614e8a3887f7a8b1",
+                    "scene_sha256": "e15374e0d9ce445ec35269047498ef7b49b9feb4f86cb56ef35202636c184d9a"
+                }
+            },
+            "previous_scene_assembly_id": "6d6f5597da69e41174ee0caf460daafd4007ce34c65bdbe3b155da974ed3376d",
+            "scene_assembly_id": "5c760e23c1a761cd7ae3af6d384e3277e277c6c1345246db012a035eab0216bf",
+            "scene_path": "clip_020/tennis_scene/exports/5c760e23c1a761cd7ae3af6d384e3277e277c6c1345246db012a035eab0216bf/scene.npz",
+            "seconds": {
+                "assembly": 4.628779164020671,
+                "association": 2.0737861689995043,
+                "body_placement": 17.41096399599337,
+                "body_view_selection": 0.07867813401389867,
+                "cpu": 86.67099810301443,
+                "gpu": 114.3513511660276,
+                "gvhmr": 14.545161749992985,
+                "hmr2_features": 82.35883236900554,
+                "publish_and_verify": 20.527643114008242,
+                "selection_and_input": 3.8119991540152114,
+                "triangulation": 80.69959431901225
+            },
+            "stop": null
+        }
+    ],
+    "live_pointer_pairs_verified_after": 69,
+    "live_pointer_pairs_verified_before": 69,
+    "queue_job": "0-8204502006022507738_2026-11-24T05-26-33-977492261Z_204466_meiji-doubles-players-pilot.job"
+}
