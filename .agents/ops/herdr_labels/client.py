@@ -9,6 +9,10 @@ from pathlib import Path
 from typing import Any
 
 
+class HerdrError(ValueError):
+    """The Herdr CLI, connection, or response could not be verified."""
+
+
 class Herdr:
     def __init__(self, env: Mapping[str, str], session: str | None = None) -> None:
         self.env = dict(env)
@@ -18,27 +22,35 @@ class Herdr:
             self.prefix.extend(["--session", session])
 
     def call(self, *args: str) -> dict[str, Any]:
-        result = subprocess.run(
-            [*self.prefix, *args],
-            env=self.env,
-            text=True,
-            capture_output=True,
-            timeout=10,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                [*self.prefix, *args],
+                env=self.env,
+                text=True,
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise HerdrError("could not run the Herdr CLI") from exc
+        except UnicodeDecodeError as exc:
+            raise HerdrError("Herdr returned a response with invalid encoding") from exc
         if result.returncode:
             # CLI stderr can contain local session references. Keep it private.
-            raise ValueError(
+            raise HerdrError(
                 f"Herdr {args[0]} {args[1]} failed (exit {result.returncode})"
             )
         if not result.stdout.strip():
             return {}
-        value = json.loads(result.stdout)
+        try:
+            value = json.loads(result.stdout)
+        except json.JSONDecodeError as exc:
+            raise HerdrError("Herdr returned invalid JSON") from exc
         if not isinstance(value, dict) or "error" in value:
-            raise ValueError("Herdr returned an invalid/error response")
+            raise HerdrError("Herdr returned an invalid/error response")
         data = value.get("result", value)
         if not isinstance(data, dict):
-            raise ValueError("Herdr response result is not an object")
+            raise HerdrError("Herdr response result is not an object")
         return data
 
     def socket_path(self) -> str:
@@ -52,7 +64,7 @@ class Herdr:
             and row.get("running")
         ]
         if len(selected) != 1 or not selected[0].get("socket_path"):
-            raise ValueError("cannot resolve the selected Herdr server socket")
+            raise HerdrError("cannot resolve the selected Herdr server socket")
         return str(Path(selected[0]["socket_path"]).resolve())
 
     def pane(self, pane_id: str | None = None) -> dict[str, Any]:
@@ -65,7 +77,7 @@ class Herdr:
         if not isinstance(pane, dict) or not all(
             isinstance(pane.get(k), str) and pane[k] for k in ("pane_id", "terminal_id")
         ):
-            raise ValueError("Herdr did not return a valid pane identity")
+            raise HerdrError("Herdr did not return a valid pane identity")
         return pane
 
     def publish(

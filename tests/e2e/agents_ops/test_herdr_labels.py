@@ -51,6 +51,7 @@ if args == ['agent', 'list']:
         data = json.loads(p.read_text()); data['parents']['o/r#42']['status'] = 'ended'; p.write_text(json.dumps(data))
 command = ' '.join(args[:2])
 if state.get('fail_call') == command:
+    if state.get('fail_stderr'): print(state['fail_stderr'], file=sys.stderr)
     path.write_text(json.dumps(state)); sys.exit(3)
 pane_id = os.environ.get('HERDR_PANE_ID', 'w1:p1')
 if args[:2] == ['pane', 'get']: pane_id = args[2]

@@ -14,7 +14,7 @@ from lib.identity import session_identity
 from parent.policy import digest
 from parent.state import Store
 
-from .client import Herdr
+from .client import Herdr, HerdrError
 from .coordination import Guard, owner_token, process_stamp, state_root
 
 TOKEN_KEYS = (
@@ -192,7 +192,7 @@ def target(
 ) -> tuple[Herdr, dict[str, Any]] | None:
     if env.get("HERDR_ENV") == "1":
         if not env.get("HERDR_PANE_ID"):
-            raise ValueError("HERDR_PANE_ID is missing in a Herdr environment")
+            raise HerdrError("HERDR_PANE_ID is missing in a Herdr environment")
         client = Herdr(env)
         # --current resolves the caller's pane even after it has moved workspaces.
         pane = client.pane()
@@ -390,7 +390,7 @@ def _sync(
         raise ValueError("requested parent differs from the caller's registered parent")
     agents = client.call("agent", "list").get("agents")
     if not isinstance(agents, list) or not all(isinstance(p, dict) for p in agents):
-        raise ValueError("Herdr returned an invalid agent list")
+        raise HerdrError("Herdr returned an invalid agent list")
     if any(
         p.get("terminal_id") != pane["terminal_id"]
         and p.get("agent") == identity.split(":", 1)[0]

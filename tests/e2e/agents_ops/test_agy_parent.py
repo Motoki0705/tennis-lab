@@ -14,7 +14,7 @@ from typing import Any
 
 import pytest
 
-from tests.e2e.agents_ops.test_board import run_board
+from tests.e2e.agents_ops.test_board import private_output_absent, run_board
 from tests.e2e.agents_ops.test_herdr_labels import Labels
 from tests.e2e.agents_ops.test_herdr_labels import labels as labels
 from tests.e2e.agents_ops.test_human_agreement import delegation_args
@@ -470,6 +470,59 @@ def _pre_invocation(
     )
 
 
+def test_agy_status_line_survives_incomplete_register(
+    parent_env: ParentEnv, labels: Labels
+) -> None:
+    p = parent_env
+    with foreground(p.root / "agy-home") as tui:
+        assert tui.lock(ROOT)
+        tui.metadata(ROOT)
+        env = _place(p, labels, tui)
+        state = labels.read()
+        state["fail_call"] = "pane current"
+        labels.write(state)
+        summary = "試験の担当"
+        failed = _parent(
+            p,
+            tui,
+            "register",
+            "--summary",
+            summary,
+            env={**env, "PARENT_FAIL_AFTER_CREATE": "1"},
+        )
+        assert failed.returncode == 1, failed.stderr
+        receipt = json.loads(failed.stdout)
+        assert receipt["parent_action_applied"] is True
+        assert receipt["assignment"] == "active"
+        assert "creation uncertain" in receipt["assignment_evidence"]["error"]
+        assert receipt["display_sync"]["status"] == "error"
+        owners = Path(env["XDG_STATE_HOME"]) / "tennis-lab-agents/herdr-labels/owners"
+        assert not list(owners.glob("*.json"))
+
+        state = labels.read()
+        del state["fail_call"]
+        labels.write(state)
+        calls = p.calls()
+        for update in range(1, 31):
+            hook = _status(tui, env, p.repo)
+            assert hook.returncode == 0, (update, hook.stderr)
+            assert "parent display destination is unconfirmed" in hook.stdout
+            assert "parent register" in hook.stdout
+            assert ROOT not in hook.stdout and hook.stderr == ""
+            private_output_absent(hook.stdout, env)
+        assert not labels.mutations()
+        assert not list(owners.glob("*.json"))
+        assert p.calls() == calls
+
+        recovered = _value(_parent(p, tui, "register", "--summary", summary, env=env))
+        assert recovered["display_sync"]["status"] == "updated"
+        hook = _status(tui, env, p.repo)
+        assert (hook.returncode, hook.stdout, hook.stderr) == (0, "", "")
+        assert labels.read()["panes"]["w1:p1"]["tokens"]["tl_issue"] == "#1"
+        assert len(list(owners.glob("*.json"))) == 1
+        assert sum("POST" in c and "repos/o/r/issues" in c for c in p.calls()) == 1
+
+
 def test_agy_herdr_switch_and_exit_clear_only_the_original_pane(
     parent_env: ParentEnv,
     labels: Labels,
@@ -484,6 +537,7 @@ def test_agy_herdr_switch_and_exit_clear_only_the_original_pane(
         env = _place(p, labels, tui)
         state = labels.read()
         state["fail_call"] = "pane get"
+        state["fail_stderr"] = f"cannot reach {env['HERDR_SOCKET_PATH']} for {ROOT}"
         labels.write(state)
         partial = _parent(p, tui, "register", "--summary", "試験の担当", env=env)
         assert partial.returncode == 1
@@ -491,6 +545,15 @@ def test_agy_herdr_switch_and_exit_clear_only_the_original_pane(
         assert failure["parent_action_applied"] is True
         assert "専用ランチャー" in failure["display_sync"]["repair"]
         assert "parent register" in failure["display_sync"]["repair"]
+        for disconnected in (
+            _status(tui, env, p.repo),
+            _status(tui, {**env, "PATH": str(p.root / "nonexistent")}, p.repo),
+        ):
+            assert disconnected.returncode == 1 and disconnected.stdout == ""
+            assert "Herdr connection" in disconnected.stderr
+            assert ROOT not in disconnected.stderr
+            assert env["HERDR_SOCKET_PATH"] not in disconnected.stderr
+            private_output_absent(disconnected.stderr, env)
         state = labels.read()
         del state["fail_call"]
         labels.write(state)
@@ -720,6 +783,37 @@ def test_agy_board_routes_unread_without_sending_or_reading_it(
             "route_unavailable",
             1,
         )
+
+
+def test_agy_hooks_report_board_errors_without_private_state(
+    parent_env: ParentEnv, labels: Labels
+) -> None:
+    p = parent_env
+    with foreground(p.root / "agy-home") as tui:
+        assert tui.lock(ROOT)
+        tui.metadata(ROOT)
+        env = _place(p, labels, tui)
+        _value(_parent(p, tui, "register", "--summary", "試験の担当", env=env))
+        db = Path(env["XDG_STATE_HOME"]) / "tennis-lab-agents/board/board.sqlite3"
+        with sqlite3.connect(db) as connection:
+            connection.execute("PRAGMA user_version = 100000")
+
+        before = labels.mutations()
+        for hook in (
+            _status(tui, env, p.repo),
+            tui.run(
+                HOOK,
+                "pre-invocation",
+                env=env,
+                cwd=p.repo,
+                stdin=_hook_payload(ROOT),
+            ),
+        ):
+            assert hook.returncode == 1 and hook.stdout == ""
+            assert hook.stderr.startswith("agy parent hook: board state")
+            assert ROOT not in hook.stderr
+            private_output_absent(hook.stderr, env)
+        assert labels.mutations() == before
 
 
 def _prepare_agy_manual_worker(

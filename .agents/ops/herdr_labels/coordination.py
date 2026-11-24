@@ -46,6 +46,10 @@ class ForegroundAgentUnavailable(ValueError):
     """The pane no longer has exactly one foreground process of its engine."""
 
 
+class UnconfirmedDisplayDestination(ValueError):
+    """An active parent has no confirmed display destination yet."""
+
+
 def process_stamp(client: Herdr, pane: dict[str, Any]) -> list[dict[str, Any]]:
     info = client.call("pane", "process-info", "--pane", pane["pane_id"])[
         "process_info"
@@ -121,7 +125,7 @@ class Guard:
                 )
             if previous is None:
                 if not allow_create:
-                    raise ValueError(
+                    raise UnconfirmedDisplayDestination(
                         "parent display destination is unconfirmed; "
                         "register the parent or explicitly bind the inspected pane"
                     )
