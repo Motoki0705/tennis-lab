@@ -4,10 +4,16 @@ Use the two Meta checkpoint revisions in [sapiens2.py](sapiens2.py). The
 expected SHA-256 values come from Hugging Face's LFS metadata. The adapter checks
 the local file size and digest before loading. [Official pose releases](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/docs/POSE.md)
 
-| Model | Hugging Face release | Checkpoint bytes | Stored F32 elements |
-|---|---|---:|---:|
-| Sapiens2-1B | [facebook/sapiens2-pose-1b](https://huggingface.co/facebook/sapiens2-pose-1b/tree/f5fed8b97b99698d5eea1d14ff0855d0b4c3f000) | 6,079,194,752 | 1,519,780,164 |
-| Sapiens2-5B | [facebook/sapiens2-pose-5b](https://huggingface.co/facebook/sapiens2-pose-5b/tree/ada1f29aa1fd454ca28665c700923a0101b6b24f) | 20,480,899,148 | 5,120,198,663 |
+| Model | Hugging Face release | Checkpoint bytes | Stored F32 elements | Model parameters |
+|---|---|---:|---:|---:|
+| Sapiens2-1B | [facebook/sapiens2-pose-1b](https://huggingface.co/facebook/sapiens2-pose-1b/tree/f5fed8b97b99698d5eea1d14ff0855d0b4c3f000) | 6,079,194,752 | 1,519,780,164 | 1,519,780,148 |
+| Sapiens2-5B | [facebook/sapiens2-pose-5b](https://huggingface.co/facebook/sapiens2-pose-5b/tree/ada1f29aa1fd454ca28665c700923a0101b6b24f) | 20,480,899,148 | 5,120,198,663 | 5,120,198,644 |
+
+Both downloaded files matched the pinned SHA-256. All 696 state tensors for
+1B and 968 for 5B matched the official model's names and shapes. The CPU
+preflight also verified the official 1024 × 768 crop, center, padding and
+COCO17 flip permutation. The check constructed model tensors on the PyTorch
+meta device and read the downloaded checkpoint headers.
 
 The model cards list pose estimation and human-centric vision research as
 intended uses. On 2026-11-24, the user accepted the pinned Meta Sapiens2 License
@@ -58,9 +64,10 @@ verification.
 ## Reproduction
 
 Use the pinned source and official checkpoint names. The source package
-declares Python 3.12 or newer. The isolated environment uses the GPU package
-versions from the shared benchmark environment. Keep the exported package
-versions with the run.
+declares Python 3.12 or newer. Create an isolated environment for the upstream
+model, common evaluator and TensorRT export. The shared benchmark environment
+provides the package constraints, including PyTorch 2.13.0 with CUDA 13.0 and
+TensorRT 10.14.1.48.post1. Keep the resolved package list with the run.
 [Upstream requirements](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/pyproject.toml)
 
 ```bash
@@ -71,13 +78,13 @@ export PYTHONPATH="$PWD:$run"
 mkdir -p "$assets"
 git clone https://github.com/facebookresearch/sapiens2.git "$assets/upstream"
 git -C "$assets/upstream" checkout --detach 7e5bae88456ac418ff0e58e74106c9fe192055d4
-uv pip freeze --python .venv/bin/python --exclude-editable |
-  rg '^(torch|torchvision|triton|cuda-[^=]+|nvidia-[^=]+|tensorrt-cu13[^=]*)==' \
-  > "$assets/gpu-runtime-constraints.txt"
+uv pip freeze --python .venv/bin/python --exclude-editable --exclude tennis-lab \
+  > "$assets/runtime-constraints.txt"
 uv venv --python 3.12 "$assets/runtime"
 uv pip install --python "$assets/runtime/bin/python" \
-  --constraint "$assets/gpu-runtime-constraints.txt" \
-  '.[tensorrt]' "$assets/upstream" onnxscript nvidia-ml-py
+  --constraint "$assets/runtime-constraints.txt" \
+  "$assets/upstream" av einops omegaconf psutil pydantic pytorch-lightning smplx \
+  onnx onnxscript nvidia-ml-py tensorrt-cu13
 uv pip freeze --python "$assets/runtime/bin/python" > "$assets/runtime-freeze.txt"
 .venv/bin/hf download facebook/sapiens2-pose-1b sapiens2_1b_pose.safetensors \
   --revision f5fed8b97b99698d5eea1d14ff0855d0b4c3f000 --local-dir "$assets/weights"
@@ -130,8 +137,8 @@ parity status and the reason the PT32 reference is unavailable.
 
 | Model | PT32 | PT16 | TRT16 |
 |---|---|---|---|
-| Sapiens2-1B | Pending checkpoint verification and GPU run | Pending checkpoint verification and GPU run | Pending checkpoint verification, conversion and GPU run |
-| Sapiens2-5B | Pending CUDA allocation attempt | Pending checkpoint verification and GPU run | Pending checkpoint verification, conversion and GPU run |
+| Sapiens2-1B | Pending GPU run | Pending GPU run | Pending conversion and GPU run |
+| Sapiens2-5B | Pending CUDA allocation attempt | Pending GPU run | Pending conversion and GPU run |
 
 The 5B checkpoint contains 20,480,794,652 bytes (19.074 GiB) of FP32
 tensors. The RTX 5060 Ti reported 16,311 MiB. The checkpoint therefore
