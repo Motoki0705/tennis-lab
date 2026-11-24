@@ -4,12 +4,15 @@ from __future__ import annotations
 
 import argparse
 import json
+import subprocess
 from collections import Counter
 from pathlib import Path
 from typing import Any
 
 import numpy as np
+from evaluate import score_fixed
 from fixed_inputs import RowKey, row_keys
+from pose_contract import PoseBatch
 from rtmpose import MODELS, FloatArray
 
 from src.tennis_scene.evaluation.player_pose.bundle import (
@@ -18,7 +21,7 @@ from src.tennis_scene.evaluation.player_pose.bundle import (
 )
 from src.utils.checksum import dual_sha256
 from src.utils.inference_benchmark import Backend
-from src.utils.io import write_json_atomic
+from src.utils.io import json_value, write_json_atomic
 from src.utils.schema.player import COCO_KP_NAMES
 
 
@@ -75,6 +78,47 @@ def _require_file(root: Path, receipt: dict[str, Any], name: str) -> Path:
     return path
 
 
+def _pose_summary(scores: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "gt_fixed_denominator": {
+            key: value
+            for key, value in scores["overall"]["pose"][
+                "with_detection_coverage"
+            ].items()
+            if key != "by_joint"
+        },
+        "gt_finite_pairs": {
+            key: value
+            for key, value in scores["finite_pairs"]["overall"].items()
+            if key != "by_joint"
+        },
+    }
+
+
+def score_changes(previous: dict[str, Any], rescored: dict[str, Any]) -> dict[str, Any]:
+    missing = object()
+    previous_policy, current_policy = previous["policy"], rescored["policy"]
+    previous_detection = previous["overall"]["detection"]
+    current_detection = rescored["overall"]["detection"]
+    return {
+        "changed_metric_sections": sorted(
+            name
+            for name in (previous.keys() | rescored.keys()) - {"policy"}
+            if previous.get(name, missing) != rescored.get(name, missing)
+        ),
+        "changed_policy_fields": sorted(
+            name
+            for name in previous_policy.keys() | current_policy.keys()
+            if previous_policy.get(name, missing) != current_policy.get(name, missing)
+        ),
+        "recall_by_iou_before": previous_detection["recall_by_iou"],
+        "recall_by_iou_after": current_detection["recall_by_iou"],
+        "matched_at_iou_0_50_before": previous_detection["matched_at_iou_0_50"],
+        "matched_at_iou_0_50_after": current_detection["matched_at_iou_0_50"],
+        "reference_boxes": current_detection["references"],
+    }
+
+
 def read_condition(
     queue: Path,
     job: str,
@@ -111,9 +155,6 @@ def read_condition(
         poses = saved["keypoints_xyc"]
     if poses.shape != (row_count, len(COCO_KP_NAMES), 3) or poses.dtype != np.float32:
         raise ValueError(f"Invalid COCO17 pose array: {poses_path}")
-    scores = read_json(scores_path)
-    fixed = scores["overall"]["pose"]["with_detection_coverage"]
-    finite_pairs = scores["finite_pairs"]["overall"]
     record = {
         "job_id": job,
         "execution_commit": receipt["commit"],
@@ -134,12 +175,7 @@ def read_condition(
             "command": _artifact(queue, repro / "repro.sh"),
             "log": _artifact(queue, queue / "logs" / f"{stem}.log"),
         },
-        "gt_fixed_denominator": {
-            key: value for key, value in fixed.items() if key != "by_joint"
-        },
-        "gt_finite_pairs": {
-            key: value for key, value in finite_pairs.items() if key != "by_joint"
-        },
+        **_pose_summary(read_json(scores_path)),
     }
     if backend is Backend.TRT16:
         plan = receipt["engines"]["plan"]
@@ -188,6 +224,11 @@ def main() -> None:
     parser.add_argument("--bundle", type=Path, required=True)
     parser.add_argument("--bundle-sha256", required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument(
+        "--rescore-dir",
+        type=Path,
+        help="Write full current-scorer reports in a new directory",
+    )
     parser.add_argument("jobs", nargs="+")
     args = parser.parse_args()
     manifest = load_manifest(args.bundle, expected_sha256=args.bundle_sha256)
@@ -214,12 +255,40 @@ def main() -> None:
     if records.keys() != {(model, backend) for model in MODELS for backend in Backend}:
         raise ValueError("Supply one completed accuracy job for each RTMPose condition")
 
+    rescoring = None
+    if args.rescore_dir is not None:
+        args.rescore_dir.mkdir(parents=True, exist_ok=False)
+        rescoring = {
+            "execution_commit": subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], text=True
+            ).strip(),
+            "reports_directory": str(args.rescore_dir.resolve()),
+            "scoring_source": _artifact(
+                Path.cwd(),
+                Path("src/tennis_scene/evaluation/player_pose/scoring.py").resolve(),
+            ),
+        }
+
     conditions: dict[str, dict[str, dict[str, Any]]] = {}
     for model in MODELS:
         conditions[model] = {}
         pt32 = poses_by_case[model, Backend.PT32]
         for backend in Backend:
             record = records[model, backend]
+            if args.rescore_dir is not None:
+                previous = read_json(args.queue / record["files"]["scores"]["path"])
+                rescored = json_value(
+                    score_fixed(
+                        references, keys, PoseBatch(poses_by_case[model, backend])
+                    )
+                )
+                path = args.rescore_dir / f"{model}-{backend.value}.json"
+                write_json_atomic(path, rescored)
+                record.update(_pose_summary(rescored))
+                record["rescore"] = {
+                    **score_changes(previous, rescored),
+                    "scores": _artifact(args.rescore_dir, path),
+                }
             if backend is not Backend.PT32:
                 difference = paired_delta(pt32, poses_by_case[model, backend])
                 if difference["worst"]:
@@ -228,15 +297,15 @@ def main() -> None:
                     )
                 record["vs_pt32"] = difference
             conditions[model][backend.value] = record
-    write_json_atomic(
-        args.output,
-        {
-            "bundle_id": cohort[0],
-            "bundle_sha256": cohort[1],
-            "rows": len(keys),
-            "conditions": conditions,
-        },
-    )
+    payload = {
+        "bundle_id": cohort[0],
+        "bundle_sha256": cohort[1],
+        "rows": len(keys),
+        "conditions": conditions,
+    }
+    if rescoring is not None:
+        payload["rescoring"] = rescoring
+    write_json_atomic(args.output, payload)
 
 
 if __name__ == "__main__":

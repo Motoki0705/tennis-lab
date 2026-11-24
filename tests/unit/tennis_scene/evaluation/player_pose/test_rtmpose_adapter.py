@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import sys
 from collections.abc import Callable
+from copy import deepcopy
 from importlib import import_module
 from pathlib import Path
 from types import ModuleType, SimpleNamespace
@@ -121,6 +122,36 @@ def test_backend_delta_counts_missing_and_measures_native_pixel_distance() -> No
     assert summary["xy_above_1px"] == 1 and summary["xy_above_5px"] == 0
     assert summary["score_abs_p95"] == 0.5
     assert summary["worst"] == {"row_index": 0, "joint": "left_wrist"}
+
+
+@pytest.mark.usefixtures("rtmpose")
+def test_rescore_comparison_sees_pose_changes_with_fixed_box_recall() -> None:
+    compare_scores = import_module("rtmpose_accuracy").score_changes
+    previous: dict[str, Any] = {
+        "policy": {"pose_match_iou": 0.5},
+        "overall": {
+            "detection": {
+                "references": 2,
+                "matched_at_iou_0_50": 2,
+                "recall_by_iou": {"0.50": 1.0, "0.75": 1.0},
+            },
+            "pose": {"with_detection_coverage": {"oks": {"mean": 0.8}}},
+        },
+    }
+    rescored = deepcopy(previous)
+    rescored["policy"]["candidate_order_for_iou_ties"] = ["detection_score_descending"]
+    added_policy = compare_scores(previous, rescored)
+    assert added_policy["changed_metric_sections"] == []
+    assert added_policy["changed_policy_fields"] == ["candidate_order_for_iou_ties"]
+
+    rescored["overall"]["pose"]["with_detection_coverage"]["oks"]["mean"] = 0.7
+    changed_pose = compare_scores(previous, rescored)
+    assert changed_pose["changed_metric_sections"] == ["overall"]
+    assert (
+        changed_pose["recall_by_iou_before"]
+        == changed_pose["recall_by_iou_after"]
+        == {"0.50": 1.0, "0.75": 1.0}
+    )
 
 
 def test_measured_forwards_preserve_original_then_flipped_view(

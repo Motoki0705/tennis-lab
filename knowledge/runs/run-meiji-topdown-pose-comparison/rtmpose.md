@@ -13,6 +13,7 @@ MMPose code is Apache-2.0. The official zoo supplies both checkpoints by public 
 - Compare the staged CPU FP32 adapter with the official `inference_topdown` on two real pseudo-BBoxes from one pinned camera frame for each checkpoint. Verify both native positions and raw scores. This covers affine cropping, RGB normalization, flip fusion and the output slice. Report GPU parity separately against CUDA PT32 on the fixed comparison inputs.
 - Verify the six accuracy receipts against the published row order and fixed boxes before pairing outputs. Use an asymmetric CPU fixture with a 3–4–5 pixel displacement and missing joints to check that the backend comparison measures Euclidean distance and counts missing predictions separately. Check the shared benchmark's two declared forwards in an actual timing case.
 - Exercise the common `measure_forward` API with a CPU fixture that has two unequal crop columns. The two model calls must receive the original and then the flipped crop, with both calls registered under the chosen backend. The real-image smoke test continues to verify the official forward and decoder.
+- Re-score all six saved conditions with the merged #2495 scorer. Compare the complete metric payloads with the original files and report the pose metrics and fixed-box recall. A small CPU fixture checks that a pose change is detected even if recall and the top-level sections stay the same.
 
 ## Inference and export settings
 
@@ -141,6 +142,11 @@ PYTHONPATH="$PWD/$run:$PWD" .venv/bin/python -B "$run/rtmpose_accuracy.py" \
 Use the published #2496 speed bundle and digest. This workload supplies predecoded native frames and fixed DINO crop rows. RTMPose reads the raw `xyxy` field before applying its official aspect ratio and padding. The baseline uses the same rows with ViTPose's crop transform. The common batch sizes are 1, 4 and 8. Batch 16 exercises the RTMPose engine's profile maximum when the published cohort fills complete batches. The #2496 default settings use a non-default CUDA stream, 30 warm-up iterations and three blocks of 100 samples. [Speed baseline](https://github.com/Motoki0705/tennis-lab/pull/2497)
 
 The prepared bundle `meiji_4cam/person-model-speed-v1` has SHA-256 `64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62`. It contains 384 ordered crops on 96 frames, with no tail rows. The #2496 prepare job ran on `0ee6f8dde06c078b6ab40324f5416b68a9eaefc0`. The benchmark uses that revision's input reader and pose parity code. Batches 1, 4, 8 and 16 each cover the full crop set.
+
+On 2026-11-25, the parent cancelled both queued speed sweeps before execution while #2497 was being revised. The terminal queue records show `cancelled`. Both jobs have no log, repro directory or measurement files. The recorded accuracy runs remain available. Future speed measurements use the revised shared input reader, timing and parity. [#2497 review](https://github.com/Motoki0705/tennis-lab/pull/2497#issuecomment-7138771687)
+
+- M job `0-8204471182921321101_2026-11-24T14-00-17-078678898Z_2310221_i2490-rtmpose-m-speed-sweep.job`
+- X job `0-8204471182614046695_2026-11-24T14-00-17-385953304Z_2310299_i2490-rtmpose-x-speed-sweep.job`
 
 After merging #2495 and #2496, the focused suite passed 81 tests in 14.43 seconds, including the seven FP32 scene cache tests and a new test for the backend delta and missing counts. With the real RTMPose-M CPU graph and stand-in CUDA events, `BatchStages` received both named forwards. A fixture using #2496's `InputSet` read the original `xyxy` values in frozen order and rejected a changed PT32 reference file.
 
