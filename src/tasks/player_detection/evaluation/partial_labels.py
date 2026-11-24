@@ -22,25 +22,15 @@ from dataclasses import dataclass, field
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.optimize import linear_sum_assignment
 
 from src.tasks.player_association.evaluation.labels import AMBIGUOUS, CameraLabels
-from src.utils.geometry.bbox import pairwise_iou
+from src.utils.geometry.bbox import match_iou, pairwise_iou
 
 _COUNTS = (
     "frames", "labelled_frames", "detections", "known_player_units", "known_non_player_units",
     "matched_player_units", "matched_non_player_units", "duplicate_player_detections",
     "duplicate_non_player_detections", "ambiguous_detections", "unlabelled_detections",
 )
-
-
-def _unit_matches(iou: NDArray[np.float64], min_iou: float) -> tuple[NDArray[np.int64], NDArray[np.int64]]:
-    # More weight than the sum of all IoUs makes cardinality the first objective.
-    valid = iou >= min_iou
-    cost = valid * (min(iou.shape) + 1.0) + np.where(valid, iou, 0.0)
-    detections, units = linear_sum_assignment(-cost)
-    keep = valid[detections, units]
-    return detections[keep].astype(np.int64), units[keep].astype(np.int64)
 
 
 @dataclass
@@ -85,7 +75,7 @@ class PartialDetectionMetrics:
         overlaps = pairwise_iou(boxes, label_boxes)
         iou = np.column_stack([overlaps[:, people == person].max(axis=1) for person in units]) \
             if len(units) else np.empty((len(boxes), 0), np.float64)
-        assigned_detections, assigned_units = _unit_matches(iou, self.min_iou)
+        assigned_detections, assigned_units = match_iou(iou, self.min_iou)
         assigned: set[int] = set(assigned_detections.tolist())
         for detection, unit in zip(assigned_detections, assigned_units, strict=True):
             role = str(unit_roles[unit])
