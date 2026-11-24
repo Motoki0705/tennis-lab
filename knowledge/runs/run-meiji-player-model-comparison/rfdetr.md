@@ -63,9 +63,13 @@ The completed L accuracy run records all three backends, including the TensorRT 
 
 ## Fixed speed comparison
 
-Use #2496's 96 native BGR images in manifest order. The CLI checks the manifest, frame index and image hashes and measures batches 1 and 2 on a non-default CUDA stream. Each case uses a fresh process, 30 warmups and three blocks of 100 timed batches. The benchmark reads the PT32 batch-1 reference for RF-DETR-L and applies #2496's DINO output criteria. Those criteria require matched box IoU P05 ≥0.98, score absolute error P95 ≤0.01, and missing and extra rates ≤1%. The pseudo-GT recall run has its own recorded output comparison. [Fixed input and baseline protocol](../run-person-model-speed-baseline/README.md) · [Baseline parity implementation](../run-person-model-speed-baseline/parity.py)
+On 2026-11-25 JST, all six queued RF-DETR-L speed jobs (PT32, PT16 and TRT16, each at batch 1 and 2) were cancelled before execution. The queue records the cancellation times. The reason is unknown. Speed, peak VRAM and speed parity remain unmeasured, so the comparison with DINO awaits a run with the synchronized timing and shared parity protocol requested in #2497. [Cancellation receipts](rfdetr-speed-cancellations.json) · [Shared harness review](https://github.com/Motoki0705/tennis-lab/pull/2497#issuecomment-7138771687)
 
-Use the reproduction environment above with `OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2` for speed. The existing batch-1 TensorRT plan is reusable. Export and build the same checkpoint with `--batch-size 2` to prepare the batch-2 plan. Run the build and each speed invocation through the shared training queue. Run PT32 batch 1 first.
+### Queued configuration
+
+The cancelled jobs targeted #2496's 96 native BGR images in manifest order at baseline commit `14ca88f8a5616087435b411f79d2b63214d887e2`. The CLI checks the manifest, frame index and image hashes. The planned timing used a fresh process for each case, a non-default CUDA stream, 30 warmups and three blocks of 100 timed batches. It used the RF-DETR-L PT32 batch-1 reference and the DINO parity criteria from that revision. The pseudo-GT recall run has its own recorded output comparison. [Fixed inputs](../run-person-model-speed-baseline/inputs/manifest.json) · [Parity criteria at the queued revision](https://github.com/Motoki0705/tennis-lab/blob/14ca88f8a5616087435b411f79d2b63214d887e2/knowledge/runs/run-person-model-speed-baseline/parity.py)
+
+The speed commands for that revision specified the reproduction environment above with `OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2`. They were configured to reuse the batch-1 TensorRT plan and build a batch-2 plan from the same checkpoint. The queue order started with PT32 batch 1.
 
 ```bash
 checkout_root=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
