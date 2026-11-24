@@ -14,13 +14,15 @@ import sys
 from collections.abc import Iterator
 from contextlib import ExitStack, contextmanager
 from contextvars import ContextVar
+from itertools import pairwise
 from pathlib import Path
-from typing import Any
+from typing import Any, NoReturn
 
 CHECKOUT_ROOT_ENV = "TENNIS_LAB_CHECKOUT_ROOT"
 CHECKOUT_FD_ENV = "TENNIS_LAB_CHECKOUT_FD"
 _cli_lock: ExitStack | None = None
 _cli_context: tuple[Path, int, str] | None = None
+_cli_inherited = False
 _registry_context: ContextVar[tuple[Path, int, str] | None] = ContextVar(
     "checkout_registry", default=None
 )
@@ -39,11 +41,12 @@ def _git_environment() -> dict[str, str]:
 
 
 def _release_cli_lock() -> None:
-    global _cli_lock, _cli_context
+    global _cli_lock, _cli_context, _cli_inherited
     if _cli_lock is not None:
         _cli_lock.close()
         _cli_lock = None
         _cli_context = None
+        _cli_inherited = False
 
 
 def _source_git_directory(
@@ -125,7 +128,11 @@ def registry_checkout_lock(*, blocking: bool = True) -> Iterator[int | None]:
     assert directory is not None
     existing = _registry_context.get() or _cli_context
     if existing is not None and existing[0] == directory:
-        yield existing[1]
+        token = _registry_context.set(existing)
+        try:
+            yield existing[1]
+        finally:
+            _registry_context.reset(token)
         return
     with ExitStack() as stack:
         descriptor = stack.enter_context(
@@ -159,6 +166,14 @@ def source_checkout_barrier() -> Path:
     return directory / "ops-code.blocked"
 
 
+def _refuse_cli(exc: Exception) -> NoReturn:
+    print(
+        f"checkout CLI refused: {exc}; inspect spin ops status git-sync",
+        file=sys.stderr,
+    )
+    raise SystemExit(75) from exc
+
+
 def guard_interactive_cli(
     *, allow_exclusive: bool = False, recovery_owner: bool = False
 ) -> None:
@@ -167,7 +182,7 @@ def guard_interactive_cli(
     Linked worktrees use their own source and do not hold the main checkout.
     The descriptor is process-local: neither exec nor fork may extend its life.
     """
-    global _cli_lock, _cli_context
+    global _cli_lock, _cli_context, _cli_inherited
     if _cli_lock is not None:
         return
     root = Path(__file__).resolve().parents[3]
@@ -219,13 +234,57 @@ def guard_interactive_cli(
             os.set_inheritable(descriptor, False)
             _cli_lock = stack.pop_all()
             _cli_context = (directory, descriptor, mode)
-        atexit.register(_release_cli_lock)
+            _cli_inherited = inherited_fd is not None
     except (OSError, ValueError, OverflowError) as exc:
-        print(
-            f"checkout CLI refused: {exc}; inspect spin ops status git-sync",
-            file=sys.stderr,
-        )
-        raise SystemExit(75) from exc
+        _refuse_cli(exc)
+
+
+def _source_head(root: Path) -> str:
+    try:
+        head = subprocess.check_output(
+            ["git", "-C", str(root), "rev-parse", "--verify", "HEAD^{commit}"],
+            text=True,
+            stderr=subprocess.PIPE,
+            env=_git_environment(),
+            timeout=10,
+        ).strip()
+    except (OSError, subprocess.SubprocessError, UnicodeError) as exc:
+        _refuse_cli(ValueError(f"cannot verify checkout HEAD for wait: {exc}"))
+    if not re.fullmatch(r"(?:[0-9a-f]{40}|[0-9a-f]{64})", head):
+        _refuse_cli(ValueError("invalid checkout HEAD for wait"))
+    return head
+
+
+@contextmanager
+def checkout_wait() -> Iterator[None]:
+    """Unpin an interactive CLI only around a wait that uses no checkout code."""
+    context = _cli_context
+    if context is None or _cli_inherited:
+        yield
+        return
+    if _registry_context.get() is not None:
+        raise RuntimeError("checkout wait cannot release a registry transaction lock")
+
+    root = Path(__file__).resolve().parents[3]
+    before = _source_head(root)
+    _release_cli_lock()
+    try:
+        yield
+    finally:
+        guard_interactive_cli()
+        if _cli_context is None or _cli_context[0] != context[0]:
+            _refuse_cli(
+                ValueError(
+                    "source Git directory changed during wait; restart the command"
+                )
+            )
+        after = _source_head(root)
+        if after != before:
+            _refuse_cli(
+                ValueError(
+                    f"checkout HEAD changed during wait ({before} -> {after}); restart the command"
+                )
+            )
 
 
 def run_cli(
@@ -254,15 +313,14 @@ def run_cli(
     raise SystemExit(implementation.main())
 
 
-def _process_entry(root: Path, pid: int) -> str:
-    """Describe the executable/module/script, never arbitrary CLI arguments."""
+def _process_command(root: Path, pid: int) -> tuple[str, list[str]]:
     process = Path(f"/proc/{pid}")
     arguments = (process / "cmdline").read_bytes().decode(errors="replace").split("\0")
     for index, argument in enumerate(arguments[1:], start=1):
         if argument == "-m":
             module = arguments[index + 1]
             if re.fullmatch(r"[\w.]+", module):
-                return f"python -m {module}"
+                return f"python -m {module}", arguments[index + 2 :]
             break
         if argument == "-c":
             break
@@ -271,10 +329,32 @@ def _process_entry(root: Path, pid: int) -> str:
             if not path.is_absolute():
                 path = (process / "cwd").resolve() / path
             if path.is_relative_to(root / ".agents/ops"):
-                return str(path.relative_to(root / ".agents/ops"))
+                return str(path.relative_to(root / ".agents/ops")), arguments[
+                    index + 1 :
+                ]
         if argument and not argument.startswith("-"):
             break
-    return Path(arguments[0]).name or "unavailable"
+    return Path(arguments[0]).name or "unavailable", []
+
+
+def _parent_issue(entry: str, arguments: list[str]) -> int | None:
+    # Only the numeric issue identifier from known entry options is reportable.
+    if entry in {"python -m parent", "python -m parent.cli"}:
+        option = "--parent"
+        pattern = r"(?:#?|https://github\.com/[\w.-]+/[\w.-]+/issues/)([1-9][0-9]{0,9})"
+    elif entry == "review/merge_gate.py":
+        option = "--state"
+        pattern = (
+            r"(?:.*/)?progressions/parent-([1-9][0-9]{0,9})-[0-9a-f]{32}/state\.json"
+        )
+    else:
+        return None
+    for argument, following in reversed(list(pairwise(arguments))):
+        flag, separator, value = argument.partition("=")
+        if flag == option:
+            match = re.fullmatch(pattern, value if separator else following)
+            return int(match[1]) if match else None
+    return None
 
 
 def checkout_lock_holders(root: Path) -> list[dict[str, Any]]:
@@ -296,7 +376,10 @@ def checkout_lock_holders(root: Path) -> list[dict[str, Any]]:
             holders.append(holder)
             continue
         try:
-            holder["entry"] = _process_entry(root, pid)
+            entry, arguments = _process_command(root, pid)
+            holder["entry"] = entry
+            if (parent := _parent_issue(entry, arguments)) is not None:
+                holder["parent_issue"] = parent
         except FileNotFoundError:
             # The lock can disappear between the kernel snapshot and /proc read.
             continue
@@ -409,3 +492,4 @@ def _release_forked_locks() -> None:
 
 
 os.register_at_fork(after_in_child=_release_forked_locks)
+atexit.register(_release_cli_lock)

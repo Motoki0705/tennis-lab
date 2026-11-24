@@ -14,6 +14,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol
 
+from lib.checkout_lock import checkout_wait
 from lib.d_capacity import CapacityError
 from parent.state import Store, unique_object
 
@@ -427,13 +428,15 @@ class Engine:
                 return self.state
             delay = min(t["next_poll"] for t in active) - self.clock()
             if delay > 0:
-                self.sleep(min(POLL_SECONDS, delay))
+                with checkout_wait():
+                    self.sleep(min(POLL_SECONDS, delay))
 
     def wait_rate(self, error: RateWait, target: dict[str, Any]) -> None:
         target["rate_limit"] = {"resume_at": error.resume_at, "reason": str(error)}
         self.save()
-        while self.clock() < error.resume_at:
-            self.sleep(min(POLL_SECONDS, error.resume_at - self.clock()))
+        while (delay := error.resume_at - self.clock()) > 0:
+            with checkout_wait():
+                self.sleep(min(POLL_SECONDS, delay))
         target.pop("rate_limit", None)
         self.save()
 

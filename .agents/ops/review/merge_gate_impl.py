@@ -16,6 +16,7 @@ from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Any
 
+from lib.checkout_lock import checkout_wait
 from lib.ops_review.progression import (
     KNOWLEDGE_MERGE,
     Engine,
@@ -477,7 +478,8 @@ def wait(path: Path, *, after: int = 0, timeout: float | None = None) -> dict[st
             return view(path)
         if deadline is not None and time.monotonic() >= deadline:
             return {**view(path), "wait_timed_out": True}
-        time.sleep(0.25)
+        with checkout_wait():
+            time.sleep(0.25)
 
 
 def completion(store: Store, repo: str, parent: int, pr: int) -> dict[str, Any]:

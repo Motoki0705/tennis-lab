@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
 import shutil
@@ -877,12 +878,19 @@ def test_native_parent_defers_updates_with_visible_holder_then_next_run_updates(
         arguments=("--parent", "1893", "run-worker", "--child", "2051"),
     ) as parent:
         assert line(parent) == "project-import"
-        for _ in range(2):
+        for count in (1, 2):
             result = sync.run("checkout_jobs_running", 75)
             assert result["outcome"] == "skipped"
             assert result["lock_holders"] == [
-                {"pid": parent.pid, "entry": "python -m parent", "mode": "read"}
+                {
+                    "pid": parent.pid,
+                    "entry": "python -m parent",
+                    "mode": "read",
+                    "parent_issue": 1893,
+                }
             ]
+            assert result["skip_streak"]["count"] == count
+            assert result["skip_streak"]["notification"] == "pending"
             status = json.loads(sync.control.run("status", "git-sync").stdout)
             assert status["targets"][0]["last_run"] == result
             assert git(sync.repo, "rev-parse", "HEAD") == before
@@ -891,6 +899,41 @@ def test_native_parent_defers_updates_with_visible_holder_then_next_run_updates(
     result = sync.run("fast_forwarded")
     assert result["head_after"] == target
     assert (sync.repo / "app.py").read_text() == "new\n"
+
+
+@pytest.mark.parametrize("interrupted", [False, True], ids=["updated", "recovery"])
+def test_waiting_cli_refuses_to_resume_after_checkout_changes(
+    sync: SyncEnv, interrupted: bool
+) -> None:
+    install_native_parent(
+        sync,
+        """import sys
+from lib.checkout_lock import checkout_wait
+
+def main():
+    with checkout_wait():
+        print("waiting", flush=True)
+        sys.stdin.readline()
+    print("continued with old project code")
+    return 0
+""",
+    )
+    before = git(sync.repo, "rev-parse", "HEAD")
+    target = sync.publish({"app.py": "new\n"})
+    with running_cli(sync.repo, arguments=("--parent", "1893", "wait-worker")) as cli:
+        assert line(cli) == "waiting"
+        if interrupted:
+            with (sync.repo / ".git/ops-code.lock").open("a") as updater:
+                fcntl.flock(updater, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                (sync.repo / ".git/ops-code.blocked").write_text("interrupted update")
+            expected = "checkout recovery pending"
+        else:
+            assert sync.run("fast_forwarded")["head_after"] == target
+            expected = f"checkout HEAD changed during wait ({before} -> {target})"
+        stdout, stderr = cli.communicate(input="\n", timeout=8)
+        assert cli.returncode == 75
+        assert expected in stderr
+        assert not stdout
 
 
 def test_native_parent_started_during_update_imports_only_updated_project_code(

@@ -34,8 +34,8 @@ from tests.e2e.agents_ops.test_manual_worker_runs import (
 from tests.e2e.agents_ops.test_manual_worker_runs import reserved as reserved
 from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
+from tests.e2e.agents_ops.test_wait_worker import WAIT_SLEEP_PROBE, connected, listening
 from tests.e2e.agents_ops.test_wait_worker import command as wait_command
-from tests.e2e.agents_ops.test_wait_worker import connected, listening
 
 HEAD = "a" * 40
 DONE = 'PARENT_RESULT {"schema_version":1,"state":"done","wait":null}'
@@ -573,7 +573,16 @@ def test_queue_deduplicates_events_and_stops_at_the_resume_limit(
     reports = [waiting("queue", job_ids=[job]) for job in jobs]
     if repeated:
         reports[1] = reports[0]
-    launch(p, *reports)
+    with tempfile.TemporaryDirectory(prefix="queue-limit-") as short:
+        stopped = Path(short) / "stopped.sock"
+        p.env["FAKE_SERVICE_STOPPED"] = str(stopped)
+        with listening(stopped) as cleanup:
+            # The cap case runs ten child launches. Wait for the controller's
+            # exit notification, with a timeout to detect a hung controller.
+            cleanup.settimeout(40)
+            launch(p, *reports)
+            with connected(cleanup) as notice:
+                assert notice.recv(1024) == b"removed"
     result = joined(p)["followup"]
     assert result["state"] == "needs_parent"
     assert result["reason"] == reason
@@ -759,6 +768,104 @@ def test_queue_monitor_pins_main_code_without_holding_checkout_lock(
             assert str(checkout) not in run_git(
                 p.repo, "worktree", "list", "--porcelain"
             )
+
+
+def test_git_sync_runs_during_native_wait_worker_and_queue_completion_is_received(
+    service: ParentEnv,
+) -> None:
+    p = service
+    # Keep the production CLI bootstrap and wait loop. Replace only the runner
+    # subprocess and the first poll delay so the updater can run on a signal.
+    ops = p.repo / ".agents/ops"
+    impl = ops / "parent/cli_impl.py"
+    with impl.open("a", encoding="utf-8") as source:
+        source.write(
+            "\nfrom . import manual_workers as _test_manual_workers\n"
+            f"_test_manual_workers.RUNNER = Path({str(p.root / 'fake-runner')!r})\n"
+            + WAIT_SLEEP_PROBE
+        )
+    run_git(p.repo, "add", str(impl))
+    run_git(p.repo, "commit", "-m", "install waiter probe")
+    origin = p.root / "origin.git"
+    run_git(p.repo, "clone", "--bare", ".", str(origin))
+    run_git(p.repo, "remote", "add", "origin", str(origin))
+    systemctl = p.root / "bin/systemctl"
+    systemctl.write_text("#!/bin/sh\nexit 99\n")
+    systemctl.chmod(0o700)
+
+    job = "100_1_sync.job"
+    set_job(p, job, "running")
+    with tempfile.TemporaryDirectory(prefix="queue-sync-") as short:
+        queue, waiter, stopped = (
+            Path(short) / name for name in ("queue.sock", "wait.sock", "stopped.sock")
+        )
+        p.env.update(FAKE_QUEUE_PENDING=str(queue), FAKE_SERVICE_STOPPED=str(stopped))
+        with (
+            listening(queue) as pending,
+            listening(waiter) as polling,
+            listening(stopped) as cleanup,
+        ):
+            launch(p, waiting("queue", job_ids=[job]), DONE)
+            with (
+                connected(pending) as monitor,
+                subprocess.Popen(
+                    [
+                        sys.executable,
+                        "-m",
+                        "parent",
+                        "--repo",
+                        "o/r",
+                        "--parent",
+                        "1",
+                        "wait-worker",
+                        "--child",
+                        "10",
+                        "--timeout",
+                        "15",
+                    ],
+                    cwd=p.repo,
+                    env={**p.env, "WAIT_PENDING_SOCKET": str(waiter)},
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                ) as process,
+            ):
+                try:
+                    assert monitor.recv(1024).decode() == job
+                    with connected(polling) as delay:
+                        assert delay.recv(1024) == b"pending\n"
+                        result = subprocess.run(
+                            [
+                                sys.executable,
+                                str(ops / "git_sync/sync.py"),
+                                "--repo",
+                                str(p.repo),
+                            ],
+                            cwd=p.repo,
+                            env=p.env,
+                            capture_output=True,
+                            text=True,
+                            timeout=10,
+                            check=True,
+                        )
+                        assert json.loads(result.stdout)["outcome"] == "unchanged"
+                        record = json.loads(result.stderr.splitlines()[-1])
+                        assert record["reason"] == "already_current"
+                        assert process.poll() is None
+                        set_job(p, job, "done")
+                        monitor.sendall(b"C")
+                        with connected(cleanup) as notice:
+                            assert notice.recv(1024) == b"removed"
+                        delay.sendall(b"C")
+                    stdout, stderr = process.communicate(timeout=10)
+                finally:
+                    if process.poll() is None:
+                        process.kill()
+    assert process.returncode == 0, stderr
+    result = json.loads(stdout)
+    assert result["wait_state"] == "ended"
+    assert result["followup"]["observation"]["jobs"][0]["job_id"] == job
+    assert result["followup"]["observation"]["jobs"][0]["state"] == "done"
 
 
 def _start_local(

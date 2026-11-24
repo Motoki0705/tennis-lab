@@ -7,10 +7,14 @@ are real; no live GitHub, agent, GPU or timed waits are used.
 from __future__ import annotations
 
 import copy
+import fcntl
 import importlib
 import json
+import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, TypeVar, cast
 
 import pytest
@@ -337,8 +341,40 @@ def test_interruption_at_worker_intent_requires_recovery_not_relaunch(
     assert backend.repair_count[11] == 1
 
 
-def test_restart_saved_ci_stage_without_reviewer_and_no_registry_lock(
-    tmp_path: Path,
+@pytest.fixture
+def guarded_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
+    root = tmp_path / "main-checkout"
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "-c",
+            "user.name=Checkout Test",
+            "-c",
+            "user.email=checkout@example.invalid",
+            "commit",
+            "--quiet",
+            "--allow-empty",
+            "-m",
+            "baseline",
+        ],
+        check=True,
+    )
+    checkout = importlib.import_module("lib.checkout_lock")
+    monkeypatch.setattr(
+        checkout, "__file__", str(root / ".agents/ops/lib/checkout_lock.py")
+    )
+    checkout.guard_interactive_cli()
+    try:
+        yield root / ".git/ops-code.lock"
+    finally:
+        checkout._release_cli_lock()
+
+
+def test_restart_saved_ci_stage_without_reviewer_and_releases_checkout_while_waiting(
+    tmp_path: Path, guarded_checkout: Path
 ) -> None:
     path, backend, clock = setup(tmp_path)
     backend.checks[11] = ["pending", "success"]
@@ -346,13 +382,34 @@ def test_restart_saved_ci_stage_without_reviewer_and_no_registry_lock(
     def interrupted_sleep(seconds: float) -> None:
         assert read(path)["targets"]["11"]["stage"] == "ci_wait"
         assert not list(tmp_path.glob("**/registry.lock"))
+        with guarded_checkout.open("a") as updater:
+            fcntl.flock(updater, fcntl.LOCK_EX | fcntl.LOCK_NB)
         raise KeyboardInterrupt
 
     with pytest.raises(KeyboardInterrupt):
         Engine(path, backend, clock=clock, sleep=interrupted_sleep).run()
+    with guarded_checkout.open("a") as updater, pytest.raises(BlockingIOError):
+        fcntl.flock(updater, fcntl.LOCK_EX | fcntl.LOCK_NB)
     clock.now += 60
     assert run(path, backend, clock)["status"] == "completed"
     assert backend.review_count == 1
+
+
+def test_wait_merge_releases_checkout_until_the_next_event(
+    tmp_path: Path, guarded_checkout: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path, _, _ = setup(tmp_path)
+    gate = importlib.import_module("lib.ops_review.merge_gate_impl")
+
+    def pause(_: float) -> None:
+        with guarded_checkout.open("a") as updater:
+            fcntl.flock(updater, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            state = read(path)
+            state["events"].append({"id": 2, "kind": "completed"})
+            save(path, state)
+
+    monkeypatch.setattr(gate, "time", SimpleNamespace(sleep=pause))
+    assert gate.wait(path, after=1)["events"] == [{"id": 2, "kind": "completed"}]
 
 
 def test_get_scope_ignores_unrelated_issues(tmp_path: Path) -> None:

@@ -18,7 +18,7 @@ from pathlib import Path
 from typing import Any, Literal
 
 from dispatcher.runtime import process_identity
-from lib.checkout_lock import common_directory
+from lib.checkout_lock import checkout_wait, common_directory
 from lib.ops_review.progression import CI_TIMEOUT, RateWait
 from lib.ops_review.progression_backend import LiveBackend
 from lib.ops_review.review_locks import pr_lease
@@ -319,7 +319,10 @@ class Monitor:
                         if result is not None:
                             return result
                         next_check = now + POLL_SECONDS
-                time.sleep(min(POLL_SECONDS, max(0.0, next_check - time.monotonic())))
+                with checkout_wait():
+                    time.sleep(
+                        min(POLL_SECONDS, max(0.0, next_check - time.monotonic()))
+                    )
         return None
 
     def accept(
@@ -404,7 +407,8 @@ class Monitor:
                     automatic=self.chain,
                 )
             except WorkerCapacityUnavailable:
-                time.sleep(POLL_SECONDS)
+                with checkout_wait():
+                    time.sleep(POLL_SECONDS)
                 continue
             except (OSError, ValueError, subprocess.SubprocessError) as exc:
                 self.fail(f"automatic_resume_refused: {exc}", state="needs_parent")
