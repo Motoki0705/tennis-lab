@@ -18,7 +18,7 @@ The official release assets are public. The pinned EdgeCrafter source license gr
 - Convert native BGR to RGB, resize to `640×640` by PIL bilinear interpolation with antialiasing, and use ImageNet mean and standard deviation. The resize stretches both axes independently. Decode normalized x with native width and y with native height. Use a single full-image forward and direct top-k decoding. [Official ECDet preprocessing](https://github.com/Intellindust-AI-Lab/EdgeCrafter/blob/d8752b75c9beaecfcdd0e5cd207bae3b6946ae23/ecdetseg/tools/inference/torch_inf.py) · [Official ECPose preprocessing](https://github.com/Intellindust-AI-Lab/EdgeCrafter/blob/d8752b75c9beaecfcdd0e5cd207bae3b6946ae23/ecpose/tools/inference/torch_inf.py)
 - ECDet emits `300×80` class logits and `300×4` normalized `cxcywh` boxes. The official flattened sigmoid top-300 uses class 0 for person in deploy mode. Clip person boxes to the image and require finite positive area. [Official ECDet postprocessing](https://github.com/Intellindust-AI-Lab/EdgeCrafter/blob/d8752b75c9beaecfcdd0e5cd207bae3b6946ae23/ecdetseg/engine/edgecrafter/postprocessor.py)
 - ECPose emits `60×2` class logits and `60×17×2` normalized COCO17 coordinates. Use the official flattened sigmoid top-60 and COCO person class 1. Coordinates and score travel together by query index. A joint's `1` marks an available coordinate and `0` represents a missing joint stored as `[0,0,0]`. The head learns one score per person. [Official ECPose head](https://github.com/Intellindust-AI-Lab/EdgeCrafter/blob/d8752b75c9beaecfcdd0e5cd207bae3b6946ae23/ecpose/engine/edgecrafter/detrpose_transformer.py#L749) · [Official ECPose postprocessing](https://github.com/Intellindust-AI-Lab/EdgeCrafter/blob/d8752b75c9beaecfcdd0e5cd207bae3b6946ae23/ecpose/engine/edgecrafter/detrpose_postprocesses.py)
-- Select a joint-envelope margin explicitly for ECPose. The adapter uses the envelope of finite in-image joints with at least two joints and positive extent on both axes. It expands each side by the selected fraction of the corresponding extent, then clips to the native image. `0.10` is the proposed operating point for comparison because the fixed pseudo-reference uses a 10% envelope margin. This proxy measures agreement with joint-envelope boxes and affects the IoU matching used for pose scoring.
+- Select a joint-envelope margin explicitly for ECPose. The adapter uses the envelope of finite in-image joints with at least two joints and positive extent on both axes. It expands each side by the selected fraction of the corresponding extent, then clips to the native image. The comparison uses `0.10`, the explicit margin in the ECPose recipe smoke and the fixed pseudo-reference. This proxy measures agreement with joint-envelope boxes and affects the IoU matching used for pose scoring.
 - Keep all positive-scoring person rows in the official top-k for the benchmark. The shared scorer computes recall at fixed score cutoffs. The production path can set its own explicit person cutoff.
 
 ## Reproduction
@@ -43,7 +43,7 @@ OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python "$runner" smoke \
 
 The evaluation records `predictions.jsonl` with every fixed `FrameKey` and `metrics.json` with the cohort, backend, settings, artifact checksums and shared scorer results. Use `make_benchmark_adapter` in `edgecrafter.py` with the #2496 harness for fixed speed inputs. Each timed invocation receives already decoded native BGR images and measures resize and normalization, H2D, forward, decode and D2H through the harness.
 
-For TensorRT, run export and build as separate Python processes in the training queue. The exporter traces the official deployed network under CUDA FP16 autocast, with an FP32 image binding and dynamic batch axis. It records the graph's FP16 and FP32 initializer and cast counts. Postprocessing uses FP32 and the same implementation for all backends. TensorRT uses a strongly typed graph and an explicit workspace and batch profile. `--engine` points to the profile to use during evaluation.
+For TensorRT, run export and build as separate Python processes in the training queue. The exporter traces the official deployed network under CUDA FP16 autocast, with an FP32 image binding and dynamic batch axis. It records the graph's FP16 and FP32 initializer and cast counts. Use an example batch of 2 to trace ECDet's anchor replication. A batch-1 trace dropped that branch and TensorRT warned about a batch extent of 1 in the decoder `GatherElements` at the maximum profile shape. Postprocessing uses FP32 and the same implementation for all backends. TensorRT uses a strongly typed graph and an explicit workspace and batch profile. `--engine` points to the profile to use during evaluation.
 
 ```bash
 conversion=knowledge/runs/run-meiji-player-model-comparison/edgecrafter_trt.py
@@ -61,6 +61,26 @@ condition="$output/ecdet-l-coco/trt16"
 ```
 
 CUDA PT32 fixes matmul and cuDNN convolution to IEEE precision. PT16 uses CUDA FP16 autocast with FP32 weights and input tensors. The separate PT32 parity receipt aligns the exact same source frames and verifies prediction hashes and evaluation settings. It uses one-to-one IoU 0.50 matching for rows with score ≥0.25, then requires at least 98% matches in both directions, matched IoU P05 ≥0.90, and absolute score error P95 ≤0.025. Pose parity adds ≥98% joint availability agreement and paired joint error P95 ≤8 native pixels. All precision conditions use the same partial-label pseudo-reference for accuracy.
+
+## Rescoring stored predictions
+
+`edgecrafter_rescore.py` verifies the original prediction file against its digest, scores all cohort frames using the checked-out common scorer, and writes the revised result beside the original metrics. It records which aggregates changed and preserves the hash of the first result. The script uses the shared `prediction_rows.py` from the primary comparison branch. On a worker branch without that file, extract its pinned version before running the same command.
+
+```bash
+run=knowledge/runs/run-meiji-player-model-comparison
+helper="$output/rescore-tools"
+mkdir -p "$helper"
+git show bdbbb2127f8a842ae007ae42b0518e00f77d9de2:"$run/prediction_rows.py" > "$helper/prediction_rows.py"
+mapfile -t conditions < <(find "$output" -path '*/ecdet-*/*/metrics.json' | sort)
+PYTHONPATH=.:"$helper" .venv/bin/python "$run/edgecrafter_rescore.py" \
+  --cohort data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-player-evaluation-v1 \
+  --manifest-sha256 "$manifest_sha" \
+  --summary "$output/edgecrafter-rescore.json" "${conditions[@]}"
+```
+
+## First TensorRT precision check
+
+The original ECDet-L COCO TensorRT plan ran all 6,844 images at batch 1 on the RTX 5060 Ti. It matched 66.4% of the person rows in both directions against PT32 at the parity cutoff. The matched IoU P05 was 0.884 and absolute score error P95 was 0.313. For original frames 0 and 2 of `clip_003/cam0`, ONNX Runtime CPU running the same exported graph matched 24 of 24 PT32 rows. The TensorRT plan matched 17 of 24 on those inputs. The dynamic batch warning and the batch-1 precision mismatch are separate observations.
 
 ## CPU integration check
 

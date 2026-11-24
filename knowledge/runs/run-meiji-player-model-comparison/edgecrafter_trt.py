@@ -20,7 +20,11 @@ from src.utils.models.tensorrt_build import build_bundle, export_bundle
 
 
 def export_onnx(
-    model_id: str, assets: Path, directory: Path, device: torch.device
+    model_id: str,
+    assets: Path,
+    directory: Path,
+    device: torch.device,
+    trace_batch: int,
 ) -> dict[str, int]:
     if directory.exists():
         raise FileExistsError(directory)
@@ -29,7 +33,9 @@ def export_onnx(
     network = load_network(assets / "EdgeCrafter", checkpoint, release).to(device)
     torch.backends.cuda.matmul.fp32_precision = "ieee"
     torch.backends.cudnn.conv.fp32_precision = "ieee"
-    pixels = torch.zeros((1, 3, *IMAGE_SIZE), dtype=torch.float32, device=device)
+    pixels = torch.zeros(
+        (trace_batch, 3, *IMAGE_SIZE), dtype=torch.float32, device=device
+    )
     precision: dict[str, int] = {}
 
     def write_graph(path: Path) -> None:
@@ -106,6 +112,7 @@ def main() -> None:
         if name == "export":
             command.add_argument("--assets", type=Path, default=ASSETS)
             command.add_argument("--model", choices=RELEASES, required=True)
+            command.add_argument("--trace-batch", type=int, default=2)
         else:
             command.add_argument("--opt-batch", type=int, default=1)
             command.add_argument("--max-batch", type=int, required=True)
@@ -117,15 +124,22 @@ def main() -> None:
         parser.error("Use an explicit CUDA device for conversion")
     details: dict[str, object] = {}
     if args.command == "export":
+        if args.trace_batch < 1:
+            parser.error("Trace batch must be positive")
         details.update(
             model_id=args.model,
             weight_sha256=RELEASES[args.model].sha256,
             settings=export_settings(),
+            trace_batch=args.trace_batch,
         )
 
         def operation() -> None:
             details["onnx_precision"] = export_onnx(
-                args.model, args.assets, args.engine, device
+                args.model,
+                args.assets,
+                args.engine,
+                device,
+                args.trace_batch,
             )
 
         receipt = measure_conversion(Conversion.ONNX_EXPORT, operation, device=device)
