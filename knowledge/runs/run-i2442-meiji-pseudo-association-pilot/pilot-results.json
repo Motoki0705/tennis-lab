@@ -1,0 +1,705 @@
+{
+    "blind_to_hinted_agreement_032": {
+        "boxes": 187,
+        "frames": 6,
+        "identity_or_role_correct_boxes": 178,
+        "known_boxes": 184,
+        "player_boxes": 96,
+        "player_boxes_correct": 93,
+        "player_mapping": {
+            "P1": "P1",
+            "P2": "P2",
+            "P3": "P3",
+            "P4": "P4"
+        },
+        "player_units": 96,
+        "player_units_correct": 93,
+        "predicted_ambiguous_on_known": 0,
+        "reference_ambiguous_boxes": 3,
+        "role_correct_boxes": 178
+    },
+    "doubles_blind": [
+        {
+            "ambiguous_boxes": 6,
+            "boxes": 173,
+            "clip": "video_000/clip_020",
+            "clip_manifest_sha256": "90e4b946729cb32b093ec603dda93750ec077a5846da5fafe36870ef573f2d2e",
+            "frame_count": 6,
+            "input_sha256": "a74fa459a0802280c1772052db672dffba7bcbe07b83fa762cc21dcc9d1e948f",
+            "input_snapshot_sha256": "b380d77c8ee80b9a9d0faaaab1c7cceccd3f8f8eb446e1b23b3d51224cdda62a",
+            "labels_sha256": "bed676d995584e05652c3f6bc9e4570c1b661ed500bfe338082e4e9211d1a205",
+            "media_sha256": {
+                "cam0": "003ca047f66aa8728edc34c2bb5b8fc24a9a008379a5785cefd0b16a68333aa7",
+                "cam1": "3d7c8770c2f5118d4c48e35e2327fc242d85ad965e3fd883fe398bb3fe45779a",
+                "cam2": "56ddb1d7550ec7a5ff2ba45167930253e27000cfb39153b896fa86a3c0b8d4a4",
+                "cam3": "0c850bcd7db6c0ef3740ac78b3dfb7fd57f1d9145443723e5f9a13eaf5dece08"
+            },
+            "player_boxes_by_camera": {
+                "cam0": {
+                    "P1": 6,
+                    "P2": 6,
+                    "P3": 6,
+                    "P4": 3
+                },
+                "cam1": {
+                    "P1": 6,
+                    "P2": 6,
+                    "P3": 6,
+                    "P4": 6
+                },
+                "cam2": {
+                    "P1": 6,
+                    "P2": 6,
+                    "P3": 6,
+                    "P4": 6
+                },
+                "cam3": {
+                    "P1": 6,
+                    "P2": 5,
+                    "P3": 6,
+                    "P4": 6
+                }
+            },
+            "prompt_sha256": "f5a9b1573a14ad97dd45d3e451f4035511ff436a625bbf58238ebcf77fe83fe1",
+            "rate_card_usd": 0.0305408,
+            "rate_card_usd_per_frame": 0.005090133333333333,
+            "rate_limits": [],
+            "response_sha256": "4d861ec78a3203d022b5e8b0ca2feeeb73ba231b119de3824820db28c364f440",
+            "seconds_per_frame": 9.918666666666667,
+            "show_prior_association": false,
+            "source_frames": [
+                165,
+                166,
+                167,
+                426,
+                427,
+                428
+            ],
+            "status": "accepted",
+            "tokens": {
+                "cache_write_input_tokens": 0,
+                "cached_input_tokens": 15616,
+                "input_tokens": 30236,
+                "output_tokens": 3028,
+                "reasoning_output_tokens": 2153
+            },
+            "uncached_rate_card_usd": 0.045376,
+            "uncached_rate_card_usd_per_frame": 0.007562666666666666,
+            "wall_seconds": 59.512
+        },
+        {
+            "ambiguous_boxes": 3,
+            "boxes": 187,
+            "clip": "video_000/clip_032",
+            "clip_manifest_sha256": "768d632d08b11c3030d185429dc17e8910c05dcc46ba797eb6757ce5ca31496b",
+            "frame_count": 6,
+            "input_sha256": "3c98ccf1665f4f37ed3ac0ad9272c47ce4feadb76a3f47ffba1c321fe3e87855",
+            "input_snapshot_sha256": "b380d77c8ee80b9a9d0faaaab1c7cceccd3f8f8eb446e1b23b3d51224cdda62a",
+            "labels_sha256": "d595dd34b1b689e0570e143092e8b885a7fb0742587560771f71d4c6287caecc",
+            "media_sha256": {
+                "cam0": "80ecad1e296fadee1f159a330e7a740c63306ccccf1f1efd71cb93ff2b6a3f98",
+                "cam1": "501c2c78da5444b2418a1a19d18402eab475091a8be0b1163d5bdfd42d1e4f8a",
+                "cam2": "3034807fade07eddc9ba98a5a7b561ec55ac741f6ec2502ba367c4e702ae3ec6",
+                "cam3": "fd9b6acda62fa9611cdeed6704971c021570d0ef18cec894e82227a33379bc33"
+            },
+            "player_boxes_by_camera": {
+                "cam0": {
+                    "P1": 6,
+                    "P2": 6,
+                    "P3": 6,
+                    "P4": 6
+                },
+                "cam1": {
+                    "P1": 6,
+                    "P2": 6,
+                    "P3": 6,
+                    "P4": 6
+                },
+                "cam2": {
+                    "P1": 6,
+                    "P2": 6,
+                    "P3": 6,
+                    "P4": 6
+                },
+                "cam3": {
+                    "P1": 6,
+                    "P2": 6,
+                    "P3": 6,
+                    "P4": 6
+                }
+            },
+            "prompt_sha256": "8e7a2e6a5aa805c287c080fa21c391a5674afc666dd9b52f3155179ddee0e04d",
+            "rate_card_usd": 0.0275478,
+            "rate_card_usd_per_frame": 0.0045913,
+            "rate_limits": [],
+            "response_sha256": "07ddd4814dd039f5e06f3b98ae0bb8a47e80ea26a5227d9cf37880f657037f3b",
+            "seconds_per_frame": 8.782333333333334,
+            "show_prior_association": false,
+            "source_frames": [
+                51,
+                52,
+                53,
+                426,
+                427,
+                428
+            ],
+            "status": "accepted",
+            "tokens": {
+                "cache_write_input_tokens": 0,
+                "cached_input_tokens": 15616,
+                "input_tokens": 30243,
+                "output_tokens": 2428,
+                "reasoning_output_tokens": 1514
+            },
+            "uncached_rate_card_usd": 0.042383,
+            "uncached_rate_card_usd_per_frame": 0.0070638333333333326,
+            "wall_seconds": 52.694
+        },
+        {
+            "ambiguous_boxes": 0,
+            "boxes": 126,
+            "clip": "video_000/clip_025",
+            "clip_manifest_sha256": "e795a49560956d76c3dd0553e6f6ea7afd7de2312f7a6b84ff3a7621937ae12c",
+            "frame_count": 4,
+            "input_sha256": "0965729c3a7550ffa94b19351eebd57637f1eaaeb9df0fbddab614c53a5dcf79",
+            "input_snapshot_sha256": "b380d77c8ee80b9a9d0faaaab1c7cceccd3f8f8eb446e1b23b3d51224cdda62a",
+            "labels_sha256": "2871a74f911f4073eac9dacbc611aced82683d6cc86ff08f4de456bd4a2092f6",
+            "media_sha256": {
+                "cam0": "948b00705713ebed8b5c42caad13192984d58d9dc92bd2a82800a62fe99c6496",
+                "cam1": "f7042aa866392d33ef5a9996f3f74f69b37fdd8e9156f7fcd5dd987f09ad8013",
+                "cam2": "e46ff30fc73f96da60268896d22c5bdb36da574fcba738453aa7cc23f699708e",
+                "cam3": "6624b41c1f7cf026ef409477df5d6215649c6f9375efa89a56a26dad7d0ef1fa"
+            },
+            "player_boxes_by_camera": {
+                "cam0": {
+                    "P1": 4,
+                    "P2": 4,
+                    "P3": 4,
+                    "P4": 4
+                },
+                "cam1": {
+                    "P1": 4,
+                    "P2": 4,
+                    "P3": 4,
+                    "P4": 4
+                },
+                "cam2": {
+                    "P1": 4,
+                    "P2": 4,
+                    "P3": 4,
+                    "P4": 4
+                },
+                "cam3": {
+                    "P1": 2,
+                    "P2": 4,
+                    "P3": 4,
+                    "P4": 4
+                }
+            },
+            "prompt_sha256": "ece979a431d14fb52bac3b7edd401e379a424ffb82a9f8528605cd73721aec31",
+            "rate_card_usd": 0.0187978,
+            "rate_card_usd_per_frame": 0.00469945,
+            "rate_limits": [],
+            "response_sha256": "6f9d1fcc7b314b10fbea643af77e8e2375aaa18ae2b212c12bb4eb0e8f5efe26",
+            "seconds_per_frame": 8.86275,
+            "show_prior_association": false,
+            "source_frames": [
+                44,
+                53,
+                351,
+                417
+            ],
+            "status": "accepted",
+            "tokens": {
+                "cache_write_input_tokens": 0,
+                "cached_input_tokens": 15616,
+                "input_tokens": 26103,
+                "output_tokens": 1506,
+                "reasoning_output_tokens": 853
+            },
+            "uncached_rate_card_usd": 0.033633,
+            "uncached_rate_card_usd_per_frame": 0.00840825,
+            "wall_seconds": 35.451
+        }
+    ],
+    "doubles_blind_pool": {
+        "frames": 16,
+        "input_tokens_per_frame": 5411.375,
+        "output_tokens_per_frame": 435.125,
+        "rate_card_usd_per_frame": 0.0048054000000000005,
+        "seconds_per_frame": 9.2285625,
+        "tokens": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 46848,
+            "input_tokens": 86582,
+            "output_tokens": 6962,
+            "reasoning_output_tokens": 4520
+        },
+        "uncached_rate_card_usd_per_frame": 0.007587,
+        "wall_seconds_serial_sum": 147.657
+    },
+    "doubles_hinted": {
+        "ambiguous_boxes": 0,
+        "boxes": 187,
+        "clip": "video_000/clip_032",
+        "clip_manifest_sha256": "768d632d08b11c3030d185429dc17e8910c05dcc46ba797eb6757ce5ca31496b",
+        "frame_count": 6,
+        "input_sha256": "5ebd5b93287a1917f3e677b165a173187ffaae464f4fa1252be622c7a510261a",
+        "input_snapshot_sha256": "b380d77c8ee80b9a9d0faaaab1c7cceccd3f8f8eb446e1b23b3d51224cdda62a",
+        "labels_sha256": "38b3ed4ff245cd6b2d891b58cf90d4ed55227ed3b38aa789d86dfe66adbbd5b2",
+        "media_sha256": {
+            "cam0": "80ecad1e296fadee1f159a330e7a740c63306ccccf1f1efd71cb93ff2b6a3f98",
+            "cam1": "501c2c78da5444b2418a1a19d18402eab475091a8be0b1163d5bdfd42d1e4f8a",
+            "cam2": "3034807fade07eddc9ba98a5a7b561ec55ac741f6ec2502ba367c4e702ae3ec6",
+            "cam3": "fd9b6acda62fa9611cdeed6704971c021570d0ef18cec894e82227a33379bc33"
+        },
+        "player_boxes_by_camera": {
+            "cam0": {
+                "P1": 6,
+                "P2": 6,
+                "P3": 6,
+                "P4": 6
+            },
+            "cam1": {
+                "P1": 6,
+                "P2": 6,
+                "P3": 6,
+                "P4": 6
+            },
+            "cam2": {
+                "P1": 6,
+                "P2": 6,
+                "P3": 6,
+                "P4": 6
+            },
+            "cam3": {
+                "P1": 6,
+                "P2": 6,
+                "P3": 6,
+                "P4": 6
+            }
+        },
+        "prompt_sha256": "e5d4a4f4061b7a75f0f83b3c5725dc236606d0ac80078fa9198384b912ecfa21",
+        "rate_card_usd": 0.0281748,
+        "rate_card_usd_per_frame": 0.0046958,
+        "rate_limits": [],
+        "response_sha256": "d65f0ec80a90cfa38765801868a4a81cfb0f148ed4e1998ee450d8e7869e06d7",
+        "seconds_per_frame": 7.555666666666667,
+        "show_prior_association": true,
+        "source_frames": [
+            51,
+            52,
+            53,
+            426,
+            427,
+            428
+        ],
+        "status": "accepted",
+        "tokens": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 31860,
+            "output_tokens": 2230,
+            "reasoning_output_tokens": 1320
+        },
+        "uncached_rate_card_usd": 0.04301,
+        "uncached_rate_card_usd_per_frame": 0.007168333333333333,
+        "wall_seconds": 45.334
+    },
+    "effort": "xhigh",
+    "full_scope_forecast": {
+        "clips": 69,
+        "four_slot_ideal_hours": 0.7722512369791668,
+        "frames": 1205,
+        "input_tokens": 6520707,
+        "output_tokens": 524326,
+        "rate_card_usd_no_cache": 9.142335,
+        "rate_card_usd_observed_cache_mix": 5.790507000000001,
+        "serial_hours": 3.089004947916667
+    },
+    "input_snapshot_sha256": "b380d77c8ee80b9a9d0faaaab1c7cceccd3f8f8eb446e1b23b3d51224cdda62a",
+    "model": "gpt-6.1-terra",
+    "rate_card": "https://help.openai.com/en/articles/20001415-chatgpt-rate-card-enterprise-token-based-pricing",
+    "review_sample_counts": {
+        "high_confidence_random": 30,
+        "selection_rejected_near_court": 30,
+        "single_view_no_3d": 28,
+        "stopped_clip": 22,
+        "switch_or_fragment": 30,
+        "unassigned_or_reprojection": 30
+    },
+    "review_sample_unique_frames": 170,
+    "sampling": {
+        "candidate_frames": 46101,
+        "candidates_by_stratum": {
+            "high_confidence_random": 3709,
+            "selection_rejected_near_court": 39152,
+            "single_view_no_3d": 4247,
+            "stopped_clip": 9006,
+            "switch_or_fragment": 12281,
+            "unassigned_or_reprojection": 2130
+        },
+        "clips": 69,
+        "sampled_by_stratum": {
+            "high_confidence_random": 144,
+            "selection_rejected_near_court": 399,
+            "single_view_no_3d": 71,
+            "stopped_clip": 66,
+            "switch_or_fragment": 350,
+            "unassigned_or_reprojection": 187
+        },
+        "sampled_clips": 69,
+        "sampled_frames": 1205,
+        "source_frames": 46228
+    },
+    "sampling_config_sha256": "67235610cbc1401a4fcf1235cc1e43b5b2f53ec77136e9eda79a71a5f97eabf8",
+    "selection_sha256": "be9108d27454148e35537597606c2937c6786d9327a4d87006ae89c29c837b7e",
+    "singles": [
+        {
+            "agreement": {
+                "boxes": 72,
+                "frames": 12,
+                "identity_or_role_correct_boxes": 72,
+                "known_boxes": 72,
+                "player_boxes": 72,
+                "player_boxes_correct": 72,
+                "player_mapping": {
+                    "P1": "A",
+                    "P2": "B"
+                },
+                "player_units": 72,
+                "player_units_correct": 72,
+                "predicted_ambiguous_on_known": 0,
+                "reference_ambiguous_boxes": 0,
+                "role_correct_boxes": 72
+            },
+            "ambiguous_boxes": 0,
+            "boxes": 72,
+            "clip": "video_000/clip_000",
+            "clip_manifest_sha256": "d380c56376f002eeb7285f71fb9924f2220d3b10d87ccadd56573c00a03432d0",
+            "frame_count": 12,
+            "input_sha256": "85b4cf8be02922b0ee555ea6abc3e639aeb94e5e0daaa05ca8b03092a7e604dd",
+            "input_snapshot_sha256": "80aee90d551a6618e5514d161aecdc5d3265093deb652970da563ec001f8f5f9",
+            "labels_sha256": "f2cec9f52c56a837da4eccf68cff168ea306d09a7dffdc7920bcfa1143b98df1",
+            "media_sha256": {
+                "cam0": "f99f0024067da49805654d65eae848407c47ee710411d91892f0921fe8331f39",
+                "cam1": "ac333c334b81141ee72098be6c95f5a6f6e1ccc5faf6e058f6fd3491cc1ac96e",
+                "cam2": "fd82f0b573e9f8788cc56567dabdaf0c0c3775fd5dbede4835707277ef70c461"
+            },
+            "player_boxes_by_camera": {
+                "cam0": {
+                    "P1": 12,
+                    "P2": 12
+                },
+                "cam1": {
+                    "P1": 12,
+                    "P2": 12
+                },
+                "cam2": {
+                    "P1": 12,
+                    "P2": 12
+                }
+            },
+            "prompt_sha256": "1443caabcda4f2f05094f8c7f9177f4f49e217d9593ad0d27d70e8ab72f2230f",
+            "rate_card_usd": 0.045013,
+            "rate_card_usd_per_frame": 0.0037510833333333333,
+            "rate_limits": [],
+            "response_sha256": "a2a7639235ef52b27bee4514808befd786eb5cac11d584444ec6bf11188967ed",
+            "seconds_per_frame": 2.019083333333333,
+            "show_prior_association": false,
+            "source_frames": [
+                480,
+                481,
+                482,
+                483,
+                484,
+                485,
+                486,
+                487,
+                488,
+                489,
+                490,
+                491
+            ],
+            "status": "accepted",
+            "tokens": {
+                "cache_write_input_tokens": 0,
+                "cached_input_tokens": 0,
+                "input_tokens": 40028,
+                "output_tokens": 997,
+                "reasoning_output_tokens": 51
+            },
+            "uncached_rate_card_usd": 0.045013,
+            "uncached_rate_card_usd_per_frame": 0.0037510833333333333,
+            "wall_seconds": 24.229
+        },
+        {
+            "agreement": {
+                "boxes": 72,
+                "frames": 12,
+                "identity_or_role_correct_boxes": 72,
+                "known_boxes": 72,
+                "player_boxes": 72,
+                "player_boxes_correct": 72,
+                "player_mapping": {
+                    "P1": "A",
+                    "P2": "B"
+                },
+                "player_units": 72,
+                "player_units_correct": 72,
+                "predicted_ambiguous_on_known": 0,
+                "reference_ambiguous_boxes": 0,
+                "role_correct_boxes": 72
+            },
+            "ambiguous_boxes": 0,
+            "boxes": 72,
+            "clip": "video_000/clip_007",
+            "clip_manifest_sha256": "4dd1e4ee9296aa2208ac3e2f0a0785116aa518d49dfce11d35caaaf324a93987",
+            "frame_count": 12,
+            "input_sha256": "c46700835618d45b4d27524469c7fb847067303e608b3dd98a9975b035380245",
+            "input_snapshot_sha256": "18350c373d84f34a60efe5487c2811b8dfc3e1b1b15922fdcea8c6150cd4cea1",
+            "labels_sha256": "25e185daa21d55d8b7265d31b434d242f16d24e3e4825ce4cc67717a33aa8020",
+            "media_sha256": {
+                "cam0": "d4a93ef1bf9e5112a3a6d8d4d14c7ad2b9d1b5f7a202b0d604a873a7887d09a9",
+                "cam1": "3c6fd4ff6429584ddd4f6ea5ab633a097cf0655fe28eefac2fb36254a18a872b",
+                "cam2": "72b4c445c7adffbd27895fadd7ea00974aab4f7eb27032a46e3cdff97b039d05"
+            },
+            "player_boxes_by_camera": {
+                "cam0": {
+                    "P1": 12,
+                    "P2": 12
+                },
+                "cam1": {
+                    "P1": 12,
+                    "P2": 12
+                },
+                "cam2": {
+                    "P1": 12,
+                    "P2": 12
+                }
+            },
+            "prompt_sha256": "46db6f5b9e3f0644a41a207abacb02dcd26348fe00cb3fc3f47c8742ff22d790",
+            "rate_card_usd": 0.043752,
+            "rate_card_usd_per_frame": 0.003646,
+            "rate_limits": [],
+            "response_sha256": "7479d2db4c55f1bf4cc36fa5c8050cffbf23f9cb4c1106df4fee5bcdef29ebba",
+            "seconds_per_frame": 1.7239166666666668,
+            "show_prior_association": false,
+            "source_frames": [
+                320,
+                321,
+                322,
+                323,
+                324,
+                325,
+                326,
+                327,
+                328,
+                329,
+                330,
+                331
+            ],
+            "status": "accepted",
+            "tokens": {
+                "cache_write_input_tokens": 0,
+                "cached_input_tokens": 0,
+                "input_tokens": 40022,
+                "output_tokens": 746,
+                "reasoning_output_tokens": 49
+            },
+            "uncached_rate_card_usd": 0.043752,
+            "uncached_rate_card_usd_per_frame": 0.003646,
+            "wall_seconds": 20.687
+        },
+        {
+            "agreement": {
+                "boxes": 99,
+                "frames": 12,
+                "identity_or_role_correct_boxes": 92,
+                "known_boxes": 94,
+                "player_boxes": 65,
+                "player_boxes_correct": 63,
+                "player_mapping": {
+                    "P1": "A",
+                    "P2": "B"
+                },
+                "player_units": 65,
+                "player_units_correct": 63,
+                "predicted_ambiguous_on_known": 0,
+                "reference_ambiguous_boxes": 5,
+                "role_correct_boxes": 92
+            },
+            "ambiguous_boxes": 0,
+            "boxes": 99,
+            "clip": "video_001/clip_001",
+            "clip_manifest_sha256": "522a6fd5fee9e20e0692aec3aa4210aef97ee0c1a498cff69e59f361c305b9ab",
+            "frame_count": 12,
+            "input_sha256": "ed2756ef9d469acd692b0e4ea50dc06cc3b3cc7de25d8863750800164323d3aa",
+            "input_snapshot_sha256": "d780dc83051119f7028345e03ff89d2d6599dd9c847ece10e2b599ac2fcf7ffb",
+            "labels_sha256": "bd8137b05e4549a56f7877d5ab0d1292c6184a44437c4279026a818f95d7abba",
+            "media_sha256": {
+                "cam0": "2af67b3720887e9b75918f6c09be893709d9ad383a9d2846dd832df90cb2a478",
+                "cam1": "945838cf381c7a93f3cd0ff03457ebe44f6a6ef64dc9b9abb760934bbcf434e2",
+                "cam2": "b123b6429cc7e4037ee90c6c89d15b915227568f0e07922f98214e080321ce95"
+            },
+            "player_boxes_by_camera": {
+                "cam0": {
+                    "P1": 12,
+                    "P2": 3
+                },
+                "cam1": {
+                    "P1": 12,
+                    "P2": 12
+                },
+                "cam2": {
+                    "P1": 12,
+                    "P2": 12
+                }
+            },
+            "prompt_sha256": "e9ffb55ae5320b1e4d6669f7df257348551135b98a984c04dbdefe2fd3245dd3",
+            "rate_card_usd": 0.047545,
+            "rate_card_usd_per_frame": 0.003962083333333333,
+            "rate_limits": [],
+            "response_sha256": "8e6d589ec9e68950c0209327f7b632ac1a23948deb40a7e4e827c241865b861c",
+            "seconds_per_frame": 2.7291666666666665,
+            "show_prior_association": false,
+            "source_frames": [
+                753,
+                754,
+                755,
+                756,
+                757,
+                758,
+                759,
+                760,
+                761,
+                762,
+                763,
+                764
+            ],
+            "status": "accepted",
+            "tokens": {
+                "cache_write_input_tokens": 0,
+                "cached_input_tokens": 0,
+                "input_tokens": 40025,
+                "output_tokens": 1504,
+                "reasoning_output_tokens": 343
+            },
+            "uncached_rate_card_usd": 0.047545,
+            "uncached_rate_card_usd_per_frame": 0.003962083333333333,
+            "wall_seconds": 32.75
+        },
+        {
+            "agreement": {
+                "boxes": 84,
+                "frames": 12,
+                "identity_or_role_correct_boxes": 84,
+                "known_boxes": 84,
+                "player_boxes": 72,
+                "player_boxes_correct": 72,
+                "player_mapping": {
+                    "P1": "A",
+                    "P2": "B"
+                },
+                "player_units": 72,
+                "player_units_correct": 72,
+                "predicted_ambiguous_on_known": 0,
+                "reference_ambiguous_boxes": 0,
+                "role_correct_boxes": 84
+            },
+            "ambiguous_boxes": 0,
+            "boxes": 84,
+            "clip": "video_002/clip_013",
+            "clip_manifest_sha256": "195856722e48aa7257a2c9225037a5882a16b899e15c06a97fb595ffe62a1c3d",
+            "frame_count": 12,
+            "input_sha256": "6098a251e9262179a81cecc7923f5b0b328d9305dfdbd175e62a421e74584553",
+            "input_snapshot_sha256": "b1b69981509b2d22703b6bdd281c71596dc09f15716f6ad25ba8c833a0708428",
+            "labels_sha256": "18b931b1f896832e4e2f4911c8b2a760f12cca128cfcf5b171b904ab5e30992d",
+            "media_sha256": {
+                "cam0": "4f2e7cd91ff9f661feaeb9d3b987336c48dcec55ec99e41f9f7d55b1f646acc3",
+                "cam1": "12ad6a441ee2381324df1e2d412d73742a7f6d677d8cfe62b9d0323527111075",
+                "cam2": "1ab899862573d0c4c72d0b1e0d8583eb2fc0200b1df57d2b43441113c88abf8c"
+            },
+            "player_boxes_by_camera": {
+                "cam0": {
+                    "P1": 12,
+                    "P2": 12
+                },
+                "cam1": {
+                    "P1": 12,
+                    "P2": 12
+                },
+                "cam2": {
+                    "P1": 12,
+                    "P2": 12
+                }
+            },
+            "prompt_sha256": "1480dd25ccf11687bd4f1470c23f910048f665ab63f6a0002bb0da130e4ba1f2",
+            "rate_card_usd": 0.042312,
+            "rate_card_usd_per_frame": 0.003526,
+            "rate_limits": [],
+            "response_sha256": "7077f3073b8981dc9a329f5f11f52c2886155f25cd836811518fad2ef4735ac6",
+            "seconds_per_frame": 2.10425,
+            "show_prior_association": false,
+            "source_frames": [
+                260,
+                261,
+                262,
+                263,
+                264,
+                265,
+                266,
+                267,
+                268,
+                269,
+                270,
+                271
+            ],
+            "status": "accepted",
+            "tokens": {
+                "cache_write_input_tokens": 0,
+                "cached_input_tokens": 0,
+                "input_tokens": 38277,
+                "output_tokens": 807,
+                "reasoning_output_tokens": 77
+            },
+            "uncached_rate_card_usd": 0.042312,
+            "uncached_rate_card_usd_per_frame": 0.003526,
+            "wall_seconds": 25.251
+        }
+    ],
+    "singles_agreement_counts": {
+        "boxes": 327,
+        "frames": 48,
+        "identity_or_role_correct_boxes": 320,
+        "known_boxes": 322,
+        "player_boxes": 281,
+        "player_boxes_correct": 279,
+        "player_units": 281,
+        "player_units_correct": 279,
+        "predicted_ambiguous_on_known": 0,
+        "reference_ambiguous_boxes": 5,
+        "role_correct_boxes": 320
+    },
+    "singles_pool": {
+        "frames": 48,
+        "input_tokens_per_frame": 3299.0,
+        "output_tokens_per_frame": 84.45833333333333,
+        "rate_card_usd_per_frame": 0.0037212916666666666,
+        "seconds_per_frame": 2.1441041666666667,
+        "tokens": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 0,
+            "input_tokens": 158352,
+            "output_tokens": 4054,
+            "reasoning_output_tokens": 520
+        },
+        "uncached_rate_card_usd_per_frame": 0.0037212916666666666,
+        "wall_seconds_serial_sum": 102.917
+    },
+    "usd_per_million": {
+        "cached_input": 0.05,
+        "input": 1.0,
+        "output": 5.0
+    }
+}
