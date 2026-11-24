@@ -15,6 +15,9 @@
 
 担当変更と掲示板配送は同じownership fenceを使う。取得順は操作lock、ownership、registry。GitHub・runnerへのI/O中はregistryを解放し、復帰後に担当・対象記録を照合する。読取はsnapshotを使う。版移行と競合時の再検証は [state.py](state.py)、GitHubの取得範囲とキャッシュ境界は [github.py](github.py) を参照。
 
+証拠用Issueの作成直後は、POST応答のIssue番号をjournalに保存し、番号を指定して取得した結果と照合する。
+ラベル付き一覧への反映前でも、直接照合が成功し、一覧に競合する紐付けがなければ確定できる。
+
 メインcheckoutから実行した `wait-worker` は、runと監視結果を読む区間で `ops-code.lock` を共有取得し、ポーリング間隔では手放す。`wait-supplement` は `gh run watch` 中、`wait-merge` とレビュー・マージ操作の `--wait` はイベントの観測間隔で手放す。復帰時の版照合と終了条件は [対話CLIの保護](../lib/README.md#対話cliの保護) を参照する。checkout更新で75が返った場合は、更新後のCLIで `wait-worker`・`wait-supplement`・`wait-merge` を実行し、保存済みのrun・監視・進行記録から待機を続ける。
 
 状態ルートは実ディレクトリを指定する。状態ルートと `parents/` は実行ユーザーが所有し、上位は root または実行ユーザーが所有する。
