@@ -7,7 +7,7 @@ recall=knowledge/runs/run-multiview-pose-link-recall-20261124
 main=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 archives=${MEIJI_POSE_ARCHIVED_OUTPUTS:-"/mnt/wsl/tennis-data$main/outputs"}
 upstream=${MEIJI_POSE_WORKER_OUTPUTS:-"$main/.worktree-outputs/parent-1739-issue-2444-primary/i2444"}
-output=${2:-outputs/i2445}
+output=${2:-outputs/i2445/integrated}
 mode=${1:-all}
 
 export CUDA_VISIBLE_DEVICES='' OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1

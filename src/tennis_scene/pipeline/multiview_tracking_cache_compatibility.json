@@ -13,21 +13,29 @@
       "before": null,
       "after": "ec978ca742c6f5d3309d8d8ee7ce0a47333137a8b3567b10c7c39fbdfd98b350"
     },
+    "tennis_scene/multiview_tracking/fragments.py": {
+      "before": null,
+      "after": "7aefbcb817fcd4040e4c1d98d397fb475e09f0926fd9d424942fe93590ee4901"
+    },
     "tennis_scene/multiview_tracking/schema.py": {
       "before": null,
-      "after": "334a7741a7e7cb7dcab70c119449806eb6b85174caebcf04a69e9de25b53ff4a"
+      "after": "62585bade45d0cab563717e4591534d83eb111d51ba8dfbf3e9769da0b8bc8ae"
     },
     "tennis_scene/multiview_tracking/selection.py": {
       "before": null,
-      "after": "2cac07ea34dae646dd72ef32bd1a3a0b0a14c27c07aa3161c0ad2e2d59435871"
+      "after": "382c6f76c39f3726f002487c43eaea4dacb3f9d53dff01d49285c83e574ef106"
+    },
+    "tennis_scene/multiview_tracking/slot_assignment.py": {
+      "before": null,
+      "after": "04fa2b43b7cbe037e27c3e9ffe5505a5b11bef9b1e1316191a3548478d1e5b6b"
     },
     "tennis_scene/multiview_tracking/storage.py": {
       "before": null,
-      "after": "c8215b4a664ca6023901cec650ca41617c0ca7d10b240c6e4ad3f90c097ef09f"
+      "after": "07f11e1f7b675c9f34739587a74c7a7df9793487b4f0d25b922da91a2dc26459"
     },
     "tennis_scene/multiview_tracking/tracking.py": {
       "before": null,
-      "after": "53a47df8f3899f91953f2693c74d1b73df789fea5066748057cda40d94b2382a"
+      "after": "be74465e8846af2c1d3561fff2371993cc0a8be108b688c197ab227c8a3eeb1e"
     },
     "tennis_scene/pipeline/source_identity.py": {
       "before": "3a608ef31c5d0d396e514eef1c23d106e37dfa8b406e3a1467c347958e218bd6",

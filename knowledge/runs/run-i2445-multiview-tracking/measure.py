@@ -6,6 +6,7 @@ import argparse
 import json
 import resource
 import subprocess
+from dataclasses import replace
 from pathlib import Path
 from time import perf_counter
 from typing import Any
@@ -16,6 +17,7 @@ from probe import read_json
 from replay import DEV_CLIPS, _read_human_eval_inputs
 from score_holdout import REPAIRED_CLIP, _label_pins, _observations
 
+from src.tasks.person_tracking.evaluation import score_units
 from src.tasks.player_association.evaluation.labels import ClipLabels
 from src.tennis_scene.multiview_pose.reconstruct import DEFAULT_CONFIG, reconstruct
 from src.tennis_scene.multiview_pose.schema import NODE as C_NODE
@@ -26,7 +28,7 @@ from src.tennis_scene.multiview_tracking.schema import (
     TrackingConfig,
 )
 from src.tennis_scene.multiview_tracking.storage import read_tracks, track_store
-from src.tennis_scene.multiview_tracking.tracking import track
+from src.tennis_scene.multiview_tracking.tracking import track, track_with_diagnostics
 from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.source_identity import source_digests
 from src.utils.checksum import dual_sha256
@@ -35,6 +37,7 @@ from src.utils.io import write_json_atomic
 RUN = Path(__file__).resolve().parent
 ROOT = RUN.parents[2]
 C_EVIDENCE = RUN.parent / "run-multiview-pose-link-recall-20261124"
+INTEGRATION_EVIDENCE = RUN.parent / "run-i2445-player-slot-integration"
 SINGLES = TrackingConfig(players_per_side=1)
 DOUBLES = TrackingConfig(players_per_side=2)
 
@@ -115,25 +118,80 @@ def _score_clip(inputs, labels, result, pins, seconds):
 
 
 def development(dataset: Path, archive: Path) -> dict[str, Any]:
-    clips, view_sets = {}, {}
+    clips, view_sets, baseline_view_sets = {}, {}, {}
+    legacy = read_json(RUN / "meiji3.json")
     for clip in DEV_CLIPS:
         inputs, labels, pins = _read_human_eval_inputs(dataset, archive, clip)
         candidates = reconstruct(inputs)
         start = perf_counter()
-        result = track(candidates, fps=inputs.source.fps, config=SINGLES)
-        clips[clip], view_sets[clip] = _score_clip(
+        result, integration = track_with_diagnostics(
+            candidates, fps=inputs.source.fps, config=SINGLES
+        )
+        row, view_sets[clip] = _score_clip(
             inputs, labels, result, pins, perf_counter() - start
         )
+        first_stage = track(
+            candidates,
+            fps=inputs.source.fps,
+            config=replace(SINGLES, fragment_integration=None),
+        )
+        baseline_view_sets[clip] = evaluate_clip(inputs, labels, first_stage)
+        baseline = _summarize(baseline_view_sets, [clip])
+        if any(
+            baseline[method] != legacy["clips"][clip][method]["all_cameras"]
+            for method in ("projected", "supporting_rows")
+        ):
+            raise ValueError(
+                f"The first-stage comparison differs from the pinned result: {clip}"
+            )
+        clips[clip] = {
+            **row,
+            "first_stage": {
+                "missing_per_side": list(first_stage.selection.missing_per_side),
+                "selected_track_ids": list(first_stage.selection.selected_track_ids),
+                **baseline,
+            },
+            "fragment_integration": json_value(integration),
+            "switch_changes": _switch_changes(
+                baseline_view_sets[clip], view_sets[clip]
+            ),
+        }
         print(clip, "scored", flush=True)
     return {
         "config": json_value(SINGLES),
         "clips": clips,
+        "first_stage_overall": _summarize(baseline_view_sets, list(DEV_CLIPS)),
         "overall": _summarize(view_sets, list(DEV_CLIPS)),
     }
 
 
+def _switch_changes(first_stage, integrated) -> dict[str, Any]:
+    def switch_frames(views, key):
+        units = [unit for view in views.values() for unit in view[key]]
+        return {
+            (event["camera"], event["frame"], event["person"])
+            for event in score_units(units)["switch_events"]
+        }
+
+    changes = {}
+    for mode in first_stage:
+        changes[mode] = {}
+        for name, key in (
+            ("selected_id", "units"),
+            ("all_player_id", "all_player_units"),
+        ):
+            before = switch_frames(first_stage[mode], key)
+            after = switch_frames(integrated[mode], key)
+            changes[mode][name] = {
+                "appeared": sorted(after - before),
+                "removed": sorted(before - after),
+            }
+    return changes
+
+
 def doubles(candidate_stores: Path, output: Path) -> dict[str, Any]:
     clips = {}
+    legacy = read_json(RUN / "meiji4.json")
     for clip, pinned in sorted(read_json(C_EVIDENCE / "meiji4.json")["clips"].items()):
         origin = candidate_stores / clip
         expected = read_json(origin / "scene.json")["artifacts"][C_NODE]
@@ -154,12 +212,26 @@ def doubles(candidate_stores: Path, output: Path) -> dict[str, Any]:
         if descriptor["provenance"]["frame_pose_candidates"] != expected:
             raise ValueError(f"{clip} published a different input revision")
         row = _clip_diagnostics(result)
+        baseline = legacy["clips"][clip]
+        guarded = ("full_lineup_measured_frames", "full_lineup_available_frames")
+        if row["missing_per_side"] != baseline["missing_per_side"] or any(
+            row[key] < baseline[key] for key in guarded
+        ):
+            raise ValueError(
+                f"Player slot integration reduced doubles lineup coverage: {clip}"
+            )
+        slots = descriptor["provenance"]["fragment_integration"]["slots"]
+        joins = [join for slot in slots for join in slot["joins"]]
         clips[clip] = {
             "candidate_artifact_id": expected["artifact_id"],
             "candidate_descriptor_sha256": expected["sha256"],
             "tracking_artifact_id": ref.artifact_id,
             "tracking_descriptor_sha256": ref.sha256,
             "tracking_and_store_seconds": perf_counter() - start,
+            "first_stage": {key: baseline[key] for key in guarded},
+            "fragment_joins": len(joins),
+            "long_fragment_joins": sum(join["long_gap"] for join in joins),
+            "ambiguous_fragment_joins": sum(join["ambiguous"] for join in joins),
             **row,
         }
         print(
@@ -177,6 +249,14 @@ def doubles(candidate_stores: Path, output: Path) -> dict[str, Any]:
             "full_lineup_clips": sum(
                 row["missing_per_side"] == [0, 0] for row in clips.values()
             ),
+            "first_stage": {
+                key: legacy["overall"][key]
+                for key in (
+                    "full_lineup_clips",
+                    "full_lineup_measured_frames",
+                    "full_lineup_available_frames",
+                )
+            },
             **{
                 key: sum(row[key] for row in clips.values())
                 for key in (
@@ -185,6 +265,9 @@ def doubles(candidate_stores: Path, output: Path) -> dict[str, Any]:
                     "full_lineup_available_frames",
                     "selected_measured_frames",
                     "selected_predicted_frames",
+                    "fragment_joins",
+                    "long_fragment_joins",
+                    "ambiguous_fragment_joins",
                 )
             },
         },
@@ -211,7 +294,7 @@ def holdout(plan_path: Path, poses: Path, output: Path) -> dict[str, Any]:
             "The single reserved tracking scoring attempt already started"
         )
     protocol = reserved_protocol()
-    if protocol != read_json(RUN / "reserved-protocol.json"):
+    if protocol != read_json(INTEGRATION_EVIDENCE / "reserved-protocol.json"):
         raise ValueError(
             "The tracking solver or scorer differs from the frozen holdout protocol"
         )

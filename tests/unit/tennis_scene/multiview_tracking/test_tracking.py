@@ -10,7 +10,7 @@ from src.tennis_scene.multiview_tracking.schema import (
     TrackEnd,
     TrackingConfig,
 )
-from src.tennis_scene.multiview_tracking.tracking import track
+from src.tennis_scene.multiview_tracking.tracking import track, track_with_diagnostics
 from src.utils.geometry.triangulation import PointRejection
 
 
@@ -21,6 +21,7 @@ class Person:
     cameras: tuple[bool, bool, bool] = (True, True, True)
     nose: bool = True
     ambiguous: bool = False
+    build: float = 1.0
 
 
 def candidates(timeline: list[list[Person]]) -> FramePoseCandidates:
@@ -35,10 +36,10 @@ def candidates(timeline: list[list[Person]]) -> FramePoseCandidates:
     for i, p in enumerate(people):
         valid[i, [5, 6, 11, 12]] = True
         positions[i, [5, 6, 11, 12]] = [
-            [p.x - 0.2, p.y, 1.5],
-            [p.x + 0.2, p.y, 1.5],
-            [p.x - 0.15, p.y, 1.0],
-            [p.x + 0.15, p.y, 1.0],
+            [p.x - 0.2 * p.build, p.y, 1.25 + 0.25 * p.build],
+            [p.x + 0.2 * p.build, p.y, 1.25 + 0.25 * p.build],
+            [p.x - 0.15 * p.build, p.y, 1.25 - 0.25 * p.build],
+            [p.x + 0.15 * p.build, p.y, 1.25 - 0.25 * p.build],
         ]
         if p.nose:
             valid[i, 0] = True
@@ -192,3 +193,67 @@ def test_empty_clip_reports_shortfall_and_invalid_mode_fails():
     assert result.selection.missing_per_side == (2, 2)
     with pytest.raises(ValueError, match="tracking settings"):
         TrackingConfig(3)
+
+
+def test_player_residence_combines_fragments_and_marks_the_long_gap():
+    original = Person(1.0, 7.0)
+    candidate = Person(1.1, 7.0, ambiguous=True)
+    timeline = [
+        [original] if frame < 5 else [candidate, candidate] if 12 <= frame < 17 else []
+        for frame in range(32)
+    ]
+    inputs = candidates(timeline)
+    window_only = track(
+        inputs, fps=10, config=TrackingConfig(1, fragment_integration=None)
+    )
+    assert window_only.selection.selected_track_ids == ()
+    result, diagnostics = track_with_diagnostics(
+        inputs, fps=10, config=TrackingConfig(1)
+    )
+    assert diagnostics is not None
+    (slot,) = diagnostics.slots
+    (join,) = slot.joins
+    assert (join.last_observed_frame, join.first_observed_frame, join.gap_frames) == (
+        4,
+        12,
+        7,
+    )
+    assert (
+        join.long_gap and join.ambiguous and join.objective_margin == pytest.approx(0)
+    )
+    assert join.confidence > 0
+    player = result.track_ids == slot.track_id
+    assert result.selection.selected_track_ids == (slot.track_id,)
+    assert result.selection.decisions[slot.track_id].court_frames == 10
+    occluded = player & ~result.observed
+    assert occluded.sum() == 7
+    assert result.predicted_joints[occluded].sum() == 7 * 5
+    assert not result.measured_joints[occluded].any()
+    assert (result.source_rows[occluded] == -1).all()
+    assert result.id_ambiguous[occluded].all()
+    np.testing.assert_allclose(
+        result.torso_m[occluded, 0], 1 + 0.1 * np.arange(1, 8) / 8, atol=1e-6
+    )
+    observed = result.candidate_indices[result.observed]
+    np.testing.assert_array_equal(
+        result.positions_m[result.observed], inputs.positions_m[observed]
+    )
+    # The other fragment overlaps the joined interval and keeps its own ID.
+    assert len(result.end_frames) == 2
+    assert result.observed.sum() == 15
+
+
+@pytest.mark.parametrize("other", [Person(0.0, 0.2, build=1.8), Person(0.0, -0.2)])
+def test_fragments_require_compatible_body_size_and_court_side(other: Person):
+    timeline = [
+        [Person(0.0, 0.2)] if frame < 6 else [other] if 13 <= frame < 19 else []
+        for frame in range(32)
+    ]
+    result, diagnostics = track_with_diagnostics(
+        candidates(timeline), fps=10, config=TrackingConfig(1)
+    )
+    assert diagnostics is not None
+    assert all(not slot.joins for slot in diagnostics.slots)
+    assert result.selection.selected_track_ids == ()
+    assert result.observed.all()
+    assert len(result.end_frames) == 2

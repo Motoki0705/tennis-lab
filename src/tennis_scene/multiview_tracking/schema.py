@@ -16,6 +16,31 @@ VERSION = 1
 
 
 @dataclass(frozen=True)
+class FragmentConfig:
+    max_gap_seconds: float = 1.5
+    min_residence_seconds: float = 0.10
+    endpoint_span_seconds: float = 0.20
+    max_log_bone_difference: float = 0.35
+    ambiguity_margin: float = 0.08
+
+    def __post_init__(self) -> None:
+        if (
+            not all(
+                isfinite(value) and value > 0
+                for value in (
+                    self.max_gap_seconds,
+                    self.min_residence_seconds,
+                    self.endpoint_span_seconds,
+                    self.max_log_bone_difference,
+                    self.ambiguity_margin,
+                )
+            )
+            or self.ambiguity_margin >= 1
+        ):
+            raise ValueError("Invalid player fragment integration settings")
+
+
+@dataclass(frozen=True)
 class TrackingConfig:
     players_per_side: int
     window_seconds: float = 1.2
@@ -24,6 +49,7 @@ class TrackingConfig:
     motion_span_seconds: float = 0.16
     max_speed_mps: float = 8.0
     ambiguity_margin: float = 0.08
+    fragment_integration: FragmentConfig | None = FragmentConfig()
 
     def __post_init__(self) -> None:
         durations = (

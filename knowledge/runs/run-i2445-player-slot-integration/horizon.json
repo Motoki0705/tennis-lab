@@ -1,0 +1,137 @@
+{
+  "1.2": {
+    "selected_id": {
+      "idtp": 13061,
+      "idfp": 7,
+      "idfn": 7497,
+      "idf1": 0.7768393505025872,
+      "id_switches": 0,
+      "fragments": 253
+    },
+    "all_player_id": {
+      "idtp": 13740,
+      "idfp": 4646,
+      "idfn": 6818,
+      "idf1": 0.7056285949055053,
+      "id_switches": 738,
+      "fragments": 182
+    },
+    "selection": {
+      "tp": 13061,
+      "fp": 7,
+      "fn": 7497,
+      "precision": 0.9994643403734312,
+      "recall": 0.6353244479034925,
+      "unlabelled_predictions": 20,
+      "selected_camera_frames": 13088
+    }
+  },
+  "1.5": {
+    "selected_id": {
+      "idtp": 15044,
+      "idfp": 7,
+      "idfn": 5514,
+      "idf1": 0.844954927125165,
+      "id_switches": 0,
+      "fragments": 387
+    },
+    "all_player_id": {
+      "idtp": 15182,
+      "idfp": 3204,
+      "idfn": 5376,
+      "idf1": 0.7796836483155299,
+      "id_switches": 737,
+      "fragments": 182
+    },
+    "selection": {
+      "tp": 15044,
+      "fp": 7,
+      "fn": 5514,
+      "precision": 0.9995349146236131,
+      "recall": 0.7317832473976068,
+      "unlabelled_predictions": 44,
+      "selected_camera_frames": 15095
+    }
+  },
+  "1.8": {
+    "selected_id": {
+      "idtp": 15044,
+      "idfp": 7,
+      "idfn": 5514,
+      "idf1": 0.844954927125165,
+      "id_switches": 0,
+      "fragments": 387
+    },
+    "all_player_id": {
+      "idtp": 15182,
+      "idfp": 3204,
+      "idfn": 5376,
+      "idf1": 0.7796836483155299,
+      "id_switches": 737,
+      "fragments": 182
+    },
+    "selection": {
+      "tp": 15044,
+      "fp": 7,
+      "fn": 5514,
+      "precision": 0.9995349146236131,
+      "recall": 0.7317832473976068,
+      "unlabelled_predictions": 44,
+      "selected_camera_frames": 15095
+    }
+  },
+  "2.1": {
+    "selected_id": {
+      "idtp": 15044,
+      "idfp": 7,
+      "idfn": 5514,
+      "idf1": 0.844954927125165,
+      "id_switches": 0,
+      "fragments": 387
+    },
+    "all_player_id": {
+      "idtp": 15182,
+      "idfp": 3204,
+      "idfn": 5376,
+      "idf1": 0.7796836483155299,
+      "id_switches": 737,
+      "fragments": 182
+    },
+    "selection": {
+      "tp": 15044,
+      "fp": 7,
+      "fn": 5514,
+      "precision": 0.9995349146236131,
+      "recall": 0.7317832473976068,
+      "unlabelled_predictions": 44,
+      "selected_camera_frames": 15095
+    }
+  },
+  "2.5": {
+    "selected_id": {
+      "idtp": 15044,
+      "idfp": 7,
+      "idfn": 5514,
+      "idf1": 0.844954927125165,
+      "id_switches": 0,
+      "fragments": 387
+    },
+    "all_player_id": {
+      "idtp": 15182,
+      "idfp": 3204,
+      "idfn": 5376,
+      "idf1": 0.7796836483155299,
+      "id_switches": 737,
+      "fragments": 182
+    },
+    "selection": {
+      "tp": 15044,
+      "fp": 7,
+      "fn": 5514,
+      "precision": 0.9995349146236131,
+      "recall": 0.7317832473976068,
+      "unlabelled_predictions": 44,
+      "selected_camera_frames": 15095
+    }
+  }
+}
