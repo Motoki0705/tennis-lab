@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import ctypes
 from collections.abc import Callable, Iterator, Mapping, Sequence
 from contextlib import contextmanager
 from dataclasses import asdict, dataclass, field
@@ -18,7 +19,7 @@ import torch
 
 from src.utils.checksum import dual_sha256
 from src.utils.device import DeviceSelectionError, resolve_device
-from src.utils.inference_resources import NvmlSampler
+from src.utils.inference_resources import NvmlSampler, _NvmlMemory
 
 __all__ = [
     "Backend",
@@ -295,8 +296,43 @@ def measure_conversion(
         )
 
 
+class _BenchmarkNvml(NvmlSampler):
+    def memory_used_bytes(self, device: str) -> int:
+        memory = _NvmlMemory()
+        self._call(
+            "nvmlDeviceGetMemoryInfo", self._handles[device], ctypes.byref(memory)
+        )
+        return int(memory.used)
+
+    def device_state(self, device: str) -> dict[str, object]:
+        """Read driver, clock and power telemetry once, preserving unavailable fields."""
+        driver = ctypes.create_string_buffer(96)
+        self._call("nvmlSystemGetDriverVersion", driver, len(driver))
+        handle = self._handles[device]
+        result: dict[str, object] = {"driver": driver.value.decode("ascii")}
+        errors: dict[str, str] = {}
+        for metric, function, args in (
+            ("sm_clock_mhz", "nvmlDeviceGetClockInfo", (1,)),
+            ("memory_clock_mhz", "nvmlDeviceGetClockInfo", (2,)),
+            ("max_sm_clock_mhz", "nvmlDeviceGetMaxClockInfo", (1,)),
+            ("max_memory_clock_mhz", "nvmlDeviceGetMaxClockInfo", (2,)),
+            ("power_mw", "nvmlDeviceGetPowerUsage", ()),
+            ("power_limit_mw", "nvmlDeviceGetEnforcedPowerLimit", ()),
+        ):
+            value = ctypes.c_uint()
+            try:
+                self._call(function, handle, *args, ctypes.byref(value))
+            except (AttributeError, RuntimeError) as error:
+                errors[metric] = str(error)
+                result[metric] = None
+            else:
+                result[metric] = value.value
+        result["telemetry_errors"] = errors
+        return result
+
+
 class _CudaMeasurements:
-    def __init__(self, device: torch.device, nvml: NvmlSampler) -> None:
+    def __init__(self, device: torch.device, nvml: _BenchmarkNvml) -> None:
         self.device = device
         self.nvml = nvml
         self.events = (
@@ -342,7 +378,7 @@ def _cuda_measurements(
             properties = torch.cuda.get_device_properties(target)
             uuid = str(properties.uuid)
             try:
-                nvml = NvmlSampler({str(target): uuid})
+                nvml = _BenchmarkNvml({str(target): uuid})
             except (OSError, RuntimeError) as error:
                 raise ConditionUnavailable(Status.UNAVAILABLE, str(error)) from error
             try:
@@ -394,10 +430,12 @@ class BatchStages:
         self, stage: Stage, operation: Callable[[], Value], *, name: str = ""
     ) -> Value:
         if stage is Stage.FORWARD:
-            raise ValueError("Use forward() to declare the backend for model execution")
+            raise ValueError(
+                "Use measure_forward() to declare the backend for model execution"
+            )
         return self._measure(stage, name, operation)
 
-    def forward(
+    def measure_forward(
         self, backend: Backend, operation: Callable[[], Value], *, name: str = ""
     ) -> Value:
         if self._error is not None:
