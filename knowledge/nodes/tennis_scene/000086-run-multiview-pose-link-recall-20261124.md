@@ -27,7 +27,11 @@ metrics:
   meiji4_populated_frames: 46228
   meiji4_assignment_rate: 0.8589779372374955
   meiji4_wall_seconds: 367.6801645469968
-  unseen_score_attempts: 0
+  unseen_score_attempts: 1
+  unseen_all_three_micro_pair_f1: 0.7516561568056093
+  unseen_without_repaired_micro_pair_f1: 0.740628047591184
+  unseen_all_three_player_micro_pair_f1: 0.862066264588392
+  unseen_without_repaired_player_micro_pair_f1: 0.8702786945361203
 artifacts:
   run_dir: knowledge/runs/run-multiview-pose-link-recall-20261124
   meiji3: knowledge/runs/run-multiview-pose-link-recall-20261124/meiji3.json
@@ -36,6 +40,7 @@ artifacts:
   holdout_inputs: knowledge/runs/run-multiview-pose-link-recall-20261124/holdout-inputs.json
   holdout_camera_recovery: knowledge/runs/run-multiview-pose-link-recall-20261124/holdout-camera-recovery.json
   holdout_pose_preparation: knowledge/runs/run-multiview-pose-link-recall-20261124/holdout-pose-preparation.json
+  holdout_pair_score: knowledge/runs/run-multiview-pose-link-recall-20261124/holdout-pair-score.json
 parents:
 - run-multiview-pose-meiji-20261124
 - run-i964-unseen-r16-20261001
@@ -58,4 +63,6 @@ Meiji 3camの開発4 clipでは、初回全身版の取りこぼし増分1,478�
 
 meiji_4camは全69 clip・46,228フレームで候補を生成し、85.90%のDINO行を割り当てた。4 CPUプロセスで367.68秒。標準パイプラインの採用判断は据え置く。 [設定選択と実データ結果](../../runs/run-multiview-pose-link-recall-20261124/README.md)
 
-同じ映像の過去のCourt投影点を使ったcam0の復元はRMSE 3.13 pxで校正上限を通過した。r18のcam1・cam2と組み合わせると、同一clipのボール注釈でhalf-turnが `[false, false, true]`、次点との差が0.475となった。親はこの補完を承認した。ViTPoseは3 clip・9視点の38,421行を計画で固定した。共有GPUロック4ファイルの読み書き権限が復旧待ちのため本推論は未投入で、予約人物ラベルの採点は0回。
+同じ映像の過去のCourt投影点を使ったcam0の復元はRMSE 3.13 pxで校正上限を通過した。r18のcam1・cam2と組み合わせると、同一clipのボール注釈でhalf-turnが `[false, false, true]`、次点との差が0.475となった。親が承認した補完を使い、3 clip・9視点の38,421行のViTPoseを固定計画で取得した。
+
+予約未見をr18の人手部分参照で一度だけ採点した。micro pair F1は全3 clipで0.7517、`video_001/clip_003` を除く2 clipで0.7406。選手同士では0.8621と0.8703だった。38,132のラベルboxがすべて検出行に対応した。 [採点結果と入力SHA](../../runs/run-multiview-pose-link-recall-20261124/holdout-pair-score.json)
