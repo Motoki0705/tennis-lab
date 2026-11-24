@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8204491283477436990_2026-11-24T08-25-16-522563009Z_745087_meiji-multiview-scene-all",
+  "name": "meiji-multiview-scene-all",
+  "command": ".venv/bin/python -m src.tennis_scene.multiview_scene run --dataset ../parent-2278-issue-2363-primary/outputs/i2363/i2363-all-v1/inputs/dataset --progress ../parent-2278-issue-2363-primary/outputs/i2363/i2363-all-v1/all/progress/d1df39596d4f47f1896cb535191e7040/progress.json --tracks ../parent-1739-issue-2445-primary/outputs/i2445/integrated/meiji4 --candidates ../parent-1739-issue-2444-primary/outputs/i2444/refine/timing/meiji4 --output outputs/i2446 --players-per-side 2 ",
+  "provider": "codex",
+  "session": "01a20be1-562e-7c01-8713-400bc0986f03",
+  "issue": "2446",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "01421ac96bbf9472258a930d42c8688c1d546ae0",
+  "branch": "codex/parent-1739-issue-2446-primary",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-1739-issue-2446-primary",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-1739-issue-2446-primary",
+  "captured_at": "2026-11-24T17:25:17+09:00"
+}
