@@ -1,0 +1,36 @@
+# Top-down COCO17 pose comparison on Meiji 4cam
+
+The six frozen clips and masks from [the player evaluation bundle](../run-meiji-multiview-player-evaluation/README.md) are the accuracy reference. Each condition receives the same native BGR images and eligible pseudo boxes. The boxes enclose projected joints from placed GVHMR SMPL. The model input carries no joint coordinates or masks. The reference has 1,711 source frames across six clips, 6,844 camera images and 26,276 eligible person boxes.
+
+The reference inherits biases from ViTPose observations, body placement, GVHMR and SMPL. Agreement measures how closely a prediction follows this reference. It cannot establish accuracy against independent human annotations. See the shared bundle for the overlay, exclusions and mask definitions.
+
+## Accuracy command
+
+From the checkout root, use the published manifest digest. Run CUDA commands through the shared training queue with the `all` reservation.
+
+```bash
+run=knowledge/runs/run-meiji-topdown-pose-comparison
+media=data/tennis_multiview/processed/meiji_4cam/benchmarks
+PYTHONPATH="$PWD:$PWD/$run" .venv/bin/python -B "$run/evaluate.py" \
+  --bundle "$media/multiview-player-evaluation-v1" \
+  --bundle-sha256 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580 \
+  --media-root "$media/multiview-v1" \
+  --model vitpose-h --backend PT32 --device cuda:0 --batch-size 8 \
+  --checkpoint ckpt/vitpose/vitpose-h-multi-coco.pth \
+  --checkpoint-sha256 50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc \
+  --output outputs/pose-comparison/vitpose-h-pt32
+```
+
+For FP16 autocast, select `PT16`. For `TRT16`, pass `--engine` with a validated scene engine directory for the selected flip setting and batch range. Select `vitpose-h-no-flip` for the supplemental single-view forward. The ViTPose-H accuracy adapter uses the same square padding factor 1.2, half-resolution image crop, 256×192 model input, flip restoration and UDP decoding as the scene model. PyTorch FP16 uses production autocast, with FP32 heatmap transfer and UDP decoding. The two flip inputs share one forward.
+
+The current checkpoint was distributed for GVHMR as `vitpose-h-multi-coco.pth`. The licensed source and training data terms are documented in [LICENSES.md](../../../LICENSES.md#third-party-weights-and-body-model-assets). See the [pinned ViTPose model zoo](https://github.com/ViTAE-Transformer/ViTPose/blob/c050ed29112da7704797cc1a65af0234b525010d/README.md) and [pinned GVHMR distribution guide](https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/docs/INSTALL.md).
+
+Each successful condition writes `receipt.json`, `scores.json` and checksum-pinned `predictions.npz`. The last file holds one row per `(clip_id, camera_id, source_frame, player_id)`, input bbox, native-pixel COCO17 `keypoints_xyc` and optional `extra__NAME` arrays aligned with that axis. `scores.json` uses the shared `score_players` on the input boxes. For distinct boxes the exact IoU 1.0 matches recover the known input association. The fixed-denominator pose metrics include missing output joints. `finite_pairs` uses the same OKS and PCK definitions on eligible finite pairs. Every finite raw confidence is eligible, including zero and negative values. A joint with any nonfinite field is missing. Box matches and their placeholder scores only support association.
+
+Use the [#2496 harness](../../../src/utils/inference_benchmark.md) and its published fixed speed input for candidate latency and memory. The ViTPose-H speed rows use the [#2496 baseline](https://github.com/Motoki0705/tennis-lab/issues/2496). This accuracy runner has no latency measurements.
+
+## Adapter and tests
+
+The model [adapter contract](https://github.com/Motoki0705/tennis-lab/issues/2490#issuecomment-7129915413) binds one explicit backend, input order and COCO17 axis. Each adapter declares one or more forward calls and may return person-aligned supplementary outputs. Renderer and analysis code can use row addresses to join with the frozen source.
+
+The focused CPU tests use unequal boxes, nonconsecutive frames, a partially empty cohort and a short final batch to expose reordering, skipped rows, mismatched backends and confidence-induced false misses. The tests reuse the shared scorer's reference dataclasses and run beside its [hand-calculated coverage case](../../../tests/unit/tennis_scene/evaluation/player_pose/test_scoring.py). The existing [ViTPose frame sequence and UDP test](../../../tests/unit/submodules/models/vitpose/test_pose2d.py) covers shared production crop and decode; the new tests target the evaluation boundary. The focused cases use tiny arrays and an injected frame stream, with no external weights, video or GPU.
