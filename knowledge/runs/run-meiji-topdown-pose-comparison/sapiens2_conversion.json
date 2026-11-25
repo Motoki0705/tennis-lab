@@ -1,0 +1,116 @@
+{
+  "export_commit": "41d23a41a16a6a81941317c5fde6dd08f8df7cb7",
+  "local_job_id": "20261124T133254Z_8a496cc18184_sapiens2-onnx-fp32-rope",
+  "models": {
+    "sapiens2-1b": {
+      "export_manifest": {
+        "inputs": {
+          "pixels": {
+            "dtype": "float16",
+            "shape": [
+              -1,
+              3,
+              1024,
+              768
+            ]
+          }
+        },
+        "model": "sapiens2-1b",
+        "onnx_files": {
+          "model.onnx": "0a6fa34741c64161a1c0368dc47678ccb5718013cbc3124bb642a10c29376d71",
+          "model.onnx.data": "210d1541f9c434a7e6e997163cef4fc6cb0ff54e607f64eda2c2dde4c2d7ac4d"
+        },
+        "outputs": {
+          "heatmaps": {
+            "dtype": "float16",
+            "shape": [
+              -1,
+              308,
+              256,
+              192
+            ]
+          }
+        },
+        "precision": "fp16",
+        "settings": {
+          "forward": "single_view",
+          "pos_embed_rope_dtype": "fp32",
+          "source_commit": "7e5bae88456ac418ff0e58e74106c9fe192055d4"
+        },
+        "sources": {
+          "checkpoint": "2dab7014a17e99e460c18817325a71dd7a81ce48d87027f01c2ee7d7b3af969f"
+        },
+        "version": 1
+      },
+      "onnx_cast_targets": {
+        "FLOAT": 410,
+        "FLOAT16": 80,
+        "INT64": 966
+      },
+      "onnx_export": {
+        "failure": null,
+        "phase": "onnx_export",
+        "wall_ms": 138807.455434
+      },
+      "onnx_file_bytes": {
+        "model.onnx": 22043312,
+        "model.onnx.data": 3039550056
+      }
+    },
+    "sapiens2-5b": {
+      "export_manifest": {
+        "inputs": {
+          "pixels": {
+            "dtype": "float16",
+            "shape": [
+              -1,
+              3,
+              1024,
+              768
+            ]
+          }
+        },
+        "model": "sapiens2-5b",
+        "onnx_files": {
+          "model.onnx": "08aeaf1852b061527ff62a272d62bfea3d44d4325dc39bb28b779738c54c65e8",
+          "model.onnx.data": "5e76173a271ac5a14885a83147ac851b3ce99e1f918a15085d3da88c3293c1bc"
+        },
+        "outputs": {
+          "heatmaps": {
+            "dtype": "float16",
+            "shape": [
+              -1,
+              308,
+              256,
+              192
+            ]
+          }
+        },
+        "precision": "fp16",
+        "settings": {
+          "forward": "single_view",
+          "pos_embed_rope_dtype": "fp32",
+          "source_commit": "7e5bae88456ac418ff0e58e74106c9fe192055d4"
+        },
+        "sources": {
+          "checkpoint": "b4848da8691c72e14d3ff71319f077363107129bf4128019eb39d072129b2a52"
+        },
+        "version": 1
+      },
+      "onnx_cast_targets": {
+        "FLOAT": 570,
+        "FLOAT16": 112,
+        "INT64": 1350
+      },
+      "onnx_export": {
+        "failure": null,
+        "phase": "onnx_export",
+        "wall_ms": 686878.649834
+      },
+      "onnx_file_bytes": {
+        "model.onnx": 30953842,
+        "model.onnx.data": 10240380264
+      }
+    }
+  }
+}

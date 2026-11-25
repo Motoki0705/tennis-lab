@@ -1,0 +1,181 @@
+{
+  "bundle_id": "meiji_4cam/multiview-player-evaluation-v1",
+  "bundle_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+  "images": [
+    {
+      "camera_id": "cam0",
+      "clip_id": "video_000/clip_003",
+      "path": "clip_003-cam0-120.png",
+      "sha256": "b1dd8ca1d7f785b1a58bb3416795f3f7f0180e38e611bcef4d967f8ef2dd4c98",
+      "source_frame": 120
+    },
+    {
+      "camera_id": "cam1",
+      "clip_id": "video_000/clip_003",
+      "path": "clip_003-cam1-120.png",
+      "sha256": "fdfe0940983f33fb5071dbdee9bb9bde7d46f2f56f51a41ae49960c9b92eb16d",
+      "source_frame": 120
+    },
+    {
+      "camera_id": "cam2",
+      "clip_id": "video_000/clip_003",
+      "path": "clip_003-cam2-120.png",
+      "sha256": "eb21342f95a25b52cc732f2632528449500ac2fa0880ffeaeb8f1c6616566c25",
+      "source_frame": 120
+    },
+    {
+      "camera_id": "cam3",
+      "clip_id": "video_000/clip_003",
+      "path": "clip_003-cam3-120.png",
+      "sha256": "745159af5b590be32f43fe0594781eba88a2a705416f81b7455fbb28fe3b9893",
+      "source_frame": 120
+    },
+    {
+      "camera_id": "cam0",
+      "clip_id": "video_000/clip_004",
+      "path": "clip_004-cam0-294.png",
+      "sha256": "af4b590251be6d0a9c6f5648326cdcf8fc316fa12ae660d4d656ef911d99d86e",
+      "source_frame": 294
+    },
+    {
+      "camera_id": "cam1",
+      "clip_id": "video_000/clip_004",
+      "path": "clip_004-cam1-294.png",
+      "sha256": "f994962d22b87a04def5802af3e53742798d7e6e310bfb3196971758457ecdc2",
+      "source_frame": 294
+    },
+    {
+      "camera_id": "cam2",
+      "clip_id": "video_000/clip_004",
+      "path": "clip_004-cam2-294.png",
+      "sha256": "5bb178dd2ab4c723528c53247254168a93916534047216abeebc373d7d8231f1",
+      "source_frame": 294
+    },
+    {
+      "camera_id": "cam3",
+      "clip_id": "video_000/clip_004",
+      "path": "clip_004-cam3-294.png",
+      "sha256": "28105531ef00c5e1bb4eea98fc8d6c75f7a62e89b43da051f90dc58339650b8e",
+      "source_frame": 294
+    },
+    {
+      "camera_id": "cam0",
+      "clip_id": "video_000/clip_013",
+      "path": "clip_013-cam0-234.png",
+      "sha256": "5e1f865d0bfa3c939854ab311fe15ebe4a8530ee3d9953586acf169a4b517bf6",
+      "source_frame": 234
+    },
+    {
+      "camera_id": "cam1",
+      "clip_id": "video_000/clip_013",
+      "path": "clip_013-cam1-234.png",
+      "sha256": "4c327eeddbaafe011e12c262de94f493a7432896e42dee89cc9ff828eefa4d57",
+      "source_frame": 234
+    },
+    {
+      "camera_id": "cam2",
+      "clip_id": "video_000/clip_013",
+      "path": "clip_013-cam2-234.png",
+      "sha256": "a20f7466eaa642e280ca3275b06b62d563089b1823e24de5ffafaa4a7920a336",
+      "source_frame": 234
+    },
+    {
+      "camera_id": "cam3",
+      "clip_id": "video_000/clip_013",
+      "path": "clip_013-cam3-234.png",
+      "sha256": "506e11d0c6a0d77a4e5efb63ef810b3678d865db1f9f65c32eb4e5f1907ee785",
+      "source_frame": 234
+    },
+    {
+      "camera_id": "cam0",
+      "clip_id": "video_000/clip_028",
+      "path": "clip_028-cam0-643.png",
+      "sha256": "691b15193a61b8bfe0f639fec17fef55d99c32402fd749ce0f567577c8af4e0e",
+      "source_frame": 643
+    },
+    {
+      "camera_id": "cam1",
+      "clip_id": "video_000/clip_028",
+      "path": "clip_028-cam1-643.png",
+      "sha256": "6ce537b199cd499bf6e90a99c7abd0b4e6e445750637ae90776294a430387812",
+      "source_frame": 643
+    },
+    {
+      "camera_id": "cam2",
+      "clip_id": "video_000/clip_028",
+      "path": "clip_028-cam2-643.png",
+      "sha256": "37e2806c51ccb05070a4076a1754a668229a31b23c0b79666f9b53c7cbeeeb2e",
+      "source_frame": 643
+    },
+    {
+      "camera_id": "cam3",
+      "clip_id": "video_000/clip_028",
+      "path": "clip_028-cam3-643.png",
+      "sha256": "d40bb6ec9dedc891e1b1822137893918db481106a696d570a4823a0aeeadbc4d",
+      "source_frame": 643
+    },
+    {
+      "camera_id": "cam0",
+      "clip_id": "video_000/clip_040",
+      "path": "clip_040-cam0-208.png",
+      "sha256": "7496af3f5faf0764ac881980afe27178ee7feddacc6664ee129669560466f6e5",
+      "source_frame": 208
+    },
+    {
+      "camera_id": "cam1",
+      "clip_id": "video_000/clip_040",
+      "path": "clip_040-cam1-208.png",
+      "sha256": "5fb8f8f08c0be229299dfb445a74b43ac931e041d9b42b8e7e4eb097b38baf98",
+      "source_frame": 208
+    },
+    {
+      "camera_id": "cam2",
+      "clip_id": "video_000/clip_040",
+      "path": "clip_040-cam2-208.png",
+      "sha256": "ae90f1dca7e82417abb00007d4e042ed3bc2d8bda8c18a5e64c7f9f8ff6b84f8",
+      "source_frame": 208
+    },
+    {
+      "camera_id": "cam3",
+      "clip_id": "video_000/clip_040",
+      "path": "clip_040-cam3-208.png",
+      "sha256": "a2ca10fa6a575a6b2bfe3ca1518bfa8bf839f0642aaf02d6b2b8a277c0307a11",
+      "source_frame": 208
+    },
+    {
+      "camera_id": "cam0",
+      "clip_id": "video_000/clip_057",
+      "path": "clip_057-cam0-142.png",
+      "sha256": "bb61c8437fe0232bb344336637ca07cd08207894661fe57968bcbda2199d22d0",
+      "source_frame": 142
+    },
+    {
+      "camera_id": "cam1",
+      "clip_id": "video_000/clip_057",
+      "path": "clip_057-cam1-142.png",
+      "sha256": "e81f784052e62c9cea6cec62c8bbf34522e338b3e8cc0f25effbe104840fa480",
+      "source_frame": 142
+    },
+    {
+      "camera_id": "cam2",
+      "clip_id": "video_000/clip_057",
+      "path": "clip_057-cam2-142.png",
+      "sha256": "bcbb789a330f3382785d223bd11361cf4806ffd5f5cd25ece9f270a724f5b338",
+      "source_frame": 142
+    },
+    {
+      "camera_id": "cam3",
+      "clip_id": "video_000/clip_057",
+      "path": "clip_057-cam3-142.png",
+      "sha256": "481bfb8cefabae792cc0440b4c886916b4c6522f87a4d3f1fd7fcbda13b70682",
+      "source_frame": 142
+    }
+  ],
+  "jobs": [
+    "0-8204474787411339166_2026-11-24T13-00-12-588660833Z_1826380_i2490-vitpose-h-pt32-accuracy.job",
+    "0-8204479371993481292_2026-11-24T11-43-48-006518707Z_1190023_i2490-rtmpose-m-pt32-accuracy.job",
+    "0-8204479370898726033_2026-11-24T11-43-49-101273966Z_1190269_i2490-rtmpose-x-pt32-accuracy.job",
+    "0-8204475510298679819_2026-11-24T12-48-09-701320180Z_1705545_i2490-pmpose-h-pt32-accuracy.job",
+    "0-8204475510644762815_2026-11-24T12-48-09-355237184Z_1705468_i2490-pmpose-l-pt32-accuracy.job"
+  ]
+}
