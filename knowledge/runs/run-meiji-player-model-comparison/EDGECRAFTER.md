@@ -79,7 +79,7 @@ bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh \
 
 `fixed_speed_inputs` is the published baseline input directory. Receipts are written to `outputs/player-model-comparison/<model>/speed-13e508cb7/<backend>/speed-b<batch>.json`. See the baseline documentation for the input location and schedule. [Baseline inputs and protocol](../run-person-model-speed-baseline/README.md#固定入力と初回の成果物)
 
-All 24 speed cases completed at checkout `3bb026d5de12dbe980bc17e3d0a97c751b58fd4b`. Each case's 300 samples, image order and summary were checked against the common harness. PT16 ECDet stage wall P50 at batch 1 ranged from 52.52 to 64.87 ms/image. The original TRT16 ECDet plans measured 32.79 to 35.41 ms/image. TRT16 timings and accuracy refer to the same plan digests and remain provisional while the conversion issue is investigated. [Speed and VRAM receipts](edgecrafter-speed.json)
+All 24 speed cases completed at checkout `3bb026d5de12dbe980bc17e3d0a97c751b58fd4b`. Each case's 300 samples, image order and summary were checked against the common harness. PT16 ECDet stage wall P50 at batch 1 ranged from 52.52 to 64.87 ms/image. The original TRT16 ECDet plans measured 32.79 to 35.41 ms/image. TRT16 timings and accuracy refer to the same plan digests and remain provisional while the conversion issue is investigated. All 24 cases recorded two PyTorch host threads. The DINO baseline sets four, so a matched stage wall comparison requires a rerun with the same host thread count. [Speed and VRAM receipts](edgecrafter-speed.json), [Baseline runner](../run-person-model-speed-baseline/run.py)
 
 ## Rescoring stored predictions
 
@@ -130,7 +130,9 @@ The first CUDA diagnostic produced raw results for five weights. The upstream YA
 
 Every captured binding stride matched its PyTorch buffer and the sampled output heads were finite. All five PT16 variants reproduced their raw outputs when the two batch slots were swapped and aligned back to image IDs. All five original TRT16 plans changed their decoded box sets. ONNX Runtime CPU also changed raw query order when the slots were swapped for ECDet-L COCO and ECPose-X. For ECDet-L COCO, small observed differences grew from an encoder score P95 of 0.0078 to a final logit P95 of 1.305 after TopK changed selected indices. The CPU interpreter still matched all 154 decoded boxes at IoU ≥0.50, with matched IoU P05 above 0.997 for each image. The TRT16 plans' much larger decoded disagreement remains unexplained. [CUDA and CPU batch-order evidence](edgecrafter-trt-cuda-diagnosis.json)
 
-The next probe exposes the ECDet-L COCO backbone, encoder and TopK intermediates in a separate plan. It compares their values to ONNX Runtime CPU and checks the instrumented final heads against the archived original plan, since observing an intermediate can change TensorRT's fusion decisions. [TensorRT engine and debug tools](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/inference-library/engine-tools.html)
+The ECDet-L O365 single-process run completed all ten cases. Swapping the two images and aligning them by ID preserved all 254 PT16 person boxes. The original TRT16 plan matched 199 of 243 person boxes at IoU ≥0.50 across the two pairs. Repeating the original order produced identical raw heads on both backends. All captured heads were finite and every binding stride matched its buffer. [Requeued job evidence](edgecrafter-trt-diagnosis-v2.json)
+
+The ECDet-L COCO probe exposed ten intermediate tensors in a separate plan. The intermediates, including the sampled TopK values, indices and Gather output, matched exactly after the batch swap. The final logits had an absolute difference P95 of 0.5664 and the normalized box coordinates had a P95 of 0.00211. The instrumented plan matched 93 of the original plan's 241 decoded boxes at IoU ≥0.50 on the same batch. The final discrepancy therefore appears downstream of the sampled Gather in this build. Extra outputs can affect fusion, and the exact cause in the original plan remains open. [Requeued job evidence](edgecrafter-trt-diagnosis-v2.json), [TensorRT engine and debug tools](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/inference-library/engine-tools.html)
 
 ```bash
 # Submit through the training queue with resource all.
@@ -138,6 +140,19 @@ PYTHONPATH=".:$baseline" OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREAD
   .venv/bin/python -B knowledge/runs/run-meiji-player-model-comparison/edgecrafter_trt_probe.py \
   --inputs "$fixed_speed_inputs" --archive outputs/player-model-comparison/trt16-diagnosis-v1 \
   --output outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-coco-probe
+```
+
+The follow-up builds a separate ECDet-L COCO plan with only the four decoder self-attention score MatMuls and their Softmax operations in FP32. Both output bindings, the input profile and the weights match the original graph. The diagnostic compares raw heads and decoded boxes with the archived PT16 heads on the same input bytes at batch 1, batch 2 and reversed batch order. A matching result would support testing the change across the full cohort. Engine rebuilding can change tactic selection, so further controls would be needed to attribute the difference to those operations alone.
+
+The ONNX CPU check verified all four widened regions and preserved the original binding dtypes, shapes and weight digest. On `clip_028/cam3` frame 513 the rewritten graph matched 68 of 68 archived PT16 boxes at IoU ≥0.50, with matched IoU P05 of 0.993. The TensorRT result is pending.
+
+```bash
+# Submit through the training queue with resource all.
+PYTHONPATH=".:$baseline" OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
+  .venv/bin/python -B knowledge/runs/run-meiji-player-model-comparison/edgecrafter_trt_probe.py \
+  --inputs "$fixed_speed_inputs" --archive outputs/player-model-comparison/trt16-diagnosis-v1 \
+  --output outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention \
+  --fp32-decoder-attention
 ```
 
 ## CPU integration check
@@ -162,3 +177,5 @@ The parity tests use two rearranged detection rows, perturbations and missing jo
 The 2026-11-25 scope change adds five CPU cases. The queue entry-point tests substitute a command recorder for the GPU processes and check that ECPose requests PT16 and TRT16, ECDet requests TRT16, and the TensorRT conversion precedes scoring. The CLI cases reject PT32 and a missing parity setting. A parity receipt test rejects comparison when the candidate declares `PT32未計測`.
 
 The speed entry-point tests check the four half-precision backend and batch combinations, ordered images, harness revision validation and the explicit parity argument. The accuracy wrapper tests check that a failed command or missing engine receipt is reported against the corresponding condition and preserves a successful result from the other backend.
+
+The decoder precision test uses a small typed ONNX graph to verify FP32 MatMul inputs and scores, FP32 Softmax and restoration of the original FP16 tensor at the next consumer. It checks that the source graph stays intact.

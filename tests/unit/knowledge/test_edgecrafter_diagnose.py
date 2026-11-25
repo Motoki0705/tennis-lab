@@ -144,3 +144,47 @@ def test_probe_graph_keeps_the_original_head_and_exposes_a_typed_intermediate(
     feature = augmented.graph.output[-1].type.tensor_type
     assert feature.elem_type == onnx.TensorProto.FLOAT16
     assert [dim.dim_param or dim.dim_value for dim in feature.shape.dim] == ["batch", 3]
+
+
+def test_attention_probe_widens_matmul_and_softmax_and_restores_fp16(
+    script: dict[str, Any],
+) -> None:
+    onnx = pytest.importorskip("onnx")
+    helper = onnx.helper
+    half, single = onnx.TensorProto.FLOAT16, onnx.TensorProto.FLOAT
+    probe = runpy.run_path(
+        str(Path(script["__file__"]).with_name("edgecrafter_trt_probe.py"))
+    )
+    graph = helper.make_graph(
+        [
+            helper.make_node("MatMul", ["q", "k"], ["score"], name="matmul"),
+            helper.make_node(
+                "Softmax", ["score"], ["weights"], name="softmax", axis=-1
+            ),
+            helper.make_node("Identity", ["weights"], ["out"], name="head"),
+        ],
+        "fixture",
+        [
+            helper.make_tensor_value_info("q", half, [1, 2, 3]),
+            helper.make_tensor_value_info("k", half, [1, 3, 2]),
+        ],
+        [helper.make_tensor_value_info("out", half, [1, 2, 2])],
+    )
+    model = helper.make_model(graph)
+    result = probe["promote_attention_scores"](model, ("softmax",))
+    nodes = {node.name: node for node in result.graph.node}
+    types = {
+        value.name: value.type.tensor_type.elem_type
+        for value in (*result.graph.value_info, *result.graph.output)
+    }
+    assert [node.op_type for node in model.graph.node] == [
+        "MatMul",
+        "Softmax",
+        "Identity",
+    ]
+    assert types[nodes["matmul"].output[0]] == single
+    assert set(types[name] for name in nodes["matmul"].input) == {single}
+    assert nodes["softmax"].input[0] == nodes["matmul"].output[0]
+    assert types[nodes["softmax"].output[0]] == single
+    assert nodes["head"].input[0] == "weights"
+    assert types["weights"] == types["out"] == half

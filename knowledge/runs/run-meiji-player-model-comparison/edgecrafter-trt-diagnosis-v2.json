@@ -1,0 +1,2004 @@
+{
+  "ecdet_l_coco_intermediate_probe": {
+    "engine_manifest": {
+      "path": "outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-coco-probe/engine/engine.json",
+      "sha256": "9f6d75f732fd52d339bc6cd314e5c177a1d232cd9307cdaecdba5df5ed1e5852"
+    },
+    "export_manifest": {
+      "path": "outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-coco-probe/engine/export.json",
+      "sha256": "2bf66d4fd5df5cde2ed3cb033619bbf639ab3beefc7215bf4e37c97780a4ca68"
+    },
+    "measurements": {
+      "batch_order": {
+        "onnx_cpu": {
+          "/model/backbone/backbone/blocks.0/Add_1_output_0": {
+            "abs_diff_max": 6.183981895446777e-05,
+            "abs_diff_p95": 0.0,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1229568
+          },
+          "/model/backbone/backbone/blocks.11/Add_1_output_0": {
+            "abs_diff_max": 0.004220008850097656,
+            "abs_diff_p95": 0.0005081295967102051,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1229568
+          },
+          "/model/backbone/backbone/blocks.5/Add_1_output_0": {
+            "abs_diff_max": 0.0024818480014801025,
+            "abs_diff_p95": 0.0002888888120651245,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1229568
+          },
+          "/model/backbone/backbone/patch_embed/proj/Conv_output_0": {
+            "abs_diff_max": 0.0,
+            "abs_diff_p95": 0.0,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1228800
+          },
+          "/model/backbone/projector.0/conv_bn_fused/Conv_output_0": {
+            "abs_diff_max": 0.0064697265625,
+            "abs_diff_p95": 0.0009765625,
+            "finite_mask_difference": 0,
+            "finite_pairs": 3276800
+          },
+          "/model/decoder/GatherElements_1_output_0": {
+            "abs_diff_max": 4.1519775390625,
+            "abs_diff_p95": 0.3248291015625,
+            "finite_mask_difference": 0,
+            "finite_pairs": 153600
+          },
+          "/model/decoder/TopK_output_0": {
+            "abs_diff_max": 0.005859375,
+            "abs_diff_p95": 0.001953125,
+            "finite_mask_difference": 0,
+            "finite_pairs": 600
+          },
+          "/model/decoder/TopK_output_1": {
+            "abs_diff_max": 7163.0,
+            "abs_diff_p95": 2358.849999999965,
+            "finite_mask_difference": 0,
+            "finite_pairs": 600
+          },
+          "/model/decoder/enc_score_head/Add_output_0": {
+            "abs_diff_max": 0.0625,
+            "abs_diff_p95": 0.0078125,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1344000
+          },
+          "/model/encoder/fpn_blocks.1/cv4/act/Mul_output_0": {
+            "abs_diff_max": 0.0234375,
+            "abs_diff_p95": 0.00048828125,
+            "finite_mask_difference": 0,
+            "finite_pairs": 3276800
+          },
+          "coordinates": {
+            "abs_diff_max": 0.8036955147981644,
+            "abs_diff_p95": 0.17318833172321196,
+            "finite_mask_difference": 0,
+            "finite_pairs": 2400
+          },
+          "logits": {
+            "abs_diff_max": 7.833984375,
+            "abs_diff_p95": 1.304882812499983,
+            "finite_mask_difference": 0,
+            "finite_pairs": 48000
+          }
+        },
+        "trt16": {
+          "/model/backbone/backbone/blocks.0/Add_1_output_0": {
+            "abs_diff_max": 0.0,
+            "abs_diff_p95": 0.0,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1229568
+          },
+          "/model/backbone/backbone/blocks.11/Add_1_output_0": {
+            "abs_diff_max": 0.0,
+            "abs_diff_p95": 0.0,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1229568
+          },
+          "/model/backbone/backbone/blocks.5/Add_1_output_0": {
+            "abs_diff_max": 0.0,
+            "abs_diff_p95": 0.0,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1229568
+          },
+          "/model/backbone/backbone/patch_embed/proj/Conv_output_0": {
+            "abs_diff_max": 0.0,
+            "abs_diff_p95": 0.0,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1228800
+          },
+          "/model/backbone/projector.0/conv_bn_fused/Conv_output_0": {
+            "abs_diff_max": 0.0,
+            "abs_diff_p95": 0.0,
+            "finite_mask_difference": 0,
+            "finite_pairs": 3276800
+          },
+          "/model/decoder/GatherElements_1_output_0": {
+            "abs_diff_max": 0.0,
+            "abs_diff_p95": 0.0,
+            "finite_mask_difference": 0,
+            "finite_pairs": 153600
+          },
+          "/model/decoder/TopK_output_0": {
+            "abs_diff_max": 0.0,
+            "abs_diff_p95": 0.0,
+            "finite_mask_difference": 0,
+            "finite_pairs": 600
+          },
+          "/model/decoder/TopK_output_1": {
+            "abs_diff_max": 0.0,
+            "abs_diff_p95": 0.0,
+            "finite_mask_difference": 0,
+            "finite_pairs": 600
+          },
+          "/model/decoder/enc_score_head/Add_output_0": {
+            "abs_diff_max": 0.0,
+            "abs_diff_p95": 0.0,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1344000
+          },
+          "/model/encoder/fpn_blocks.1/cv4/act/Mul_output_0": {
+            "abs_diff_max": 0.0,
+            "abs_diff_p95": 0.0,
+            "finite_mask_difference": 0,
+            "finite_pairs": 3276800
+          },
+          "coordinates": {
+            "abs_diff_max": 0.3877410292625427,
+            "abs_diff_p95": 0.0021073170006274873,
+            "finite_mask_difference": 0,
+            "finite_pairs": 2400
+          },
+          "logits": {
+            "abs_diff_max": 7.681640625,
+            "abs_diff_p95": 0.56640625,
+            "finite_mask_difference": 0,
+            "finite_pairs": 48000
+          }
+        }
+      },
+      "cases": {
+        "pair1_ab": {
+          "frames": [
+            "video_000/clip_003/cam0/frame_000148",
+            "video_000/clip_028/cam3/frame_000513"
+          ],
+          "input_sha256": "d6cc1d9dfd3cfd54b1f80025c06b405fdb60fa02c609babafd637daacbb51f5d",
+          "onnx_cpu_vs_instrumented_trt": {
+            "/model/backbone/backbone/blocks.0/Add_1_output_0": {
+              "cpu": {
+                "finite_count": 1229568,
+                "finite_max": 3.6406240463256836,
+                "finite_min": -7.1578049659729,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.027778148651123047,
+                "abs_diff_p95": 0.0029332488775253296,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1229568
+              },
+              "shape": [
+                2,
+                1601,
+                384
+              ],
+              "trt": {
+                "finite_count": 1229568,
+                "finite_max": 3.642639398574829,
+                "finite_min": -7.154362201690674,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/backbone/blocks.11/Add_1_output_0": {
+              "cpu": {
+                "finite_count": 1229568,
+                "finite_max": 80.23603057861328,
+                "finite_min": -140.0125732421875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.1724853515625,
+                "abs_diff_p95": 0.006321072578430176,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1229568
+              },
+              "shape": [
+                2,
+                1601,
+                384
+              ],
+              "trt": {
+                "finite_count": 1229568,
+                "finite_max": 80.25804901123047,
+                "finite_min": -139.93646240234375,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/backbone/blocks.5/Add_1_output_0": {
+              "cpu": {
+                "finite_count": 1229568,
+                "finite_max": 71.483154296875,
+                "finite_min": -131.25363159179688,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.18902969360351562,
+                "abs_diff_p95": 0.00636118575930595,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1229568
+              },
+              "shape": [
+                2,
+                1601,
+                384
+              ],
+              "trt": {
+                "finite_count": 1229568,
+                "finite_max": 71.51781463623047,
+                "finite_min": -131.17840576171875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/backbone/patch_embed/proj/Conv_output_0": {
+              "cpu": {
+                "finite_count": 1228800,
+                "finite_max": 2.140625,
+                "finite_min": -1.53125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.029296875,
+                "abs_diff_p95": 0.00146484375,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1228800
+              },
+              "shape": [
+                2,
+                384,
+                40,
+                40
+              ],
+              "trt": {
+                "finite_count": 1228800,
+                "finite_max": 2.13671875,
+                "finite_min": -1.5322265625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/projector.0/conv_bn_fused/Conv_output_0": {
+              "cpu": {
+                "finite_count": 3276800,
+                "finite_max": 6.85546875,
+                "finite_min": -5.890625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.155517578125,
+                "abs_diff_p95": 0.0107421875,
+                "finite_mask_difference": 0,
+                "finite_pairs": 3276800
+              },
+              "shape": [
+                2,
+                256,
+                80,
+                80
+              ],
+              "trt": {
+                "finite_count": 3276800,
+                "finite_max": 6.87109375,
+                "finite_min": -5.88671875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/GatherElements_1_output_0": {
+              "cpu": {
+                "finite_count": 153600,
+                "finite_max": 4.90234375,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 4.6273193359375,
+                "abs_diff_p95": 0.56982421875,
+                "finite_mask_difference": 0,
+                "finite_pairs": 153600
+              },
+              "shape": [
+                2,
+                300,
+                256
+              ],
+              "trt": {
+                "finite_count": 153600,
+                "finite_max": 4.890625,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/TopK_output_0": {
+              "cpu": {
+                "finite_count": 600,
+                "finite_max": 1.9375,
+                "finite_min": -4.0625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.0625,
+                "abs_diff_p95": 0.0166015625,
+                "finite_mask_difference": 0,
+                "finite_pairs": 600
+              },
+              "shape": [
+                2,
+                300
+              ],
+              "trt": {
+                "finite_count": 600,
+                "finite_max": 1.94140625,
+                "finite_min": -4.05859375,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/TopK_output_1": {
+              "cpu": {
+                "finite_count": 600,
+                "finite_max": 8241.0,
+                "finite_min": 618.0,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 7163.0,
+                "abs_diff_p95": 5366.25,
+                "finite_mask_difference": 0,
+                "finite_pairs": 600
+              },
+              "shape": [
+                2,
+                300
+              ],
+              "trt": {
+                "finite_count": 600,
+                "finite_max": 8241.0,
+                "finite_min": 618.0,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/enc_score_head/Add_output_0": {
+              "cpu": {
+                "finite_count": 1344000,
+                "finite_max": 1.9375,
+                "finite_min": -162.5,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 4.359375,
+                "abs_diff_p95": 0.109375,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1344000
+              },
+              "shape": [
+                2,
+                8400,
+                80
+              ],
+              "trt": {
+                "finite_count": 1344000,
+                "finite_max": 1.94140625,
+                "finite_min": -162.5,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/encoder/fpn_blocks.1/cv4/act/Mul_output_0": {
+              "cpu": {
+                "finite_count": 3276800,
+                "finite_max": 16.78125,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.75390625,
+                "abs_diff_p95": 0.009765625,
+                "finite_mask_difference": 0,
+                "finite_pairs": 3276800
+              },
+              "shape": [
+                2,
+                256,
+                80,
+                80
+              ],
+              "trt": {
+                "finite_count": 3276800,
+                "finite_max": 16.75,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "coordinates": {
+              "cpu": {
+                "finite_count": 2400,
+                "finite_max": 0.9951795339584351,
+                "finite_min": 0.006099998950958252,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.8613526150584221,
+                "abs_diff_p95": 0.38592289984226197,
+                "finite_mask_difference": 0,
+                "finite_pairs": 2400
+              },
+              "shape": [
+                2,
+                300,
+                4
+              ],
+              "trt": {
+                "finite_count": 2400,
+                "finite_max": 0.9951029419898987,
+                "finite_min": 0.006128072738647461,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "logits": {
+              "cpu": {
+                "finite_count": 48000,
+                "finite_max": 2.18359375,
+                "finite_min": -11.875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 6.78125,
+                "abs_diff_p95": 2.35546875,
+                "finite_mask_difference": 0,
+                "finite_pairs": 48000
+              },
+              "shape": [
+                2,
+                300,
+                80
+              ],
+              "trt": {
+                "finite_count": 48000,
+                "finite_max": 2.16015625,
+                "finite_min": -12.7109375,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            }
+          },
+          "original_vs_instrumented_trt_heads": {
+            "video_000/clip_003/cam0/frame_000148": {
+              "candidate_slot": 0,
+              "decoded": {
+                "candidate_rows": 92,
+                "matched_iou_p05": 0.5154911655989063,
+                "matches_at_iou_0_50": 53,
+                "reference_rows": 98
+              },
+              "heads": {
+                "coordinates": {
+                  "abs_diff_max": 0.8369883000850677,
+                  "abs_diff_p95": 0.3106051437556741,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 1200
+                },
+                "logits": {
+                  "abs_diff_max": 8.9921875,
+                  "abs_diff_p95": 3.074414062499997,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 24000
+                }
+              },
+              "reference_slot": 0
+            },
+            "video_000/clip_028/cam3/frame_000513": {
+              "candidate_slot": 1,
+              "decoded": {
+                "candidate_rows": 67,
+                "matched_iou_p05": 0.5365105240814583,
+                "matches_at_iou_0_50": 40,
+                "reference_rows": 143
+              },
+              "heads": {
+                "coordinates": {
+                  "abs_diff_max": 0.842797726392746,
+                  "abs_diff_p95": 0.21673153787851232,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 1200
+                },
+                "logits": {
+                  "abs_diff_max": 7.101318359375,
+                  "abs_diff_p95": 3.1172851562499986,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 24000
+                }
+              },
+              "reference_slot": 1
+            }
+          }
+        },
+        "pair1_ab_repeat": {
+          "frames": [
+            "video_000/clip_003/cam0/frame_000148",
+            "video_000/clip_028/cam3/frame_000513"
+          ],
+          "input_sha256": "d6cc1d9dfd3cfd54b1f80025c06b405fdb60fa02c609babafd637daacbb51f5d",
+          "onnx_cpu_vs_instrumented_trt": {
+            "/model/backbone/backbone/blocks.0/Add_1_output_0": {
+              "cpu": {
+                "finite_count": 1229568,
+                "finite_max": 3.6406240463256836,
+                "finite_min": -7.1578049659729,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.027778148651123047,
+                "abs_diff_p95": 0.0029332488775253296,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1229568
+              },
+              "shape": [
+                2,
+                1601,
+                384
+              ],
+              "trt": {
+                "finite_count": 1229568,
+                "finite_max": 3.642639398574829,
+                "finite_min": -7.154362201690674,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/backbone/blocks.11/Add_1_output_0": {
+              "cpu": {
+                "finite_count": 1229568,
+                "finite_max": 80.23603057861328,
+                "finite_min": -140.0125732421875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.1724853515625,
+                "abs_diff_p95": 0.006321072578430176,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1229568
+              },
+              "shape": [
+                2,
+                1601,
+                384
+              ],
+              "trt": {
+                "finite_count": 1229568,
+                "finite_max": 80.25804901123047,
+                "finite_min": -139.93646240234375,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/backbone/blocks.5/Add_1_output_0": {
+              "cpu": {
+                "finite_count": 1229568,
+                "finite_max": 71.483154296875,
+                "finite_min": -131.25363159179688,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.18902969360351562,
+                "abs_diff_p95": 0.00636118575930595,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1229568
+              },
+              "shape": [
+                2,
+                1601,
+                384
+              ],
+              "trt": {
+                "finite_count": 1229568,
+                "finite_max": 71.51781463623047,
+                "finite_min": -131.17840576171875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/backbone/patch_embed/proj/Conv_output_0": {
+              "cpu": {
+                "finite_count": 1228800,
+                "finite_max": 2.140625,
+                "finite_min": -1.53125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.029296875,
+                "abs_diff_p95": 0.00146484375,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1228800
+              },
+              "shape": [
+                2,
+                384,
+                40,
+                40
+              ],
+              "trt": {
+                "finite_count": 1228800,
+                "finite_max": 2.13671875,
+                "finite_min": -1.5322265625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/projector.0/conv_bn_fused/Conv_output_0": {
+              "cpu": {
+                "finite_count": 3276800,
+                "finite_max": 6.85546875,
+                "finite_min": -5.890625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.155517578125,
+                "abs_diff_p95": 0.0107421875,
+                "finite_mask_difference": 0,
+                "finite_pairs": 3276800
+              },
+              "shape": [
+                2,
+                256,
+                80,
+                80
+              ],
+              "trt": {
+                "finite_count": 3276800,
+                "finite_max": 6.87109375,
+                "finite_min": -5.88671875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/GatherElements_1_output_0": {
+              "cpu": {
+                "finite_count": 153600,
+                "finite_max": 4.90234375,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 4.6273193359375,
+                "abs_diff_p95": 0.56982421875,
+                "finite_mask_difference": 0,
+                "finite_pairs": 153600
+              },
+              "shape": [
+                2,
+                300,
+                256
+              ],
+              "trt": {
+                "finite_count": 153600,
+                "finite_max": 4.890625,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/TopK_output_0": {
+              "cpu": {
+                "finite_count": 600,
+                "finite_max": 1.9375,
+                "finite_min": -4.0625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.0625,
+                "abs_diff_p95": 0.0166015625,
+                "finite_mask_difference": 0,
+                "finite_pairs": 600
+              },
+              "shape": [
+                2,
+                300
+              ],
+              "trt": {
+                "finite_count": 600,
+                "finite_max": 1.94140625,
+                "finite_min": -4.05859375,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/TopK_output_1": {
+              "cpu": {
+                "finite_count": 600,
+                "finite_max": 8241.0,
+                "finite_min": 618.0,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 7163.0,
+                "abs_diff_p95": 5366.25,
+                "finite_mask_difference": 0,
+                "finite_pairs": 600
+              },
+              "shape": [
+                2,
+                300
+              ],
+              "trt": {
+                "finite_count": 600,
+                "finite_max": 8241.0,
+                "finite_min": 618.0,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/enc_score_head/Add_output_0": {
+              "cpu": {
+                "finite_count": 1344000,
+                "finite_max": 1.9375,
+                "finite_min": -162.5,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 4.359375,
+                "abs_diff_p95": 0.109375,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1344000
+              },
+              "shape": [
+                2,
+                8400,
+                80
+              ],
+              "trt": {
+                "finite_count": 1344000,
+                "finite_max": 1.94140625,
+                "finite_min": -162.5,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/encoder/fpn_blocks.1/cv4/act/Mul_output_0": {
+              "cpu": {
+                "finite_count": 3276800,
+                "finite_max": 16.78125,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.75390625,
+                "abs_diff_p95": 0.009765625,
+                "finite_mask_difference": 0,
+                "finite_pairs": 3276800
+              },
+              "shape": [
+                2,
+                256,
+                80,
+                80
+              ],
+              "trt": {
+                "finite_count": 3276800,
+                "finite_max": 16.75,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "coordinates": {
+              "cpu": {
+                "finite_count": 2400,
+                "finite_max": 0.9951795339584351,
+                "finite_min": 0.006099998950958252,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.8613526150584221,
+                "abs_diff_p95": 0.38592289984226197,
+                "finite_mask_difference": 0,
+                "finite_pairs": 2400
+              },
+              "shape": [
+                2,
+                300,
+                4
+              ],
+              "trt": {
+                "finite_count": 2400,
+                "finite_max": 0.9951029419898987,
+                "finite_min": 0.006128072738647461,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "logits": {
+              "cpu": {
+                "finite_count": 48000,
+                "finite_max": 2.18359375,
+                "finite_min": -11.875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 6.78125,
+                "abs_diff_p95": 2.35546875,
+                "finite_mask_difference": 0,
+                "finite_pairs": 48000
+              },
+              "shape": [
+                2,
+                300,
+                80
+              ],
+              "trt": {
+                "finite_count": 48000,
+                "finite_max": 2.16015625,
+                "finite_min": -12.7109375,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            }
+          },
+          "original_vs_instrumented_trt_heads": {
+            "video_000/clip_003/cam0/frame_000148": {
+              "candidate_slot": 0,
+              "decoded": {
+                "candidate_rows": 92,
+                "matched_iou_p05": 0.5154911655989063,
+                "matches_at_iou_0_50": 53,
+                "reference_rows": 98
+              },
+              "heads": {
+                "coordinates": {
+                  "abs_diff_max": 0.8369883000850677,
+                  "abs_diff_p95": 0.3106051437556741,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 1200
+                },
+                "logits": {
+                  "abs_diff_max": 8.9921875,
+                  "abs_diff_p95": 3.074414062499997,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 24000
+                }
+              },
+              "reference_slot": 0
+            },
+            "video_000/clip_028/cam3/frame_000513": {
+              "candidate_slot": 1,
+              "decoded": {
+                "candidate_rows": 67,
+                "matched_iou_p05": 0.5365105240814583,
+                "matches_at_iou_0_50": 40,
+                "reference_rows": 143
+              },
+              "heads": {
+                "coordinates": {
+                  "abs_diff_max": 0.842797726392746,
+                  "abs_diff_p95": 0.21673153787851232,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 1200
+                },
+                "logits": {
+                  "abs_diff_max": 7.101318359375,
+                  "abs_diff_p95": 3.1172851562499986,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 24000
+                }
+              },
+              "reference_slot": 1
+            }
+          }
+        },
+        "pair1_b": {
+          "frames": [
+            "video_000/clip_028/cam3/frame_000513"
+          ],
+          "input_sha256": "15e7b0e4eb1bb68732e08b62b61d796421c779e1d8eb9af4c81ea550d53526fb",
+          "onnx_cpu_vs_instrumented_trt": {
+            "/model/backbone/backbone/blocks.0/Add_1_output_0": {
+              "cpu": {
+                "finite_count": 614784,
+                "finite_max": 3.608757972717285,
+                "finite_min": -6.878298759460449,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.020715951919555664,
+                "abs_diff_p95": 0.0030877802520990335,
+                "finite_mask_difference": 0,
+                "finite_pairs": 614784
+              },
+              "shape": [
+                1,
+                1601,
+                384
+              ],
+              "trt": {
+                "finite_count": 614784,
+                "finite_max": 3.613830804824829,
+                "finite_min": -6.859074115753174,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/backbone/blocks.11/Add_1_output_0": {
+              "cpu": {
+                "finite_count": 614784,
+                "finite_max": 80.23582458496094,
+                "finite_min": -139.2108612060547,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.1726531982421875,
+                "abs_diff_p95": 0.00674775242805481,
+                "finite_mask_difference": 0,
+                "finite_pairs": 614784
+              },
+              "shape": [
+                1,
+                1601,
+                384
+              ],
+              "trt": {
+                "finite_count": 614784,
+                "finite_max": 80.25804901123047,
+                "finite_min": -139.19854736328125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/backbone/blocks.5/Add_1_output_0": {
+              "cpu": {
+                "finite_count": 614784,
+                "finite_max": 71.39911651611328,
+                "finite_min": -130.9325714111328,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.18918609619140625,
+                "abs_diff_p95": 0.006881736218929287,
+                "finite_mask_difference": 0,
+                "finite_pairs": 614784
+              },
+              "shape": [
+                1,
+                1601,
+                384
+              ],
+              "trt": {
+                "finite_count": 614784,
+                "finite_max": 71.42815399169922,
+                "finite_min": -130.88702392578125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/backbone/patch_embed/proj/Conv_output_0": {
+              "cpu": {
+                "finite_count": 614400,
+                "finite_max": 1.8671875,
+                "finite_min": -1.53125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.025390625,
+                "abs_diff_p95": 0.00146484375,
+                "finite_mask_difference": 0,
+                "finite_pairs": 614400
+              },
+              "shape": [
+                1,
+                384,
+                40,
+                40
+              ],
+              "trt": {
+                "finite_count": 614400,
+                "finite_max": 1.8515625,
+                "finite_min": -1.5322265625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/projector.0/conv_bn_fused/Conv_output_0": {
+              "cpu": {
+                "finite_count": 1638400,
+                "finite_max": 6.85546875,
+                "finite_min": -5.890625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.156005859375,
+                "abs_diff_p95": 0.01171875,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1638400
+              },
+              "shape": [
+                1,
+                256,
+                80,
+                80
+              ],
+              "trt": {
+                "finite_count": 1638400,
+                "finite_max": 6.87109375,
+                "finite_min": -5.88671875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/GatherElements_1_output_0": {
+              "cpu": {
+                "finite_count": 76800,
+                "finite_max": 4.90234375,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 3.0721435546875,
+                "abs_diff_p95": 0.537841796875,
+                "finite_mask_difference": 0,
+                "finite_pairs": 76800
+              },
+              "shape": [
+                1,
+                300,
+                256
+              ],
+              "trt": {
+                "finite_count": 76800,
+                "finite_max": 4.890625,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/TopK_output_0": {
+              "cpu": {
+                "finite_count": 300,
+                "finite_max": 1.5771484375,
+                "finite_min": -4.0625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.03125,
+                "abs_diff_p95": 0.017578125,
+                "finite_mask_difference": 0,
+                "finite_pairs": 300
+              },
+              "shape": [
+                1,
+                300
+              ],
+              "trt": {
+                "finite_count": 300,
+                "finite_max": 1.58203125,
+                "finite_min": -4.05859375,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/TopK_output_1": {
+              "cpu": {
+                "finite_count": 300,
+                "finite_max": 8148.0,
+                "finite_min": 876.0,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 6775.0,
+                "abs_diff_p95": 5290.3,
+                "finite_mask_difference": 0,
+                "finite_pairs": 300
+              },
+              "shape": [
+                1,
+                300
+              ],
+              "trt": {
+                "finite_count": 300,
+                "finite_max": 8148.0,
+                "finite_min": 876.0,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/enc_score_head/Add_output_0": {
+              "cpu": {
+                "finite_count": 672000,
+                "finite_max": 1.5771484375,
+                "finite_min": -162.5,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 1.484375,
+                "abs_diff_p95": 0.109375,
+                "finite_mask_difference": 0,
+                "finite_pairs": 672000
+              },
+              "shape": [
+                1,
+                8400,
+                80
+              ],
+              "trt": {
+                "finite_count": 672000,
+                "finite_max": 1.58203125,
+                "finite_min": -162.5,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/encoder/fpn_blocks.1/cv4/act/Mul_output_0": {
+              "cpu": {
+                "finite_count": 1638400,
+                "finite_max": 16.78125,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.66015625,
+                "abs_diff_p95": 0.0106201171875,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1638400
+              },
+              "shape": [
+                1,
+                256,
+                80,
+                80
+              ],
+              "trt": {
+                "finite_count": 1638400,
+                "finite_max": 16.75,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "coordinates": {
+              "cpu": {
+                "finite_count": 1200,
+                "finite_max": 0.9951778054237366,
+                "finite_min": 0.006094932556152344,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.8568050563335419,
+                "abs_diff_p95": 0.3659723818302152,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "shape": [
+                1,
+                300,
+                4
+              ],
+              "trt": {
+                "finite_count": 1200,
+                "finite_max": 0.9953714609146118,
+                "finite_min": 0.006131172180175781,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "logits": {
+              "cpu": {
+                "finite_count": 24000,
+                "finite_max": 2.12890625,
+                "finite_min": -11.375,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 6.099609375,
+                "abs_diff_p95": 2.2265625,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              },
+              "shape": [
+                1,
+                300,
+                80
+              ],
+              "trt": {
+                "finite_count": 24000,
+                "finite_max": 0.8466796875,
+                "finite_min": -12.0546875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            }
+          },
+          "original_vs_instrumented_trt_heads": {
+            "video_000/clip_028/cam3/frame_000513": {
+              "candidate_slot": 0,
+              "decoded": {
+                "candidate_rows": 83,
+                "matched_iou_p05": 0.5113952601477638,
+                "matches_at_iou_0_50": 29,
+                "reference_rows": 112
+              },
+              "heads": {
+                "coordinates": {
+                  "abs_diff_max": 0.8433906733989716,
+                  "abs_diff_p95": 0.2384924888610839,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 1200
+                },
+                "logits": {
+                  "abs_diff_max": 7.265625,
+                  "abs_diff_p95": 2.94140625,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 24000
+                }
+              },
+              "reference_slot": 0
+            }
+          }
+        },
+        "pair1_ba": {
+          "frames": [
+            "video_000/clip_028/cam3/frame_000513",
+            "video_000/clip_003/cam0/frame_000148"
+          ],
+          "input_sha256": "e34a3a87244b4f3bbd916db5e2b89f3e58f34ee98f06be161bfa1079279e564b",
+          "onnx_cpu_vs_instrumented_trt": {
+            "/model/backbone/backbone/blocks.0/Add_1_output_0": {
+              "cpu": {
+                "finite_count": 1229568,
+                "finite_max": 3.6406240463256836,
+                "finite_min": -7.1578049659729,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.027778148651123047,
+                "abs_diff_p95": 0.002933293581008911,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1229568
+              },
+              "shape": [
+                2,
+                1601,
+                384
+              ],
+              "trt": {
+                "finite_count": 1229568,
+                "finite_max": 3.642639398574829,
+                "finite_min": -7.154362201690674,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/backbone/blocks.11/Add_1_output_0": {
+              "cpu": {
+                "finite_count": 1229568,
+                "finite_max": 80.23582458496094,
+                "finite_min": -140.0123291015625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.1726531982421875,
+                "abs_diff_p95": 0.006319363415241239,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1229568
+              },
+              "shape": [
+                2,
+                1601,
+                384
+              ],
+              "trt": {
+                "finite_count": 1229568,
+                "finite_max": 80.25804901123047,
+                "finite_min": -139.93646240234375,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/backbone/blocks.5/Add_1_output_0": {
+              "cpu": {
+                "finite_count": 1229568,
+                "finite_max": 71.4830322265625,
+                "finite_min": -131.2537384033203,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.18918609619140625,
+                "abs_diff_p95": 0.006363391876220703,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1229568
+              },
+              "shape": [
+                2,
+                1601,
+                384
+              ],
+              "trt": {
+                "finite_count": 1229568,
+                "finite_max": 71.51781463623047,
+                "finite_min": -131.17840576171875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/backbone/patch_embed/proj/Conv_output_0": {
+              "cpu": {
+                "finite_count": 1228800,
+                "finite_max": 2.140625,
+                "finite_min": -1.53125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.029296875,
+                "abs_diff_p95": 0.00146484375,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1228800
+              },
+              "shape": [
+                2,
+                384,
+                40,
+                40
+              ],
+              "trt": {
+                "finite_count": 1228800,
+                "finite_max": 2.13671875,
+                "finite_min": -1.5322265625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/backbone/projector.0/conv_bn_fused/Conv_output_0": {
+              "cpu": {
+                "finite_count": 3276800,
+                "finite_max": 6.85546875,
+                "finite_min": -5.890625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.156005859375,
+                "abs_diff_p95": 0.0107421875,
+                "finite_mask_difference": 0,
+                "finite_pairs": 3276800
+              },
+              "shape": [
+                2,
+                256,
+                80,
+                80
+              ],
+              "trt": {
+                "finite_count": 3276800,
+                "finite_max": 6.87109375,
+                "finite_min": -5.88671875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/GatherElements_1_output_0": {
+              "cpu": {
+                "finite_count": 153600,
+                "finite_max": 4.90234375,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 4.62744140625,
+                "abs_diff_p95": 0.5605499267578118,
+                "finite_mask_difference": 0,
+                "finite_pairs": 153600
+              },
+              "shape": [
+                2,
+                300,
+                256
+              ],
+              "trt": {
+                "finite_count": 153600,
+                "finite_max": 4.890625,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/TopK_output_0": {
+              "cpu": {
+                "finite_count": 600,
+                "finite_max": 1.9365234375,
+                "finite_min": -4.0625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.0625,
+                "abs_diff_p95": 0.015625,
+                "finite_mask_difference": 0,
+                "finite_pairs": 600
+              },
+              "shape": [
+                2,
+                300
+              ],
+              "trt": {
+                "finite_count": 600,
+                "finite_max": 1.94140625,
+                "finite_min": -4.05859375,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/TopK_output_1": {
+              "cpu": {
+                "finite_count": 600,
+                "finite_max": 8241.0,
+                "finite_min": 618.0,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 6775.0,
+                "abs_diff_p95": 5377.749999999995,
+                "finite_mask_difference": 0,
+                "finite_pairs": 600
+              },
+              "shape": [
+                2,
+                300
+              ],
+              "trt": {
+                "finite_count": 600,
+                "finite_max": 8241.0,
+                "finite_min": 618.0,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/decoder/enc_score_head/Add_output_0": {
+              "cpu": {
+                "finite_count": 1344000,
+                "finite_max": 1.9365234375,
+                "finite_min": -162.5,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 4.3125,
+                "abs_diff_p95": 0.109375,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1344000
+              },
+              "shape": [
+                2,
+                8400,
+                80
+              ],
+              "trt": {
+                "finite_count": 1344000,
+                "finite_max": 1.94140625,
+                "finite_min": -162.5,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "/model/encoder/fpn_blocks.1/cv4/act/Mul_output_0": {
+              "cpu": {
+                "finite_count": 3276800,
+                "finite_max": 16.78125,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.75390625,
+                "abs_diff_p95": 0.009765625,
+                "finite_mask_difference": 0,
+                "finite_pairs": 3276800
+              },
+              "shape": [
+                2,
+                256,
+                80,
+                80
+              ],
+              "trt": {
+                "finite_count": 3276800,
+                "finite_max": 16.75,
+                "finite_min": -0.278564453125,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "coordinates": {
+              "cpu": {
+                "finite_count": 2400,
+                "finite_max": 0.9951778054237366,
+                "finite_min": 0.006094932556152344,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 0.85637566447258,
+                "abs_diff_p95": 0.3733757331967347,
+                "finite_mask_difference": 0,
+                "finite_pairs": 2400
+              },
+              "shape": [
+                2,
+                300,
+                4
+              ],
+              "trt": {
+                "finite_count": 2400,
+                "finite_max": 0.9951012134552002,
+                "finite_min": -0.0014010965824127197,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            },
+            "logits": {
+              "cpu": {
+                "finite_count": 48000,
+                "finite_max": 2.18359375,
+                "finite_min": -11.875,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              },
+              "difference": {
+                "abs_diff_max": 6.5654296875,
+                "abs_diff_p95": 2.34375,
+                "finite_mask_difference": 0,
+                "finite_pairs": 48000
+              },
+              "shape": [
+                2,
+                300,
+                80
+              ],
+              "trt": {
+                "finite_count": 48000,
+                "finite_max": 2.16015625,
+                "finite_min": -12.5625,
+                "nan_count": 0,
+                "neginf_count": 0,
+                "posinf_count": 0
+              }
+            }
+          },
+          "original_vs_instrumented_trt_heads": {
+            "video_000/clip_003/cam0/frame_000148": {
+              "candidate_slot": 1,
+              "decoded": {
+                "candidate_rows": 94,
+                "matched_iou_p05": 0.5225190264007651,
+                "matches_at_iou_0_50": 43,
+                "reference_rows": 103
+              },
+              "heads": {
+                "coordinates": {
+                  "abs_diff_max": 0.839031308889389,
+                  "abs_diff_p95": 0.302534245699644,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 1200
+                },
+                "logits": {
+                  "abs_diff_max": 7.642578125,
+                  "abs_diff_p95": 3.027539062499997,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 24000
+                }
+              },
+              "reference_slot": 1
+            },
+            "video_000/clip_028/cam3/frame_000513": {
+              "candidate_slot": 0,
+              "decoded": {
+                "candidate_rows": 65,
+                "matched_iou_p05": 0.5270644253061162,
+                "matches_at_iou_0_50": 29,
+                "reference_rows": 121
+              },
+              "heads": {
+                "coordinates": {
+                  "abs_diff_max": 0.8416978567838669,
+                  "abs_diff_p95": 0.23487487584352473,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 1200
+                },
+                "logits": {
+                  "abs_diff_max": 7.919921875,
+                  "abs_diff_p95": 2.8984375,
+                  "finite_mask_difference": 0,
+                  "finite_pairs": 24000
+                }
+              },
+              "reference_slot": 0
+            }
+          }
+        }
+      },
+      "checkout_commit": "9c5425765a81a1f939af165b59a5757a2cc7afeb",
+      "cpu_onnxruntime_version": "1.30.0",
+      "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+      "probe_onnx_sha256": "036a701f4e03d07df378b39df121a84c31b9df48e1370851907115b102c32dad",
+      "probe_plan_sha256": "8a0f58f287a52412992f27d6d4fd447490302a6939c5390709c79dd5181441e3",
+      "profile": {
+        "maximum": [
+          2,
+          3,
+          640,
+          640
+        ],
+        "minimum": [
+          1,
+          3,
+          640,
+          640
+        ],
+        "optimum": [
+          1,
+          3,
+          640,
+          640
+        ]
+      },
+      "source_onnx_sha256": "fa8b643c82da715aee5df2dc556a19ecdf73b9729af1aba938607c564a484c2a",
+      "source_plan_sha256": "22ef7679387090d5bec8346f2b070ce389062f0a22d9c63e3fbf2d3ce8e6de21",
+      "tap_order": [
+        "/model/backbone/backbone/patch_embed/proj/Conv_output_0",
+        "/model/backbone/backbone/blocks.0/Add_1_output_0",
+        "/model/backbone/backbone/blocks.5/Add_1_output_0",
+        "/model/backbone/backbone/blocks.11/Add_1_output_0",
+        "/model/backbone/projector.0/conv_bn_fused/Conv_output_0",
+        "/model/encoder/fpn_blocks.1/cv4/act/Mul_output_0",
+        "/model/decoder/enc_score_head/Add_output_0",
+        "/model/decoder/TopK_output_0",
+        "/model/decoder/TopK_output_1",
+        "/model/decoder/GatherElements_1_output_0",
+        "logits",
+        "coordinates"
+      ],
+      "trt_ab_repeat": {
+        "/model/backbone/backbone/blocks.0/Add_1_output_0": {
+          "abs_diff_max": 0.0,
+          "abs_diff_p95": 0.0,
+          "finite_mask_difference": 0,
+          "finite_pairs": 1229568
+        },
+        "/model/backbone/backbone/blocks.11/Add_1_output_0": {
+          "abs_diff_max": 0.0,
+          "abs_diff_p95": 0.0,
+          "finite_mask_difference": 0,
+          "finite_pairs": 1229568
+        },
+        "/model/backbone/backbone/blocks.5/Add_1_output_0": {
+          "abs_diff_max": 0.0,
+          "abs_diff_p95": 0.0,
+          "finite_mask_difference": 0,
+          "finite_pairs": 1229568
+        },
+        "/model/backbone/backbone/patch_embed/proj/Conv_output_0": {
+          "abs_diff_max": 0.0,
+          "abs_diff_p95": 0.0,
+          "finite_mask_difference": 0,
+          "finite_pairs": 1228800
+        },
+        "/model/backbone/projector.0/conv_bn_fused/Conv_output_0": {
+          "abs_diff_max": 0.0,
+          "abs_diff_p95": 0.0,
+          "finite_mask_difference": 0,
+          "finite_pairs": 3276800
+        },
+        "/model/decoder/GatherElements_1_output_0": {
+          "abs_diff_max": 0.0,
+          "abs_diff_p95": 0.0,
+          "finite_mask_difference": 0,
+          "finite_pairs": 153600
+        },
+        "/model/decoder/TopK_output_0": {
+          "abs_diff_max": 0.0,
+          "abs_diff_p95": 0.0,
+          "finite_mask_difference": 0,
+          "finite_pairs": 600
+        },
+        "/model/decoder/TopK_output_1": {
+          "abs_diff_max": 0.0,
+          "abs_diff_p95": 0.0,
+          "finite_mask_difference": 0,
+          "finite_pairs": 600
+        },
+        "/model/decoder/enc_score_head/Add_output_0": {
+          "abs_diff_max": 0.0,
+          "abs_diff_p95": 0.0,
+          "finite_mask_difference": 0,
+          "finite_pairs": 1344000
+        },
+        "/model/encoder/fpn_blocks.1/cv4/act/Mul_output_0": {
+          "abs_diff_max": 0.0,
+          "abs_diff_p95": 0.0,
+          "finite_mask_difference": 0,
+          "finite_pairs": 3276800
+        },
+        "coordinates": {
+          "abs_diff_max": 0.0,
+          "abs_diff_p95": 0.0,
+          "finite_mask_difference": 0,
+          "finite_pairs": 2400
+        },
+        "logits": {
+          "abs_diff_max": 0.0,
+          "abs_diff_p95": 0.0,
+          "finite_mask_difference": 0,
+          "finite_pairs": 48000
+        }
+      }
+    },
+    "probe_onnx": {
+      "path": "outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-coco-probe/engine/model.onnx",
+      "sha256": "036a701f4e03d07df378b39df121a84c31b9df48e1370851907115b102c32dad"
+    },
+    "probe_plan": {
+      "path": "outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-coco-probe/engine/engine.plan",
+      "sha256": "8a0f58f287a52412992f27d6d4fd447490302a6939c5390709c79dd5181441e3"
+    },
+    "queue": {
+      "checkout_commit": "9c5425765a81a1f939af165b59a5757a2cc7afeb",
+      "command": "mkdir -p outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-coco-probe && realpath outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-coco-probe > \"$TENNIS_REPRO_DIR/output_dir.txt\" && exec env PYTHONPATH=.:knowledge/runs/run-person-model-speed-baseline OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/edgecrafter_trt_probe.py --archive outputs/player-model-comparison/trt16-diagnosis-v1 --inputs /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs --output outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-coco-probe",
+      "job_id": "0-8204388988887258277_2026-11-25T12-50-11-112741722Z_3908559_i2487-ecdet-l-coco-trt16-intermediate-probe-requeued.job",
+      "queue_log": {
+        "path": ".training_queue/logs/0-8204388988887258277_2026-11-25T12-50-11-112741722Z_3908559_i2487-ecdet-l-coco-trt16-intermediate-probe-requeued.log",
+        "sha256": "e85c7df5842323fa6e417038ff0bdd54973e046638a432e94142c04844530e5f"
+      },
+      "status": "done"
+    },
+    "raw_report": {
+      "path": "outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-coco-probe/probes.json",
+      "sha256": "0f842d1aabfd96d2c9a848b82f4b41bb13f1ac2c653b755617f37a86701a6075"
+    }
+  },
+  "ecdet_l_o365": {
+    "batch_order_comparisons": {
+      "pt16": {
+        "ab_vs_ab_repeat": {
+          "candidate_rows": 254,
+          "matches_at_iou_0_50": 254,
+          "max_abs_diff_max": {
+            "coordinates": 0.0,
+            "logits": 0.0
+          },
+          "max_abs_diff_p95": {
+            "coordinates": 0.0,
+            "logits": 0.0
+          },
+          "reference_rows": 254
+        },
+        "ab_vs_ba": {
+          "candidate_rows": 254,
+          "matches_at_iou_0_50": 254,
+          "max_abs_diff_max": {
+            "coordinates": 0.0,
+            "logits": 0.0
+          },
+          "max_abs_diff_p95": {
+            "coordinates": 0.0,
+            "logits": 0.0
+          },
+          "reference_rows": 254
+        }
+      },
+      "trt16": {
+        "ab_vs_ab_repeat": {
+          "candidate_rows": 243,
+          "matches_at_iou_0_50": 243,
+          "max_abs_diff_max": {
+            "coordinates": 0.0,
+            "logits": 0.0
+          },
+          "max_abs_diff_p95": {
+            "coordinates": 0.0,
+            "logits": 0.0
+          },
+          "reference_rows": 243
+        },
+        "ab_vs_ba": {
+          "candidate_rows": 250,
+          "matches_at_iou_0_50": 199,
+          "max_abs_diff_max": {
+            "coordinates": 0.5528585910797119,
+            "logits": 9.38671875
+          },
+          "max_abs_diff_p95": {
+            "coordinates": 0.017812525480985626,
+            "logits": 2.222851562499997
+          },
+          "reference_rows": 243
+        }
+      }
+    },
+    "binding_stride_mismatches": 0,
+    "manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+    "nonfinite_head_values": 0,
+    "num_cases": 10,
+    "output_artifacts": {
+      "engine_layers": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-o365/ecdet-l-o365-engine-layers.json",
+        "sha256": "6f9cd5a97bf7cd1733d577534b9eab8e6ccfe597383ac076c2f20f6ca509f765"
+      },
+      "raw_heads": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-o365/ecdet-l-o365-heads.npz",
+        "sha256": "ddbf85f75630a2a6d6ffbcd6c46451278f9840132501344c7a035b106073dba9"
+      }
+    },
+    "plan_sha256": "3079363e81757e38f527c6152c2fbe54c666759301c992a94f923a82ea0e72e1",
+    "queue": {
+      "checkout_commit": "9c5425765a81a1f939af165b59a5757a2cc7afeb",
+      "command": "mkdir -p outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-o365 && realpath outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-o365 > \"$TENNIS_REPRO_DIR/output_dir.txt\" && exec env PYTHONPATH=.:knowledge/runs/run-person-model-speed-baseline OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/edgecrafter_diagnose.py --model ecdet-l-o365 --inputs /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs --output outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-o365",
+      "job_id": "0-8204388989148236245_2026-11-25T12-50-10-851763754Z_3908487_i2487-ecdet-l-o365-trt16-diagnosis-v2-requeued.job",
+      "queue_log": {
+        "path": ".training_queue/logs/0-8204388989148236245_2026-11-25T12-50-10-851763754Z_3908487_i2487-ecdet-l-o365-trt16-diagnosis-v2-requeued.log",
+        "sha256": "68d92deb3c10b5417dc6654d326be3616c731baf6c66886db7ed2f1f4e7e4eee"
+      },
+      "status": "done"
+    },
+    "raw_report": {
+      "path": "outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-o365/cuda.json",
+      "sha256": "bf9097db5d696d18b72dba0d2b30c632a9035bc260567479fa28ff3288d02777"
+    }
+  },
+  "schema_version": 1,
+  "speed_cpu_thread_comparability": {
+    "dino_torch_host_threads": 4,
+    "edgecrafter_torch_host_threads": 2
+  }
+}

@@ -1,4 +1,4 @@
-"""Expose ECDet-L intermediates in a diagnostic copy of the typed ONNX graph."""
+"""Probe ECDet-L intermediates or attention precision with a diagnostic plan."""
 
 from __future__ import annotations
 
@@ -46,6 +46,9 @@ PROBE_NODES = (
     "/model/decoder/GatherElements_1",
 )
 BATCH_NAMES = ("pair1_b", "pair1_ab", "pair1_ba", "pair1_ab_repeat")
+SELF_ATTENTION_SOFTMAX = tuple(
+    f"/model/decoder/decoder/layers.{index}/self_attn/Softmax" for index in range(4)
+)
 
 
 def add_probe_outputs(
@@ -66,21 +69,106 @@ def add_probe_outputs(
     return inferred, names
 
 
-def export_probe(original: EngineBundle, directory: Path) -> tuple[str, ...]:
+def promote_attention_scores(model: Any, softmax_names: tuple[str, ...]) -> Any:
+    """Compute QK and Softmax in FP32 and retain the original FP16 interface."""
+    onnx = import_module("onnx")
+    inferred = onnx.shape_inference.infer_shapes(model, strict_mode=True)
+    graph = inferred.graph
+    by_name = {node.name: node for node in graph.node}
+    producers = {value: node for node in graph.node for value in node.output}
+    value_types = {
+        value.name: value.type.tensor_type.elem_type
+        for value in (*graph.input, *graph.output, *graph.value_info)
+    }
+    half, single = onnx.TensorProto.FLOAT16, onnx.TensorProto.FLOAT
+    replacements: dict[str, list[Any]] = {}
+    removed = set()
+    for name in softmax_names:
+        softmax = by_name[name]
+        (score,) = softmax.input
+        (probabilities,) = softmax.output
+        matmul = producers[score]
+        if (
+            softmax.op_type != "Softmax"
+            or matmul.op_type != "MatMul"
+            or [node.name for node in graph.node if score in node.input] != [name]
+            or score in {value.name for value in graph.output}
+            or any(
+                value_types.get(value) != half
+                for value in (*matmul.input, score, probabilities)
+            )
+        ):
+            raise ValueError(
+                f"Expected an isolated FP16 MatMul-to-Softmax region at {name}"
+            )
+        fp32_inputs = [
+            f"{name}_fp32_input_{index}" for index in range(len(matmul.input))
+        ]
+        replacements[matmul.name] = [
+            *(
+                onnx.helper.make_node("Cast", [original], [cast], name=cast, to=single)
+                for original, cast in zip(matmul.input, fp32_inputs, strict=True)
+            ),
+            onnx.helper.make_node(
+                "MatMul", fp32_inputs, [f"{score}_fp32"], name=matmul.name
+            ),
+        ]
+        widened = onnx.NodeProto()
+        widened.CopyFrom(softmax)
+        widened.input[0] = f"{score}_fp32"
+        widened.output[0] = f"{probabilities}_fp32"
+        replacements[name] = [
+            widened,
+            onnx.helper.make_node(
+                "Cast",
+                [widened.output[0]],
+                [probabilities],
+                name=f"{name}_restore_fp16",
+                to=half,
+            ),
+        ]
+        removed.add(score)
+    nodes = [
+        replacement
+        for node in graph.node
+        for replacement in replacements.get(node.name, [node])
+    ]
+    infos = [value for value in graph.value_info if value.name not in removed]
+    del graph.node[:]
+    graph.node.extend(nodes)
+    del graph.value_info[:]
+    graph.value_info.extend(infos)
+    onnx.checker.check_model(inferred, full_check=True)
+    return onnx.shape_inference.infer_shapes(inferred, strict_mode=True)
+
+
+def export_probe(
+    original: EngineBundle, directory: Path, *, fp32_decoder_attention: bool = False
+) -> tuple[str, ...]:
     onnx = import_module("onnx")
     source = original.root / ONNX_FILE
-    graph, names = add_probe_outputs(onnx.load(source), PROBE_NODES)
+    graph = onnx.load(source)
+    names: tuple[str, ...] = ()
+    settings = dict(original.export.settings)
+    if fp32_decoder_attention:
+        graph = promote_attention_scores(graph, SELF_ATTENTION_SOFTMAX)
+        settings["fp32_decoder_attention_softmax"] = list(SELF_ATTENTION_SOFTMAX)
+    else:
+        graph, names = add_probe_outputs(graph, PROBE_NODES)
+        settings["diagnostic_outputs"] = list(names)
     export_bundle(
         directory,
         model=MODEL,
-        settings={**original.export.settings, "diagnostic_outputs": list(names)},
+        settings=settings,
         sources={"weights": ASSETS / RELEASES[MODEL].filename, "base_onnx": source},
         export=lambda path: onnx.save(graph, path),
     )
     return names
 
 
-def probe(inputs: Path, output: Path, archive: Path) -> None:
+def probe(
+    inputs: Path, output: Path, archive: Path, *, fp32_decoder_attention: bool = False
+) -> None:
     device = torch.device("cuda:0")
     original = engine_bundle(MODEL)
     previous = json.loads((archive / "cuda.json").read_bytes())["models"][MODEL]
@@ -105,7 +193,12 @@ def probe(inputs: Path, output: Path, archive: Path) -> None:
             )
 
     directory = output / "engine"
-    names = (*HEADS, *export_probe(original, directory))
+    names = (
+        *HEADS,
+        *export_probe(
+            original, directory, fp32_decoder_attention=fp32_decoder_attention
+        ),
+    )
     build_bundle(
         directory,
         original.engine.profiles,
@@ -128,6 +221,7 @@ def probe(inputs: Path, output: Path, archive: Path) -> None:
 
     pairs = {}
     candidate_arrays = {}
+    candidate_decoded = {}
     cpu_arrays: dict[str, dict[str, NDArray[Any]]] = {}
     with (
         np.load(raw_path, allow_pickle=False) as old,
@@ -161,12 +255,22 @@ def probe(inputs: Path, output: Path, archive: Path) -> None:
                 torch.from_numpy(candidate[HEADS[0]]),
                 torch.from_numpy(candidate[HEADS[1]]),
             )
+            pt16_heads = (
+                torch.from_numpy(old[f"pt16_{base_name}_{HEADS[0]}"]),
+                torch.from_numpy(old[f"pt16_{base_name}_{HEADS[1]}"]),
+            )
+            decoded = capture(MODEL, new_heads, sizes[selection], frames)
+            candidate_decoded[name] = decoded
             pairs[name] = {
                 "frames": frames,
                 "input_sha256": input_hashes[name],
                 "original_vs_instrumented_trt_heads": compare_images(
                     capture(MODEL, old_heads, sizes[selection], frames),
-                    capture(MODEL, new_heads, sizes[selection], frames),
+                    decoded,
+                ),
+                "archived_pt16_vs_instrumented_trt": compare_images(
+                    capture(MODEL, pt16_heads, sizes[selection], frames),
+                    decoded,
                 ),
                 "onnx_cpu_vs_instrumented_trt": {
                     key: {
@@ -189,6 +293,7 @@ def probe(inputs: Path, output: Path, archive: Path) -> None:
         "source_onnx_sha256": original.export.onnx_files[ONNX_FILE],
         "probe_plan_sha256": instrumented.engine.plan_sha256,
         "probe_onnx_sha256": instrumented.export.onnx_files[ONNX_FILE],
+        "fp32_decoder_attention": fp32_decoder_attention,
         "cpu_onnxruntime_version": ort.__version__,
         "profile": original.engine.profiles[INPUT_NAME].model_dump(),
         "tap_order": [*names[2:], *HEADS],
@@ -214,7 +319,25 @@ def probe(inputs: Path, output: Path, archive: Path) -> None:
             )
             for key in names
         },
+        "trt_decoded_batch_order": compare_images(
+            candidate_decoded["pair1_ab"], candidate_decoded["pair1_ba"]
+        ),
+        "archived_raw_heads_sha256": previous["raw_heads"]["sha256"],
     }
+    if fp32_decoder_attention:
+        outputs_path = output / "trt16-heads.npz"
+        np.savez(
+            outputs_path,
+            **{
+                f"{name}_{head}": values[head]
+                for name, values in candidate_arrays.items()
+                for head in HEADS
+            },
+        )
+        report["raw_heads"] = {
+            "path": outputs_path.name,
+            "sha256": dual_sha256(outputs_path),
+        }
     write_json_atomic(output / "probes.json", report)
 
 
@@ -223,8 +346,14 @@ def main() -> None:
     parser.add_argument("--inputs", type=Path, required=True)
     parser.add_argument("--archive", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--fp32-decoder-attention", action="store_true")
     args = parser.parse_args()
-    probe(args.inputs, args.output, args.archive)
+    probe(
+        args.inputs,
+        args.output,
+        args.archive,
+        fp32_decoder_attention=args.fp32_decoder_attention,
+    )
 
 
 if __name__ == "__main__":
