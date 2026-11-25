@@ -20,6 +20,7 @@ from src.utils.inference_benchmark import ParityStatus
 from src.utils.inference_benchmark_inputs import TimingSchedule
 from src.utils.io import write_json_atomic
 
+PUBLISHED_GROUPS = ("detection", "pose", "body")
 STAGES = ("preprocess", "h2d", "forward", "postprocess", "d2h")
 RAW_FIELDS = (
     "batch_size",
@@ -266,19 +267,32 @@ def verify_outcome(report, schedule: TimingSchedule, path: Path):
         raise ValueError(f"Incomplete parity input coverage: {path}")
 
 
-def record(source: Path, destination: Path, *, input_dir: Path):
+def record(
+    source: Path,
+    destination: Path,
+    *,
+    input_dir: Path,
+    groups: tuple[str, ...] = PUBLISHED_GROUPS,
+):
     fixed, file_count = pinned_inputs(input_dir)
+    sweeps = {
+        workload: SWEEPS[workload] for group in groups for workload in GROUPS[group]
+    }
     defined = {
         (workload, backend, size)
-        for workload, sweep in SWEEPS.items()
+        for workload, sweep in sweeps.items()
         for backend in BACKENDS
         for size in sweep
     }
     attempts = {}
-    for group, names in GROUPS.items():
+    for group in groups:
         for row in read_json(source / f"attempts-{group}.json"):
             key = row["workload"], row["backend"], row["batch"]
-            if key in attempts or row["workload"] not in names or row["exit_code"] != 0:
+            if (
+                key in attempts
+                or row["workload"] not in GROUPS[group]
+                or row["exit_code"] != 0
+            ):
                 raise ValueError(f"Unresolved, duplicate or wrong-group attempt: {row}")
             attempts[key] = row
     if attempts.keys() != defined:
@@ -286,7 +300,7 @@ def record(source: Path, destination: Path, *, input_dir: Path):
 
     (destination / "measurements").mkdir(exist_ok=True)
     cases, summaries = [], []
-    for workload, sweep in SWEEPS.items():
+    for workload, sweep in sweeps.items():
         for backend in BACKENDS:
             relative_csv = f"measurements/{workload}-{backend.lower()}.csv"
             with (destination / relative_csv).open(
@@ -403,6 +417,7 @@ if __name__ == "__main__":
     parser.add_argument("source", type=Path)
     parser.add_argument("destination", type=Path)
     parser.add_argument("--input-dir", type=Path, required=True)
+    parser.add_argument("--group", action="append", choices=GROUPS)
     args = parser.parse_args()
     if args.destination.exists():
         parser.error(f"Use a fresh record directory: {args.destination}")
@@ -411,5 +426,6 @@ if __name__ == "__main__":
         prefix=".person-speed-record-", dir=args.destination.parent
     ) as staging:
         staging = Path(staging)
-        record(args.source, staging, input_dir=args.input_dir)
+        groups = PUBLISHED_GROUPS if args.group is None else tuple(args.group)
+        record(args.source, staging, input_dir=args.input_dir, groups=groups)
         staging.rename(args.destination)

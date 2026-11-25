@@ -61,6 +61,25 @@ The [RF-DETR-L accuracy record](../run-meiji-rfdetr-large-accuracy/results.json)
 
 The five measured baseline and RF-DETR-L conditions were rescored from their pinned predictions with the #2495 equal-IoU ordering rule. Every metric and stratum was identical to its previous value. The [rescoring receipt](accuracy-recheck.json) identifies the scorer commit and the fresh full-score files.
 
+## Joint DINO and ViTPose-H timing
+
+The additional `suite joint` workload uses the synchronized #2497 harness merged at `59faa32a28d2f54e6492abdba2429846fa0397e3`. It runs PT16 and TRT16 with image batches 1 and 2 on the original ordered 96 BGR frames, using 30 warm-ups and 3 blocks of 100 measured repetitions. Each of the four conditions gets a fresh process. The report includes the full interval from DINO preprocessing through ViTPose decode and final device synchronization. The pinned scope decision sets parity to `PT32未計測`.
+
+DINO uses the standard full-frame settings, resizing with short side 800 and long-side cap 1,333 to produce 750×1,333 inputs. Every person row at score ≥0.30 goes to ViTPose in detection order. Duplicate merging is disabled. The standard square crop uses 1.2 times the box's longer side. ViTPose-H uses 256×192 input and the standard flip test. The inference batch is up to 8 person crops before flipping, as in the initial joint run and the archived TensorRT recipe. Both stages load the initial run's weights and TRT plans. The measured workload generates its own crops from the same backend's DINO output each time. [Initial baseline and fixed inputs](../run-person-model-speed-baseline/README.md)
+
+Run this command through the shared GPU queue with `--resource all`. Set `JOINT_SPEED_OUTPUT` to a fresh directory. The [baseline setup](../run-person-model-speed-baseline/README.md#再現) describes the pinned input and asset paths.
+
+```bash
+baseline=knowledge/runs/run-person-model-speed-baseline
+env PYTHONPATH=. OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
+  TENNIS_LAB_DINO_EXTENSION="$TENNIS_LAB_DINO_EXTENSION" \
+  .venv/bin/python -B -u "$baseline/run.py" --output "$JOINT_SPEED_OUTPUT" \
+  --input-dir "$PERSON_FIXED_INPUTS" --trt-root "$PERSON_TRT_ROOT" \
+  --external-assets "$PERSON_EXTERNAL_ASSETS" suite joint
+```
+
+`invocation-joint.json` records the measurement HEAD and inputs. `attempts-joint.json` tracks each subprocess. The raw `results/dino-vitpose/<backend>-b<batch>/report.json` contains per-repetition timing samples, model hashes, environment and VRAM. The same baseline bundle's `record.py --group joint` can verify and summarize this subset of reports.
+
 ## Representative frames
 
 Each grid uses the preselected cam0 frame from one representative clip and the same source pixels for the SMPL-derived reference, DINO + ViTPose-H TRT16, RF-DETR-L TRT16 and ECDet-L O365 PT32. Model overlays show detections with score at least 0.30. Unlabelled people can appear in model panels. [Six image paths, counts and hashes](representative-cam0-index.json)
@@ -113,3 +132,4 @@ When that route is enabled, validate it with the same v1 camera matrices, court-
 - Run these small unit fixtures without checkpoints or a GPU. Report test counts and durations from pytest. Record the real-data coverage and artifact hashes from the generated scoring receipts.
 - For the comparison, use CPU fixtures with an equal-latency tie, an equal-quality tie, a failed parity check and an incomplete condition. A faster joint model must stay in the detector-plus-pose workload. Validate timing reports against the pinned order of native images, batch size and common protocol. Representative panels use the previously chosen frame per clip and share the same unmodified source pixels and display cutoff.
 - The PT baseline fixture checks that two asymmetric detection boxes create the original square crops in the same row order, then checks a missing joint and an empty image. Existing ViTPose frame-sequence and person feature tests cover crop batching and UDP decode. The six official CPU preview frames exercise the render path with actual ECPose outputs.
+- The joint timing fixture follows all 12 fake detection rows through an eight-crop batch and a partial batch, including an image with no rows, and checks restored pixel coordinates and order. The baseline suite fixture checks that the joint group schedules only the four PT16/TRT16 image cases.
