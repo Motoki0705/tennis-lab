@@ -128,12 +128,17 @@ PT32でXはMより疑似GTの平均OKSが0.01630高く、平均L2が0.275 px小�
 
 TensorRTのbuildはM 55.12秒、X 64.74秒。planは30,040,084／102,454,292 bytes。Batch 8のEngine InspectorでMの315件、Xの469件のlayer入力・出力形式はすべて`Half`だった。tactic名に`f32`を明示するGEMMもM 4件、X 5件あり、channel attention・MLP・GAUで使用された。該当layer名とtactic名を保存した。 [変換記録](rtmpose_accuracy.json)
 
-同じsummaryを再生成するには、再現手順の`run`・`bundle`・`bundle_sha`と、共有queueのパス`queue_dir`を設定する。
+### Re-scoring with the merged #2495 scorer
+
+2026-11-25にM/Xの6条件を、保存済みの予測各26,276行からCPUで再採点した。採点器は #2498 でマージされた `0d4bf0990f82ae0b8ebf2afe08d3209e583d2364` の版。OKS・PCK・pixel誤差、欠測および全層別集計が再採点前と一致した。固定BBoxの照合は全条件26,276/26,276件で、Recall@0.50とRecall@0.75はともに1.0だった。JSONに追加されたのは同一IoU時の正準順序を示す `candidate_order_for_iou_ties`。元の予測・採点ファイルと再採点ファイルのSHA-256を照合した。 [#2498](https://github.com/Motoki0705/tennis-lab/pull/2498) · [再採点記録](rtmpose_accuracy.json)
+
+再現には前述の`run`・`bundle`・`bundle_sha`と、共有queueのパス`queue_dir`を設定する。`--rescore-dir`には新規ディレクトリを渡し、完全な再採点ファイルを保存する。実行HEADは `920c9aaff24639e6b461c8985a254d80ba3a1385`。
 
 ```bash
 mapfile -t jobs < <(jq -r '.conditions[][] | .job_id' "$run/rtmpose_accuracy.json")
 PYTHONPATH="$PWD/$run:$PWD" .venv/bin/python -B "$run/rtmpose_accuracy.py" \
   --queue "$queue_dir" --bundle "$bundle" --bundle-sha256 "$bundle_sha" \
+  --rescore-dir outputs/rtmpose/rescore-reproduced \
   --output outputs/rtmpose/accuracy-reproduced.json "${jobs[@]}"
 ```
 
@@ -148,9 +153,7 @@ On 2026-11-25, the parent cancelled both queued speed sweeps before execution wh
 - M job `0-8204471182921321101_2026-11-24T14-00-17-078678898Z_2310221_i2490-rtmpose-m-speed-sweep.job`
 - X job `0-8204471182614046695_2026-11-24T14-00-17-385953304Z_2310299_i2490-rtmpose-x-speed-sweep.job`
 
-After merging #2495 and #2496, the focused suite passed 81 tests in 14.43 seconds, including the seven FP32 scene cache tests and a new test for the backend delta and missing counts. With the real RTMPose-M CPU graph and stand-in CUDA events, `BatchStages` received both named forwards. A fixture using #2496's `InputSet` read the original `xyxy` values in frozen order and rejected a changed PT32 reference file.
-
-The updated shared `measure_forward` API passed 89 focused tests in 13.09 seconds, with one new RTMPose test for the original and flipped crop calls. The real-image smoke still matched the official CPU outputs for both models. Re-scoring all 26,276 saved M TRT16 rows with the current #2495 scorer reproduced every saved metric, including the one missing joint. The new scorer adds a field describing its IoU tie policy.
+After integrating the latest scoring and speed baseline changes, the focused suite passed 90 tests in 10.93 seconds, including the FP32 scene cache tests, measured original and flipped crop calls, and the new re-scoring comparison test. A fixture using #2496's `InputSet` read the original `xyxy` values in frozen order and rejected a changed PT32 reference file.
 
 Run each case in its own process in the exclusive training queue. Start each checkpoint with its PT32 batch 1 reference, then use the same manifest and output root for its other results. The shared pose check uses limits of 1 px at P95, 5 px maximum and 0.02 at P95 for the change in same-model raw scores. It also requires identical crop IDs. Use `--engine "$engine"` for TRT16.
 
