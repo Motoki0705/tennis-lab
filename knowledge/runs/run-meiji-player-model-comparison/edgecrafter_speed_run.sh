@@ -2,8 +2,8 @@
 # Time one model on the published inputs in a fresh process for each case.
 set -uo pipefail
 
-if [[ $# -lt 3 || $# -gt 4 ]]; then
-    echo "Usage: $0 MODEL FIXED_SPEED_INPUTS HARNESS_COMMIT [pt16|trt16|both]" >&2
+if [[ $# -ne 3 && $# -ne 4 && $# -ne 6 ]]; then
+    echo "Usage: $0 MODEL FIXED_SPEED_INPUTS HARNESS_COMMIT [pt16|trt16|both|trt16-fp32attn ENGINE BASE_ONNX_SHA256]" >&2
     exit 2
 fi
 
@@ -21,10 +21,22 @@ case "$model" in
     *) echo "Unexpected EdgeCrafter model $model" >&2; exit 2 ;;
 esac
 
-case ${4-both} in
+requested=${4-both}
+if [[ $# -eq 6 && $requested != trt16-fp32attn ]]; then
+    echo "An explicit engine and source ONNX SHA-256 require trt16-fp32attn" >&2
+    exit 2
+fi
+case $requested in
     pt16|trt16) backends=("$4") ;;
     both) backends=(pt16 trt16) ;;
-    *) echo "Select pt16, trt16 or both" >&2; exit 2 ;;
+    trt16-fp32attn)
+        if [[ $# -ne 6 || ! ${6-} =~ ^[0-9a-f]{64}$ ]]; then
+            echo "trt16-fp32attn requires its engine and the base ONNX SHA-256" >&2
+            exit 2
+        fi
+        backends=(trt16)
+        ;;
+    *) echo "Select pt16, trt16, both or trt16-fp32attn" >&2; exit 2 ;;
 esac
 
 baseline=knowledge/runs/run-person-model-speed-baseline
@@ -32,23 +44,41 @@ experiment=knowledge/runs/run-meiji-player-model-comparison
 output="outputs/player-model-comparison/$model"
 speed="$output/speed-${harness_commit:0:9}-threads4-1"
 trt="$output/trt16-trace2"
+engine="$trt/engine"
+repro_output="$speed"
+if [[ $requested == trt16-fp32attn ]]; then
+    trt="$output/$requested"
+    speed="$trt/speed-${harness_commit:0:9}-threads4-1"
+    engine=$5
+    repro_output="$trt"
+fi
 export PYTHONPATH=".:$baseline" OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2
 
 mkdir -p "$speed" || exit
 if [[ -n ${TENNIS_REPRO_DIR:-} ]]; then
-    realpath "$speed" > "$TENNIS_REPRO_DIR/output_dir.txt" || exit
+    realpath "$repro_output" > "$TENNIS_REPRO_DIR/output_dir.txt" || exit
 fi
 
 status=0
 for backend in "${backends[@]}"; do
     args=()
     if [[ $backend == trt16 ]]; then
-        if [[ ! -s $trt/engine/engine.plan || ! -s $trt/engine/engine.json ]]; then
-            printf '%s trt16 infeasible. Engine artifacts missing at %s.\n' "$model" "$trt/engine" >&2
+        if [[ ! -s $engine/engine.plan || ! -s $engine/engine.json ]]; then
+            printf '%s %s infeasible. Engine artifacts missing at %s.\n' "$model" "${requested/both/trt16}" "$engine" >&2
             status=1
             continue
         fi
-        args=(--engine "$trt/engine" --conversion "$trt/onnx-export.json" --conversion "$trt/engine-build.json")
+        args=(--engine "$engine")
+        if [[ $requested == trt16-fp32attn ]]; then
+            args+=(--attention-base-onnx-sha256 "$6")
+            for receipt in "$trt/onnx-rewrite.json" "$trt/engine-build.json"; do
+                if [[ -s $receipt ]]; then
+                    args+=(--conversion "$receipt")
+                fi
+            done
+        else
+            args+=(--conversion "$trt/onnx-export.json" --conversion "$trt/engine-build.json")
+        fi
     fi
     for batch in 1 2; do
         .venv/bin/python -B -u "$experiment/edgecrafter_speed.py" \

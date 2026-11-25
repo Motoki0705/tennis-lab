@@ -15,6 +15,11 @@ from typing import Any, TypeVar, cast
 
 import numpy as np
 import torch
+from edgecrafter_attention import (
+    FP32_ATTENTION_CONDITION,
+    FP32_ATTENTION_SETTING,
+    SELF_ATTENTION_SOFTMAX,
+)
 from numpy.typing import NDArray
 from pydantic import JsonValue
 
@@ -156,6 +161,8 @@ def _load_forward(
     backend: Backend,
     device: torch.device,
     engine: Path | None,
+    *,
+    attention_base_onnx_sha256: str | None = None,
 ) -> Forward:
     release = RELEASES[model_id]
     weights = assets / release.filename
@@ -177,10 +184,15 @@ def _load_forward(
                     f"Unexpected EdgeCrafter TensorRT output dtype {name}={spec.dtype}"
                 )
             outputs[name] = TensorSpec(dtype=spec.dtype, shape=shape)
+        settings = export_settings()
+        sources = {"weights": release.sha256}
+        if attention_base_onnx_sha256 is not None:
+            settings[FP32_ATTENTION_SETTING] = list(SELF_ATTENTION_SOFTMAX)
+            sources["base_onnx"] = attention_base_onnx_sha256
         bundle = bundle.for_model(
             model=model_id,
-            settings=export_settings(),
-            sources={"weights": release.sha256},
+            settings=settings,
+            sources=sources,
             inputs={
                 INPUT_NAME: TensorSpec(dtype="float32", shape=(-1, 3, *IMAGE_SIZE))
             },
@@ -193,6 +205,8 @@ def _load_forward(
             return outputs[HEADS[0]], outputs[HEADS[1]]
 
         return forward_trt
+    if attention_base_onnx_sha256 is not None:
+        raise ValueError("The FP32 decoder attention variant requires TRT16")
     if engine is not None:
         raise ValueError(f"{backend} accepts no engine directory")
     if backend is Backend.PT16 and device.type != "cuda":
@@ -265,6 +279,7 @@ def make_benchmark_adapter(
     *,
     pose_box_margin: float | None = None,
     engine: Path | None = None,
+    attention_base_onnx_sha256: str | None = None,
 ) -> BenchmarkAdapter[Frames, list[Predictions]]:
     """Use the #2496 stage measurement API on already decoded native BGR images."""
     release = RELEASES[model_id]
@@ -273,7 +288,14 @@ def make_benchmark_adapter(
     def load() -> Callable[[Frames, BatchStages], list[Predictions]]:
         return partial(
             _infer,
-            forward=_load_forward(model_id, assets, backend, device, engine),
+            forward=_load_forward(
+                model_id,
+                assets,
+                backend,
+                device,
+                engine,
+                attention_base_onnx_sha256=attention_base_onnx_sha256,
+            ),
             model_id=model_id,
             backend=backend,
             device=device,
@@ -368,7 +390,19 @@ def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
         raise ValueError("Batch size must be positive")
     torch.backends.cuda.matmul.fp32_precision = "ieee"
     torch.backends.cudnn.conv.fp32_precision = "ieee"
-    forward = _load_forward(args.model, args.assets, backend, device, args.engine)
+    forward = _load_forward(
+        args.model,
+        args.assets,
+        backend,
+        device,
+        args.engine,
+        attention_base_onnx_sha256=args.attention_base_onnx_sha256,
+    )
+    condition = (
+        FP32_ATTENTION_CONDITION
+        if args.attention_base_onnx_sha256 is not None
+        else args.backend
+    )
     batches = _evaluation_batches(manifest, args.source, args.batch_size)
     infer = partial(
         _infer,
@@ -390,7 +424,7 @@ def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
                 args.output,
                 {
                     "model_id": args.model,
-                    "backend": args.backend,
+                    "backend": condition,
                     "device": str(device),
                     "benchmark_id": manifest["benchmark_id"],
                     "manifest_sha256": args.manifest_sha256,
@@ -403,7 +437,7 @@ def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
                 },
             )
             print(
-                f"{args.model} {args.backend} {device} forwarded {len(rows)} fixed images to {args.output}"
+                f"{args.model} {condition} {device} forwarded {len(rows)} fixed images to {args.output}"
             )
         finally:
             batches.close()
@@ -417,7 +451,7 @@ def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
         "benchmark_id": manifest["benchmark_id"],
         "manifest_sha256": args.manifest_sha256,
         "model_id": args.model,
-        "backend": args.backend,
+        "backend": condition,
         "has_pose": release.has_pose,
     }
     predictions = {}
@@ -492,11 +526,16 @@ def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
             "engine_sha256": None
             if args.engine is None
             else dual_sha256(args.engine / PLAN_FILE),
+            **(
+                {"attention_base_onnx_sha256": args.attention_base_onnx_sha256}
+                if args.attention_base_onnx_sha256 is not None
+                else {}
+            ),
             "score": metrics,
         },
     )
     print(
-        f"{args.model} {args.backend} scored {len(predictions)} fixed images in {args.output}"
+        f"{args.model} {condition} scored {len(predictions)} fixed images in {args.output}"
     )
 
 
@@ -520,6 +559,7 @@ def main() -> None:
         command.add_argument("--batch-size", default=1, type=int)
         command.add_argument("--pose-box-margin", type=float)
         command.add_argument("--engine", type=Path)
+        command.add_argument("--attention-base-onnx-sha256")
         command.add_argument("--device", default="cuda:0")
         command.add_argument(
             "--output",

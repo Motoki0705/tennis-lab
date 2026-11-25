@@ -21,6 +21,7 @@ from edgecrafter import (
     Frames,
     make_benchmark_adapter,
 )
+from edgecrafter_attention import FP32_ATTENTION_CONDITION
 from run import load_conversion, read_json
 
 from src.submodules.models.ecpose.releases import IMAGE_SIZE, RELEASES, SOURCE_COMMIT
@@ -118,8 +119,10 @@ def one_case(args: argparse.Namespace) -> Status:
     ]
     schedule.require_batches([batch.ids for batch in batches])
     conversion = tuple(load_conversion(path) for path in args.conversion)
+    attention = args.attention_base_onnx_sha256
+    condition = FP32_ATTENTION_CONDITION if attention is not None else backend
     case = BenchmarkCase(
-        args.model,
+        f"{args.model}/{condition}" if attention is not None else args.model,
         backend,
         args.batch_size,
         "image",
@@ -150,6 +153,11 @@ def one_case(args: argparse.Namespace) -> Status:
             "engine_profile": None
             if args.engine is None or not (args.engine / "engine.json").is_file()
             else read_json(args.engine / "engine.json")["profiles"],
+            **(
+                {"engine_condition": condition, "attention_base_onnx_sha256": attention}
+                if attention is not None
+                else {}
+            ),
         },
     )
     adapter = _adapter_with_receipt(
@@ -160,6 +168,7 @@ def one_case(args: argparse.Namespace) -> Status:
             device,
             pose_box_margin=args.pose_box_margin,
             engine=args.engine,
+            attention_base_onnx_sha256=attention,
         )
     )
 
@@ -176,7 +185,7 @@ def one_case(args: argparse.Namespace) -> Status:
     path = args.output / f"speed-b{args.batch_size}.json"
     write_json_atomic(path, report.to_dict())
     print(
-        f"{args.model} {backend} batch {args.batch_size} {report.status}. Receipt {path}"
+        f"{args.model} {condition} batch {args.batch_size} {report.status}. Receipt {path}"
     )
     if report.failure is not None:
         print(report.failure.message)
@@ -197,6 +206,7 @@ def main() -> None:
     parser.add_argument("--assets", type=Path, default=ASSETS)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--engine", type=Path)
+    parser.add_argument("--attention-base-onnx-sha256")
     parser.add_argument("--conversion", type=Path, action="append", default=[])
     parser.add_argument("--pose-box-margin", type=float)
     parser.add_argument("--output", type=Path, required=True)

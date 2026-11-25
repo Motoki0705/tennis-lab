@@ -167,7 +167,7 @@ On the RTX 5060 Ti the rebuilt plan improved agreement with the saved PT16 predi
 | Both images, batch 2 A–B | 88/154 | 134/154 | 17/25 | 22/25 |
 | Both images, batch 2 B–A | 71/154 | 137/154 | 12/25 | 24/25 |
 
-The rebuilt plan matched 122 of 158 boxes after the batch swap, with final logit absolute difference P95 of 2.3712. Repeating the original order reproduced the raw tensors exactly. Against the fixed pseudo-reference at score ≥0.25 and IoU ≥0.50, the rebuilt plan matched 3/4 players in batch 1 and 6/8 and 8/8 in the two batch orders. Saved PT16 matched 4/4 and 8/8 in both orders. Two images provide a diagnostic sample. These results show a plan-level improvement with a residual batch-order effect. The original ECDet and ECPose-X TRT16 scores remain provisional because a conversion defect is suspected and the cause is still unresolved. [Sample pseudo-reference scores and batch-order checks](edgecrafter-trt-diagnosis-v3.json)
+The rebuilt plan matched 122 of 158 boxes after the batch swap, with final logit absolute difference P95 of 2.3712. Repeating the original order reproduced the raw tensors exactly. Against the fixed pseudo-reference at score ≥0.25 and IoU ≥0.50, the rebuilt plan matched 3/4 players in batch 1 and 6/8 and 8/8 in the two batch orders. Saved PT16 matched 4/4 and 8/8 in both orders. Two images provide a diagnostic sample. These results show a plan-level improvement with a residual batch-order effect. The original ECDet TRT16 scores have a suspected conversion defect involving FP16 decoder attention. The original ECPose-X TRT16 scores are also provisional, with the cause unresolved. [Sample pseudo-reference scores and batch-order checks](edgecrafter-trt-diagnosis-v3.json)
 
 ```bash
 # Submit through the training queue with resource all.
@@ -177,6 +177,35 @@ PYTHONPATH=".:$baseline" OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREAD
   --output outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention \
   --fp32-decoder-attention
 ```
+
+## Full-cohort evaluation of FP32 decoder attention
+
+The `trt16-fp32attn` condition uses FP32 for the four decoder self-attention score MatMuls and their Softmax operations. Casts restore each probability tensor's original FP16 type. The four ECDet exports have the same target pairs. The checked ONNX artifacts preserve the original weights, other nodes and I/O contracts. ECDet-L COCO uses the verified plan from the diagnosis and the three other ECDet weights use new exports. [ONNX and plan checksums](edgecrafter-trt16-fp32attn-preflight.json)
+
+ECPose-L and ECPose-X O365 are inapplicable to this exact rewrite. Both graphs have separate `within_attn` and `across_attn` modules in each decoder layer, which process different query axes. The ECDet path with one self-attention module per layer has no direct correspondence in those graphs. [ECPose decoder](https://github.com/Intellindust-AI-Lab/EdgeCrafter/blob/d8752b75c9beaecfcdd0e5cd207bae3b6946ae23/ecpose/engine/edgecrafter/detrpose_transformer.py#L179)
+
+Use the original batch 1 accuracy protocol and shared scorer for all 6,844 cohort images. The accuracy and prediction headers identify the condition as `trt16-fp32attn`. Speed uses the common warm-up and measurement schedule at image batches 1 and 2 with PyTorch 4 threads and OpenCV 1 thread. The speed receipt uses `<model>/trt16-fp32attn` as its case name and records the plan SHA-256 in `engines`. Compare cohort accuracy with batch 1 timing because the ECDet-L COCO diagnosis still found batch-order sensitivity. The reference output for the diagnosis is the saved PT16 run.
+
+Run the rewrite on CPU for each new export. The queue command uses the resulting digest and engine directory for both scoring and timing.
+
+```bash
+model=ecdet-x-coco
+run=knowledge/runs/run-meiji-player-model-comparison
+original="$output/$model/trt16-trace2/engine"
+variant="$output/$model/trt16-fp32attn"
+engine="$variant/engine"
+PYTHONPATH=. .venv/bin/python -B "$run/edgecrafter_trt.py" rewrite-attention \
+  --model "$model" --base-engine "$original" --engine "$engine" \
+  --receipt "$variant/onnx-rewrite.json"
+base_onnx_sha=$(jq -er .base_onnx_sha256 "$variant/onnx-rewrite.json")
+
+# Queue one model per job with resource all.
+bash "$run/edgecrafter_run.sh" "$model" "$manifest_sha" "$engine" "$base_onnx_sha" && \
+  bash "$run/edgecrafter_speed_run.sh" "$model" "$fixed_speed_inputs" \
+    13e508cb78c46663fbe58ad8be03bcf9c96816a6 trt16-fp32attn "$engine" "$base_onnx_sha"
+```
+
+To run ECDet-L COCO with the diagnosed plan, use the `engine_directory` and `base_onnx.sha256` recorded for that model and start with the queue command. Separate ONNX conversion and plan build timings are unavailable for that diagnostic.
 
 ## CPU integration check
 

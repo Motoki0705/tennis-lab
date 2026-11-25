@@ -38,6 +38,8 @@ if phase in {"export", "build"}:
     directory.mkdir(parents=True, exist_ok=True)
     receipt = "export.json" if phase == "export" else "engine.json"
     (directory / receipt).write_text("{}", encoding="utf-8")
+    if phase == "build":
+        (directory / "engine.plan").write_text("{}", encoding="utf-8")
     Path(arguments[arguments.index("--receipt") + 1]).write_text("{}", encoding="utf-8")
 if phase == "evaluate":
     if os.environ.get("FAILED_BACKEND") == arguments[arguments.index("--backend") + 1]:
@@ -191,6 +193,61 @@ def test_speed_runs_selected_half_precision_backends_at_both_pinned_batch_sizes(
             assert "--engine" not in row
 
 
+@pytest.mark.parametrize("reuse_plan", [False, True])
+def test_fp32_attention_uses_one_explicit_plan_for_accuracy_and_speed(
+    tmp_path: Path, command_log: Path, reuse_plan: bool
+) -> None:
+    model = "ecdet-l-coco"
+    output = Path("outputs/player-model-comparison") / model
+    variant = output / "trt16-fp32attn"
+    engine = Path("existing-probe/engine") if reuse_plan else variant / "engine"
+    prepared = tmp_path / engine
+    prepared.mkdir(parents=True)
+    (prepared / "export.json").write_text("{}", encoding="utf-8")
+    if reuse_plan:
+        for name in ("engine.plan", "engine.json"):
+            (prepared / name).write_text("existing", encoding="utf-8")
+    else:
+        (tmp_path / variant / "onnx-rewrite.json").write_text("{}", encoding="utf-8")
+
+    base_sha = "a" * 64
+    for script, args in (
+        ("edgecrafter_run.sh", ["c" * 64, str(engine), base_sha]),
+        (
+            "edgecrafter_speed_run.sh",
+            ["inputs", "b" * 40, "trt16-fp32attn", str(engine), base_sha],
+        ),
+    ):
+        subprocess.run(
+            ["bash", str(RUN / script), model, *args],
+            cwd=tmp_path,
+            check=True,
+            timeout=10,
+        )
+
+    calls = _calls(command_log)
+    if not reuse_plan:
+        assert calls.pop(0)[3] == "build"
+    accuracy, *speed = calls
+    assert accuracy[3] == "evaluate"
+    assert accuracy[accuracy.index("--batch-size") + 1] == "1"
+    assert Path(accuracy[accuracy.index("--output") + 1]) == variant
+    assert (tmp_path / variant / "metrics.json").is_file()
+    assert [call[call.index("--batch-size") + 1] for call in speed] == ["1", "2"]
+    for call in [accuracy, *speed]:
+        assert (
+            call[call.index("--backend") + 1],
+            call[call.index("--parity") + 1],
+        ) == ("trt16", "not_measured")
+        assert Path(call[call.index("--engine") + 1]) == engine
+        assert call[call.index("--attention-base-onnx-sha256") + 1] == base_sha
+    for call in speed:
+        speed_dir = Path(call[call.index("--output") + 1])
+        assert speed_dir == variant / "speed-bbbbbbbbb-threads4-1/trt16"
+        assert call.count("--conversion") == (0 if reuse_plan else 2)
+    assert not (tmp_path / output / "trt16-trace2").exists()
+
+
 @pytest.mark.parametrize(
     ("options", "error"),
     [
@@ -204,6 +261,7 @@ def test_accuracy_cli_requires_explicit_opt_out(
     options: list[str],
     error: str,
 ) -> None:
+    monkeypatch.syspath_prepend(str(RUN))
     script = str(RUN / "edgecrafter.py")
     monkeypatch.setattr(
         sys,
