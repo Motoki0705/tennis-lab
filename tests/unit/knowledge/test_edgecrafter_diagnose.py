@@ -5,7 +5,6 @@ from __future__ import annotations
 import runpy
 import sys
 from pathlib import Path
-from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
@@ -242,14 +241,16 @@ def test_attention_plan_requires_explicit_variant_and_matching_base_onnx(
         },
     )
     bundle = EngineBundle(tmp_path, export, manifest)
-    monkeypatch.setattr(
-        runtime, "EngineBundle", SimpleNamespace(read=lambda _, **kwargs: bundle)
-    )
+    monkeypatch.setattr(EngineBundle, "read", lambda _, **kwargs: bundle)
     monkeypatch.setattr(runtime, "require_weight", lambda *_: None)
+    monkeypatch.setitem(scope, "require_weight", lambda *_: None)
     initialized: list[EngineBundle] = []
-    monkeypatch.setattr(
-        runtime, "TensorRTRunner", lambda bundle, device: initialized.append(bundle)
-    )
+
+    def fake_runner(bundle: EngineBundle, _device: object) -> None:
+        initialized.append(bundle)
+
+    monkeypatch.setattr(runtime, "TensorRTRunner", fake_runner)
+    monkeypatch.setitem(scope, "TensorRTRunner", fake_runner)
     args = (
         model,
         tmp_path,

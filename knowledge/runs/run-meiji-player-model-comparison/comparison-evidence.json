@@ -27,7 +27,8 @@
       },
       "accuracy": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l/pt16/accuracy.json",
-        "sha256": "e6abb41e9f78ac4fc22282d6c846822e2325287dbd6e08eee90b48dd90a980cb"
+        "sha256": "e6abb41e9f78ac4fc22282d6c846822e2325287dbd6e08eee90b48dd90a980cb",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l/pt16/predictions.jsonl",
@@ -36,7 +37,8 @@
       "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
       "timing": {
         "path": "parent-2492-issue-2496-primary/person-model-speed-low-precision/results/dino/PT16-b1/report.json",
-        "sha256": "5ca29b2c5d56f346075967772a58821efa23ddf7bef9e7e96a7cbbe67335707d"
+        "sha256": "5ca29b2c5d56f346075967772a58821efa23ddf7bef9e7e96a7cbbe67335707d",
+        "opencv_threads": 1
       }
     },
     {
@@ -52,7 +54,8 @@
       "backend": "trt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/rescored-0d4bf0990/dino-swin-l/trt16/accuracy.json",
-        "sha256": "618778689cd87d0b07b61fd57551ce93a7a4b73487dde4f987717785bef8333b"
+        "sha256": "618778689cd87d0b07b61fd57551ce93a7a4b73487dde4f987717785bef8333b",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l/trt16/predictions.jsonl",
@@ -64,7 +67,8 @@
       },
       "timing": {
         "path": "parent-2492-issue-2496-primary/person-model-speed-low-precision/results/dino/TRT16-b1/report.json",
-        "sha256": "f14870d5ebdfef85e328de5be5d2a0280086e0073c4284d5d1a8f85664f0afc0"
+        "sha256": "f14870d5ebdfef85e328de5be5d2a0280086e0073c4284d5d1a8f85664f0afc0",
+        "opencv_threads": 1
       }
     },
     {
@@ -76,7 +80,8 @@
       },
       "accuracy": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l-vitpose-h/pt16/accuracy.json",
-        "sha256": "1574b82488c7b6b65b7ab5f1c759cfaf2a22c55c0a71bfb72bb65c9f964caffc"
+        "sha256": "1574b82488c7b6b65b7ab5f1c759cfaf2a22c55c0a71bfb72bb65c9f964caffc",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l-vitpose-h/pt16/predictions.jsonl",
@@ -85,7 +90,8 @@
       "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
       "timing": {
         "path": "parent-2492-issue-2487-primary/person-model-speed-dino-vitpose-synchronized-v1/results/dino-vitpose/PT16-b1/report.json",
-        "sha256": "b4482efdc12eedc8a9dc68856a8e003834385936398cc68ef799425d023e404c"
+        "sha256": "b4482efdc12eedc8a9dc68856a8e003834385936398cc68ef799425d023e404c",
+        "opencv_threads": 1
       }
     },
     {
@@ -101,7 +107,8 @@
       "backend": "trt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/rescored-0d4bf0990/dino-swin-l-vitpose-h/trt16/accuracy.json",
-        "sha256": "ddc220c8e4c3e0710b345ec80d5748404504c3c7fbeb499d236c33d59a9407ff"
+        "sha256": "ddc220c8e4c3e0710b345ec80d5748404504c3c7fbeb499d236c33d59a9407ff",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l-vitpose-h/trt16/predictions.jsonl",
@@ -113,7 +120,8 @@
       },
       "timing": {
         "path": "parent-2492-issue-2487-primary/person-model-speed-dino-vitpose-synchronized-v1/results/dino-vitpose/TRT16-b1/report.json",
-        "sha256": "a998440b8b57f263f126564b1c445c3b6642e82c59ff9daf74b6a0727bf89b8d"
+        "sha256": "a998440b8b57f263f126564b1c445c3b6642e82c59ff9daf74b6a0727bf89b8d",
+        "opencv_threads": 1
       }
     },
     {
@@ -121,7 +129,8 @@
       "backend": "pt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/pt16/metrics.scorer-0d4bf0990.json",
-        "sha256": "a3510fba5aab2f2233a244ece7320546fd2cec887a9c64ed86e0d0cc7db6c5d7"
+        "sha256": "a3510fba5aab2f2233a244ece7320546fd2cec887a9c64ed86e0d0cc7db6c5d7",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/pt16/predictions.jsonl",
@@ -132,8 +141,8 @@
         "sha256": "1988fc7a517d276c9b700e372d974137c0539277427dc0b65ff4ae595155919b"
       },
       "timing": {
-        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/speed-13e508cb7/pt16/speed-b1.json",
-        "sha256": "83f85230a119f83b85aab936c3692eb6d44beef02155238a4e759978a6f6d96d"
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+        "sha256": "a85694032912671862cacbf75b23694dd920e769af8996a221d8ee0aee358fe8"
       }
     },
     {
@@ -141,7 +150,8 @@
       "backend": "pt32",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/pt32/metrics.scorer-0d4bf0990.json",
-        "sha256": "c1683c1ad672e774f6be4ac3a9d92d7bf158abbd7ca2b0e97eb9f9f1a29cf51d"
+        "sha256": "c1683c1ad672e774f6be4ac3a9d92d7bf158abbd7ca2b0e97eb9f9f1a29cf51d",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/pt32/predictions.jsonl",
@@ -153,23 +163,28 @@
       "backend": "trt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16-trace2/metrics.json",
-        "sha256": "d204bebd599028dbab3cdd0ba3bea9a54234a460c07349f809b23572770be98f"
+        "sha256": "d204bebd599028dbab3cdd0ba3bea9a54234a460c07349f809b23572770be98f",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16-trace2/predictions.jsonl",
         "sha256": "dcc1b9600febc44434d7663340441bce129d10b6d94f176d0b5b6ecdfcb8d712"
       },
-      "timing": {
+      "unmatched_timing": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/speed-13e508cb7/trt16/speed-b1.json",
         "sha256": "06e55fd5fae5d5f69ad03c3087448f2e78e0b594d5cb154232ae78b31146bee2"
-      }
+      },
+      "speed_reason": "Original TRT16 timing used PyTorch 2 threads. Matched PyTorch 4 / OpenCV 1 timing is unavailable.",
+      "pareto_exclusion_reason": "変換の不具合、原因未特定",
+      "parity_not_evaluated_reason": "PT32未計測"
     },
     {
       "model_id": "ecdet-l-o365",
       "backend": "pt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/pt16/metrics.scorer-0d4bf0990.json",
-        "sha256": "a05e7b121de9dc8281f31ed1ba7786c1ab10b48ff6a26f77ecaf7a102b666fdc"
+        "sha256": "a05e7b121de9dc8281f31ed1ba7786c1ab10b48ff6a26f77ecaf7a102b666fdc",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/pt16/predictions.jsonl",
@@ -180,8 +195,8 @@
         "sha256": "f4620b43a2ff746b0e7b11e16b461f9f797d77a7762213697b68a5f6ac9d504a"
       },
       "timing": {
-        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/speed-13e508cb7/pt16/speed-b1.json",
-        "sha256": "1317315ece33c766dfaae40db06de94786ee23adb69ecbbd2e26889275dac586"
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+        "sha256": "4630390dcbd196ec6a12da8155f8406896637149b102e574babb0fbfd5feb66a"
       }
     },
     {
@@ -189,7 +204,8 @@
       "backend": "pt32",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/pt32/metrics.scorer-0d4bf0990.json",
-        "sha256": "9ec1284fa26fc573504b194093b56b4ce2f0e71b04d8083fef4247fc9fd7525b"
+        "sha256": "9ec1284fa26fc573504b194093b56b4ce2f0e71b04d8083fef4247fc9fd7525b",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/pt32/predictions.jsonl",
@@ -201,7 +217,8 @@
       "backend": "pt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/pt16/metrics.scorer-0d4bf0990.json",
-        "sha256": "7a602a7605c0f32d95067d1ca5ba6cd205aeb74d4a7e5e420f07494e91f79807"
+        "sha256": "7a602a7605c0f32d95067d1ca5ba6cd205aeb74d4a7e5e420f07494e91f79807",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/pt16/predictions.jsonl",
@@ -212,8 +229,8 @@
         "sha256": "cb20fcae15b64ebeaac102afb469fc64be8cb861d231bfed79e21d5873f09539"
       },
       "timing": {
-        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/speed-13e508cb7/pt16/speed-b1.json",
-        "sha256": "b88faf4b5ddde93566350f441b6ce8ebe9beb4de0b73e8fa1b9cf236c4425c12"
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+        "sha256": "e565521b0a0456b03cf13a03ff9e56e28bb339b3cb91b2b1253f3f38df8b275f"
       }
     },
     {
@@ -221,7 +238,8 @@
       "backend": "pt32",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/pt32/metrics.scorer-0d4bf0990.json",
-        "sha256": "a56049ef91d7e29a2f76a0249bf14634e60143be2e30d50784801cbbef85334b"
+        "sha256": "a56049ef91d7e29a2f76a0249bf14634e60143be2e30d50784801cbbef85334b",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/pt32/predictions.jsonl",
@@ -233,7 +251,8 @@
       "backend": "pt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/pt16/metrics.scorer-0d4bf0990.json",
-        "sha256": "8f63c774eb8059e379276ec501785b86ad3543869f175697ee6a8b32e229a16a"
+        "sha256": "8f63c774eb8059e379276ec501785b86ad3543869f175697ee6a8b32e229a16a",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/pt16/predictions.jsonl",
@@ -244,8 +263,8 @@
         "sha256": "043278cafc3c4b38e79a78a455ba53877406d483988c84102ce50ea73f7d3f89"
       },
       "timing": {
-        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/speed-13e508cb7/pt16/speed-b1.json",
-        "sha256": "5100457f451fc4b27def5249289a0e7a7a222eef9c4cbce6fd99643e616a100a"
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+        "sha256": "4a7839a8791976e79d7569b34658a9625afe4faacc87835baa740c78d38d6871"
       }
     },
     {
@@ -253,7 +272,8 @@
       "backend": "pt32",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/pt32/metrics.scorer-0d4bf0990.json",
-        "sha256": "bc267b0ec4d662a5599fded687442e974dd9e7f4101aba3a095848b6368558ea"
+        "sha256": "bc267b0ec4d662a5599fded687442e974dd9e7f4101aba3a095848b6368558ea",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/pt32/predictions.jsonl",
@@ -265,7 +285,8 @@
       "backend": "pt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/rescored-0d4bf0990/rfdetr-l/pt16/accuracy.json",
-        "sha256": "26339a5488589d429e13afef6952d96b87b9b0a83d2bf10d5f828574f9b07f84"
+        "sha256": "26339a5488589d429e13afef6952d96b87b9b0a83d2bf10d5f828574f9b07f84",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/pt16/predictions.jsonl",
@@ -282,7 +303,8 @@
       "backend": "pt32",
       "accuracy": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/rescored-0d4bf0990/rfdetr-l/pt32/accuracy.json",
-        "sha256": "ed529082551deeaf049622a259998a7612e918d3d52c0e50922f7871c112682c"
+        "sha256": "ed529082551deeaf049622a259998a7612e918d3d52c0e50922f7871c112682c",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/pt32/predictions.jsonl",
@@ -294,7 +316,8 @@
       "backend": "trt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-primary/player-model-comparison/rescored-0d4bf0990/rfdetr-l/trt16/accuracy.json",
-        "sha256": "09323e538c5938994d3bac8fb4221d34e83914cf788e7b04e69a607608eee4aa"
+        "sha256": "09323e538c5938994d3bac8fb4221d34e83914cf788e7b04e69a607608eee4aa",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/predictions.jsonl",
@@ -311,63 +334,76 @@
       "backend": "trt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-trace2/metrics.json",
-        "sha256": "0c7109e8e57eb05c055446f37edd91e6db7e941157c1b12bce8f12de9ee03170"
+        "sha256": "0c7109e8e57eb05c055446f37edd91e6db7e941157c1b12bce8f12de9ee03170",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-trace2/predictions.jsonl",
         "sha256": "9b4ad498f52182d9c8b6aeef0dbbab48254ac38a1d09500cbf01635ee32bdd72"
       },
-      "timing": {
+      "unmatched_timing": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/speed-13e508cb7/trt16/speed-b1.json",
         "sha256": "874323bf090d9ad909036638630287f95c1f00a94a72013857d633654929c09a"
-      }
+      },
+      "speed_reason": "Original TRT16 timing used PyTorch 2 threads. Matched PyTorch 4 / OpenCV 1 timing is unavailable.",
+      "pareto_exclusion_reason": "変換の不具合、原因未特定",
+      "parity_not_evaluated_reason": "PT32未計測"
     },
     {
       "model_id": "ecdet-x-coco",
       "backend": "trt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-trace2/metrics.json",
-        "sha256": "d60bc4a5b5e289859b23fea6faffbba758f0fe1faac8408f5f62583d078984f3"
+        "sha256": "d60bc4a5b5e289859b23fea6faffbba758f0fe1faac8408f5f62583d078984f3",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-trace2/predictions.jsonl",
         "sha256": "9e1f2cca5b71e1b0f23b17f0539d411bdaaa841e78fdd9e80636ea09855a4f49"
       },
-      "timing": {
+      "unmatched_timing": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/speed-13e508cb7/trt16/speed-b1.json",
         "sha256": "1ffc1293830086cbc77caf726cd1be68c9cdf55cebcb04080e647122317d0840"
-      }
+      },
+      "speed_reason": "Original TRT16 timing used PyTorch 2 threads. Matched PyTorch 4 / OpenCV 1 timing is unavailable.",
+      "pareto_exclusion_reason": "変換の不具合、原因未特定",
+      "parity_not_evaluated_reason": "PT32未計測"
     },
     {
       "model_id": "ecdet-x-o365",
       "backend": "trt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-trace2/metrics.json",
-        "sha256": "86620b9203de44fbe91c99f058d2b5398982af00ca92705e822250ae2fe6c2df"
+        "sha256": "86620b9203de44fbe91c99f058d2b5398982af00ca92705e822250ae2fe6c2df",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-trace2/predictions.jsonl",
         "sha256": "96eaf26a842b46988d6f8a2eeb069b907c454e016e156e0586edf7dbc06afd3d"
       },
-      "timing": {
+      "unmatched_timing": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/speed-13e508cb7/trt16/speed-b1.json",
         "sha256": "1cc908af5e484988535b850912b2605ee990671fa19aed3dac1cecfceb042dc8"
-      }
+      },
+      "speed_reason": "Original TRT16 timing used PyTorch 2 threads. Matched PyTorch 4 / OpenCV 1 timing is unavailable.",
+      "pareto_exclusion_reason": "変換の不具合、原因未特定",
+      "parity_not_evaluated_reason": "PT32未計測"
     },
     {
       "model_id": "ecpose-l-o365",
       "backend": "pt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/pt16/metrics.json",
-        "sha256": "fece0379f311da4a787319e234cdc16972ee8be224070f8289272a57f67cdaf5"
+        "sha256": "fece0379f311da4a787319e234cdc16972ee8be224070f8289272a57f67cdaf5",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/pt16/predictions.jsonl",
         "sha256": "458a797a371d6d14b05f1da3b003f51f08596d5cab393a92a91fe868f8d5b6d0"
       },
       "timing": {
-        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/speed-13e508cb7/pt16/speed-b1.json",
-        "sha256": "e9fbf9a4131bcf643fbca5f2da2b4d791c1c5dd293acc0414c16894b7e1f9a69"
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+        "sha256": "89aa658bc913ae8725c3b93e49fef5cea91c99eae85db1a5a95be90e81f25b48"
       }
     },
     {
@@ -375,31 +411,36 @@
       "backend": "trt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/trt16-trace2/metrics.json",
-        "sha256": "16b6d4d42289072aa03173fa92a6e3701ffa08a2b22d173289ae6637e9e72a84"
+        "sha256": "16b6d4d42289072aa03173fa92a6e3701ffa08a2b22d173289ae6637e9e72a84",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/trt16-trace2/predictions.jsonl",
         "sha256": "7ac43fc6119c47fc7a05969f3213795071ce7a7970fb2bdfe2582d97a0a69d5a"
       },
-      "timing": {
+      "unmatched_timing": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/speed-13e508cb7/trt16/speed-b1.json",
         "sha256": "8ab86fdc47eb7907603c43fca3f6ccb3f4470da109cfe65158d5a9ae0507edd6"
-      }
+      },
+      "speed_reason": "Original TRT16 timing used PyTorch 2 threads. Matched PyTorch 4 / OpenCV 1 timing is unavailable.",
+      "pareto_exclusion_reason": "変換の不具合、原因未特定",
+      "parity_not_evaluated_reason": "PT32未計測"
     },
     {
       "model_id": "ecpose-x-o365",
       "backend": "pt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/pt16/metrics.json",
-        "sha256": "afe07b487c5cf09a5ac3e5e8b8775434d9fe5e1b42571b34c6382a27b20ac44b"
+        "sha256": "afe07b487c5cf09a5ac3e5e8b8775434d9fe5e1b42571b34c6382a27b20ac44b",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/pt16/predictions.jsonl",
         "sha256": "dea95429c15213ec5e47bf64f0056c141cfc5f4ab550719cbbb34bb141a5598c"
       },
       "timing": {
-        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/speed-13e508cb7/pt16/speed-b1.json",
-        "sha256": "9051ead56d69669236368ae42b557fabdee5ec8ff43719e3559619bf687942c8"
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+        "sha256": "bea027e93c934e81a6dd4c7c3bbd89177dc9f952e5906f497651dcce91c443e6"
       }
     },
     {
@@ -407,16 +448,20 @@
       "backend": "trt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/trt16-trace2/metrics.json",
-        "sha256": "440cc17c3c02151a04110dcdf8200f65a43a3c76788acad969fd414b4744da52"
+        "sha256": "440cc17c3c02151a04110dcdf8200f65a43a3c76788acad969fd414b4744da52",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/trt16-trace2/predictions.jsonl",
         "sha256": "bad1b56b7ee0d432da0cad6b310f6c3bfa776cbb8d2bcec793e82b77d83f32fb"
       },
-      "timing": {
+      "unmatched_timing": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/speed-13e508cb7/trt16/speed-b1.json",
         "sha256": "bc18e2ce462872ce15f8bb03fa2bbd295fce883ca535df576439867103aff990"
-      }
+      },
+      "speed_reason": "Original TRT16 timing used PyTorch 2 threads. Matched PyTorch 4 / OpenCV 1 timing is unavailable.",
+      "pareto_exclusion_reason": "変換の不具合、原因未特定",
+      "parity_not_evaluated_reason": "PT32未計測"
     },
     {
       "model_id": "rtdetrv4-l",
@@ -424,15 +469,16 @@
       "accuracy": {
         "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/pt16/accuracy.json",
         "sha256": "7c410eb3d5b49969bce2404f736eee69e35f8b2dcf5e71f1fba127693829db77",
-        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/pt16/predictions.jsonl",
         "sha256": "ba3400d7039167b58230578b523718b2ad098e88b455a21c5f900a10a9c139f9"
       },
       "timing": {
-        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/pt16/speed-b1.json",
-        "sha256": "2b032139bbacacd986853cae6cf78ee6de3b46f5e3d7b683fde1ccc34a0bb3d1"
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/speed-threads4-1/pt16/speed-b1.json",
+        "sha256": "7c06619f5f8fd1a3a859fc82dc47a334b13554bc0f1564617821da4fdf2115b4"
       }
     },
     {
@@ -441,17 +487,20 @@
       "accuracy": {
         "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/trt16/accuracy.json",
         "sha256": "649c6531756359c3d9d77b8a2e76cd04762bde52f95344e5d57f55efb5223531",
-        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/trt16/predictions.jsonl",
         "sha256": "c9cb1e706d6d0a0f94ad95e0175b8acb3c1aa09d433747c2ea3a2a04c9d8be60"
       },
-      "timing": {
+      "pareto_exclusion_reason": "変換の不具合、原因未特定",
+      "unmatched_timing": {
         "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/trt16/speed-b1.json",
         "sha256": "e17b8a013962d610e541c4fa1054fc8dbf4e399a41611967e8ce9089a968d241"
       },
-      "pareto_exclusion_reason": "Fixed-cohort recall collapsed. The same-input diagnostic reproduced the gap before shared postprocessing in the measured TensorRT engine path. The responsible operation or tactic is unconfirmed."
+      "speed_reason": "Original TRT16 timing used PyTorch 2 threads. Matched PyTorch 4 / OpenCV 1 timing is unavailable.",
+      "parity_not_evaluated_reason": "PT32未計測"
     },
     {
       "model_id": "rtdetrv4-x",
@@ -459,15 +508,16 @@
       "accuracy": {
         "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/pt16/accuracy.json",
         "sha256": "7b665c4d0ec7bdd33bae803535e3291664d0f1ec8ce84b55fe9da5b6c1cb75a4",
-        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/pt16/predictions.jsonl",
         "sha256": "44668c7c09c0babed9f1e1eb9657fd742827af3568b6de53efb490cb9c4446d0"
       },
       "timing": {
-        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/pt16/speed-b1.json",
-        "sha256": "35a65e0bd34e45ee12ec01622a29172326dd8ca022ed95ace90dc9e92cd5de72"
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/speed-threads4-1/pt16/speed-b1.json",
+        "sha256": "cf5b76a8b6936ec5a6a552a612d2a05ddaf9b2ea6bb0306ad04c3d79dc16490b"
       }
     },
     {
@@ -476,17 +526,136 @@
       "accuracy": {
         "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/trt16/accuracy.json",
         "sha256": "41827f1c396694376b673a8503ed60500a4a8de44aadc2305ecaba63d88e6be3",
-        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/trt16/predictions.jsonl",
         "sha256": "278db4463cc316bc659839644b2f7362250423f9aaed1e8c5c65b559324b9223"
       },
-      "timing": {
+      "pareto_exclusion_reason": "変換の不具合、原因未特定",
+      "unmatched_timing": {
         "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/trt16/speed-b1.json",
         "sha256": "16f2098ab898362b1762103fd20565cbf593b086f06f195b4cd2520ffd0846ba"
       },
-      "pareto_exclusion_reason": "Fixed-cohort recall collapsed. The same-input diagnostic reproduced the gap before shared postprocessing in the measured TensorRT engine path. The responsible operation or tactic is unconfirmed."
+      "speed_reason": "Original TRT16 timing used PyTorch 2 threads. Matched PyTorch 4 / OpenCV 1 timing is unavailable.",
+      "parity_not_evaluated_reason": "PT32未計測"
+    },
+    {
+      "model_id": "ecdet-l-coco",
+      "backend": "trt16-fp32attn",
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16-fp32attn/speed-13e508cb7-threads4-1/trt16/speed-b1.json",
+        "sha256": "a37cbbf33fa41217a87adacaae1d5eb292707f8a8a9a931c8d042b44e05b4f39"
+      },
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16-fp32attn/metrics.json",
+        "sha256": "d08d15d8a6bdf740608c3e6ad7d154f18bb4d75dba9af4d895918a6e0130ea49",
+        "batch_size": 1
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16-fp32attn/predictions.jsonl",
+        "sha256": "bf7d522a88ead74d8dcae629d764f6022693d2c9d980de1ce2dccfcfbfab8848"
+      },
+      "pareto_exclusion_reason": "変換の不具合、原因未特定"
+    },
+    {
+      "model_id": "ecdet-l-o365",
+      "backend": "trt16-fp32attn",
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/speed-13e508cb7-threads4-1/trt16/speed-b1.json",
+        "sha256": "f798f9dc281dd9be099ab73c8ba88dddcf8b58b9a1096315fb7165a8f54990c3"
+      },
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/metrics.json",
+        "sha256": "2dbe33f873134842ab9603b421289f9ecd96e062cdfc4846546b5259744d8f4d",
+        "batch_size": 1
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/predictions.jsonl",
+        "sha256": "67f9b68a01b573278b91a08d892b1523ed77cf7759292264abdd18cf30df7a65"
+      },
+      "pareto_exclusion_reason": "変換の不具合、原因未特定"
+    },
+    {
+      "model_id": "ecdet-x-coco",
+      "backend": "trt16-fp32attn",
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/speed-13e508cb7-threads4-1/trt16/speed-b1.json",
+        "sha256": "87a477e9d15eb72059497a7ffc057c2226198cc4b4ba44f7624952736ce133a4"
+      },
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/metrics.json",
+        "sha256": "894e78b531197784b2ebbedb9b75b404ee6c8b389b8431d504426e3c3af65dda",
+        "batch_size": 1
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/predictions.jsonl",
+        "sha256": "11386141ba4c2d82d7db8286e5f89619e6d6dd0a5e3e355a156b322ac921f7a8"
+      },
+      "pareto_exclusion_reason": "変換の不具合、原因未特定"
+    },
+    {
+      "model_id": "ecdet-x-o365",
+      "backend": "trt16-fp32attn",
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/speed-13e508cb7-threads4-1/trt16/speed-b1.json",
+        "sha256": "35f95798890a841677512e1c08c51be274b4863129a0a3b46c850600f2e6b78c"
+      },
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/metrics.json",
+        "sha256": "6bc8f8099607310fffaa2d2883bc38f9746948bf7cec1178023f7c024b2a03b8",
+        "batch_size": 1
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/predictions.jsonl",
+        "sha256": "4ad017fcb97c0e8019f294720fae1e0d2b94b3e4451fc17790976066e617458e"
+      },
+      "pareto_exclusion_reason": "変換の不具合、原因未特定"
+    },
+    {
+      "model_id": "ecpose-l-o365",
+      "backend": "trt16-fp32attn",
+      "not_applicable_reason": "適用不可: AttentionRewriteUnavailable: ecpose-l-o365 has 0 of the diagnosed decoder self_attn layout with four Softmax nodes. Found ECPose attention branches ['across_attn', 'within_attn']."
+    },
+    {
+      "model_id": "ecpose-x-o365",
+      "backend": "trt16-fp32attn",
+      "not_applicable_reason": "適用不可: AttentionRewriteUnavailable: ecpose-x-o365 has 0 of the diagnosed decoder self_attn layout with four Softmax nodes. Found ECPose attention branches ['across_attn', 'within_attn']."
+    },
+    {
+      "model_id": "rtdetrv4-l",
+      "backend": "trt16-fp32attn",
+      "failure": {
+        "log": {
+          "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/queue-logs/0-8204382571766266034_2026-11-25T14-37-08-233733965Z_1369773_i2487-rtdetrv4-l-trt16-fp32attn-v2.log",
+          "sha256": "70886cb250fa355b2e3cc3bc92ceece3a104c4cc6eee093bd0fffd91ee1935f7"
+        },
+        "report": {
+          "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/diagnostics/trt16-fp32attn-v2/rtdetrv4-l/diagnosis.json",
+          "sha256": "6e07b8836e1b6dfdd88d713b6b5fa1e88874c6fd1e8f073546087de029a7cf5f"
+        },
+        "reason": "All logits and box coordinates are NaN before postprocessing in every candidate case."
+      },
+      "parity_not_evaluated_reason": "PT32未計測",
+      "pareto_exclusion_reason": "変換の不具合、原因未特定"
+    },
+    {
+      "model_id": "rtdetrv4-x",
+      "backend": "trt16-fp32attn",
+      "failure": {
+        "log": {
+          "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/queue-logs/0-8204382571503597413_2026-11-25T14-37-08-496402586Z_1369831_i2487-rtdetrv4-x-trt16-fp32attn-v2.log",
+          "sha256": "075052e0175437e1fe1fced25b1ad6359737a69dec8d6238e4d8ceef98c03e8c"
+        },
+        "report": {
+          "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/diagnostics/trt16-fp32attn-v2/rtdetrv4-x/diagnosis.json",
+          "sha256": "e38cb3250fdbb67f3a409696e90adee6d5008c4e7dba64121f8824d47c1a7514"
+        },
+        "reason": "All logits and box coordinates are NaN before postprocessing in every candidate case."
+      },
+      "parity_not_evaluated_reason": "PT32未計測",
+      "pareto_exclusion_reason": "変換の不具合、原因未特定"
     }
   ],
   "baseline_accuracy_jobs": {
@@ -497,12 +666,20 @@
       "repro": {
         "path": ".training_queue/repro/0-8204468076215471927_2026-11-24T14-52-03-784528072Z_2687337_i2487-current-dino-vitpose-pt16-cohort/run.json",
         "sha256": "f1e3a122f79b09c766b2421d3fdddb302373b290dc2b7adc90f99ee47a85b53e"
+      },
+      "queue_log": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/queue-logs/0-8204468076215471927_2026-11-24T14-52-03-784528072Z_2687337_i2487-current-dino-vitpose-pt16-cohort.log",
+        "sha256": "cc36e8ec33a655268f1059a8ada25fe387810e98df70b386232a649f38b18e6c"
       }
     },
     "pt32": {
       "job_id": "0-8204468076511125596_2026-11-24T14-52-03-488874403Z_2687268_i2487-current-dino-vitpose-pt32-cohort.job",
       "status": "cancelled",
-      "reason": "対象外（ユーザー判断 2026-11-25）"
+      "reason": "対象外（ユーザー判断 2026-11-25）",
+      "queue_log": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/queue-logs/0-8204468076511125596_2026-11-24T14-52-03-488874403Z_2687268_i2487-current-dino-vitpose-pt32-cohort.log",
+        "sha256": "60de112af672deafb02f3b24322a19fcf7de913a3bb9cb7cf6ae1c6d6d770564"
+      }
     }
   },
   "joint_speed_run": {
@@ -513,7 +690,7 @@
       "sha256": "b344d888760d4bc7e60499b8199b4060059804bf10314111c8f55b64f86f8354"
     },
     "queue_log": {
-      "path": ".training_queue/logs/0-8204398523191235973_2026-11-25T10-11-16-808764026Z_2693116_i2487-dino-vitpose-joint-synchronized.log",
+      "path": "parent-2492-issue-2487-primary/player-model-comparison/queue-logs/0-8204398523191235973_2026-11-25T10-11-16-808764026Z_2693116_i2487-dino-vitpose-joint-synchronized.log",
       "sha256": "70d8b528a05c83fe0fd53f942369df32e2920554b6590b20dfa91a05f40e9ba0"
     },
     "invocation": {
@@ -531,7 +708,8 @@
       "backend": "trt16",
       "accuracy": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16/metrics.scorer-0d4bf0990.json",
-        "sha256": "9c39351f31fef206d77a17877d35a9d6cd4a1cddc206371672319dc46d188e19"
+        "sha256": "9c39351f31fef206d77a17877d35a9d6cd4a1cddc206371672319dc46d188e19",
+        "batch_size": 1
       },
       "predictions": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16/predictions.jsonl",
@@ -545,36 +723,51 @@
   ],
   "candidate_receipts": {
     "rf_detr": {
-      "evidence_commit": "f92c40d600359e4920949ed70704a3f840a3cc3e",
+      "evidence_commit": "3e60008c243d803a08b457e2cfca63f625e792ac",
       "speed": {
         "path": "knowledge/runs/run-meiji-rfdetr-large-speed/results.json",
-        "sha256": "ea68b4e35c140f0bf208e12143eddd6508f3012496b019ffe76de4b9cf6326ab"
+        "sha256": "483e5a52cabdc492339c17a57738fc5a4033e6471a12f3a7ed8bc4ad492c5c1a"
       }
     },
     "edgecrafter": {
-      "evidence_commit": "9c5425765a81a1f939af165b59a5757a2cc7afeb",
+      "evidence_commit": "2d05a6de50103f4903e073a58fa5c0a71ae61645",
       "accuracy": {
         "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-accuracy.json",
-        "sha256": "e021948180a74be003be641ac5931325048189743f5492a3ac3260a7221b0bc7"
+        "sha256": "4be6798cbeeca9dda8bd6e8bbfe602e162cb2a117bce5940c3217a66a7c5b9df"
       },
-      "speed": {
+      "initial_speed": {
         "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-speed.json",
-        "sha256": "dbad59a352b09c543616eb1283debd5aabbacbc5288f9b792ac3a23f585c3dc4"
+        "sha256": "52c8cb645f55c1cd90cfce38333f9207050685bbacd4523ca96be3d4ee6a1460"
+      },
+      "matched_pt16_speed": {
+        "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-pt16-speed-matched.json",
+        "sha256": "3cb5c30fac84edcaf5bef5bb4ea44cd03f2d16c781a246a3f5df1adf9175f8a1"
+      },
+      "fp32_attention": {
+        "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt16-fp32attn-results.json",
+        "sha256": "04a6276ccf5e07447d382f993135a79b525b64c98930bde4f1cfbe85d4ff8955"
       },
       "diagnosis": {
         "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt-diagnosis-v2.json",
-        "sha256": "c3665d4d91a748fa43a67a9df64e18e6fd7cb9c98c98c11654006da446786554",
-        "commit": "9fa9b13a80ec8bdd80dddbaa408f39e094e2a7e5"
+        "sha256": "01b3d2f5a35960cd081f6e59dcf4270eb8b84b99059ba93a8645466d069a812d"
+      },
+      "attention_diagnosis": {
+        "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt-diagnosis-v3.json",
+        "sha256": "dc9c97923890061b7232ba7ac06ad319c0e1f14afc11fc1f42abad715a7a9e00"
       }
     },
     "rt_detr_v4": {
-      "evidence_commit": "fef762822f6f8f7e62ae0ec5d0fc5b80eee15447",
+      "evidence_commit": "d2706513d58b342444240d7a136455133c8fff25",
       "results": {
         "path": "knowledge/runs/run-meiji-player-model-comparison/rtdetrv4-results.json",
-        "sha256": "d4758943a163031732423e9ca8caba22542959dabe7d5084774d95407fdeaa12"
+        "sha256": "2f5af065c37bf9bf1b12863f7baf01478dee7369b457edbdb813456a45e68fc4"
       },
       "accuracy_execution_commit": "88ec50e5f777cbecb1dfecf54f8c6353a60612f6",
       "accuracy_scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
     }
+  },
+  "retained_queue_log_checksums": {
+    "path": "parent-2492-issue-2487-primary/player-model-comparison/queue-logs/SHA256SUMS",
+    "sha256": "46ff1ac8e2fb679e350290b93357c964c3b1dc39cfb17d7d620bfff5f1b9528e"
   }
 }

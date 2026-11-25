@@ -36,7 +36,10 @@ from src.submodules.models.ecpose.releases import (
     SOURCE_URL,
 )
 from src.submodules.models.ecpose.runtime import (
+    HEADS,
+    INPUT_NAME,
     EdgeCrafterInference,
+    export_settings,
     load_backend,
 )
 from src.tennis_scene.evaluation.player_pose.bundle import (
@@ -52,7 +55,8 @@ from src.tennis_scene.evaluation.player_pose.scoring import (
 from src.utils.checksum import dual_sha256
 from src.utils.inference_benchmark import Backend, BatchStages, BenchmarkAdapter, Stage
 from src.utils.io import write_json_atomic
-from src.utils.models.tensorrt_artifacts import PLAN_FILE
+from src.utils.models.tensorrt_artifacts import PLAN_FILE, EngineBundle, TensorSpec
+from src.utils.models.tensorrt_runtime import TensorRTRunner
 from src.utils.video.reader import OpenCVVideoFrameReader
 from src.utils.video.types import FramePacket
 from src.utils.video.windows import chunked
@@ -152,28 +156,51 @@ def _load_forward(
     attention_base_onnx_sha256: str | None = None,
 ) -> EdgeCrafterInference:
     release = RELEASES[model_id]
-    if attention_base_onnx_sha256 is not None and release.has_pose:
+    checkpoint = assets / release.filename
+    if attention_base_onnx_sha256 is None:
+        return load_backend(
+            assets / "EdgeCrafter",
+            checkpoint,
+            model_id,
+            backend.value.lower(),
+            device,
+            engine,
+        )
+    if release.has_pose:
         raise ValueError(
             "The ECDet FP32 decoder attention variant does not apply to ECPose"
         )
-    return load_backend(
-        assets / "EdgeCrafter",
-        assets / release.filename,
-        model_id,
-        backend.value.lower(),
-        device,
-        engine,
-        extra_export_settings=(
-            {FP32_ATTENTION_SETTING: list(SELF_ATTENTION_SOFTMAX)}
-            if attention_base_onnx_sha256 is not None
-            else None
-        ),
-        extra_export_sources=(
-            {"base_onnx": attention_base_onnx_sha256}
-            if attention_base_onnx_sha256 is not None
-            else None
-        ),
+    if backend is not Backend.TRT16 or device.type != "cuda" or engine is None:
+        raise ValueError(
+            "The FP32 decoder attention variant requires a TRT16 engine on CUDA"
+        )
+    require_weight(checkpoint, release)
+    bundle = EngineBundle.read(engine)
+    outputs = {}
+    for head, shape in zip(HEADS, ((-1, 300, 80), (-1, 300, 4)), strict=True):
+        dtype = bundle.export.outputs[head].dtype
+        if dtype not in {"float16", "float32"}:
+            raise ValueError(
+                f"Unexpected EdgeCrafter TensorRT output dtype {head}={dtype}"
+            )
+        outputs[head] = TensorSpec(dtype=dtype, shape=shape)
+    bundle = bundle.for_model(
+        model=model_id,
+        settings={
+            **export_settings(),
+            FP32_ATTENTION_SETTING: list(SELF_ATTENTION_SOFTMAX),
+        },
+        sources={"weights": release.sha256, "base_onnx": attention_base_onnx_sha256},
+        inputs={INPUT_NAME: TensorSpec(dtype="float32", shape=(-1, 3, *IMAGE_SIZE))},
+        outputs=outputs,
     )
+    runner = TensorRTRunner(bundle, device)
+
+    def forward(pixels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        tensors = runner({INPUT_NAME: pixels})
+        return tensors[HEADS[0]], tensors[HEADS[1]]
+
+    return forward
 
 
 def _infer(

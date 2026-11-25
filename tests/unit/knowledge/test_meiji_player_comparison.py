@@ -2,9 +2,15 @@
 
 from __future__ import annotations
 
+import csv
+import hashlib
+import json
 import runpy
 import sys
+from dataclasses import asdict
 from pathlib import Path
+from types import SimpleNamespace
+from typing import Any
 
 import numpy as np
 import pytest
@@ -13,6 +19,7 @@ from numpy.typing import NDArray
 
 from src.submodules.models.dino.person_detector import PersonDetectionResult
 from src.submodules.models.vitpose.pose2d import Pose2DResult
+from src.utils.checksum import FileIntegrityError
 from src.utils.inference_benchmark import BenchmarkProtocol
 from src.utils.inference_benchmark_inputs import TimingSchedule
 
@@ -30,7 +37,8 @@ def test_frontier_keeps_equal_points_and_excludes_unqualified_conditions(
     def row(model, latency, quality, *, status="measured", speed="ok", pose=False):
         return {
             "model_id": model,
-            "backend": "pt32",
+            "backend": "pt16",
+            "accuracy_batch_size": 1,
             "stage_p50_ms": latency,
             "workload": "detection_and_pose" if pose else "detection",
             "coverage_oks" if pose else "recall_50": quality,
@@ -47,14 +55,15 @@ def test_frontier_keeps_equal_points_and_excludes_unqualified_conditions(
         row("failed", 1, 1, status="parity_failed"),
         row("historical", 1, 1, speed="historical"),
         row("no-speed", 1, 1, speed="pending"),
+        row("unmatched", None, 1, speed="unmatched_host"),
         {**row("trt-diagnostic", 1, 1), "pareto_exclusion_reason": "Unstable plan"},
         row("joint-fast", 2, 0.80, pose=True),
         row("joint-accurate", 12, 0.92, pose=True),
     ]
     pareto = compare["frontiers"](rows)
     assert pareto == {
-        "detection": ["fast/pt32", "dino/pt32", "equal-to-dino/pt32"],
-        "detection_and_pose": ["joint-fast/pt32", "joint-accurate/pt32"],
+        "detection": ["fast/pt16", "dino/pt16", "equal-to-dino/pt16"],
+        "detection_and_pose": ["joint-fast/pt16", "joint-accurate/pt16"],
     }
     compare["plot_pareto"](tmp_path, {"rows": rows, "pareto": pareto})
     assert {path.name for path in tmp_path.glob("*.png")} == {
@@ -63,64 +72,40 @@ def test_frontier_keeps_equal_points_and_excludes_unqualified_conditions(
     }
 
 
-@pytest.mark.parametrize(
-    "outcome",
-    [
-        "ok",
-        "no_order_digest",
-        "wrong_order",
-        "wrong_order_digest",
-        "legacy",
-        "infeasible",
-        "implicit_parity",
-    ],
-)
-def test_timing_uses_the_pinned_frame_order_and_wall_boundary(
-    outcome: str,
-) -> None:
-    compare = runpy.run_path(str(RUN / "compare_conditions.py"))
-    ids = ["clip_003/cam0/074", "clip_013/cam2/162", "clip_028/cam3/736"]
-    pin = "a" * 64
-    timing_pin = "b" * 64
-    schedule = TimingSchedule(
-        BenchmarkProtocol(batch_sizes=(1, 2)),
-        tuple((key,) for key in ids),
-        "c" * 64,
-    )
-    samples = [{"block": 1 + i // 100, "ids": [ids[i % 3]]} for i in range(300)]
-    if outcome == "wrong_order":
-        samples[0], samples[1] = samples[1], samples[0]
-    settings = {"timing_protocol_sha256": timing_pin, "host_threads": 2}
-    if outcome != "no_order_digest":
-        settings["timed_input_ids_sha256"] = (
-            "d" * 64 if outcome == "wrong_order_digest" else schedule.timed_ids_sha256
-        )
-    report: dict[str, object] = {
-        "schema_version": 2 if outcome == "legacy" else 3,
+def _timing_report(
+    schedule: TimingSchedule, input_sha: str, protocol_sha: str
+) -> dict[str, Any]:
+    return {
+        "schema_version": 3,
         "case": {
             "name": "dino",
             "backend": "PT16",
             "batch_size": 1,
             "item_unit": "image",
-            "input_manifest_sha256": pin,
-            "settings": settings,
+            "input_manifest_sha256": input_sha,
+            "settings": {
+                "timing_protocol_sha256": protocol_sha,
+                "timed_input_ids_sha256": schedule.timed_ids_sha256,
+                "host_threads": 4,
+                "opencv_threads": 1,
+            },
         },
-        "protocol": {
-            "batch_sizes": [1, 2],
-            "warmup": 30,
-            "iterations_per_block": 100,
-            "blocks": 3,
-        },
+        "protocol": asdict(schedule.protocol),
         "environment": {
             "gpu": "NVIDIA GeForce RTX 5060 Ti",
             "fp32_precision": {"matmul": "ieee"},
         },
         "status": "ok",
         "parity_status": "not_evaluated",
-        "parity_not_evaluated_reason": None
-        if outcome == "implicit_parity"
-        else "PT32 excluded by scope",
-        "samples": samples,
+        "parity_not_evaluated_reason": "PT32 excluded by scope",
+        "samples": [
+            {
+                "block": 1 + i // 100,
+                "ids": list(schedule.batch_ids[i % len(schedule.batch_ids)]),
+                "items": 1,
+            }
+            for i in range(300)
+        ],
         "summary": {
             "stage_wall": {
                 "p50_ms_per_item": 12.0,
@@ -132,44 +117,282 @@ def test_timing_uses_the_pinned_frame_order_and_wall_boundary(
         "nvml_peak_minus_before_load_bytes": 2 * 1024**2,
         "torch_peak_allocated_bytes": 1024**2,
     }
-    condition = {"model_id": "dino-swin-l", "backend": "pt16"}
-    if outcome == "infeasible":
+
+
+@pytest.mark.parametrize(
+    "outcome",
+    [
+        "ok",
+        "no_order_digest",
+        "wrong_order",
+        "wrong_order_digest",
+        "legacy",
+        "infeasible_without_log",
+        "implicit_parity",
+        "unmatched_threads",
+        "baseline_opencv_pin",
+        "fp32_attention",
+        "wrong_attention_identity",
+    ],
+)
+def test_timing_uses_the_pinned_frame_order_and_wall_boundary(outcome: str) -> None:
+    summarize = runpy.run_path(str(RUN / "compare_conditions.py"))["summarize_timing"]
+    pin, timing_pin = "a" * 64, "b" * 64
+    schedule = TimingSchedule(
+        BenchmarkProtocol(batch_sizes=(1, 2)),
+        (("clip_003/cam0/074",), ("clip_013/cam2/162",), ("clip_028/cam3/736",)),
+        "c" * 64,
+    )
+    report = _timing_report(schedule, pin, timing_pin)
+    settings = report["case"]["settings"]
+    row = {"model_id": "dino-swin-l", "backend": "pt16"}
+    opencv_pin = None
+    if outcome == "wrong_order":
+        report["samples"][0], report["samples"][1] = (
+            report["samples"][1],
+            report["samples"][0],
+        )
+    if outcome == "no_order_digest":
+        del settings["timed_input_ids_sha256"]
+    if outcome == "wrong_order_digest":
+        settings["timed_input_ids_sha256"] = "d" * 64
+    if outcome == "legacy":
+        report["schema_version"] = 2
+    if outcome == "implicit_parity":
+        report["parity_not_evaluated_reason"] = None
+    if outcome == "infeasible_without_log":
         report.update(
             status="infeasible",
             summary=None,
             failure={"message": "Unsupported operator"},
         )
+    if outcome == "unmatched_threads":
+        settings["host_threads"] = 2
+    if outcome == "baseline_opencv_pin":
+        del settings["opencv_threads"]
+        opencv_pin = 1
+    if outcome in {"fp32_attention", "wrong_attention_identity"}:
+        row = {"model_id": "ecdet-l-coco", "backend": "trt16-fp32attn"}
+        report["case"].update(name="ecdet-l-coco/trt16-fp32attn", backend="TRT16")
+        settings["engine_condition"] = (
+            "trt16" if outcome == "wrong_attention_identity" else "trt16-fp32attn"
+        )
+
     errors = {
         "wrong_order": "sample order differs",
         "wrong_order_digest": "Timing protocol or identity mismatch",
         "legacy": "Timing protocol or identity mismatch",
         "implicit_parity": "explicit PT32 parity exclusion",
+        "infeasible_without_log": "pinned terminal failure evidence",
+        "unmatched_threads": "host thread settings differ",
+        "wrong_attention_identity": "Timing protocol or identity mismatch",
     }
     if outcome in errors:
         with pytest.raises(ValueError, match=errors[outcome]):
-            compare["summarize_timing"](report, condition, pin, timing_pin, schedule)
+            summarize(report, row, pin, timing_pin, schedule)
+        return
+    result = summarize(
+        report, row, pin, timing_pin, schedule, verified_opencv_threads=opencv_pin
+    )
+    assert result["parity_status"] == "PT32未計測"
+    assert result["speed_status"] == "ok"
+    assert (
+        result["stage_p50_ms"],
+        result["model_p50_ms"],
+        result["images_per_s"],
+        result["nvml_peak_delta_mib"],
+        result["torch_peak_allocated_mib"],
+    ) == (12, 8, 75, 2, 1)
+    assert (
+        result["speed_batch_size"],
+        result["host_threads"],
+        result["opencv_threads"],
+    ) == (1, 4, 1)
+
+
+def _pin(path: Path) -> dict[str, Any]:
+    return {"path": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+
+
+@pytest.fixture
+def comparison_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    main = runpy.run_path(str(RUN / "compare_conditions.py"))["main"]
+    schedule = TimingSchedule(
+        BenchmarkProtocol(batch_sizes=(1, 2)),
+        tuple((f"image-{index}",) for index in range(96)),
+        "c" * 64,
+    )
+    fixed = SimpleNamespace(
+        manifest={"id": "fixed-speed"}, schedule=lambda *_: schedule
+    )
+    monkeypatch.setitem(
+        main.__globals__, "PinnedBenchmarkInputs", lambda *_args, **_kwargs: fixed
+    )
+    monkeypatch.setitem(main.__globals__, "REPO_ROOT", tmp_path)
+    speed_manifest = tmp_path / "manifest.json"
+    timing_protocol = tmp_path / "timing-protocol.json"
+    speed_manifest.write_text('{"id": "fixed-speed"}')
+    timing_protocol.write_text(json.dumps(asdict(schedule.protocol)))
+    evidence: dict[str, Any] = {
+        "speed_input": {
+            **_pin(speed_manifest),
+            "timing_protocol": _pin(timing_protocol),
+            "id": "fixed-speed",
+        },
+        "evaluation": {
+            "id": "fixed-cohort",
+            "sha256": "a" * 64,
+            "images": 5,
+            "eligible_boxes": 10,
+            "scorer_commit": "pinned",
+        },
+    }
+    index = tmp_path / "comparison-evidence.json"
+    output = tmp_path / "output"
+
+    def run(case: dict[str, Any]) -> dict[str, str]:
+        index.write_text(json.dumps({**evidence, "conditions": [case]}))
+        monkeypatch.setattr(
+            sys,
+            "argv",
+            [
+                "compare_conditions.py",
+                "--artifacts",
+                str(tmp_path),
+                "--evidence",
+                str(index),
+                "--output",
+                str(output),
+                "--tables-only",
+            ],
+        )
+        main()
+        with (output / "conditions.csv").open(newline="") as handle:
+            return next(
+                row
+                for row in csv.DictReader(handle)
+                if (row["model_id"], row["backend"])
+                == (case["model_id"], case["backend"])
+            )
+
+    return run, evidence, schedule
+
+
+def test_cli_pins_the_speed_report_and_keeps_separate_batches(
+    tmp_path: Path, comparison_cli
+) -> None:
+    run, evidence, schedule = comparison_cli
+    speed, cohort = evidence["speed_input"], evidence["evaluation"]
+    raw = _timing_report(schedule, speed["sha256"], speed["timing_protocol"]["sha256"])
+    timing = tmp_path / "timing.json"
+    timing.write_text(json.dumps(raw))
+    predictions = tmp_path / "predictions.jsonl"
+    predictions.write_text("fixture")
+    accuracy = tmp_path / "accuracy.json"
+    accuracy.write_text(
+        json.dumps(
+            {
+                "condition": {
+                    "model_id": "dino-swin-l",
+                    "backend": "pt16",
+                    "has_pose": False,
+                    "benchmark_id": cohort["id"],
+                    "manifest_sha256": cohort["sha256"],
+                },
+                "scorer_commit": cohort["scorer_commit"],
+                "image_batch_size": 2,
+                "predictions_sha256": _pin(predictions)["sha256"],
+                "score": {
+                    "images": cohort["images"],
+                    "overall": {
+                        "detection": {
+                            "references": cohort["eligible_boxes"],
+                            "recall_by_iou": {"0.50": 0.9, "0.75": 0.7},
+                            "recall_by_min_score": {"0.5": {"0.50": 0.8}},
+                        },
+                        "pose": {"with_detection_coverage": {}},
+                    },
+                    "by_size": {
+                        "small": {"detection": {"recall_by_iou": {"0.50": 0.6}}}
+                    },
+                },
+            }
+        )
+    )
+    case = {
+        "model_id": "dino-swin-l",
+        "backend": "pt16",
+        "accuracy": {**_pin(accuracy), "batch_size": 2},
+        "predictions": _pin(predictions),
+        "timing": _pin(timing),
+    }
+    row = run(case)
+    assert (
+        row["accuracy_batch_size"],
+        row["speed_batch_size"],
+        row["stage_p50_ms"],
+    ) == ("2", "1", "12.0")
+    raw["summary"]["stage_wall"]["p50_ms_per_item"] = 1.0
+    timing.write_text(json.dumps(raw))
+    with pytest.raises(ValueError, match="SHA-256 differs from the pin"):
+        run(case)
+
+
+@pytest.mark.parametrize(
+    "log_state",
+    ["terminal", "missing", "nonterminal", "wrong_condition", "success_exit"],
+)
+def test_cli_requires_the_pinned_terminal_log_for_infeasible_condition(
+    tmp_path: Path, comparison_cli, log_state: str
+) -> None:
+    run, evidence, _ = comparison_cli
+    model, backend = "rtdetrv4-l", "trt16-fp32attn"
+    log = tmp_path / "diagnosis.log"
+    log_model = "rtdetrv4-x" if log_state == "wrong_condition" else model
+    line = f"{log_model}/{backend} infeasible (8 cases) at outputs/diagnosis.json\n"
+    exit_code = 0 if log_state == "success_exit" else 1
+    log.write_text(
+        line + ("" if log_state == "nonterminal" else f"exit_code={exit_code}\n")
+    )
+    report = tmp_path / "diagnosis.json"
+    report.write_text(
+        json.dumps(
+            {
+                "model_id": model,
+                "condition": backend,
+                "status": "infeasible",
+                "accuracy_manifest_sha256": evidence["evaluation"]["sha256"],
+                "speed_manifest_sha256": evidence["speed_input"]["sha256"],
+            }
+        )
+    )
+    condition = {
+        "model_id": model,
+        "backend": backend,
+        "failure": {
+            "reason": "NaN before postprocessing",
+            "report": _pin(report),
+            "log": _pin(log),
+        },
+    }
+    if log_state == "missing":
+        log.unlink()
+        with pytest.raises(FileIntegrityError, match="diagnosis.log"):
+            run(condition)
+    elif log_state != "terminal":
+        with pytest.raises(ValueError, match="Terminal log does not record a failure"):
+            run(condition)
     else:
-        summary = compare["summarize_timing"](
-            report, condition, pin, timing_pin, schedule
+        row = run(condition)
+        assert (row["accuracy_status"], row["speed_status"]) == (
+            "infeasible",
+            "infeasible",
         )
-        assert summary["parity_status"] == "PT32未計測"
-        assert summary["speed_status"] == (
-            "infeasible" if outcome == "infeasible" else "ok"
-        )
-        if outcome == "infeasible":
-            assert summary["speed_reason"] == "Unsupported operator"
-            assert "stage_p50_ms" not in summary
-        else:
-            assert (
-                summary["stage_p50_ms"],
-                summary["model_p50_ms"],
-                summary["images_per_s"],
-            ) == (12, 8, 75)
-            assert (
-                summary["nvml_peak_delta_mib"],
-                summary["torch_peak_allocated_mib"],
-            ) == (2, 1)
-            assert summary["host_threads"] == 2
+        assert (
+            row["accuracy_batch_size"],
+            row["speed_batch_size"],
+            row.get("stage_p50_ms", ""),
+        ) == ("", "", "")
 
 
 @pytest.mark.parametrize(

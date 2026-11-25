@@ -26,10 +26,14 @@ metrics:
   evaluation_images: 6844
   eligible_player_boxes: 26276
   fixed_timing_images: 96
-  planned_rows: 36
-  current_accuracy_and_speed_conditions: 22
+  planned_rows: 44
+  matched_accuracy_and_speed_conditions: 18
+  measured_current_accuracy_conditions: 26
+  original_trt_conditions_with_unmatched_timing: 8
   historical_pt32_accuracy_conditions: 5
-  trt_diagnostic_conditions_outside_frontier: 2
+  trt_diagnostic_conditions_with_matched_timing: 4
+  fp32_attention_infeasible_conditions: 2
+  fp32_attention_inapplicable_conditions: 2
 repro:
   scorer_commit: 0d4bf0990f82ae0b8ebf2afe08d3209e583d2364
   harness_merge_commit: 59faa32a28d2f54e6492abdba2429846fa0397e3
@@ -63,12 +67,12 @@ tags:
 
 ## 考察
 
-代表6 clipの6,844画像と26,276選手BBoxを共通採点し、固定96画像の同期込み速度を照合した。36行のうち22条件にPT16/TRT16の精度と速度がそろい、5条件に保存済みPT32精度がある。選手以外の人物は部分ラベルのためprecisionとAPは算出していない。SMPLの配置に現行DINOとViTPoseの観測を使っているため、数値は疑似正解との一致度を表す。 [全条件表](../../runs/run-meiji-player-model-comparison/conditions.csv) · [精度・速度の照合と再現](../../runs/run-meiji-player-model-comparison/README.md)
+代表6 clipの6,844画像と26,276選手BBoxを共通採点し、固定96画像の同期込み速度と照合した。44行のうち18条件に現行の精度とホスト設定を揃えた速度がそろい、旧スレッド設定の8条件は精度のみ比較表に掲載した。保存済みのPT32精度は5条件。精度と主比較の速度・VRAMはともに画像batch 1で、batch 2の精度は未計測。選手以外の人物は部分ラベルのためprecisionとAPは算出していない。SMPLの配置に現行DINOとViTPoseの観測を使っているため、数値は疑似正解との一致度を表す。 [全条件表](../../runs/run-meiji-player-model-comparison/conditions.csv) · [照合と再現](../../runs/run-meiji-player-model-comparison/README.md)
 
-検出ではRF-DETR-L TRT16が26.43 ms/画像で、同じCPU設定のDINO TRT16の94.79 ms/画像に対してP50が72.1%短い。Recall@0.50は96.81%対96.67%、@0.75は42.09%対47.07%だった。ECDet-L O365 PT16は98.19%と61.46 ms/画像、RT-DETRv4-L PT16は98.12%と52.52 ms/画像を記録した。RF-DETR-LとDINOはPyTorch CPU 4 thread、EdgeCrafterとRT-DETRv4は2 threadで計時した。CPU条件が異なる組み合わせの小差から速度順位は確定できない。 [検出Pareto図](../../runs/run-meiji-player-model-comparison/pareto-detection.png)
+検出のParetoはRF-DETR-L PT16/TRT16とECDet-L/X O365 PT16。CPU設定はいずれもPyTorch 4・OpenCV 1スレッド。RF-DETR-L TRT16とDINO TRT16のP50は26.43対94.79 ms/画像、Recall@0.50は96.81%対96.67%、@0.75は42.09%対47.07%だった。ECDet-X O365 PT16は50.75 ms/画像、Recall@0.50/0.75は97.97%/46.62%。Lは52.91 ms/画像、98.19%/44.88%だった。RT-DETRv4-L PT16は53.67 ms/画像で98.12%/45.57%を記録した。 [検出Pareto図](../../runs/run-meiji-player-model-comparison/pareto-detection.png)
 
-検出＋姿勢ではECPose-L PT16が55.11 ms/画像、欠測を含む平均OKSが0.2908。DINO＋ViTPose-H PT16は266.30 ms/画像と0.7631だった。ECPose-L PT16の小人物Recall@0.50は10.99%だった。今回のECPoseは高速で、疑似正解に対する姿勢と小人物の品質は大きく低下した。GPU予測で代表6 clipの同じcam0フレームを並べ、検出数と画像のハッシュを保存した。 [検出＋姿勢Pareto図](../../runs/run-meiji-player-model-comparison/pareto-detection_and_pose.png) · [比較画像の索引](../../runs/run-meiji-player-model-comparison/representative-cam0-gpu-candidates-index.json)
+検出＋姿勢のParetoはECPose-L/X PT16とDINO＋ViTPose-H PT16/TRT16。ECPose-L/X PT16は56.89/56.06 ms/画像、欠測込み平均OKS 0.2908/0.2588。DINO＋ViTPose-H PT16は266.30 ms/画像と0.7631だった。ECPose-L PT16の小人物Recall@0.50は10.99%。GPU予測で代表6 clipの同じcam0フレームを並べ、検出数と画像のSHA-256を保存した。 [検出＋姿勢Pareto図](../../runs/run-meiji-player-model-comparison/pareto-detection_and_pose.png) · [比較画像の索引](../../runs/run-meiji-player-model-comparison/representative-cam0-gpu-candidates-index.json)
 
-RT-DETRv4 L/XのTRT16はRecallが0.00%と0.03%に落ち、同一入力の診断でも共通後処理の前に差が出た。2条件は測定値を表と図に残し、Pareto frontierの計算から除外した。EdgeCrafterのTRT16計時は採点で使ったplanと一致し、精度差の演算単位での原因は調査中。PT32がスコープ外になった後の計時にparityは適用せず、従来の出力差は履歴に残した。 [RT-DETRv4の診断](../../runs/run-meiji-player-model-comparison/rtdetrv4.md#same-input-tensorrt-diagnosis) · [EdgeCrafterの診断](../../runs/run-meiji-player-model-comparison/EDGECRAFTER.md#diagnosis-of-the-batch-2-traced-plans)
+EdgeCrafterとRT-DETRv4のTensorRT変換は原因未特定で調査を終了した。ECDet 4重みのFP32 attention版は精度と matched 速度の両方を図に載せ、Pareto判定から外した。元のTRT16は精度を図の別枠に残した。RT-DETRv4のFP32 attention版は全診断ケースで後処理前にNaNとなり、終端ログで失敗を確認した。ECPoseのFP32 attention版は適用不可。PT32 parityは未計測で、既存の出力差は履歴に残した。 [EdgeCrafterの診断](../../runs/run-meiji-player-model-comparison/EDGECRAFTER.md) · [RT-DETRv4の診断](../../runs/run-meiji-player-model-comparison/rtdetrv4.md#fp32-decoder-attention-probe)
 
-人物検出の置換候補としてRF-DETR-Lを絞り込む根拠をsummaryに追加した。RF-DETR-Lの実際のcropを使ったViTPose-Hと下流の品質は未確認。#1739の入口はDINO由来の入力を要求し、ECPose単独recipeの2D成果を受け入れるには別の判断と検証が要る。 [現状判断](../../summary.md#人物player_detectionperson_trackingplayer_association)
+人物検出の置換候補にRF-DETR-LとECDet O365 PT16が残った。候補の実BBoxを使ったViTPose-Hと下流品質、利用条件の最終確認が採用判断に残る。#1739の入口はDINO由来の入力を要求し、ECPose単独recipeの2D成果を受け入れるには別の判断と検証が要る。 [現状判断](../../summary.md#人物player_detectionperson_trackingplayer_association)
