@@ -26,7 +26,7 @@
 
 - **TensorRTの人物モデル単体比較**　ViTPose-HはFP16が許容差内で中央値54.423→8.468 ms。INT8・FP8には最大5 pxの基準を超える関節があり、E2E候補はFP16です。HMR2はFP8も単体精度の基準を満たし、中央値5.399 msでした。CLIP-ReIDの新INT8・FP8は、同じ2クリップから設定選定用12 cropを除いた224件で、cosine P05が0.999602／0.995416、FP32とのID一致が両方224/224でした。下流の時系列・人物対応と速度はE2Eで確認します。[固定入力の全条件比較](nodes/tennis_scene/000077-run-i2303-vit-tensorrt.md)
 - **TensorRT FP16の全クリップ評価**　固定court・ボール無効で `meiji_4cam/video_000` の69件を一括評価し、55件が生成されました。14件は人物対応またはコート向きで停止しました。再構築は12時間10分58秒、Peak VRAM 1.76 GiB、Peak RSS 6.16 GiBでした。GPU遊休時のCPU処理ではプレーヤーの三角測量が最多でした。採否は判断待ちです。 [全件評価と診断](nodes/tennis_scene/000083-run-i2363-trt-player-video.md)
-- **人物モデルの共通速度基準**　代表6 clipの固定入力で現行の推論39条件を測り、24条件がPT32とのparityを通過しました。ViTPose-HのflipありはPT32/PT16/TRT16の全batchが適合しました。DINOのTRT16とHMR2特徴＋GVHMRのTRT16は許容差を超えたため、この固定入力での比較では実行不能として扱います。候補モデルの速度比較は固定入力ID・batch・parity判定を共有します。 [現行モデルの基準値と判定](nodes/tennis_scene/000085-run-person-model-speed-baseline.md)
+- **人物モデルの共通速度基準**　固定6 clipで現行DINO、ViTPose-Hのflipあり・なし、HMR2特徴＋GVHMRのPT16・TRT16を再計測し、全22条件で計時が完了しました。parityは未判定です。検出・姿勢の比較図には疑似GTによる精度と実測速度を使います。PT32の暫定速度と初回parityは初回記録を参照してください。 [再計測の基準値](nodes/tennis_scene/000086-run-person-model-speed-low-precision.md) · [初回記録](nodes/tennis_scene/000085-run-person-model-speed-baseline.md)
 
 ## Court Detection
 

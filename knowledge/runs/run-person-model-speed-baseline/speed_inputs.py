@@ -18,12 +18,27 @@ from src.tennis_scene.pipeline.storage.codec import unpack_value
 from src.tennis_scene.pipeline.storage.scene_index import read_component_descriptor
 from src.utils.checksum import dual_sha256
 from src.utils.geometry.bbox import pairwise_iou
+from src.utils.inference_benchmark_inputs import PinnedBenchmarkInputs
 from src.utils.io import write_json_atomic
 from src.utils.video import OpenCVVideoFrameReader
 
 BENCHMARK = Path("data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v1")
 SOURCE_SHA256 = "b9a33f87ac980c55ebc285c9a5a6f5edd657687be920aea2e14857c1ee845a45"
 INPUT_ID = "meiji_4cam/person-model-speed-v1"
+INPUT_MANIFEST_SHA256 = (
+    "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62"
+)
+TIMING_PROTOCOL_SHA256 = (
+    "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+)
+TIMING_PROTOCOL = Path(__file__).with_name("timing-protocol.json")
+WORKLOAD_INDEX = {
+    "dino": "frames",
+    "dino-vitpose": "frames",
+    "vitpose": "crops",
+    "vitpose-flip": "crops",
+    "body": "body_sequences",
+}
 CLIPS = tuple(f"video_000/clip_{number:03}" for number in (3, 57, 4, 13, 40, 28))
 CAMERAS = ("cam0", "cam1", "cam2", "cam3")
 BODY_LENGTH = 16
@@ -323,39 +338,31 @@ def publish(
 
 class InputSet:
     def __init__(self, directory: Path) -> None:
-        self.directory = directory
-        path = directory / "manifest.json"
-        self.sha256 = dual_sha256(path)
-        self.manifest = json.loads(path.read_text())
+        self.pins = PinnedBenchmarkInputs(
+            directory,
+            TIMING_PROTOCOL,
+            manifest_sha256=INPUT_MANIFEST_SHA256,
+            timing_sha256=TIMING_PROTOCOL_SHA256,
+        )
+        self.sha256 = self.pins.manifest_sha256
+        self.manifest = self.pins.manifest
         if (self.manifest["id"], self.manifest["source_benchmark_sha256"]) != (
             INPUT_ID,
             SOURCE_SHA256,
         ):
-            raise ValueError(f"Wrong speed input manifest: {path}")
-        self._indexes = {}
+            raise ValueError(f"Wrong speed input manifest: {directory}")
         self._images = {}
         self.lookups = {}
         self.lookups.update({row["id"]: row for row in self.rows("frames")})
         self.lookups.update({row["id"]: row for row in self.rows("body_frames")})
 
-    def rows(self, name: str) -> list[dict]:
-        if name not in self._indexes:
-            index = self.manifest["indexes"][name]
-            path = require_sha(self.directory / index["path"], index["sha256"])
-            rows = json.loads(path.read_text())
-            if len(rows) != index["records"] or len({row["id"] for row in rows}) != len(
-                rows
-            ):
-                raise ValueError(
-                    f"Speed input index has a changed count or duplicate ID: {path}"
-                )
-            self._indexes[name] = rows
-        return self._indexes[name]
+    def rows(self, name: str) -> tuple[dict, ...]:
+        return self.pins.rows(name)
 
     def frame(self, key: str) -> np.ndarray:
         if key not in self._images:
             row = self.lookups[key]
-            path = require_sha(self.directory / row["path"], row["sha256"])
+            path = self.pins.verified_asset(row)
             image = np.load(path, allow_pickle=False)
             if image.dtype != np.uint8 or list(image.shape) != row["shape"]:
                 raise ValueError(f"Wrong BGR frame shape or dtype: {path}")
@@ -363,9 +370,7 @@ class InputSet:
         return self._images[key]
 
     def body(self, row: dict) -> dict:
-        with np.load(
-            require_sha(self.directory / row["path"], row["sha256"]), allow_pickle=False
-        ) as arrays:
+        with np.load(self.pins.verified_asset(row), allow_pickle=False) as arrays:
             return {
                 **row,
                 **dict(arrays),

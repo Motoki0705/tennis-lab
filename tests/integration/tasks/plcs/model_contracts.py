@@ -42,6 +42,8 @@ SELECTORS = {
     "multiview_axial_large": "plcs_multiview_axial",
     "multiview_axial_xlarge": "plcs_multiview_axial",
     "multiview_axial_base_temporal_pose": "plcs_multiview_axial",
+    "monocular_gvhmr_base": "plcs_monocular_gvhmr",
+    "monocular_gvhmr_htd": "plcs_monocular_gvhmr",
 }
 
 
@@ -295,4 +297,251 @@ TEMPORAL = ModelFamily(
     parameters=_parameters,
     assert_batch=_assert_batch,
     assert_prediction=_assert_prediction,
+)
+
+
+def _compose_monocular(root: Path, gan: bool) -> DictConfig:
+    from hydra import compose, initialize_config_dir
+
+    with initialize_config_dir(
+        config_dir=str(CONFIG_DIR.resolve()), version_base="1.3"
+    ):
+        return compose(
+            config_name="train",
+            overrides=[
+                f"training={'gan_small' if gan else 'default'}",
+                f"paths.data_root={root.as_posix()}",
+                "model=monocular_gvhmr_htd",
+                "model.hidden_dim=32",
+                "model.num_layers=2",
+                "model.num_heads=4",
+                "model.mlp_ratio=2.0",
+                "model.max_seq_len=8",
+                "model.sliding_window_len=8",
+                "model.dropout=0.0",
+                "data=monocular_sequence",
+                "data.scene_dir=sceneset",
+                "data.batch_size=2",
+                "data.num_workers=0",
+                "data.pin_memory=false",
+                "data.seq_len_range=[4,6]",
+                "data.camera_mode=first",
+                "data.augmentation.enabled=false",
+                "data.augmentation.frame_rate.enabled=false",
+                "loss=monocular_htd",
+                "training.compile.enabled=false",
+                "training.learning_rate=0.001",
+                "training.weight_decay=0.0",
+                "training.warmup_steps=0",
+                "training.steps_per_epoch=1",
+                "training.trainer.max_epochs=2",
+                "training.qualitative_logging.enabled=false",
+            ],
+        )
+
+
+def _write_monocular_dataset(root: Path) -> None:
+    """Write monocular contract scenes with >=3 contiguous observed frames per scene."""
+    contract = resolve_court_keypoint_contract("physical_v1")
+    writer = PLCSDatasetWriter(root, court_keypoint_contract=contract)
+    writer.save_meta_json()
+    for index, (frames, views) in enumerate(((4, 1), (6, 2))):
+        time: np.ndarray = np.arange(frames, dtype=np.float32)
+        position_m = np.stack(
+            (0.2 + time * 0.1, -2.0 + time * 0.3, np.ones(frames, dtype=np.float32)),
+            axis=-1,
+        )
+        canonical: np.ndarray = np.linspace(
+            -0.5, 0.8, frames * 17 * 3, dtype=np.float32
+        ).reshape(frames, 17, 3)
+        yaw = time * 0.1 + 0.3
+        rotation = np.stack((np.cos(yaw), np.sin(yaw)), axis=-1)
+        world = canonical.copy()
+        world[..., 0] = (
+            canonical[..., 0] * rotation[:, :1] - canonical[..., 1] * rotation[:, 1:]
+        )
+        world[..., 1] = (
+            canonical[..., 0] * rotation[:, 1:] + canonical[..., 1] * rotation[:, :1]
+        )
+        world += position_m[:, None]
+        cameras = []
+        for camera in range(views):
+            obs = camera_observations(frames, camera, 17)
+            vis = np.ones_like(obs["vis"], dtype=np.bool_)
+            # Leave one trailing unobserved frame on scene_0 (frames 0..2 contiguous) and
+            # all frames observed on scene_1 so PVA velocity/acceleration triples are valid
+            # without ever crossing an unobserved boundary.
+            if index == 0:
+                vis[-1] = False
+            params = obs["camera_params"]
+            cameras.append(
+                CameraData(
+                    camera_params=params,
+                    human_kp_uv=obs["uv"],
+                    human_kp_vis=vis,
+                    court_kp_uv=np.broadcast_to(
+                        obs["court_kp_uv"], (frames, 20, 2)
+                    ).copy(),
+                    court_kp_vis=np.broadcast_to(
+                        obs["court_kp_vis"], (frames, 20)
+                    ).copy(),
+                    human_visibility_ratio=float(vis.mean()),
+                    court_visibility_count=19.0,
+                    court_view=build_court_view_record(
+                        camera_id=f"camera_{camera}",
+                        camera_center_court_m=params["C"],
+                        contract=contract,
+                    ),
+                )
+            )
+        writer.save_scene(
+            SceneData(
+                meta={
+                    "scene_id": f"scene_{index}",
+                    "motion_source": f"contract_{index}",
+                    "motion_category": "contract",
+                    "gender": "neutral",
+                    "fps": 30.0,
+                    "num_frames": frames,
+                    "initial_position": [0.2, -2.0],
+                    "initial_yaw": 0.3,
+                    "num_cameras_sampled": views,
+                },
+                position=normalize_court_position(position_m),
+                rotation=rotation,
+                canonical_pose_3d=canonical,
+                human_kp_3d=world,
+                cameras=cameras,
+                num_persons=1,
+                court_keypoint_contract=contract,
+            )
+        )
+    writer.save_meta_json()
+    write_splits(root)
+
+
+def _build_monocular(config: DictConfig) -> tuple[Any, Any]:
+    _write_monocular_dataset(Path(config.paths.data_root) / "sceneset")
+    return _components(config)
+
+
+def _monocular_batch(config: DictConfig) -> Any:
+    samples = []
+    root = Path(config.paths.data_root) / "sceneset"
+    for index, frames in enumerate((4, 6)):
+        exact = OmegaConf.merge(
+            config,
+            {
+                "data": {
+                    "seq_len_range": [frames, frames],
+                    "num_views_range": [1, 1],
+                }
+            },
+        )
+        split = f"mono_exact_{index}.txt"
+        (root / split).write_text(f"scene_{index}\n")
+        samples.append(
+            SceneDataset(scene_dir=root, split_file=split, config=exact, augment=False)[
+                0
+            ]
+        )
+    return collate_plcs_batch(samples)
+
+
+def _monocular_parameters(
+    module: Any,
+) -> tuple[ParameterContract, tuple[OptimizerContract, ...]]:
+    generator = names_under(module, "model")
+    groups = {
+        "kp2d_encoder": (
+            names_under(module, "model.learned_pos_linear")
+            | frozenset({"model.learned_pos_params", "model.unobserved_frame_embed"})
+            | names_under(module, "model.embed_noisyobs")
+        ),
+        "early_fusion": (
+            names_under(module, "model.cliffcam_embedder")
+            | names_under(module, "model.cam_feat_embedder")
+        ),
+        "backbone": (
+            names_under(module, "model.blocks")
+            | names_under(module, "model.final_norm")
+        ),
+        "pose_heads": (
+            names_under(module, "model.pred_cam_head")
+            | names_under(module, "model.local_pose_head")
+            | names_under(module, "model.pelvis_offset_cam_head")
+            | names_under(module, "model.yaw_delta_head")
+        ),
+        "pva_heads": (
+            names_under(module, "model.pva_conv")
+            | names_under(module, "model.pva_block")
+            | names_under(module, "model.pva_norm")
+            | names_under(module, "model.vel_cam_head")
+            | names_under(module, "model.acc_cam_head")
+            | names_under(module, "model.static_contact_head")
+        ),
+    }
+    return ParameterContract(
+        frozenset(dict(module.named_parameters())), frozenset(), frozenset()
+    ), (OptimizerContract("generator", generator, groups),)
+
+
+def _assert_monocular_batch(batch: Any) -> None:
+    assert batch["kp2d_norm"].shape == (2, 1, 6, 17, 3)
+    assert batch["bbx_xys"].shape == (2, 1, 6, 3)
+    assert batch["cliffcam"].shape == (2, 1, 6, 3)
+    assert batch["human_kp_3d"].shape == (2, 6, 17, 3)
+    pad = batch["padding_mask"]
+    assert pad.dtype == torch.bool
+    assert not pad[0, 0, :4].any() and pad[0, 0, 4:].all()
+    assert not pad[1, 0].any()
+
+
+def _assert_monocular_prediction(output: Any) -> None:
+    for tensor, shape in (
+        (output.position, (2, 6, 3)),
+        (output.rotation, (2, 6, 2)),
+        (output.canonical_pose, (2, 6, 17, 3)),
+        (output.world_kp_3d, (2, 6, 17, 3)),
+        (output.pred_vel_3d, (2, 6, 17, 3)),
+        (output.pred_acc_3d, (2, 6, 17, 3)),
+        (output.static_contact_logits, (2, 6, 4)),
+    ):
+        assert tensor is not None and tensor.shape == shape
+        assert tensor.dtype == torch.float32 and torch.isfinite(tensor).all()
+
+
+def _monocular_supervised_result(module: Any, batch: Any) -> Any:
+    result = module._compute_supervised_result(batch, "val")
+    assert (~result["prepared"].target_padding_mask).tolist() == [
+        [True, True, True, True, False, False],
+        [True, True, True, True, True, True],
+    ]
+    return result
+
+
+def _monocular_predict(module: Any, batch: Any) -> Any:
+    prepared = module.io_adapter.prepare_training_batch(batch)
+    raw = module.model_io.execute_call(prepared.call)
+    decoded = module.io_adapter.decode_prepared_output(raw, prepared)
+    return dict(
+        normalized=decoded,
+        padding_mask=batch["padding_mask"],
+        human_vis=batch["human_vis"],
+    )
+
+
+MONOCULAR_GVHMR = ModelFamily(
+    name="plcs_monocular_gvhmr",
+    compose=_compose_monocular,
+    build=_build_monocular,
+    rebuild=_components,
+    batch=_monocular_batch,
+    supervised_result=_monocular_supervised_result,
+    predict=_monocular_predict,
+    save=save_checkpoint,
+    restore=_restore,
+    parameters=_monocular_parameters,
+    assert_batch=_assert_monocular_batch,
+    assert_prediction=_assert_monocular_prediction,
 )
