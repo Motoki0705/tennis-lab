@@ -561,3 +561,12 @@ datasetの完成marker（`annotation.json`）は`dataset_publication.py`が公�
 `execution.<component>=load`は採用済みartifactを必須とし、モデルを実行しない。schema/version・node名・
 入力artifact参照が宣言と一致しなければ停止する。componentが生成したartifactは実行identityも一致を要求する。
 `cache.source=load`は全componentの再開検証用。入力や設定が違う通常artifactを暗黙採用しない。
+
+## 単眼 PLCS（＋HTD-Refine）骨格推定の明示選択
+
+既定パイプライン（多視点三角測量＋GVHMR/SMPL-X）は変更せず、`standard_definition(..., overrides=...)` の明示的な差し替えで HMR2・SMPL-X 非依存の単眼 PLCS（＋HTD-Refine Stage B）経路を選択できます。`gvhmr.enabled=false` と組み合わせると HMR2・SMPL-X 資産を一切要求せずに `SceneResult v2` を生成します。
+
+- **多視点クリップの差し替え**: `monocular_plcs_overrides(camera_ids, config, path_resolver=cfg.resolver)` が `player_triangulation`（`MonocularPLCSReconstructionModule`）と `body_placement`（`SkeletonOnlyPlacementModule`）を差し替え、`standard_definition` が対応する入力アセンブラ（`MonocularPLCSInputAssembler` / `SkeletonOnlyPlacementInputAssembler`）と `skeleton` 単一結合へ自動切替します。
+- **単視点クリップの差し替え**: `monocular_plcs_overrides(camera_ids, config, path_resolver=cfg.resolver, single_view_camera_id=cam_id)` はさらに `player_association`（`SingleViewIdentityModule`）と `camera_alignment`（`SingleViewCameraAlignmentModule`）を単視点ローカルコート基準へ差し替え、2視点以上の証拠なしで宣言型 `ComponentRunner` から `SceneResult v2` まで実行できます（直接呼出し入口 `reconstruct_single_view_monocular_scene` も利用可能）。
+- 相対 checkpoint パスは `PathResolver`（`PathRole.CHECKPOINT`）で `ModelSpec.weights` と `factory` の双方から同一ファイルへ解決され、`MonocularPLCSConfig.cache_identity()` は `HTDRefinerConfig` の全パラメータを含みます。
+

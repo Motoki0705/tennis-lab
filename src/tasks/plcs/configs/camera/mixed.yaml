@@ -1,0 +1,22 @@
+# Combined 6 fixed court-side cameras + 2 wide-range broadcast cameras (8 views/scene).
+layout: mixed
+z_min: 3.0
+z_max: 5.0
+hfov_deg: 60.0
+image_size: [1280, 720]
+fixed_look_at: [0.0, 0.0, 0.0]
+fixed_baseline_clear_extra: 0.0
+fixed_position_noise_radius: 2.0
+fixed_look_at_xy_radius: 1.0
+broadcast_setback: 22.0
+broadcast_height: 8.0
+broadcast_hfov_deg: 35.0
+broadcast_look_at_y: 0.0
+broadcast_look_at_height: 0.5
+broadcast_position_noise_radius: 1.0
+broadcast_look_at_xy_radius: 1.0
+broadcast_hfov_jitter_deg: 0.0
+broadcast_setback_range: [14.0, 38.0]
+broadcast_height_range: [4.5, 14.0]
+broadcast_court_width_frac_range: [0.48, 0.88]
+fixed_camera_indices: null

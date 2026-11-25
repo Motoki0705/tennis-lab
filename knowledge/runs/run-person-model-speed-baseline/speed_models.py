@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+from contextlib import contextmanager
 from itertools import groupby
 from pathlib import Path
 
@@ -24,7 +25,6 @@ from src.submodules.models.dino.architecture import (
 from src.submodules.models.dino.person_detector import PersonDetectionResult
 from src.submodules.vendor.gvhmr.vitpose.flip_utils import flip_heatmap_coco17
 from src.submodules.vendor.gvhmr.vitpose.kp2d_utils import keypoints_from_heatmaps
-from src.tasks.person_tracking.features import pose_boxes
 from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.model_resources import (
     dino_tensorrt,
@@ -35,7 +35,6 @@ from src.tennis_scene.pipeline.model_resources import (
 from src.utils.inference_benchmark import Backend, ConditionUnavailable, Stage, Status
 from src.utils.models.tensorrt_runtime import TensorRTRunner, tensorrt_module
 
-POSE_CROP_BATCH = 8
 HMR2_CROP_BATCH = 16
 DEVICE = "cuda:0"
 
@@ -94,6 +93,20 @@ def bind(spec, directory: Path, *, size: int):
             raise
         raise ConditionUnavailable(
             Status.UNSUPPORTED, f"{directory}: {error}"
+        ) from error
+
+
+@contextmanager
+def classify_startup(backend: Backend):
+    try:
+        yield
+    except (ConditionUnavailable, torch.OutOfMemoryError):
+        raise
+    except (OSError, RuntimeError, ValueError) as error:
+        if backend is not Backend.TRT16:
+            raise
+        raise ConditionUnavailable(
+            Status.UNAVAILABLE, f"TensorRT startup failed: {error}"
         ) from error
 
 
@@ -287,34 +300,6 @@ class Pose:
         return self.model._forward_heatmaps(pixels)
 
 
-def two_stage(dino, pose, images, stages):
-    detections = dino(images, stages)
-    rows = stages.stage(
-        Stage.PREPROCESS,
-        lambda: [
-            (i, image, box.tolist())
-            for i, (image, result) in enumerate(zip(images, detections, strict=True))
-            for box in pose_boxes(result.boxes_xyxy)
-        ],
-        name="dino_to_pose",
-    )
-    poses = []
-    for index in range(0, len(rows), POSE_CROP_BATCH):
-        poses.extend(pose(pose_groups(rows[index : index + POSE_CROP_BATCH]), stages))
-    by_image = []
-    offset = 0
-    for detection in detections:
-        count = len(detection.boxes_xyxy)
-        by_image.append(
-            (
-                detection,
-                np.asarray(poses[offset : offset + count]).reshape(count, 17, 3),
-            )
-        )
-        offset += count
-    return by_image
-
-
 class Body:
     def __init__(self, config, backend: Backend, directories, batch: int) -> None:
         self.backend = backend
@@ -451,10 +436,3 @@ class Body:
             ],
             name="gvhmr",
         )
-
-    def joints(self, params):
-        tensors = {
-            key: torch.tensor(array, device=DEVICE, dtype=torch.float32)[None, ...]
-            for key, array in params.items()
-        }
-        return self.gvhmr._model.pipeline.endecoder.fk_v2(**tensors)[0].cpu().numpy()

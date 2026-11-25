@@ -1,0 +1,6 @@
+defaults:
+  - _monocular_gvhmr
+  - _self_
+
+enable_pva_heads: false
+predict_static_contact: false

@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import ctypes
 from collections.abc import Callable, Iterator, Mapping, Sequence
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import asdict, dataclass, field
 from enum import StrEnum
 from importlib import metadata
@@ -33,6 +33,7 @@ __all__ = [
     "Conversion",
     "ConversionResult",
     "ParityResult",
+    "ParityStatus",
     "Stage",
     "Status",
     "benchmark",
@@ -65,13 +66,23 @@ class Conversion(StrEnum):
 
 class Status(StrEnum):
     OK = "ok"
+    INFEASIBLE = "infeasible"
+    PARITY_FAILED = "parity_failed"
+    # Specific reasons in Failure.status and ConditionUnavailable.
     OOM = "oom"
     UNSUPPORTED = "unsupported"
     UNAVAILABLE = "unavailable"
     CONVERSION_FAILED = "conversion_failed"
     BACKEND_MISMATCH = "backend_mismatch"
     PARITY_UNAVAILABLE = "parity_unavailable"
-    PARITY_FAILED = "parity_failed"
+
+
+class ParityStatus(StrEnum):
+    PASSED = "passed"
+    FAILED = "failed"
+    NOT_EVALUATED = "not_evaluated"
+    UNAVAILABLE = "unavailable"
+    NOT_RUN = "not_run"
 
 
 class ConditionUnavailable(RuntimeError):
@@ -168,6 +179,7 @@ class ParityResult:
     passed: bool
     metrics: Mapping[str, object]
     reason: str | None = None
+    criteria: Mapping[str, object] = field(default_factory=dict)
 
 
 @dataclass(frozen=True)
@@ -230,17 +242,33 @@ class BenchmarkReport:
     parity: ParityResult | None = None
     failure: Failure | None = None
     summary: dict[str, TimingStats] | None = None
+    parity_not_evaluated_reason: str | None = None
 
     @property
     def status(self) -> Status:
-        return Status.OK if self.failure is None else self.failure.status
+        if self.failure is None:
+            return Status.OK
+        if self.failure.phase == "parity" and self.summary is not None:
+            return Status.PARITY_FAILED
+        return Status.INFEASIBLE
+
+    @property
+    def parity_status(self) -> ParityStatus:
+        if self.parity is not None:
+            return ParityStatus.PASSED if self.parity.passed else ParityStatus.FAILED
+        if self.parity_not_evaluated_reason is not None:
+            return ParityStatus.NOT_EVALUATED
+        if self.failure is not None and self.failure.phase == "parity":
+            return ParityStatus.UNAVAILABLE
+        return ParityStatus.NOT_RUN
 
     def to_dict(self) -> dict[str, object]:
         peak = max(self.nvml_used_bytes.values(), default=None)
         initial = self.nvml_used_bytes.get("before_load")
         return {
-            "schema_version": 1,
+            "schema_version": 3,
             "status": self.status,
+            "parity_status": self.parity_status,
             **asdict(self),
             "nvml_device_peak_sampled_bytes": peak,
             "nvml_peak_minus_before_load_bytes": (
@@ -358,7 +386,10 @@ class _CudaMeasurements:
 
 @contextmanager
 def _cuda_measurements(
-    device: str | torch.device, environment: dict[str, object]
+    device: str | torch.device,
+    environment: dict[str, object],
+    *,
+    dedicated_stream: bool = False,
 ) -> Iterator[_CudaMeasurements]:
     target = _device(device)
     matmul, cudnn, conv = (
@@ -403,9 +434,15 @@ def _cuda_measurements(
                     },
                     **nvml.device_state(str(target)),
                 )
-                cuda = _CudaMeasurements(target, nvml)
-                torch.cuda.reset_peak_memory_stats(target)
-                yield cuda
+                stream = (
+                    torch.cuda.stream(torch.cuda.Stream(device=target))
+                    if dedicated_stream
+                    else nullcontext()
+                )
+                with stream:
+                    cuda = _CudaMeasurements(target, nvml)
+                    torch.cuda.reset_peak_memory_stats(target)
+                    yield cuda
             finally:
                 nvml.close()
         finally:
@@ -555,10 +592,12 @@ def benchmark(
     backends: Mapping[Backend, BenchmarkAdapter[Input, Output]],
     *,
     device: str | torch.device = "cuda:0",
+    dedicated_stream: bool = False,
     protocol: BenchmarkProtocol = _DEFAULT_PROTOCOL,
     conversion: Sequence[ConversionResult] = (),
     check_parity: Callable[[Iterator[tuple[Batch[Input], Output]]], ParityResult]
     | None = None,
+    parity_not_evaluated_reason: str | None = None,
 ) -> BenchmarkReport:
     """Measure one backend and batch size on the supplied ordered, full batches."""
     batches = tuple(batches)
@@ -568,7 +607,16 @@ def benchmark(
         raise ValueError("Every batch must match the exact requested size")
     if len({result.phase for result in conversion}) != len(conversion):
         raise ValueError("Supply at most one result per conversion phase")
-    report = BenchmarkReport(case, protocol, tuple(conversion))
+    if parity_not_evaluated_reason is not None and (
+        not parity_not_evaluated_reason.strip() or check_parity is not None
+    ):
+        raise ValueError("Skipping parity requires a reason and no parity callback")
+    report = BenchmarkReport(
+        case,
+        protocol,
+        tuple(conversion),
+        parity_not_evaluated_reason=parity_not_evaluated_reason,
+    )
     for result in conversion:
         if result.failure is not None:
             report.failure = result.failure
@@ -594,7 +642,9 @@ def benchmark(
                 Status.UNAVAILABLE, "TRT16 requires an engine artifact"
             )
         phase = "environment"
-        with _cuda_measurements(device, report.environment) as cuda:
+        with _cuda_measurements(
+            device, report.environment, dedicated_stream=dedicated_stream
+        ) as cuda:
             try:
                 _run_case(report, cuda, batches, adapter, check_parity)
             finally:
@@ -619,7 +669,9 @@ def _run_case(
     ) -> tuple[Output, tuple[StageSample, ...]]:
         stages = BatchStages(cuda, report.case.backend, timed=timed)
         output = run(batch.data, stages)
-        return output, stages._finish()
+        samples = stages._finish()
+        cuda.synchronize()
+        return output, samples
 
     phase = "load"
     try:
@@ -663,6 +715,9 @@ def _run_case(
                 )
             report.nvml_used_bytes[f"block_{block}"] = cuda.memory_used_bytes()
 
+        report.summary = _summarize(report.samples)
+        if report.parity_not_evaluated_reason is not None:
+            return
         phase = "parity"
         if check_parity is not None:
             observed = 0
@@ -689,6 +744,5 @@ def _run_case(
             raise ConditionUnavailable(
                 Status.PARITY_UNAVAILABLE, "A PT32 reference check is required"
             )
-        report.summary = _summarize(report.samples)
     except (ConditionUnavailable, torch.OutOfMemoryError) as error:
         report.failure = _failure(error, phase, Status.UNAVAILABLE)
