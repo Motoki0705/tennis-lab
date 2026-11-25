@@ -20,10 +20,11 @@ HTD-Refine trajectory optimization, and ``tennis_scene`` pipeline inference:
 
 from __future__ import annotations
 
+import contextlib
 import math
 from collections.abc import Mapping
 from dataclasses import dataclass
-from typing import Final, cast
+from typing import Any, Final, cast
 
 import torch
 from torch import Tensor
@@ -33,6 +34,24 @@ from src.utils.schema.player import COCO_KP_IDX, NUM_HUMAN_KP
 
 LEFT_HIP_IDX: Final[int] = COCO_KP_IDX["left_hip"]
 RIGHT_HIP_IDX: Final[int] = COCO_KP_IDX["right_hip"]
+
+
+def _fp32_geometry_context(device: torch.device) -> contextlib.AbstractContextManager[Any]:
+    """Disable mixed-precision autocast for exact FP32/FP64 camera geometry math."""
+    if device.type in {"cpu", "cuda", "mps", "xpu"}:
+        return cast(
+            "contextlib.AbstractContextManager[Any]",
+            torch.amp.autocast(device_type=device.type, enabled=False),
+        )
+    return contextlib.nullcontext()
+
+
+def _geometry_dtype(*tensors: Tensor) -> torch.dtype:
+    """Promote low-precision (BF16/FP16) geometry operands to FP32 while keeping FP64."""
+    for tensor in tensors:
+        if tensor.dtype == torch.float64:
+            return torch.float64
+    return torch.float32
 
 BBX_XYS_DIM: Final[int] = 3
 CLIFFCAM_DIM: Final[int] = 3
@@ -570,15 +589,20 @@ def _validate_extrinsics_and_intrinsics(
         )
     if C_w.ndim < 1 or C_w.shape[-1] != 3:
         raise ValueError(f"C_w must have shape (..., 3), got {tuple(C_w.shape)}.")
-    eye = torch.eye(3, device=R_w2c.device, dtype=R_w2c.dtype)
-    ortho_err = (R_w2c @ R_w2c.transpose(-1, -2) - eye).abs().amax()
-    if float(ortho_err.item()) > 1e-3:
-        raise ValueError(
-            f"R_w2c must be orthonormal (max |R R^T - I| = {float(ortho_err.item()):.3e})."
-        )
-    det = torch.linalg.det(R_w2c)
-    if bool(((det - 1.0).abs() > 1e-3).any()):
-        raise ValueError("R_w2c must be a proper rotation matrix with det(R) == +1.")
+    geom_dtype = _geometry_dtype(R_w2c, C_w, fx, fy, cx0, cy0)
+    with _fp32_geometry_context(R_w2c.device):
+        R_fp = R_w2c.to(dtype=geom_dtype)
+        eye = torch.eye(3, device=R_fp.device, dtype=geom_dtype)
+        ortho_err = (R_fp @ R_fp.transpose(-1, -2) - eye).abs().amax()
+        if float(ortho_err.item()) > 1e-3:
+            raise ValueError(
+                f"R_w2c must be orthonormal (max |R R^T - I| = {float(ortho_err.item()):.3e})."
+            )
+        det = torch.linalg.det(R_fp)
+        if bool(((det - 1.0).abs() > 1e-3).any()):
+            raise ValueError(
+                "R_w2c must be a proper rotation matrix with det(R) == +1."
+            )
 
 
 def _broadcast_camera_time(
@@ -907,34 +931,54 @@ def cliff_to_camera_translation(
 
     batch_shape = tuple(pred_cam.shape[:-2])
     seq_len = int(pred_cam.shape[-2])
-    fx_t = _broadcast_camera_time(
-        fx, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fx"
-    )
-    fy_t = _broadcast_camera_time(
-        fy, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fy"
-    )
-    cx0_t = _broadcast_camera_time(
-        cx0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cx0"
-    )
-    cy0_t = _broadcast_camera_time(
-        cy0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cy0"
-    )
-
-    s = pred_cam[..., 0]
-    tx = pred_cam[..., 1]
-    ty = pred_cam[..., 2]
-    box_s = bbx_xys[..., 2]
-    if bool((s <= 0).any()) or bool((box_s <= 0).any()):
-        raise ValueError(
-            "cliff_to_camera_translation requires strictly positive scale s and bbx_xys[..., 2]."
+    geom_dtype = _geometry_dtype(pred_cam, bbx_xys, fx, fy, cx0, cy0)
+    with _fp32_geometry_context(pred_cam.device):
+        pred_cam_fp = pred_cam.to(dtype=geom_dtype)
+        bbx_fp = bbx_xys.to(dtype=geom_dtype)
+        fx_t = _broadcast_camera_time(
+            fx.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=0,
+            name="fx",
+        )
+        fy_t = _broadcast_camera_time(
+            fy.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=0,
+            name="fy",
+        )
+        cx0_t = _broadcast_camera_time(
+            cx0.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=0,
+            name="cx0",
+        )
+        cy0_t = _broadcast_camera_time(
+            cy0.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=0,
+            name="cy0",
         )
 
-    f_eff = torch.sqrt(fx_t * fy_t)
-    sb = s * box_s
-    tz = 2.0 * f_eff / sb
-    cam_x = tx + tz * (bbx_xys[..., 0] - cx0_t) / fx_t
-    cam_y = ty + tz * (bbx_xys[..., 1] - cy0_t) / fy_t
-    return torch.stack([cam_x, cam_y, tz], dim=-1)
+        s = pred_cam_fp[..., 0]
+        tx = pred_cam_fp[..., 1]
+        ty = pred_cam_fp[..., 2]
+        box_s = bbx_fp[..., 2]
+        if bool((s <= 0).any()) or bool((box_s <= 0).any()):
+            raise ValueError(
+                "cliff_to_camera_translation requires strictly positive scale s and bbx_xys[..., 2]."
+            )
+
+        f_eff = torch.sqrt(fx_t * fy_t)
+        sb = s * box_s
+        tz = 2.0 * f_eff / sb
+        cam_x = tx + tz * (bbx_fp[..., 0] - cx0_t) / fx_t
+        cam_y = ty + tz * (bbx_fp[..., 1] - cy0_t) / fy_t
+        return torch.stack([cam_x, cam_y, tz], dim=-1)
 
 
 def camera_translation_to_cliff(
@@ -955,31 +999,51 @@ def camera_translation_to_cliff(
 
     batch_shape = tuple(cam_t.shape[:-2])
     seq_len = int(cam_t.shape[-2])
-    fx_t = _broadcast_camera_time(
-        fx, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fx"
-    )
-    fy_t = _broadcast_camera_time(
-        fy, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fy"
-    )
-    cx0_t = _broadcast_camera_time(
-        cx0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cx0"
-    )
-    cy0_t = _broadcast_camera_time(
-        cy0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cy0"
-    )
-
-    tz = cam_t[..., 2]
-    box_s = bbx_xys[..., 2]
-    if bool((tz <= _MIN_DEPTH_M).any()) or bool((box_s <= 0).any()):
-        raise ValueError(
-            "camera_translation_to_cliff requires positive depth Z_c and positive bbx_xys[..., 2]."
+    geom_dtype = _geometry_dtype(cam_t, bbx_xys, fx, fy, cx0, cy0)
+    with _fp32_geometry_context(cam_t.device):
+        cam_t_fp = cam_t.to(dtype=geom_dtype)
+        bbx_fp = bbx_xys.to(dtype=geom_dtype)
+        fx_t = _broadcast_camera_time(
+            fx.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=0,
+            name="fx",
+        )
+        fy_t = _broadcast_camera_time(
+            fy.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=0,
+            name="fy",
+        )
+        cx0_t = _broadcast_camera_time(
+            cx0.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=0,
+            name="cx0",
+        )
+        cy0_t = _broadcast_camera_time(
+            cy0.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=0,
+            name="cy0",
         )
 
-    f_eff = torch.sqrt(fx_t * fy_t)
-    s = 2.0 * f_eff / (tz * box_s)
-    tx = cam_t[..., 0] - tz * (bbx_xys[..., 0] - cx0_t) / fx_t
-    ty = cam_t[..., 1] - tz * (bbx_xys[..., 1] - cy0_t) / fy_t
-    return torch.stack([s, tx, ty], dim=-1)
+        tz = cam_t_fp[..., 2]
+        box_s = bbx_fp[..., 2]
+        if bool((tz <= _MIN_DEPTH_M).any()) or bool((box_s <= 0).any()):
+            raise ValueError(
+                "camera_translation_to_cliff requires positive depth Z_c and positive bbx_xys[..., 2]."
+            )
+
+        f_eff = torch.sqrt(fx_t * fy_t)
+        s = 2.0 * f_eff / (tz * box_s)
+        tx = cam_t_fp[..., 0] - tz * (bbx_fp[..., 0] - cx0_t) / fx_t
+        ty = cam_t_fp[..., 1] - tz * (bbx_fp[..., 1] - cy0_t) / fy_t
+        return torch.stack([s, tx, ty], dim=-1)
 
 
 def center_local_pose_on_hips(local_pose_cam: Tensor) -> Tensor:
@@ -1023,20 +1087,37 @@ def cliff_and_local_pose_to_world_coco17(
 
     batch_shape = tuple(pred_cam.shape[:-2])
     seq_len = int(pred_cam.shape[-2])
-    R_t = _broadcast_camera_time(
-        R_w2c, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=2, name="R_w2c"
+    geom_dtype = _geometry_dtype(
+        pred_cam, local_pose_cam, bbx_xys, R_w2c, C_w, fx, fy, cx0, cy0
     )
-    C_t = _broadcast_camera_time(
-        C_w, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=1, name="C_w"
-    )
+    with _fp32_geometry_context(pred_cam.device):
+        R_t = _broadcast_camera_time(
+            R_w2c.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=2,
+            name="R_w2c",
+        )
+        C_t = _broadcast_camera_time(
+            C_w.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=1,
+            name="C_w",
+        )
 
-    root_cam = cliff_to_camera_translation(
-        pred_cam, bbx_xys, fx=fx, fy=fy, cx0=cx0, cy0=cy0
-    )
-    centered_local = center_local_pose_on_hips(local_pose_cam)
-    kp_cam = root_cam.unsqueeze(-2) + centered_local
-    # Since X_c = (X_w - C_w) @ R_w2c^T, the inverse is X_w = X_c @ R_w2c + C_w.
-    return torch.einsum("...ji,...kj->...ki", R_t, kp_cam) + C_t.unsqueeze(-2)
+        root_cam = cliff_to_camera_translation(
+            pred_cam.to(dtype=geom_dtype),
+            bbx_xys.to(dtype=geom_dtype),
+            fx=fx.to(dtype=geom_dtype),
+            fy=fy.to(dtype=geom_dtype),
+            cx0=cx0.to(dtype=geom_dtype),
+            cy0=cy0.to(dtype=geom_dtype),
+        )
+        centered_local = center_local_pose_on_hips(local_pose_cam.to(dtype=geom_dtype))
+        kp_cam = root_cam.unsqueeze(-2) + centered_local
+        # Since X_c = (X_w - C_w) @ R_w2c^T, the inverse is X_w = X_c @ R_w2c + C_w.
+        return torch.einsum("...ji,...kj->...ki", R_t, kp_cam) + C_t.unsqueeze(-2)
 
 
 def world_coco17_to_cliff_and_local_pose(
@@ -1063,23 +1144,38 @@ def world_coco17_to_cliff_and_local_pose(
 
     batch_shape = tuple(world_kp_3d.shape[:-3])
     seq_len = int(world_kp_3d.shape[-3])
-    R_t = _broadcast_camera_time(
-        R_w2c, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=2, name="R_w2c"
-    )
-    C_t = _broadcast_camera_time(
-        C_w, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=1, name="C_w"
-    )
+    geom_dtype = _geometry_dtype(world_kp_3d, bbx_xys, R_w2c, C_w, fx, fy, cx0, cy0)
+    with _fp32_geometry_context(world_kp_3d.device):
+        R_t = _broadcast_camera_time(
+            R_w2c.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=2,
+            name="R_w2c",
+        )
+        C_t = _broadcast_camera_time(
+            C_w.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=1,
+            name="C_w",
+        )
 
-    rel_world = world_kp_3d - C_t.unsqueeze(-2)
-    kp_cam = torch.einsum("...ij,...kj->...ki", R_t, rel_world)
-    root_cam = 0.5 * (
-        kp_cam[..., LEFT_HIP_IDX, :] + kp_cam[..., RIGHT_HIP_IDX, :]
-    )
-    local_pose_cam = kp_cam - root_cam.unsqueeze(-2)
-    pred_cam = camera_translation_to_cliff(
-        root_cam, bbx_xys, fx=fx, fy=fy, cx0=cx0, cy0=cy0
-    )
-    return pred_cam, local_pose_cam
+        rel_world = world_kp_3d.to(dtype=geom_dtype) - C_t.unsqueeze(-2)
+        kp_cam = torch.einsum("...ij,...kj->...ki", R_t, rel_world)
+        root_cam = 0.5 * (
+            kp_cam[..., LEFT_HIP_IDX, :] + kp_cam[..., RIGHT_HIP_IDX, :]
+        )
+        local_pose_cam = kp_cam - root_cam.unsqueeze(-2)
+        pred_cam = camera_translation_to_cliff(
+            root_cam,
+            bbx_xys.to(dtype=geom_dtype),
+            fx=fx.to(dtype=geom_dtype),
+            fy=fy.to(dtype=geom_dtype),
+            cx0=cx0.to(dtype=geom_dtype),
+            cy0=cy0.to(dtype=geom_dtype),
+        )
+        return pred_cam, local_pose_cam
 
 
 def project_world_coco17_to_pixel(
@@ -1105,36 +1201,62 @@ def project_world_coco17_to_pixel(
 
     batch_shape = tuple(world_kp_3d.shape[:-3])
     seq_len = int(world_kp_3d.shape[-3])
-    R_t = _broadcast_camera_time(
-        R_w2c, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=2, name="R_w2c"
-    )
-    C_t = _broadcast_camera_time(
-        C_w, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=1, name="C_w"
-    )
-    fx_t = _broadcast_camera_time(
-        fx, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fx"
-    ).unsqueeze(-1)
-    fy_t = _broadcast_camera_time(
-        fy, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="fy"
-    ).unsqueeze(-1)
-    cx0_t = _broadcast_camera_time(
-        cx0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cx0"
-    ).unsqueeze(-1)
-    cy0_t = _broadcast_camera_time(
-        cy0, batch_shape=batch_shape, seq_len=seq_len, trailing_dims=0, name="cy0"
-    ).unsqueeze(-1)
+    geom_dtype = _geometry_dtype(world_kp_3d, R_w2c, C_w, fx, fy, cx0, cy0)
+    with _fp32_geometry_context(world_kp_3d.device):
+        R_t = _broadcast_camera_time(
+            R_w2c.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=2,
+            name="R_w2c",
+        )
+        C_t = _broadcast_camera_time(
+            C_w.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=1,
+            name="C_w",
+        )
+        fx_t = _broadcast_camera_time(
+            fx.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=0,
+            name="fx",
+        ).unsqueeze(-1)
+        fy_t = _broadcast_camera_time(
+            fy.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=0,
+            name="fy",
+        ).unsqueeze(-1)
+        cx0_t = _broadcast_camera_time(
+            cx0.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=0,
+            name="cx0",
+        ).unsqueeze(-1)
+        cy0_t = _broadcast_camera_time(
+            cy0.to(dtype=geom_dtype),
+            batch_shape=batch_shape,
+            seq_len=seq_len,
+            trailing_dims=0,
+            name="cy0",
+        ).unsqueeze(-1)
 
-    kp_cam = torch.einsum(
-        "...ij,...kj->...ki", R_t, world_kp_3d - C_t.unsqueeze(-2)
-    )
-    z = kp_cam[..., 2]
-    in_front = z > _MIN_DEPTH_M
-    z_safe = torch.where(in_front, z, torch.ones_like(z))
-    u_px = fx_t * (kp_cam[..., 0] / z_safe) + cx0_t
-    v_px = fy_t * (kp_cam[..., 1] / z_safe) + cy0_t
-    uv_px = torch.stack([u_px, v_px], dim=-1)
-    uv_px = torch.where(in_front.unsqueeze(-1), uv_px, torch.zeros_like(uv_px))
-    return uv_px, in_front
+        kp_cam = torch.einsum(
+            "...ij,...kj->...ki", R_t, world_kp_3d.to(dtype=geom_dtype) - C_t.unsqueeze(-2)
+        )
+        z = kp_cam[..., 2]
+        in_front = z > _MIN_DEPTH_M
+        z_safe = torch.where(in_front, z, torch.ones_like(z))
+        u_px = fx_t * (kp_cam[..., 0] / z_safe) + cx0_t
+        v_px = fy_t * (kp_cam[..., 1] / z_safe) + cy0_t
+        uv_px = torch.stack([u_px, v_px], dim=-1)
+        uv_px = torch.where(in_front.unsqueeze(-1), uv_px, torch.zeros_like(uv_px))
+        return uv_px, in_front
 
 
 __all__ = [

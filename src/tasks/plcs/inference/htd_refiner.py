@@ -28,7 +28,6 @@ from torch import Tensor
 from src.tasks.plcs.geometry.monocular_camera_bbox import (
     LEFT_HIP_IDX,
     RIGHT_HIP_IDX,
-    project_world_coco17_to_pixel,
     validate_pinhole_camera_tensors,
 )
 from src.tasks.plcs.models.plcs_monocular_gvhmr_model import (
@@ -374,10 +373,13 @@ class PLCSHTDRefiner:
                     kp = _seg_base + _delta
                     total = kp.new_zeros(())
 
-                    # 1. Stage A 1st-order velocity alignment in metres per step
+                    # 1. Stage A 1st-order forward velocity alignment in metres per step.
+                    # Stage A supervises pred_vel[t] against (J[t+1] - J[t]) * fps, so
+                    # pred_vel[:-1] * dt aligns identically with step_disp = kp[1:] - kp[:-1]
+                    # and never reads the unsupervised segment-endpoint pred_vel[-1].
                     if cfg.vel_weight > 0.0 and _seg_vel is not None and _seg_len >= 2:
                         step_disp = kp[1:] - kp[:-1]
-                        target_disp = 0.5 * (_seg_vel[1:] + _seg_vel[:-1]) * dt
+                        target_disp = _seg_vel[:-1] * dt
                         loss_v = F.huber_loss(
                             step_disp,
                             target_disp,
@@ -397,8 +399,12 @@ class PLCSHTDRefiner:
                         total = total + cfg.acc_weight * loss_a
 
                     # 3. Confidence-weighted metric 2D pinhole reprojection across 1..V views
+                    # Uses per-axis focal lengths (fx, fy) for in-front joints and a smooth
+                    # positive-depth cheirality barrier for behind-camera joints so gradients
+                    # always push behind-camera points forward in front of the camera.
                     if cfg.reproj_weight > 0.0 and _prepared_views:
                         reproj_sum = kp.new_zeros(())
+                        min_depth_m = 0.1
                         for (
                             R_in,
                             C_in,
@@ -410,16 +416,6 @@ class PLCSHTDRefiner:
                             conf,
                             joint_mask,
                         ) in _prepared_views:
-                            uv_pred, _ = project_world_coco17_to_pixel(
-                                kp.unsqueeze(0),
-                                R_w2c=R_in,
-                                C_w=C_in,
-                                fx=fx_in,
-                                fy=fy_in,
-                                cx0=cx_in,
-                                cy0=cy_in,
-                            )
-                            # True metric camera depth Z_cam [m] for exact pixel->metre scaling.
                             R_v = R_in[0]
                             C_v = C_in[0]
                             if R_v.ndim == 2:
@@ -428,20 +424,41 @@ class PLCSHTDRefiner:
                                 kp_cam = torch.matmul(
                                     kp - C_v.unsqueeze(1), R_v.transpose(-1, -2)
                                 )
-                            depth_m = kp_cam[..., 2].detach().clamp_min(1.0).unsqueeze(-1)
-                            f_eff = 0.5 * (fx_in[0] + fy_in[0])
-                            f_scale = (
-                                f_eff.view(1, 1, 1)
-                                if f_eff.ndim == 0
-                                else f_eff.view(-1, 1, 1)
-                            )
-                            metric_err = (uv_pred[0] - kp2d_t) * (depth_m / f_scale)
-                            err = F.huber_loss(
+                            fx_v = fx_in[0]
+                            fy_v = fy_in[0]
+                            cx_v = cx_in[0]
+                            cy_v = cy_in[0]
+                            fx_col = fx_v.view(1, 1) if fx_v.ndim == 0 else fx_v.view(-1, 1)
+                            fy_col = fy_v.view(1, 1) if fy_v.ndim == 0 else fy_v.view(-1, 1)
+                            cx_col = cx_v.view(1, 1) if cx_v.ndim == 0 else cx_v.view(-1, 1)
+                            cy_col = cy_v.view(1, 1) if cy_v.ndim == 0 else cy_v.view(-1, 1)
+
+                            z_cam = kp_cam[..., 2]
+                            in_front = z_cam > min_depth_m
+                            z_safe = torch.where(in_front, z_cam, torch.ones_like(z_cam))
+                            u_pred = fx_col * (kp_cam[..., 0] / z_safe) + cx_col
+                            v_pred = fy_col * (kp_cam[..., 1] / z_safe) + cy_col
+                            depth_det = z_safe.detach()
+                            metric_err_x = (u_pred - kp2d_t[..., 0]) * (depth_det / fx_col)
+                            metric_err_y = (v_pred - kp2d_t[..., 1]) * (depth_det / fy_col)
+                            metric_err = torch.stack([metric_err_x, metric_err_y], dim=-1)
+                            in_front_err = F.huber_loss(
                                 metric_err,
                                 torch.zeros_like(metric_err),
                                 reduction="none",
                                 delta=cfg.reproj_huber_delta,
                             ).mean(dim=-1)
+
+                            # Differentiable positive-depth cheirality penalty for z_cam <= min_depth_m
+                            depth_margin = F.relu((min_depth_m + 0.5) - z_cam)
+                            behind_err = F.huber_loss(
+                                depth_margin,
+                                torch.zeros_like(depth_margin),
+                                reduction="none",
+                                delta=cfg.reproj_huber_delta,
+                            ) + 0.5 * (depth_margin**2)
+
+                            err = torch.where(in_front, in_front_err, behind_err)
                             weighted = err * conf
                             reproj_sum = reproj_sum + weighted[joint_mask].mean()
                         total = total + cfg.reproj_weight * (

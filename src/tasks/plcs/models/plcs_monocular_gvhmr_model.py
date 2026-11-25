@@ -17,6 +17,7 @@ HMR2 image features completely:
 
 from __future__ import annotations
 
+import contextlib
 import math
 from typing import TYPE_CHECKING, Final
 
@@ -91,35 +92,47 @@ def build_monocular_sliding_padding_mask(
     padding_mask: Tensor,
     *,
     sliding_window_len: int,
+    frame_observed: Tensor | None = None,
 ) -> Tensor:
-    """Build NaN-safe, padding-invariant ``(B, 1, L, L)`` attention mask (``True`` = masked).
+    """Build NaN-safe, segment-isolated ``(B, 1, L, L)`` attention mask (``True`` = masked).
 
-    - Valid queries ``i`` (``~padding_mask[b, i]``) attend strictly to valid keys
-      ``j`` (``~padding_mask[b, j]``) with ``|i - j| <= sliding_window_len // 2``.
-      Because ``j == i`` is always valid and at distance ``0``, every valid query
-      has at least one unmasked key, and its key set is 100% independent of any
-      trailing padded frames.
-    - Padded queries ``i`` (``padding_mask[b, i]``) attend solely to ``j == i`` so
-      ``softmax`` never sees an all-``-inf`` row (avoiding ``NaN`` forward/backward
-      activations even when ``L >> sliding_window_len``).
+    - Active frames are ``~padding_mask`` (and ``frame_observed`` when provided).
+    - Active queries ``i`` attend strictly to active keys ``j`` within the same
+      contiguous active segment (never crossing an internal unobserved or padded
+      gap) and within ``|i - j| <= sliding_window_len // 2``.
+    - Inactive queries ``i`` attend solely to ``j == i`` so ``softmax`` never
+      encounters an all-``-inf`` row (avoiding ``NaN`` forward/backward values).
     """
     if padding_mask.ndim != 2 or padding_mask.dtype != torch.bool:
         raise ValueError(
             f"padding_mask must be bool of shape (B, L), got {tuple(padding_mask.shape)}."
         )
-    bsz, seq_len = padding_mask.shape
+    if frame_observed is not None:
+        if frame_observed.shape != padding_mask.shape or frame_observed.dtype != torch.bool:
+            raise ValueError(
+                "frame_observed must be bool of shape (B, L) matching padding_mask."
+            )
+        inactive = padding_mask | (~frame_observed)
+    else:
+        inactive = padding_mask
+
+    _, seq_len = padding_mask.shape
     device = padding_mask.device
     idx = torch.arange(seq_len, device=device)
     half_win = max(sliding_window_len // 2, 0)
     outside_window = (idx[:, None] - idx[None, :]).abs() > half_win  # (L, L)
 
-    # Mask any key outside the symmetric local window OR any padded key.
-    masked = outside_window.unsqueeze(0) | padding_mask[:, None, :]  # (B, L, L)
+    # Contiguous active segments share the same cumulative count of inactive barriers.
+    seg_id = torch.cumsum(inactive.to(dtype=torch.int64), dim=1)  # (B, L)
+    different_segment = seg_id[:, :, None] != seg_id[:, None, :]  # (B, L, L)
 
-    # For padded queries, mask all keys EXCEPT self-diagonal (i, i) so softmax is finite.
+    # Mask any key outside the local window, in another segment, or inactive.
+    masked = outside_window.unsqueeze(0) | different_segment | inactive[:, None, :]
+
+    # For inactive queries, mask all keys EXCEPT self-diagonal (i, i) so softmax is finite.
     eye = torch.eye(seq_len, dtype=torch.bool, device=device).unsqueeze(0)  # (1, L, L)
-    padded_query_row = ~eye
-    masked = torch.where(padding_mask[:, :, None], padded_query_row, masked)
+    inactive_query_row = ~eye
+    masked = torch.where(inactive[:, :, None], inactive_query_row, masked)
     return masked.unsqueeze(1)  # (B, 1, L, L)
 
 
@@ -190,8 +203,8 @@ class MonocularEncoderRoPEBlock(nn.Module):
             act_layer=_approx_gelu,
             drop=dropout,
         )
-        self.gate_msa = nn.Parameter(torch.full((1, 1, hidden_size), 0.1))
-        self.gate_mlp = nn.Parameter(torch.full((1, 1, hidden_size), 0.1))
+        self.gate_msa = nn.Parameter(torch.zeros(1, 1, hidden_size))
+        self.gate_mlp = nn.Parameter(torch.zeros(1, 1, hidden_size))
 
     def forward(self, x: Tensor, *, attn_mask_4d: Tensor, valid_3d: Tensor) -> Tensor:
         x = x + self.gate_msa * self.attn(self.norm1(x), attn_mask_4d)
@@ -404,8 +417,8 @@ class PLCSMonocularGVHMRModel(nn.Module):
 
         fy_in = camera_f_in if camera_fy_in is None else camera_fy_in
         valid_frame = ~padding_mask
-        valid_3d = valid_frame.unsqueeze(-1).to(dtype=kp2d_norm.dtype)
         obs_frame = frame_observed & valid_frame
+        active_3d = obs_frame.unsqueeze(-1).to(dtype=kp2d_norm.dtype)
 
         # 1. Encode 2D COCO-17 keypoints with learned occlusion tokens
         joint_vis = (kp2d_norm[..., 2:3] > 0.0) & obs_frame[:, :, None, None]
@@ -422,75 +435,111 @@ class PLCSMonocularGVHMRModel(nn.Module):
         cliff_clean = torch.where(
             obs_frame.unsqueeze(-1), cliffcam, torch.zeros_like(cliffcam)
         )
-        cam_clean = torch.where(valid_frame.unsqueeze(-1), cam_feat, torch.zeros_like(cam_feat))
+        cam_clean = torch.where(obs_frame.unsqueeze(-1), cam_feat, torch.zeros_like(cam_feat))
         x = x + self.cliffcam_embedder(cliff_clean) + self.cam_feat_embedder(cam_clean)
-        x = x * valid_3d
+        x = x * active_3d
 
-        # 3. RoPE Relative Transformer with NaN-safe sliding window + padding mask
+        # 3. RoPE Relative Transformer with NaN-safe, segment-isolated sliding window mask
         attn_mask_4d = build_monocular_sliding_padding_mask(
-            padding_mask, sliding_window_len=self.sliding_window_len
+            padding_mask,
+            sliding_window_len=self.sliding_window_len,
+            frame_observed=frame_observed,
         )
         for block in self.blocks:
-            x = block(x, attn_mask_4d=attn_mask_4d, valid_3d=valid_3d)
+            x = block(x, attn_mask_4d=attn_mask_4d, valid_3d=active_3d)
 
-        x_norm = self.final_norm(x) * valid_3d
+        x_norm = self.final_norm(x) * active_3d
 
-        # 4. Decode CLIFF root + hip-centered camera-local COCO-17 offsets -> court 3D [m]
-        raw_cam = self.pred_cam_head(x_norm) + self._pred_cam_init_bias
-        pred_s = 0.25 + F.softplus(raw_cam[..., 0])
-        pred_tx = raw_cam[..., 1]
-        pred_ty = raw_cam[..., 2]
-        pred_cam = torch.stack([pred_s, pred_tx, pred_ty], dim=-1)
-
-        fx_t = self._expand_cam_time(camera_f_in, bsz=bsz, seq_len=seq_len, trailing_dims=0)
-        fy_t = self._expand_cam_time(fy_in, bsz=bsz, seq_len=seq_len, trailing_dims=0)
-        cx0_t = self._expand_cam_time(camera_cx_in, bsz=bsz, seq_len=seq_len, trailing_dims=0)
-        cy0_t = self._expand_cam_time(camera_cy_in, bsz=bsz, seq_len=seq_len, trailing_dims=0)
-        R_t = self._expand_cam_time(camera_R_in, bsz=bsz, seq_len=seq_len, trailing_dims=2)
-
-        # On unobserved/padded frames (where detector bbx_xys == 0), use the per-frame
-        # principal-point reference box [cx0, cy0, 0.2 * sqrt(fx*fy)] so CLIFF maps
-        # [s, tx, ty] -> [tx, ty, 10/s] deterministically without sequence-length coupling.
-        f_eff = torch.sqrt(fx_t * fy_t)
-        unobs_bbx = torch.stack([cx0_t, cy0_t, 0.2 * f_eff], dim=-1)
-        use_det_box = obs_frame & (bbx_xys[..., 2] > 1e-3)
-        bbx_eff = torch.where(use_det_box.unsqueeze(-1), bbx_xys, unobs_bbx)
-
+        # 4. Decode CLIFF root + hip-centered camera-local COCO-17 offsets -> court 3D [m] in FP32
+        raw_cam = self.pred_cam_head(x_norm)
         delta_local = self.local_pose_head(x_norm).reshape(
             bsz, seq_len, NUM_HUMAN_KP, 3
         )
-        local_pose_cam = center_local_pose_on_hips(
-            self.template_local_pose_cam.view(1, 1, NUM_HUMAN_KP, 3) + delta_local
-        )
-        world_kp_3d = cliff_and_local_pose_to_world_coco17(
-            pred_cam,
-            local_pose_cam,
-            bbx_eff,
-            R_w2c=camera_R_in,
-            C_w=camera_C_in,
-            fx=camera_f_in,
-            fy=fy_in,
-            cx0=camera_cx_in,
-            cy0=camera_cy_in,
-        )
-
-        # Derive court position, court heading (cos, sin), and canonical_pose consistently
-        mid_hip_world = 0.5 * (
-            world_kp_3d[..., LEFT_HIP_IDX, :] + world_kp_3d[..., RIGHT_HIP_IDX, :]
-        )
         pelvis_delta_cam = self.pelvis_offset_cam_head(x_norm)
-        pelvis_delta_world = torch.einsum("...ji,...j->...i", R_t, pelvis_delta_cam)
-        pelvis_world = mid_hip_world + pelvis_delta_world
-        position = normalize_court_position(pelvis_world)
-
-        v_trans = (
-            world_kp_3d[..., LEFT_HIP_IDX, :2] - world_kp_3d[..., RIGHT_HIP_IDX, :2]
-        )
-        v_perp = torch.stack([-v_trans[..., 1], v_trans[..., 0]], dim=-1)
         yaw_ab = self.yaw_delta_head(x_norm)
-        heading_raw = (1.0 + yaw_ab[..., 0:1]) * v_trans + yaw_ab[..., 1:2] * v_perp
-        rotation = F.normalize(heading_raw, dim=-1, eps=1e-6)
-        canonical_pose = world_pose_to_canonical_pose(world_kp_3d, position, rotation)
+
+        device_type = x_norm.device.type
+        amp_off = (
+            torch.amp.autocast(device_type=device_type, enabled=False)
+            if device_type in {"cpu", "cuda", "mps", "xpu"}
+            else contextlib.nullcontext()
+        )
+        with amp_off:
+            raw_cam_fp32 = raw_cam.float() + self._pred_cam_init_bias.float()
+            pred_s = 0.25 + F.softplus(raw_cam_fp32[..., 0])
+            pred_tx = raw_cam_fp32[..., 1]
+            pred_ty = raw_cam_fp32[..., 2]
+            pred_cam = torch.stack([pred_s, pred_tx, pred_ty], dim=-1)
+
+            camera_R_fp32 = camera_R_in.float()
+            camera_C_fp32 = camera_C_in.float()
+            camera_f_fp32 = camera_f_in.float()
+            fy_fp32 = fy_in.float()
+            camera_cx_fp32 = camera_cx_in.float()
+            camera_cy_fp32 = camera_cy_in.float()
+            bbx_fp32 = bbx_xys.float()
+
+            fx_t = self._expand_cam_time(
+                camera_f_fp32, bsz=bsz, seq_len=seq_len, trailing_dims=0
+            )
+            fy_t = self._expand_cam_time(
+                fy_fp32, bsz=bsz, seq_len=seq_len, trailing_dims=0
+            )
+            cx0_t = self._expand_cam_time(
+                camera_cx_fp32, bsz=bsz, seq_len=seq_len, trailing_dims=0
+            )
+            cy0_t = self._expand_cam_time(
+                camera_cy_fp32, bsz=bsz, seq_len=seq_len, trailing_dims=0
+            )
+            R_t = self._expand_cam_time(
+                camera_R_fp32, bsz=bsz, seq_len=seq_len, trailing_dims=2
+            )
+
+            # On unobserved/padded frames (where detector bbx_xys == 0), use the per-frame
+            # principal-point reference box [cx0, cy0, 0.2 * sqrt(fx*fy)] so CLIFF maps
+            # [s, tx, ty] -> [tx, ty, 10/s] deterministically without sequence-length coupling.
+            f_eff = torch.sqrt(fx_t * fy_t)
+            unobs_bbx = torch.stack([cx0_t, cy0_t, 0.2 * f_eff], dim=-1)
+            use_det_box = obs_frame & (bbx_fp32[..., 2] > 1e-3)
+            bbx_eff = torch.where(use_det_box.unsqueeze(-1), bbx_fp32, unobs_bbx)
+
+            local_pose_cam = center_local_pose_on_hips(
+                self.template_local_pose_cam.float().view(1, 1, NUM_HUMAN_KP, 3)
+                + delta_local.float()
+            )
+            world_kp_3d = cliff_and_local_pose_to_world_coco17(
+                pred_cam,
+                local_pose_cam,
+                bbx_eff,
+                R_w2c=camera_R_fp32,
+                C_w=camera_C_fp32,
+                fx=camera_f_fp32,
+                fy=fy_fp32,
+                cx0=camera_cx_fp32,
+                cy0=camera_cy_fp32,
+            )
+
+            # Derive court position, court heading (cos, sin), and canonical_pose consistently
+            mid_hip_world = 0.5 * (
+                world_kp_3d[..., LEFT_HIP_IDX, :] + world_kp_3d[..., RIGHT_HIP_IDX, :]
+            )
+            pelvis_delta_world = torch.einsum(
+                "...ji,...j->...i", R_t, pelvis_delta_cam.float()
+            )
+            pelvis_world = mid_hip_world + pelvis_delta_world
+            position = normalize_court_position(pelvis_world)
+
+            v_trans = (
+                world_kp_3d[..., LEFT_HIP_IDX, :2] - world_kp_3d[..., RIGHT_HIP_IDX, :2]
+            )
+            v_perp = torch.stack([-v_trans[..., 1], v_trans[..., 0]], dim=-1)
+            yaw_ab_fp32 = yaw_ab.float()
+            heading_raw = (
+                (1.0 + yaw_ab_fp32[..., 0:1]) * v_trans
+                + yaw_ab_fp32[..., 1:2] * v_perp
+            )
+            rotation = F.normalize(heading_raw, dim=-1, eps=1e-6)
+            canonical_pose = world_pose_to_canonical_pose(world_kp_3d, position, rotation)
 
         outputs: dict[str, Tensor] = {
             "position": position,
@@ -500,30 +549,32 @@ class PLCSMonocularGVHMRModel(nn.Module):
             "pred_cam": pred_cam,
         }
 
-        # 5. HTD-Refine Stage A: PVA-Heads (strictly masked before & after Conv1d for padding invariance!)
+        # 5. HTD-Refine Stage A: PVA-Heads (strictly isolated across missing & padded gaps!)
         if self.enable_pva_heads:
-            h_pva = (x * valid_3d).transpose(1, 2)  # (B, D, T)
-            h_pva = self.pva_act(self.pva_conv(h_pva)).transpose(1, 2) * valid_3d
+            h_pva = (x * active_3d).transpose(1, 2)  # (B, D, T)
+            h_pva = self.pva_act(self.pva_conv(h_pva)).transpose(1, 2) * active_3d
             h_pva = self.pva_block(
-                x + h_pva, attn_mask_4d=attn_mask_4d, valid_3d=valid_3d
+                x + h_pva, attn_mask_4d=attn_mask_4d, valid_3d=active_3d
             )
-            h_pva = self.pva_norm(h_pva) * valid_3d
+            h_pva = self.pva_norm(h_pva) * active_3d
 
             vel_cam = self.vel_cam_head(h_pva).reshape(bsz, seq_len, NUM_HUMAN_KP, 3)
             acc_cam = self.acc_cam_head(h_pva).reshape(bsz, seq_len, NUM_HUMAN_KP, 3)
-            pred_vel_3d = (
-                torch.einsum("...ji,...kj->...ki", R_t, vel_cam)
-                * valid_3d.unsqueeze(-1)
-            )
-            pred_acc_3d = (
-                torch.einsum("...ji,...kj->...ki", R_t, acc_cam)
-                * valid_3d.unsqueeze(-1)
-            )
+            active_3d_fp32 = obs_frame.unsqueeze(-1).to(dtype=torch.float32)
+            with amp_off:
+                pred_vel_3d = (
+                    torch.einsum("...ji,...kj->...ki", R_t, vel_cam.float())
+                    * active_3d_fp32.unsqueeze(-1)
+                )
+                pred_acc_3d = (
+                    torch.einsum("...ji,...kj->...ki", R_t, acc_cam.float())
+                    * active_3d_fp32.unsqueeze(-1)
+                )
             outputs["pred_vel_3d"] = pred_vel_3d
             outputs["pred_acc_3d"] = pred_acc_3d
             if self.predict_static_contact:
                 outputs["static_contact_logits"] = (
-                    self.static_contact_head(h_pva) * valid_3d
+                    self.static_contact_head(h_pva).float() * active_3d_fp32
                 )
 
         return outputs

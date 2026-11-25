@@ -118,9 +118,18 @@ class PLCSLossConfig:
     @classmethod
     def from_dict(cls, cfg: dict[str, object]) -> PLCSLossConfig:
         """Create config from dictionary, e.g. loaded from YAML."""
+        optional_monocular_defaults: dict[str, float] = {
+            "world_kp_3d_weight": 0.0,
+            "pva_velocity_weight": 0.0,
+            "pva_acceleration_weight": 0.0,
+            "kinematic_velocity_consistency_weight": 0.0,
+            "kinematic_acceleration_consistency_weight": 0.0,
+            "static_contact_weight": 0.0,
+        }
         fields = {field.name for field in dataclasses.fields(cls)}
+        required_fields = fields - set(optional_monocular_defaults)
         unknown = sorted(set(cfg) - fields)
-        missing = sorted(fields - set(cfg))
+        missing = sorted(required_fields - set(cfg))
         if unknown or missing:
             raise ValueError(
                 f"Invalid PLCS loss keys: missing={missing}, unknown={unknown}."
@@ -132,6 +141,8 @@ class PLCSLossConfig:
         }
 
         def _weight(key: str) -> float:
+            if key not in cfg and key in optional_monocular_defaults:
+                return optional_monocular_defaults[key]
             value = cfg[key]
             if type(value) not in {float, int}:
                 raise ConfigurationTypeError(
@@ -1148,6 +1159,7 @@ class PLCSLoss(nn.Module):
         pred_acc_3d: Tensor | None = None,
         pred_static_contact_logits: Tensor | None = None,
         frame_rate_hz: Tensor | None = None,
+        frame_observed: Tensor | None = None,
     ) -> PLCSPreparedLossTerms:
         """Validate inputs and compute named scalar terms before ``forward``."""
         frame_mask = None
@@ -1155,6 +1167,18 @@ class PLCSLoss(nn.Module):
             frame_mask = ~(
                 padding_mask.all(dim=1) if padding_mask.ndim == 3 else padding_mask
             )
+        if frame_observed is not None:
+            if frame_observed.dtype != torch.bool:
+                raise ValueError(
+                    f"frame_observed must be bool, got {frame_observed.dtype}."
+                )
+            obs_mask = frame_observed.to(device=pred_position.device)
+            if obs_mask.shape != pred_position.shape[:-1]:
+                raise ValueError(
+                    "frame_observed must match position leading axes "
+                    f"{tuple(pred_position.shape[:-1])}, got {tuple(obs_mask.shape)}."
+                )
+            frame_mask = obs_mask if frame_mask is None else (frame_mask & obs_mask)
 
         canonical_required = self._requires_canonical_pose()
         reprojection_required = self._requires_reprojection()

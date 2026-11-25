@@ -5,13 +5,16 @@ from __future__ import annotations
 import math
 from pathlib import Path
 
+import numpy as np
 import pytest
 import torch
 from hydra import compose, initialize_config_dir
 from omegaconf import open_dict
+from torch import Tensor
 
 from src.tasks.base.generate_dataset import resolve_court_keypoint_contract
 from src.tasks.plcs.configuration import PLCSModelConfig, PLCSTrainingConfig
+from src.tasks.plcs.court_keypoint_contract import court_keypoint_contract_document
 from src.tasks.plcs.geometry import (
     CAMERA_FEATURE_DIM,
     SyntheticBBoxConfig,
@@ -587,3 +590,559 @@ class TestMonocularAdapterLossesMetricsAndCheckpoint:
         # Reject invalid model config mismatch loudly.
         with pytest.raises((ValueError, TypeError, KeyError)):
             PLCSModelConfig.from_mapping({"name": "plcs_monocular_gvhmr"})
+
+    def test_bf16_autocast_accepts_128_orthonormal_rotations_and_preserves_skeleton(
+        self,
+    ) -> None:
+        """Finding #1: bf16-mixed must run camera validation & lifting in FP32."""
+        from src.tasks.plcs.geometry.monocular_camera_bbox import so3_exp_map
+        from src.utils.geometry.skeleton import compute_bone_lengths
+
+        gen = torch.Generator().manual_seed(7)
+        omega = torch.randn((128, 3), generator=gen) * 1.5
+        R_128 = so3_exp_map(omega)  # exact FP32 orthonormal SO(3)
+        C_128 = torch.tensor([0.0, -18.0, 4.0]).expand(128, 3).clone()
+        fx_128 = torch.full((128,), 1100.0)
+        fy_128 = torch.full((128,), 1100.0)
+        cx_128 = torch.full((128,), 640.0)
+        cy_128 = torch.full((128,), 360.0)
+        raw = _synthetic_monocular_inputs(batch_size=2, seq_len=5)
+        model = PLCSMonocularGVHMRModel(
+            hidden_dim=64,
+            num_layers=2,
+            num_heads=4,
+            mlp_ratio=2.0,
+            dropout=0.0,
+            sliding_window_len=8,
+            enable_pva_heads=True,
+        ).eval()
+
+        with torch.autocast(device_type="cpu", dtype=torch.bfloat16):
+            # All 128 valid rotations must pass camera validation under BF16 autocast.
+            kp_probe = torch.zeros((128, 1, 17, 3), dtype=torch.bfloat16)
+            kp_probe[..., 11, 0] = -0.15
+            kp_probe[..., 12, 0] = 0.15
+            uv, in_front = project_world_coco17_to_pixel(
+                kp_probe,
+                R_w2c=R_128,
+                C_w=C_128,
+                fx=fx_128,
+                fy=fy_128,
+                cx0=cx_128,
+                cy0=cy_128,
+            )
+            assert uv.dtype == torch.float32
+            assert torch.isfinite(uv).all()
+            assert in_front.shape == (128, 1, 17)
+
+            out = model(
+                kp2d_norm=raw["kp2d_norm"],
+                cliffcam=raw["cliffcam"],
+                cam_feat=raw["cam_feat"],
+                bbx_xys=raw["bbx_xys"],
+                frame_observed=raw["frame_observed"],
+                padding_mask=raw["padding_mask"],
+                camera_R_in=raw["camera_R_in"],
+                camera_C_in=raw["camera_C_in"],
+                camera_f_in=raw["camera_f_in"],
+                camera_cx_in=raw["camera_cx_in"],
+                camera_cy_in=raw["camera_cy_in"],
+            )
+        assert out["world_kp_3d"].dtype == torch.float32
+        assert torch.isfinite(out["world_kp_3d"]).all()
+        compute_bone_lengths(out["world_kp_3d"]).require_valid("bf16 world_kp_3d")
+
+    def test_zero_init_residual_gates_identity_and_two_step_update_order(self) -> None:
+        """Finding #9: gate_msa/gate_mlp start at 0 (identity), update step 1 -> attn/mlp step 2."""
+        from src.tasks.plcs.models.plcs_monocular_gvhmr_model import (
+            MonocularEncoderRoPEBlock,
+            build_monocular_sliding_padding_mask,
+        )
+
+        block = MonocularEncoderRoPEBlock(
+            hidden_size=32, num_heads=4, mlp_ratio=2.0, dropout=0.0, max_seq_len=16
+        )
+        assert torch.equal(block.gate_msa, torch.zeros_like(block.gate_msa))
+        assert torch.equal(block.gate_mlp, torch.zeros_like(block.gate_mlp))
+
+        pad = torch.tensor([[False, False, False, True, True]])
+        obs = torch.tensor([[True, False, True, False, False]])
+        active = (~pad) & obs
+        attn_mask = build_monocular_sliding_padding_mask(
+            pad, sliding_window_len=8, frame_observed=obs
+        )
+        x = torch.randn((1, 5, 32)) * active.unsqueeze(-1).float()
+        y = block(x, attn_mask_4d=attn_mask, valid_3d=active.unsqueeze(-1).float())
+        assert torch.equal(y[active], x[active])
+        assert torch.equal(y[~active], torch.zeros_like(y[~active]))
+
+        # Step 1 updates gate_msa/gate_mlp while internal attn/mlp stay unchanged;
+        # Step 2 updates internal attn/mlp weights once gates are non-zero!
+        torch.manual_seed(0)
+        model = PLCSMonocularGVHMRModel(
+            hidden_dim=32,
+            num_layers=1,
+            num_heads=4,
+            mlp_ratio=2.0,
+            dropout=0.0,
+            sliding_window_len=8,
+            enable_pva_heads=False,
+            predict_static_contact=False,
+        )
+        raw = _synthetic_monocular_inputs(batch_size=1, seq_len=5)
+        opt = torch.optim.SGD(model.parameters(), lr=0.1)
+
+        blk = model.blocks[0]
+        q_before = blk.attn.query.weight.detach().clone()
+        fc1_before = blk.mlp.fc1.weight.detach().clone()
+
+        def _step() -> None:
+            opt.zero_grad()
+            out = model(
+                kp2d_norm=raw["kp2d_norm"],
+                cliffcam=raw["cliffcam"],
+                cam_feat=raw["cam_feat"],
+                bbx_xys=raw["bbx_xys"],
+                frame_observed=raw["frame_observed"],
+                padding_mask=raw["padding_mask"],
+                camera_R_in=raw["camera_R_in"],
+                camera_C_in=raw["camera_C_in"],
+                camera_f_in=raw["camera_f_in"],
+                camera_cx_in=raw["camera_cx_in"],
+                camera_cy_in=raw["camera_cy_in"],
+            )
+            loss = ((out["world_kp_3d"] - raw["human_kp_3d"]) ** 2).mean()
+            loss.backward()
+            opt.step()
+
+        _step()
+        assert float(blk.gate_msa.abs().max().item()) > 0.0
+        assert float(blk.gate_mlp.abs().max().item()) > 0.0
+        assert torch.equal(blk.attn.query.weight.detach(), q_before)
+        assert torch.equal(blk.mlp.fc1.weight.detach(), fc1_before)
+
+        _step()
+        assert not torch.equal(blk.attn.query.weight.detach(), q_before)
+        assert not torch.equal(blk.mlp.fc1.weight.detach(), fc1_before)
+
+    def test_internal_unobserved_gap_isolates_features_gradients_losses_and_metrics(
+        self,
+    ) -> None:
+        """Finding #2: non-padding unobserved gap blocks attention, conv, loss & metric bleed."""
+        from src.tasks.plcs.training.lightning_module import PLCSLightningModule
+
+        with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+            cfg = compose(
+                config_name="train",
+                overrides=[
+                    "model=monocular_gvhmr_htd",
+                    "data=monocular_sequence",
+                    "loss=monocular_htd",
+                ],
+            )
+        with open_dict(cfg):
+            cfg.model.hidden_dim = 32
+            cfg.model.num_layers = 2
+            cfg.model.num_heads = 4
+            cfg.model.mlp_ratio = 2.0
+            cfg.model.dropout = 0.0
+            cfg.model.sliding_window_len = 16  # wider than full sequence!
+            cfg.loss.reprojection_weight = 0.0
+
+        module = PLCSLightningModule(cfg)
+        # Activate residual gates so attention & MLP actually exchange information inside segments!
+        with torch.no_grad():
+            for blk in module.model.blocks:
+                blk.gate_msa.fill_(0.5)
+                blk.gate_mlp.fill_(0.5)
+            module.model.pva_block.gate_msa.fill_(0.5)
+            module.model.pva_block.gate_mlp.fill_(0.5)
+
+        raw = _synthetic_monocular_inputs(batch_size=1, seq_len=8)
+        obs = torch.tensor([[True, True, True, False, False, True, True, True]])
+        pad = torch.zeros((1, 8), dtype=torch.bool)  # non-padding internal gap!
+
+        def _make_batch(kp2d_override: Tensor) -> dict[str, object]:
+            return {
+                "human_kp": (raw["human_kp_px"] / 1280.0).unsqueeze(1),
+                "human_vis": raw["human_vis"].unsqueeze(1),
+                "court_kp": torch.zeros((1, 1, 8, 14, 2), dtype=torch.float32),
+                "court_vis": torch.ones((1, 1, 8, 14), dtype=torch.bool),
+                "kp2d_norm": kp2d_override.unsqueeze(1),
+                "cliffcam": raw["cliffcam"].unsqueeze(1),
+                "cam_feat": raw["cam_feat"].unsqueeze(1),
+                "bbx_xys": raw["bbx_xys"].unsqueeze(1),
+                "frame_observed": obs.unsqueeze(1),
+                "padding_mask": pad.unsqueeze(1),
+                "camera_R_in": raw["camera_R_in"].unsqueeze(1),
+                "camera_C_in": raw["camera_C_in"].unsqueeze(1),
+                "camera_f_in": raw["camera_f_in"].unsqueeze(1),
+                "camera_cx_in": raw["camera_cx_in"].unsqueeze(1),
+                "camera_cy_in": raw["camera_cy_in"].unsqueeze(1),
+                "position": raw["position"],
+                "rotation": raw["rotation"],
+                "human_kp_3d": raw["human_kp_3d"],
+                "frame_rate_hz": torch.tensor([60.0]),
+                "court_keypoint_metadata": court_keypoint_contract_document(
+                    resolve_court_keypoint_contract("physical_v1")
+                ),
+            }
+
+        kp_a = raw["kp2d_norm"].clone().detach().requires_grad_(True)
+        kp_b = raw["kp2d_norm"].clone().detach()
+        kp_b[:, :3, :, :2] += 0.45  # corrupt left segment (t=0..2)
+        kp_b[:, 3:5, :, :2] += 5.0  # corrupt gap frames (t=3..4)
+        kp_b.requires_grad_(True)
+
+        res_a = module._compute_supervised_result(_make_batch(kp_a), "val")
+        res_b = module._compute_supervised_result(_make_batch(kp_b), "val")
+
+        # 1. Right segment outputs (t=5..7) must be IDENTICAL despite left/gap corruption.
+        torch.testing.assert_close(
+            res_a["outputs"].world_kp_3d[:, 5:],
+            res_b["outputs"].world_kp_3d[:, 5:],
+            atol=1e-5,
+            rtol=1e-5,
+        )
+        torch.testing.assert_close(
+            res_a["outputs"].pred_vel_3d[:, 5:],
+            res_b["outputs"].pred_vel_3d[:, 5:],
+            atol=1e-5,
+            rtol=1e-5,
+        )
+
+        # 2. Loss gradients on gap frames (t=3..4) must be strictly ZERO, and left
+        #    target/prediction perturbations must NOT leak gradients across the gap.
+        res_a["loss"].backward()
+        assert kp_a.grad is not None
+        assert float(kp_a.grad[:, 3:5].abs().max().item()) == 0.0
+
+        # 3. Direct check that modifying unobserved gap predictions (t=3..4) has ZERO
+        #    effect on losses AND metrics (including mpjve_mps / mpjae_mps2 windows).
+        pred_kp = raw["human_kp_3d"] + 0.02
+        pred_kp_gap = pred_kp.clone()
+        pred_kp_gap[:, 3:5] += 50.0  # huge error inside missing gap
+        pred_v = torch.zeros_like(pred_kp)
+        pred_v_gap = pred_v.clone()
+        pred_v_gap[:, 2:5] += 100.0  # t=2 crosses into gap (2->3), t=3,4 are inside gap
+        pred_a = torch.zeros_like(pred_kp)
+        pred_a_gap = pred_a.clone()
+        pred_a_gap[:, 2:6] += 100.0  # only t=1 (0,1,2) and t=6 (5,6,7) are valid triples!
+        pred_c = torch.zeros((1, 8, 4))
+        pred_c_gap = pred_c.clone()
+        pred_c_gap[:, 3:5] += 100.0
+
+        loss_fn = module.loss_fn
+        t1 = loss_fn.prepare_inputs(
+            pred_position=raw["position"],
+            pred_rotation=raw["rotation"],
+            target_position=raw["position"],
+            target_rotation=raw["rotation"],
+            pred_canonical_pose=pred_kp - pred_kp[:, :, [11]].mean(dim=-2, keepdim=True),
+            target_human_kp_3d=raw["human_kp_3d"],
+            padding_mask=pad,
+            frame_observed=obs,
+            pred_world_kp_3d=pred_kp,
+            pred_vel_3d=pred_v,
+            pred_acc_3d=pred_a,
+            pred_static_contact_logits=pred_c,
+            frame_rate_hz=torch.tensor([60.0]),
+        )
+        t2 = loss_fn.prepare_inputs(
+            pred_position=raw["position"],
+            pred_rotation=raw["rotation"],
+            target_position=raw["position"],
+            target_rotation=raw["rotation"],
+            pred_canonical_pose=pred_kp_gap - pred_kp_gap[:, :, [11]].mean(dim=-2, keepdim=True),
+            target_human_kp_3d=raw["human_kp_3d"],
+            padding_mask=pad,
+            frame_observed=obs,
+            pred_world_kp_3d=pred_kp_gap,
+            pred_vel_3d=pred_v_gap,
+            pred_acc_3d=pred_a_gap,
+            pred_static_contact_logits=pred_c_gap,
+            frame_rate_hz=torch.tensor([60.0]),
+        )
+        l1 = loss_fn(t1)
+        l2 = loss_fn(t2)
+        for key in (
+            "world_kp_3d",
+            "pva_velocity",
+            "pva_acceleration",
+            "kinematic_velocity_consistency",
+            "kinematic_acceleration_consistency",
+            "static_contact",
+            "total",
+        ):
+            torch.testing.assert_close(l1[key], l2[key], atol=1e-6, rtol=1e-6)
+
+        m1 = PLCSMetrics(
+            position_threshold_m=0.5,
+            angle_threshold_deg=15.0,
+            predict_canonical_pose=False,
+            predict_world_pose=True,
+        )
+        m2 = PLCSMetrics(
+            position_threshold_m=0.5,
+            angle_threshold_deg=15.0,
+            predict_canonical_pose=False,
+            predict_world_pose=True,
+        )
+        r1 = m1.update(
+            raw["position"],
+            raw["rotation"],
+            raw["position"],
+            raw["rotation"],
+            padding_mask=pad,
+            frame_observed=obs,
+            pred_world_kp_3d=pred_kp,
+            target_world_kp_3d=raw["human_kp_3d"],
+            frame_rate_hz=torch.tensor([60.0]),
+        )
+        r2 = m2.update(
+            raw["position"],
+            raw["rotation"],
+            raw["position"],
+            raw["rotation"],
+            padding_mask=pad,
+            frame_observed=obs,
+            pred_world_kp_3d=pred_kp_gap,
+            target_world_kp_3d=raw["human_kp_3d"],
+            frame_rate_hz=torch.tensor([60.0]),
+        )
+        for key in ("world_mpjpe_m", "pa_mpjpe_m", "mpjve_mps", "mpjae_mps2"):
+            assert abs(r1[key] - r2[key]) < 1e-6
+
+    def test_public_predictor_stage_b_gap_isolation_batched_and_unobserved_validity(
+        self,
+    ) -> None:
+        """Finding #3: predict_monocular_sequence isolates gaps, handles B>1, and flags unobserved."""
+        from src.tasks.plcs.inference.htd_refiner import (
+            HTDRefinerConfig,
+            PLCSHTDRefiner,
+        )
+
+        with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+            cfg = compose(
+                config_name="train",
+                overrides=[
+                    "model=monocular_gvhmr_htd",
+                    "data=monocular_sequence",
+                    "loss=monocular_htd",
+                ],
+            )
+        with open_dict(cfg):
+            cfg.model.hidden_dim = 32
+            cfg.model.num_layers = 1
+            cfg.model.num_heads = 4
+            cfg.model.mlp_ratio = 2.0
+            cfg.model.dropout = 0.0
+        runtime = PLCSTrainingConfig.from_config(cfg)
+        bound = build_plcs_model_io(runtime)
+        predictor = PLCSPredictor(
+            model=bound.model, adapter=bound.adapter, device=torch.device("cpu")
+        )
+        refiner = PLCSHTDRefiner(HTDRefinerConfig(num_steps=8, lr=0.05))
+
+        raw = _synthetic_monocular_inputs(batch_size=2, seq_len=8)
+        obs_gap = np.array([True, True, True, False, False, True, True, True], dtype=bool)
+        kp_a = raw["human_kp_px"][0].numpy().copy()
+        kp_b = kp_a.copy()
+        kp_b[:3] += 120.0  # large shift in left segment only
+        vis = raw["human_vis"][0].float().numpy()
+
+        pred_a = predictor.predict_monocular_sequence(
+            kp2d_px=kp_a,
+            kp_vis=vis,
+            bbx_xys=None,
+            frame_observed=obs_gap,
+            R_w2c=raw["camera_R_in"][0].numpy(),
+            C_w=raw["camera_C_in"][0].numpy(),
+            fx=float(raw["camera_f_in"][0].item()),
+            fy=float(raw["camera_f_in"][0].item()),
+            cx0=float(raw["camera_cx_in"][0].item()),
+            cy0=float(raw["camera_cy_in"][0].item()),
+            image_w=int(raw["camera_w"][0].item()),
+            image_h=int(raw["camera_h"][0].item()),
+            htd_refiner=refiner,
+        )
+        pred_b = predictor.predict_monocular_sequence(
+            kp2d_px=kp_b,
+            kp_vis=vis,
+            bbx_xys=None,
+            frame_observed=obs_gap,
+            R_w2c=raw["camera_R_in"][0].numpy(),
+            C_w=raw["camera_C_in"][0].numpy(),
+            fx=float(raw["camera_f_in"][0].item()),
+            fy=float(raw["camera_f_in"][0].item()),
+            cx0=float(raw["camera_cx_in"][0].item()),
+            cy0=float(raw["camera_cy_in"][0].item()),
+            image_w=int(raw["camera_w"][0].item()),
+            image_h=int(raw["camera_h"][0].item()),
+            htd_refiner=refiner,
+        )
+        assert pred_a.valid_frame_mask is not None
+        assert np.array_equal(pred_a.valid_frame_mask[0], obs_gap)
+        assert pred_a.world_kp_3d_meters is not None and pred_b.world_kp_3d_meters is not None
+        # Gap frames (3..4) must be NaN; right segment (5..7) must be bit-for-bit isolated!
+        assert np.isnan(pred_a.world_kp_3d_meters[0, 3:5]).all()
+        np.testing.assert_allclose(
+            pred_a.world_kp_3d_meters[0, 5:],
+            pred_b.world_kp_3d_meters[0, 5:],
+            atol=1e-4,
+            rtol=1e-4,
+        )
+
+        # B=2 batched refinement must actually run Stage B on BOTH sequences!
+        pred_batch_raw = predictor.predict_monocular_sequence(
+            kp2d_px=raw["human_kp_px"].numpy(),
+            kp_vis=raw["human_vis"].float().numpy(),
+            bbx_xys=raw["bbx_xys"].numpy(),
+            frame_observed=raw["frame_observed"].numpy(),
+            R_w2c=raw["camera_R_in"].numpy(),
+            C_w=raw["camera_C_in"].numpy(),
+            fx=raw["camera_f_in"].numpy(),
+            fy=raw["camera_f_in"].numpy(),
+            cx0=raw["camera_cx_in"].numpy(),
+            cy0=raw["camera_cy_in"].numpy(),
+            image_w=int(raw["camera_w"][0].item()),
+            image_h=int(raw["camera_h"][0].item()),
+            htd_refiner=None,
+        )
+        pred_batch_ref = predictor.predict_monocular_sequence(
+            kp2d_px=raw["human_kp_px"].numpy(),
+            kp_vis=raw["human_vis"].float().numpy(),
+            bbx_xys=raw["bbx_xys"].numpy(),
+            frame_observed=raw["frame_observed"].numpy(),
+            R_w2c=raw["camera_R_in"].numpy(),
+            C_w=raw["camera_C_in"].numpy(),
+            fx=raw["camera_f_in"].numpy(),
+            fy=raw["camera_f_in"].numpy(),
+            cx0=raw["camera_cx_in"].numpy(),
+            cy0=raw["camera_cy_in"].numpy(),
+            image_w=int(raw["camera_w"][0].item()),
+            image_h=int(raw["camera_h"][0].item()),
+            htd_refiner=refiner,
+        )
+        assert pred_batch_raw.world_kp_3d_meters is not None
+        assert pred_batch_ref.world_kp_3d_meters is not None
+        for b in range(2):
+            assert not np.allclose(
+                pred_batch_raw.world_kp_3d_meters[b],
+                pred_batch_ref.world_kp_3d_meters[b],
+                atol=1e-5,
+            )
+
+        # All-unobserved sequence must return valid_frame_mask=all-False and NaN skeletons.
+        all_unobs: np.ndarray = np.zeros((8,), dtype=bool)
+        pred_unobs = predictor.predict_monocular_sequence(
+            kp2d_px=kp_a,
+            kp_vis=np.zeros_like(vis),
+            bbx_xys=None,
+            frame_observed=all_unobs,
+            R_w2c=raw["camera_R_in"][0].numpy(),
+            C_w=raw["camera_C_in"][0].numpy(),
+            fx=float(raw["camera_f_in"][0].item()),
+            fy=float(raw["camera_f_in"][0].item()),
+            cx0=float(raw["camera_cx_in"][0].item()),
+            cy0=float(raw["camera_cy_in"][0].item()),
+            image_w=int(raw["camera_w"][0].item()),
+            image_h=int(raw["camera_h"][0].item()),
+            htd_refiner=refiner,
+        )
+        assert pred_unobs.valid_frame_mask is not None
+        assert not pred_unobs.valid_frame_mask.any()
+        assert pred_unobs.world_kp_3d_meters is not None
+        assert np.isnan(pred_unobs.world_kp_3d_meters).all()
+
+    def test_legacy_main_axial_loss_config_backward_compatibility(
+        self, tmp_path: Path
+    ) -> None:
+        """Finding #7: axial checkpoints saved on main without monocular loss keys still load."""
+        from src.tasks.plcs.training.lightning_module import PLCSLightningModule
+
+        with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+            cfg = compose(config_name="train", overrides=["loss=canonical"])
+        with open_dict(cfg):
+            cfg.model.hidden_dim = 32
+            cfg.model.num_layers = 1
+            cfg.model.num_heads = 4
+            cfg.model.ffn_dim = 64
+            cfg.model.rope_dim = 8
+            # Strip the 6 new monocular/HTD loss keys to mimic a main-branch checkpoint!
+            for new_key in (
+                "world_kp_3d_weight",
+                "pva_velocity_weight",
+                "pva_acceleration_weight",
+                "kinematic_velocity_consistency_weight",
+                "kinematic_acceleration_consistency_weight",
+                "static_contact_weight",
+            ):
+                del cfg.loss[new_key]
+
+        legacy_loss_cfg = PLCSLossConfig.from_dict(dict(cfg.loss))
+        assert legacy_loss_cfg.world_kp_3d_weight == 0.0
+        assert legacy_loss_cfg.pva_velocity_weight == 0.0
+
+        import pytorch_lightning as pl
+
+        module = PLCSLightningModule(cfg)
+        ckpt_path = tmp_path / "legacy_axial.ckpt"
+        payload: dict[str, object] = {
+            "pytorch-lightning_version": pl.__version__,
+            "state_dict": module.state_dict(),
+            "hyper_parameters": {"config": cfg},
+        }
+        add_court_coordinate_normalization(payload, artifact="PLCS checkpoint")
+        from src.tasks.plcs.model_io import write_plcs_checkpoint_court_keypoints
+
+        write_plcs_checkpoint_court_keypoints(
+            payload, resolve_court_keypoint_contract("physical_v1")
+        )
+        torch.save(payload, ckpt_path)
+        restored = PLCSLightningModule.load_from_checkpoint(
+            ckpt_path, map_location="cpu", weights_only=False
+        )
+        assert restored.loss_fn.config == legacy_loss_cfg
+
+    def test_load_scene_roundtrip_into_monocular_predict_scene(
+        self, tmp_path: Path
+    ) -> None:
+        """Finding #8: canonical load_scene() with camera.params works in monocular predict_scene()."""
+        from src.tasks.plcs.generate_dataset.io.scene_loader import load_scene
+        from tests.integration.tasks.plcs.model_contracts import _write_dataset
+
+        scene_root = tmp_path / "sceneset"
+        _write_dataset(scene_root)
+        scene = load_scene(
+            scene_root / "scenes" / "scene_0",
+            court_keypoint_contract=resolve_court_keypoint_contract("physical_v1"),
+        )
+        assert hasattr(scene.cameras[0], "params")
+
+        with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+            cfg = compose(
+                config_name="train",
+                overrides=[
+                    "model=monocular_gvhmr_htd",
+                    "data=monocular_sequence",
+                    "loss=monocular_htd",
+                ],
+            )
+        with open_dict(cfg):
+            cfg.model.hidden_dim = 32
+            cfg.model.num_layers = 1
+            cfg.model.num_heads = 4
+            cfg.model.mlp_ratio = 2.0
+        runtime = PLCSTrainingConfig.from_config(cfg)
+        bound = build_plcs_model_io(runtime)
+        predictor = PLCSPredictor(
+            model=bound.model, adapter=bound.adapter, device=torch.device("cpu")
+        )
+        pred = predictor.predict_scene(scene, cameras=[0])
+        assert pred.world_kp_3d is not None
+        assert pred.pred_vel_3d is not None
+        assert pred.pred_acc_3d is not None
+        assert pred.world_kp_3d.shape[0] == 1
+        assert pred.world_kp_3d.shape[2:] == (17, 3)
+        assert torch.isfinite(pred.world_kp_3d).all()

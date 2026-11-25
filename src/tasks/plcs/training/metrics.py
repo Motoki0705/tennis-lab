@@ -466,6 +466,7 @@ class PLCSMetrics:
         target_rotation: Tensor,
         *,
         padding_mask: Tensor | None = None,
+        frame_observed: Tensor | None = None,
         court_reference_provenance: Sequence[CourtReferenceFrameProvenance]
         | None = None,
         reference_view_index: Tensor | None = None,
@@ -502,6 +503,18 @@ class PLCSMetrics:
                 padding_mask.all(dim=1) if padding_mask.ndim == 3 else padding_mask
             )
             frame_valid = ~frame_padding
+        if frame_observed is not None:
+            if frame_observed.dtype != torch.bool:
+                raise ValueError(
+                    f"frame_observed must be bool, got {frame_observed.dtype}."
+                )
+            obs_valid = frame_observed.to(device=pred_position.device)
+            if obs_valid.shape != pred_position.shape[:-1]:
+                raise ValueError(
+                    "frame_observed must match position leading axes "
+                    f"{tuple(pred_position.shape[:-1])}, got {tuple(obs_valid.shape)}."
+                )
+            frame_valid = obs_valid if frame_valid is None else (frame_valid & obs_valid)
         canonical_metrics = self._update_canonical_pose_metrics(
             pred_canonical_pose,
             target_canonical_pose,

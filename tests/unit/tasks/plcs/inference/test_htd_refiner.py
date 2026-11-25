@@ -342,3 +342,147 @@ class TestPLCSHTDRefiner:
                 kp_conf=view0.kp_conf,
                 frame_observed=view0.frame_observed,
             )
+
+    def test_stage_a_forward_velocity_convention_matches_stage_b_under_sharp_acceleration(
+        self,
+    ) -> None:
+        """Finding #4: exact Stage A forward-step vel/acc yields 0 drift on sharp acceleration & ignores endpoint."""
+        fps = 30.0
+        dt = 1.0 / fps
+        seq_len = 20
+        t = torch.arange(seq_len, dtype=torch.float32) * dt
+        base = _split_step_trajectory(seq_len=4, fps=fps)[0][0]
+        # Sharp cubic/quadratic acceleration along X and Y (non-constant velocity & acceleration!)
+        disp = torch.stack(
+            [
+                2.5 * (t**2) + 4.0 * (t**3),
+                -3.0 * (t**2),
+                0.5 * (t**2),
+            ],
+            dim=-1,
+        )
+        gt_kp = base.unsqueeze(0) + disp.unsqueeze(1)
+
+        # Exact Stage A forward-difference velocity target: pred_vel[t] = (J[t+1] - J[t]) * fps
+        stage_a_vel = torch.zeros_like(gt_kp)
+        stage_a_vel[:-1] = (gt_kp[1:] - gt_kp[:-1]) * fps
+        # Deliberately set huge garbage at the unsupervised segment endpoint t = T-1!
+        stage_a_vel_garbage_end = stage_a_vel.clone()
+        stage_a_vel_garbage_end[-1] = 1e6
+
+        stage_a_acc = torch.zeros_like(gt_kp)
+        stage_a_acc[1:-1] = (gt_kp[2:] - 2.0 * gt_kp[1:-1] + gt_kp[:-2]) * (fps * fps)
+
+        # Velocity + acceleration only (reproj=0, bone=0, jerk=0, anchor=0) on exact GT init:
+        cfg = HTDRefinerConfig(
+            num_steps=25,
+            vel_weight=2.0,
+            acc_weight=1.0,
+            reproj_weight=0.0,
+            bone_var_weight=0.0,
+            bone_sym_weight=0.0,
+            ground_penetration_weight=0.0,
+            contact_weight=0.0,
+            jerk_weight=0.0,
+            init_anchor_weight=0.0,
+        )
+        refiner = PLCSHTDRefiner(cfg)
+        res_clean = refiner.refine(
+            world_kp_init=gt_kp,
+            pred_vel_3d=stage_a_vel,
+            pred_acc_3d=stage_a_acc,
+            static_contact_logits=None,
+            views=[],
+            fps=fps,
+        )
+        res_garbage = refiner.refine(
+            world_kp_init=gt_kp,
+            pred_vel_3d=stage_a_vel_garbage_end,
+            pred_acc_3d=stage_a_acc,
+            static_contact_logits=None,
+            views=[],
+            fps=fps,
+        )
+        # Zero drift from exact accelerating GT AND bit-for-bit invariance to endpoint vel[-1]!
+        torch.testing.assert_close(res_clean.world_kp_3d, gt_kp, atol=1e-5, rtol=1e-5)
+        torch.testing.assert_close(
+            res_clean.world_kp_3d, res_garbage.world_kp_3d, atol=1e-6, rtol=1e-6
+        )
+
+    def test_anisotropic_fx_fy_reprojection_and_behind_camera_cheirality_recovery(
+        self,
+    ) -> None:
+        """Finding #5: per-axis fx/fy scaling and non-zero forward gradient for behind-camera joints."""
+        # Simple identity camera looking along +Z: C_w = (0, 0, 0), R_w2c = I, fx != fy.
+        R_id = torch.eye(3, dtype=torch.float32)
+        C_zero = torch.zeros(3, dtype=torch.float32)
+        fx = torch.tensor(1200.0)
+        fy = torch.tensor(600.0)
+        cx0 = torch.tensor(640.0)
+        cy0 = torch.tensor(360.0)
+
+        # True 3D skeleton at Z_cam = 10.0 m in front of camera
+        gt_kp = _split_step_trajectory(seq_len=4, fps=30.0)[0][:1].repeat(4, 1, 1)
+        gt_kp[..., 2] += 10.0  # all joints at Z in [10.0, 11.7] m
+        u_obs = fx * (gt_kp[..., 0] / gt_kp[..., 2]) + cx0
+        v_obs = fy * (gt_kp[..., 1] / gt_kp[..., 2]) + cy0
+        kp2d_obs = torch.stack([u_obs, v_obs], dim=-1)
+
+        view = HTDRefineCameraView(
+            R_w2c=R_id,
+            C_w=C_zero,
+            fx=fx,
+            fy=fy,
+            cx0=cx0,
+            cy0=cy0,
+            image_w=1280.0,
+            image_h=720.0,
+            kp2d_px=kp2d_obs,
+            kp_conf=torch.ones((4, 17)),
+            frame_observed=torch.ones((4,), dtype=torch.bool),
+        )
+
+        # Case A: Anisotropic fx=1200 != fy=600 -> equal 0.2m lateral/vertical error in X and Y
+        # must converge symmetrically to the true ray (not skewed by 2:1 focal ratio!).
+        init_aniso = gt_kp.clone()
+        init_aniso[..., 0] += 0.20
+        init_aniso[..., 1] += 0.20
+        cfg_reproj = HTDRefinerConfig(
+            num_steps=30,
+            vel_weight=0.0,
+            acc_weight=0.0,
+            reproj_weight=2.0,
+            bone_var_weight=0.0,
+            bone_sym_weight=0.0,
+            ground_penetration_weight=0.0,
+            contact_weight=0.0,
+            jerk_weight=0.0,
+            init_anchor_weight=0.0,
+        )
+        res_aniso = PLCSHTDRefiner(cfg_reproj).refine(
+            world_kp_init=init_aniso,
+            pred_vel_3d=None,
+            pred_acc_3d=None,
+            static_contact_logits=None,
+            views=[view],
+            fps=30.0,
+        )
+        u_ref = fx * (res_aniso.world_kp_3d[..., 0] / res_aniso.world_kp_3d[..., 2]) + cx0
+        v_ref = fy * (res_aniso.world_kp_3d[..., 1] / res_aniso.world_kp_3d[..., 2]) + cy0
+        err_u = (u_ref - u_obs).abs().mean().item()
+        err_v = (v_ref - v_obs).abs().mean().item()
+        assert err_u < 0.5 and err_v < 0.5
+
+        # Case B: Joints initialized BEHIND the camera (z_cam = -2.0 m) must be pushed
+        # forward in front of the camera (z_cam > 0.1 m) by the cheirality barrier!
+        init_behind = gt_kp.clone()
+        init_behind[..., 2] = -2.0
+        res_behind = PLCSHTDRefiner(cfg_reproj).refine(
+            world_kp_init=init_behind,
+            pred_vel_3d=None,
+            pred_acc_3d=None,
+            static_contact_logits=None,
+            views=[view],
+            fps=30.0,
+        )
+        assert float(res_behind.world_kp_3d[..., 2].min().item()) > 0.1

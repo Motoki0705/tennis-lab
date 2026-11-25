@@ -324,7 +324,7 @@ def _compose_monocular(root: Path, gan: bool) -> DictConfig:
                 "data.batch_size=2",
                 "data.num_workers=0",
                 "data.pin_memory=false",
-                "data.seq_len_range=[3,5]",
+                "data.seq_len_range=[4,6]",
                 "data.camera_mode=first",
                 "data.augmentation.enabled=false",
                 "data.augmentation.frame_rate.enabled=false",
@@ -340,10 +340,95 @@ def _compose_monocular(root: Path, gan: bool) -> DictConfig:
         )
 
 
+def _write_monocular_dataset(root: Path) -> None:
+    """Write monocular contract scenes with >=3 contiguous observed frames per scene."""
+    contract = resolve_court_keypoint_contract("physical_v1")
+    writer = PLCSDatasetWriter(root, court_keypoint_contract=contract)
+    writer.save_meta_json()
+    for index, (frames, views) in enumerate(((4, 1), (6, 2))):
+        time: np.ndarray = np.arange(frames, dtype=np.float32)
+        position_m = np.stack(
+            (0.2 + time * 0.1, -2.0 + time * 0.3, np.ones(frames, dtype=np.float32)),
+            axis=-1,
+        )
+        canonical: np.ndarray = np.linspace(
+            -0.5, 0.8, frames * 17 * 3, dtype=np.float32
+        ).reshape(frames, 17, 3)
+        yaw = time * 0.1 + 0.3
+        rotation = np.stack((np.cos(yaw), np.sin(yaw)), axis=-1)
+        world = canonical.copy()
+        world[..., 0] = (
+            canonical[..., 0] * rotation[:, :1] - canonical[..., 1] * rotation[:, 1:]
+        )
+        world[..., 1] = (
+            canonical[..., 0] * rotation[:, 1:] + canonical[..., 1] * rotation[:, :1]
+        )
+        world += position_m[:, None]
+        cameras = []
+        for camera in range(views):
+            obs = camera_observations(frames, camera, 17)
+            vis = np.ones_like(obs["vis"], dtype=np.bool_)
+            # Leave one trailing unobserved frame on scene_0 (frames 0..2 contiguous) and
+            # all frames observed on scene_1 so PVA velocity/acceleration triples are valid
+            # without ever crossing an unobserved boundary.
+            if index == 0:
+                vis[-1] = False
+            params = obs["camera_params"]
+            cameras.append(
+                CameraData(
+                    camera_params=params,
+                    human_kp_uv=obs["uv"],
+                    human_kp_vis=vis,
+                    court_kp_uv=np.broadcast_to(
+                        obs["court_kp_uv"], (frames, 20, 2)
+                    ).copy(),
+                    court_kp_vis=np.broadcast_to(
+                        obs["court_kp_vis"], (frames, 20)
+                    ).copy(),
+                    human_visibility_ratio=float(vis.mean()),
+                    court_visibility_count=19.0,
+                    court_view=build_court_view_record(
+                        camera_id=f"camera_{camera}",
+                        camera_center_court_m=params["C"],
+                        contract=contract,
+                    ),
+                )
+            )
+        writer.save_scene(
+            SceneData(
+                meta={
+                    "scene_id": f"scene_{index}",
+                    "motion_source": f"contract_{index}",
+                    "motion_category": "contract",
+                    "gender": "neutral",
+                    "fps": 30.0,
+                    "num_frames": frames,
+                    "initial_position": [0.2, -2.0],
+                    "initial_yaw": 0.3,
+                    "num_cameras_sampled": views,
+                },
+                position=normalize_court_position(position_m),
+                rotation=rotation,
+                canonical_pose_3d=canonical,
+                human_kp_3d=world,
+                cameras=cameras,
+                num_persons=1,
+                court_keypoint_contract=contract,
+            )
+        )
+    writer.save_meta_json()
+    write_splits(root)
+
+
+def _build_monocular(config: DictConfig) -> tuple[Any, Any]:
+    _write_monocular_dataset(Path(config.paths.data_root) / "sceneset")
+    return _components(config)
+
+
 def _monocular_batch(config: DictConfig) -> Any:
     samples = []
     root = Path(config.paths.data_root) / "sceneset"
-    for index, frames in enumerate((3, 5)):
+    for index, frames in enumerate((4, 6)):
         exact = OmegaConf.merge(
             config,
             {
@@ -402,25 +487,25 @@ def _monocular_parameters(
 
 
 def _assert_monocular_batch(batch: Any) -> None:
-    assert batch["kp2d_norm"].shape == (2, 1, 5, 17, 3)
-    assert batch["bbx_xys"].shape == (2, 1, 5, 3)
-    assert batch["cliffcam"].shape == (2, 1, 5, 3)
-    assert batch["human_kp_3d"].shape == (2, 5, 17, 3)
+    assert batch["kp2d_norm"].shape == (2, 1, 6, 17, 3)
+    assert batch["bbx_xys"].shape == (2, 1, 6, 3)
+    assert batch["cliffcam"].shape == (2, 1, 6, 3)
+    assert batch["human_kp_3d"].shape == (2, 6, 17, 3)
     pad = batch["padding_mask"]
     assert pad.dtype == torch.bool
-    assert not pad[0, 0, :3].any() and pad[0, 0, 3:].all()
+    assert not pad[0, 0, :4].any() and pad[0, 0, 4:].all()
     assert not pad[1, 0].any()
 
 
 def _assert_monocular_prediction(output: Any) -> None:
     for tensor, shape in (
-        (output.position, (2, 5, 3)),
-        (output.rotation, (2, 5, 2)),
-        (output.canonical_pose, (2, 5, 17, 3)),
-        (output.world_kp_3d, (2, 5, 17, 3)),
-        (output.pred_vel_3d, (2, 5, 17, 3)),
-        (output.pred_acc_3d, (2, 5, 17, 3)),
-        (output.static_contact_logits, (2, 5, 4)),
+        (output.position, (2, 6, 3)),
+        (output.rotation, (2, 6, 2)),
+        (output.canonical_pose, (2, 6, 17, 3)),
+        (output.world_kp_3d, (2, 6, 17, 3)),
+        (output.pred_vel_3d, (2, 6, 17, 3)),
+        (output.pred_acc_3d, (2, 6, 17, 3)),
+        (output.static_contact_logits, (2, 6, 4)),
     ):
         assert tensor is not None and tensor.shape == shape
         assert tensor.dtype == torch.float32 and torch.isfinite(tensor).all()
@@ -429,8 +514,8 @@ def _assert_monocular_prediction(output: Any) -> None:
 def _monocular_supervised_result(module: Any, batch: Any) -> Any:
     result = module._compute_supervised_result(batch, "val")
     assert (~result["prepared"].target_padding_mask).tolist() == [
-        [True, True, True, False, False],
-        [True, True, True, True, True],
+        [True, True, True, True, False, False],
+        [True, True, True, True, True, True],
     ]
     return result
 
@@ -449,7 +534,7 @@ def _monocular_predict(module: Any, batch: Any) -> Any:
 MONOCULAR_GVHMR = ModelFamily(
     name="plcs_monocular_gvhmr",
     compose=_compose_monocular,
-    build=_build,
+    build=_build_monocular,
     rebuild=_components,
     batch=_monocular_batch,
     supervised_result=_monocular_supervised_result,

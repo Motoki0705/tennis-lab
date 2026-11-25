@@ -405,6 +405,7 @@ class PLCSPhysicalPrediction:
     pred_vel_3d_mps: Float32Array | None = None
     pred_acc_3d_mps2: Float32Array | None = None
     static_contact_logits: Float32Array | None = None
+    valid_frame_mask: np.ndarray | None = None
     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
     reference_metadata: PLCSReferenceMetadata | None = None
 

@@ -302,6 +302,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             pred_acc_3d=outputs.pred_acc_3d,
             pred_static_contact_logits=outputs.static_contact_logits,
             frame_rate_hz=prepared.frame_rate_hz,
+            frame_observed=prepared.frame_observed,
         )
         losses = self.loss_fn(loss_inputs)
 
@@ -325,6 +326,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             target_position,
             target_rotation,
             padding_mask=padding_mask,
+            frame_observed=prepared.frame_observed,
             court_reference_provenance=prepared.court_reference_provenance,
             reference_view_index=(
                 prepared.reference_metadata.reference_view_index

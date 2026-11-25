@@ -1143,18 +1143,42 @@ class PLCSModelIOAdapter:
             )
         if self.profile is PLCSInputProfile.MONOCULAR:
             cam_obj = selected_scene_cameras[0]
-            cam_params = getattr(cam_obj, "camera_params", None)
+            cam_params = getattr(cam_obj, "params", None)
+            if cam_params is None:
+                cam_params = getattr(cam_obj, "camera_params", None)
             if not isinstance(cam_params, Mapping):
                 raise ModelInputContractError(
-                    "Monocular PLCS scene inference requires calibrated camera_params."
+                    "Monocular PLCS scene inference requires calibrated camera params."
                 )
             R_t = torch.as_tensor(cam_params["R"], dtype=torch.float32).unsqueeze(0)
             C_t = torch.as_tensor(cam_params["C"], dtype=torch.float32).unsqueeze(0)
-            f_t = torch.tensor([float(cam_params["f"])], dtype=torch.float32)
+            if "fx" in cam_params and "fy" in cam_params:
+                fx_val = float(cam_params["fx"])
+                fy_val = float(cam_params["fy"])
+            elif "f" in cam_params:
+                fx_val = float(cam_params["f"])
+                fy_val = fx_val
+            else:
+                raise ModelInputContractError(
+                    "Monocular PLCS camera params must provide 'f' or ('fx', 'fy')."
+                )
+            fx_t = torch.tensor([fx_val], dtype=torch.float32)
+            fy_t = torch.tensor([fy_val], dtype=torch.float32)
             cx_t = torch.tensor([float(cam_params["cx"])], dtype=torch.float32)
             cy_t = torch.tensor([float(cam_params["cy"])], dtype=torch.float32)
-            w_t = torch.tensor([float(cam_params["w"])], dtype=torch.float32)
-            h_t = torch.tensor([float(cam_params["h"])], dtype=torch.float32)
+            if "w" in cam_params and "h" in cam_params:
+                w_val = float(cam_params["w"])
+                h_val = float(cam_params["h"])
+            elif "image_size" in cam_params:
+                image_size = cam_params["image_size"]
+                w_val = float(image_size[0])
+                h_val = float(image_size[1])
+            else:
+                raise ModelInputContractError(
+                    "Monocular PLCS camera params must provide ('w', 'h') or 'image_size'."
+                )
+            w_t = torch.tensor([w_val], dtype=torch.float32)
+            h_t = torch.tensor([h_val], dtype=torch.float32)
             wh = torch.stack([w_t, h_t], dim=-1)
             kp2d_px = ready_human[:, 0] * wh[:, None, None, :]
             bbx_xys, frame_obs = compute_synthetic_bbx_xys(
@@ -1164,13 +1188,13 @@ class PLCSModelIOAdapter:
                 kp2d_px, ready_human_vis[:, 0].float(), bbx_xys, frame_obs
             )
             cliffcam = compute_cliffcam_features(
-                bbx_xys, frame_obs, fx=f_t, fy=f_t, cx0=cx_t, cy0=cy_t
+                bbx_xys, frame_obs, fx=fx_t, fy=fy_t, cx0=cx_t, cy0=cy_t
             )
             cam_feat = compute_camera_features(
                 R_t,
                 C_t,
-                fx=f_t,
-                fy=f_t,
+                fx=fx_t,
+                fy=fy_t,
                 cx0=cx_t,
                 cy0=cy_t,
                 image_w=w_t,
@@ -1186,7 +1210,8 @@ class PLCSModelIOAdapter:
                 "padding_mask": ready_padding[:, 0],
                 "camera_R_in": R_t,
                 "camera_C_in": C_t,
-                "camera_f_in": f_t,
+                "camera_f_in": fx_t,
+                "camera_fy_in": fy_t,
                 "camera_cx_in": cx_t,
                 "camera_cy_in": cy_t,
                 "court_keypoint_metadata": ready["court_keypoint_metadata"],
@@ -1349,6 +1374,16 @@ class PLCSModelIOAdapter:
                 vis_t,
                 config=SyntheticBBoxConfig(vis_threshold=vis_threshold),
             )
+            if frame_observed is not None:
+                explicit_obs = torch.as_tensor(frame_observed, dtype=torch.bool)
+                if explicit_obs.ndim == 1:
+                    explicit_obs = explicit_obs.unsqueeze(0)
+                if explicit_obs.shape != (bsz, frames):
+                    raise ModelInputContractError(
+                        f"frame_observed must have shape {(bsz, frames)}, got {tuple(explicit_obs.shape)}."
+                    )
+                obs_t = obs_t & explicit_obs
+                bbx_t = torch.where(obs_t.unsqueeze(-1), bbx_t, torch.zeros_like(bbx_t))
         else:
             bbx_t = torch.as_tensor(bbx_xys, dtype=torch.float32)
             if bbx_t.ndim == 2:

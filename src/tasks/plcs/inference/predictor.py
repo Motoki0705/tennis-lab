@@ -471,6 +471,27 @@ class PLCSPredictor(BasePredictor):
                 if decoded.canonical_pose is not None
                 else None
             )
+            world_kp_3d = (
+                decoded.world_kp_3d.numpy()
+                if decoded.world_kp_3d is not None
+                else None
+            )
+            valid_mask = (
+                prepared.frame_observed.detach().cpu().numpy().astype(np.bool_, copy=False)
+                if prepared.frame_observed is not None
+                else None
+            )
+            if valid_mask is not None and not bool(valid_mask.all()):
+                position_meters = position_meters.astype(np.float32, copy=True)
+                yaw_radians = yaw_radians.astype(np.float32, copy=True)
+                position_meters[~valid_mask] = np.nan
+                yaw_radians[~valid_mask] = np.nan
+                if canonical_pose is not None:
+                    canonical_pose = canonical_pose.astype(np.float32, copy=True)
+                    canonical_pose[~valid_mask] = np.nan
+                if world_kp_3d is not None:
+                    world_kp_3d = world_kp_3d.astype(np.float32, copy=True)
+                    world_kp_3d[~valid_mask] = np.nan
             return PLCSPhysicalPrediction(
                 position_meters=position_meters.astype(np.float32, copy=False),
                 yaw_radians=yaw_radians.astype(np.float32, copy=False),
@@ -479,6 +500,27 @@ class PLCSPredictor(BasePredictor):
                     if canonical_pose is not None
                     else None
                 ),
+                world_kp_3d_meters=(
+                    world_kp_3d.astype(np.float32, copy=False)
+                    if world_kp_3d is not None
+                    else None
+                ),
+                pred_vel_3d_mps=(
+                    decoded.pred_vel_3d.numpy().astype(np.float32, copy=False)
+                    if decoded.pred_vel_3d is not None
+                    else None
+                ),
+                pred_acc_3d_mps2=(
+                    decoded.pred_acc_3d.numpy().astype(np.float32, copy=False)
+                    if decoded.pred_acc_3d is not None
+                    else None
+                ),
+                static_contact_logits=(
+                    decoded.static_contact_logits.numpy().astype(np.float32, copy=False)
+                    if decoded.static_contact_logits is not None
+                    else None
+                ),
+                valid_frame_mask=valid_mask,
                 court_reference_provenance=decoded.court_reference_provenance,
                 reference_metadata=decoded.reference_metadata,
             )
@@ -525,73 +567,117 @@ class PLCSPredictor(BasePredictor):
         pos_norm = decoded.position
         rot_cs = decoded.rotation
         canon = decoded.canonical_pose
-        if htd_refiner is not None and world_kp is not None and world_kp.shape[0] == 1:
-            obs_mask = (
-                prepared.frame_observed[0].cpu()
-                if prepared.frame_observed is not None
-                else torch.ones((world_kp.shape[1],), dtype=torch.bool)
+        if world_kp is None:
+            raise ModelInputContractError(
+                "predict_monocular_sequence requires a model producing world_kp_3d."
             )
-            kp_px_t = torch.as_tensor(kp2d_px, dtype=torch.float32)
-            if kp_px_t.ndim == 4:
-                kp_px_t = kp_px_t[0]
-            vis_t = torch.as_tensor(kp_vis, dtype=torch.float32)
-            if vis_t.ndim == 3:
-                vis_t = vis_t[0]
-            view = HTDRefineCameraView(
-                R_w2c=torch.as_tensor(R_w2c, dtype=torch.float32),
-                C_w=torch.as_tensor(C_w, dtype=torch.float32),
-                fx=torch.as_tensor(fx, dtype=torch.float32),
-                fy=torch.as_tensor(fy, dtype=torch.float32),
-                cx0=torch.as_tensor(cx0, dtype=torch.float32),
-                cy0=torch.as_tensor(cy0, dtype=torch.float32),
-                image_w=float(image_w),
-                image_h=float(image_h),
-                kp2d_px=kp_px_t,
-                kp_conf=vis_t,
-                frame_observed=obs_mask,
-            )
-            refined = htd_refiner.refine(
-                world_kp_init=world_kp[0],
-                pred_vel_3d=(
-                    decoded.pred_vel_3d[0] if decoded.pred_vel_3d is not None else None
-                ),
-                pred_acc_3d=(
-                    decoded.pred_acc_3d[0] if decoded.pred_acc_3d is not None else None
-                ),
-                static_contact_logits=(
-                    decoded.static_contact_logits[0]
-                    if decoded.static_contact_logits is not None
-                    else None
-                ),
-                views=[view],
-                fps=fps,
-            )
-            world_kp = refined.world_kp_3d.unsqueeze(0)
-            pos_norm = refined.position.unsqueeze(0)
-            rot_cs = refined.rotation.unsqueeze(0)
-            canon = refined.canonical_pose.unsqueeze(0)
+        bsz, seq_len = int(world_kp.shape[0]), int(world_kp.shape[1])
+        obs_mask_all = (
+            prepared.frame_observed.detach().cpu().to(dtype=torch.bool)
+            if prepared.frame_observed is not None
+            else torch.ones((bsz, seq_len), dtype=torch.bool)
+        )
+        if htd_refiner is not None:
+            kp_px_all = torch.as_tensor(kp2d_px, dtype=torch.float32)
+            if kp_px_all.ndim == 3:
+                kp_px_all = kp_px_all.unsqueeze(0)
+            vis_all = torch.as_tensor(kp_vis, dtype=torch.float32)
+            if vis_all.ndim == 2:
+                vis_all = vis_all.unsqueeze(0)
+            R_all = torch.as_tensor(R_w2c, dtype=torch.float32)
+            C_all = torch.as_tensor(C_w, dtype=torch.float32)
+            fx_all = torch.as_tensor(fx, dtype=torch.float32)
+            fy_all = torch.as_tensor(fy, dtype=torch.float32)
+            cx_all = torch.as_tensor(cx0, dtype=torch.float32)
+            cy_all = torch.as_tensor(cy0, dtype=torch.float32)
+
+            def _slice_batch_cam(
+                tensor: Tensor, batch_idx: int, *, trailing_dims: int
+            ) -> Tensor:
+                lead = tensor.shape if trailing_dims == 0 else tensor.shape[:-trailing_dims]
+                if lead == (bsz, seq_len) or lead == (bsz,):
+                    return tensor[batch_idx]
+                if lead == () or lead == (seq_len,):
+                    return tensor
+                raise ModelInputContractError(
+                    f"Camera parameter shape {tuple(tensor.shape)} is incompatible "
+                    f"with batch_size={bsz}, seq_len={seq_len}."
+                )
+
+            refined_world: list[Tensor] = []
+            refined_pos: list[Tensor] = []
+            refined_rot: list[Tensor] = []
+            refined_canon: list[Tensor] = []
+            for batch_idx in range(bsz):
+                obs_b = obs_mask_all[batch_idx]
+                view = HTDRefineCameraView(
+                    R_w2c=_slice_batch_cam(R_all, batch_idx, trailing_dims=2),
+                    C_w=_slice_batch_cam(C_all, batch_idx, trailing_dims=1),
+                    fx=_slice_batch_cam(fx_all, batch_idx, trailing_dims=0),
+                    fy=_slice_batch_cam(fy_all, batch_idx, trailing_dims=0),
+                    cx0=_slice_batch_cam(cx_all, batch_idx, trailing_dims=0),
+                    cy0=_slice_batch_cam(cy_all, batch_idx, trailing_dims=0),
+                    image_w=float(image_w),
+                    image_h=float(image_h),
+                    kp2d_px=kp_px_all[batch_idx],
+                    kp_conf=vis_all[batch_idx],
+                    frame_observed=obs_b,
+                )
+                refined = htd_refiner.refine(
+                    world_kp_init=world_kp[batch_idx],
+                    pred_vel_3d=(
+                        decoded.pred_vel_3d[batch_idx]
+                        if decoded.pred_vel_3d is not None
+                        else None
+                    ),
+                    pred_acc_3d=(
+                        decoded.pred_acc_3d[batch_idx]
+                        if decoded.pred_acc_3d is not None
+                        else None
+                    ),
+                    static_contact_logits=(
+                        decoded.static_contact_logits[batch_idx]
+                        if decoded.static_contact_logits is not None
+                        else None
+                    ),
+                    views=[view],
+                    fps=fps,
+                    valid_frame_mask=obs_b,
+                )
+                refined_world.append(refined.world_kp_3d)
+                refined_pos.append(refined.position)
+                refined_rot.append(refined.rotation)
+                refined_canon.append(refined.canonical_pose)
+            world_kp = torch.stack(refined_world, dim=0)
+            pos_norm = torch.stack(refined_pos, dim=0)
+            rot_cs = torch.stack(refined_rot, dim=0)
+            canon = torch.stack(refined_canon, dim=0)
 
         position_physical, heading_physical = self._physical_outputs(
             pos_norm,
             rot_cs,
             decoded.court_reference_provenance,
         )
-        yaw_radians = torch.atan2(
+        position_np = position_physical.numpy().astype(np.float32, copy=True)
+        yaw_np = torch.atan2(
             heading_physical[..., 1], heading_physical[..., 0]
-        ).numpy()
+        ).numpy().astype(np.float32, copy=True)
+        canon_np = (
+            canon.numpy().astype(np.float32, copy=True) if canon is not None else None
+        )
+        world_np = world_kp.numpy().astype(np.float32, copy=True)
+        valid_mask_np = obs_mask_all.numpy().astype(np.bool_, copy=False)
+        if not bool(valid_mask_np.all()):
+            position_np[~valid_mask_np] = np.nan
+            yaw_np[~valid_mask_np] = np.nan
+            world_np[~valid_mask_np] = np.nan
+            if canon_np is not None:
+                canon_np[~valid_mask_np] = np.nan
         return PLCSPhysicalPrediction(
-            position_meters=position_physical.numpy().astype(np.float32, copy=False),
-            yaw_radians=yaw_radians.astype(np.float32, copy=False),
-            canonical_pose=(
-                canon.numpy().astype(np.float32, copy=False)
-                if canon is not None
-                else None
-            ),
-            world_kp_3d_meters=(
-                world_kp.numpy().astype(np.float32, copy=False)
-                if world_kp is not None
-                else None
-            ),
+            position_meters=position_np,
+            yaw_radians=yaw_np,
+            canonical_pose=canon_np,
+            world_kp_3d_meters=world_np,
             pred_vel_3d_mps=(
                 decoded.pred_vel_3d.numpy().astype(np.float32, copy=False)
                 if decoded.pred_vel_3d is not None
@@ -607,6 +693,7 @@ class PLCSPredictor(BasePredictor):
                 if decoded.static_contact_logits is not None
                 else None
             ),
+            valid_frame_mask=valid_mask_np,
             court_reference_provenance=decoded.court_reference_provenance,
             reference_metadata=decoded.reference_metadata,
         )

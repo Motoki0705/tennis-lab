@@ -7,7 +7,10 @@ from hydra import compose, initialize_config_dir
 
 from src.tasks.plcs.configuration import PLCSTrainingConfig
 from src.tasks.plcs.generate_dataset.config import PLCSGenerationConfig
-from src.utils.configuration import UnknownConfigurationKeyError
+from src.utils.configuration import (
+    SemanticConfigurationError,
+    UnknownConfigurationKeyError,
+)
 
 _CONFIG_DIR = Path("src/tasks/plcs/configs").resolve()
 _DATA_CONFIG_DIR = _CONFIG_DIR / "data"
@@ -130,6 +133,24 @@ def test_public_data_profiles_compose_and_validate_contracts(
 
 def test_public_profiles_cover_each_plcs_dataset_once_or_more() -> None:
     assert {row[3] for row in _TRAINING_PROFILES} == {"plcs/single_object"}
+
+
+@pytest.mark.parametrize(
+    "overrides",
+    [
+        ("model=monocular_gvhmr_htd", "data=monocular_sequence"),
+        ("model=monocular_gvhmr_htd", "data=monocular_sequence", "loss=monocular_base"),
+        ("model=monocular_gvhmr_base", "data=monocular_sequence"),
+        ("model=monocular_gvhmr_base", "data=monocular_sequence", "loss=monocular_htd"),
+    ],
+)
+def test_monocular_model_loss_mismatch_is_rejected_at_train_boundary(
+    overrides: tuple[str, ...],
+) -> None:
+    with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
+        config = compose(config_name="train", overrides=list(overrides))
+    with pytest.raises(SemanticConfigurationError):
+        PLCSTrainingConfig.from_config(config)
 
 
 @pytest.mark.parametrize(
