@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "b000039fab705bd51c5148425553d10b50f8474b",
+  "baseline_commit": "d08f191cc66ac3a50980bcd2a19de4f7c40d2551",
   "files": {
     "submodules/models/fasthmr/assets.py": {
       "before": null,
@@ -46,8 +46,8 @@
       "after": "39ed9b82cef695bb33541eb96b5673113ac05958842a1057c395f2346d99d71a"
     },
     "tennis_scene/pipeline/definition.py": {
-      "before": "92cd0948f25f47e2bac7e1e986a0b472ac01fd120412966f88b8610551158014",
-      "after": "72d739996c472b909e034ca6b2294d1bca8b923d9dcda2aaf8a70019ba1b2a0f"
+      "before": "5dde1988aa2fed08e3c2fd513e03361e943d84c5b0d0c09606b8305fb356dde7",
+      "after": "cde439330a39d226a5fc5a75d05c2d607bcee47ef8fb7c8103fc0cde0e48a8bf"
     },
     "tennis_scene/pipeline/input_assembly/body.py": {
       "before": "661ee38536a37f981c2e8629337f44e610b5f8b3806b8c67a5ae946560e8957f",

@@ -10,6 +10,7 @@ import torch
 from src.utils.projection.camera_projector import (
     BROADCAST_LAYOUT,
     FIXED_LAYOUT,
+    MIXED_LAYOUT,
     Camera,
     CameraView,
     camera_from_mapping,
@@ -405,6 +406,30 @@ class TestCamerasDispatch:
     def test_broadcast_layout_returns_two(self) -> None:
         projector = CameraProjector(config=_deterministic_broadcast_config())
         assert len(projector.cameras()) == 2
+
+    def test_mixed_layout_returns_fixed_plus_broadcast(self) -> None:
+        cfg = CameraConfig(
+            layout=MIXED_LAYOUT,
+            fixed_position_noise_radius=0.0,
+            fixed_look_at_xy_radius=0.0,
+            broadcast_position_noise_radius=0.0,
+            broadcast_look_at_xy_radius=0.0,
+            broadcast_hfov_jitter_deg=0.0,
+        )
+        cams = CameraProjector(config=cfg).cameras()
+        assert len(cams) == 8
+        subset_cams = CameraProjector(
+            config=CameraConfig(
+                layout=MIXED_LAYOUT,
+                fixed_camera_indices=(0, 3),
+                fixed_position_noise_radius=0.0,
+                fixed_look_at_xy_radius=0.0,
+                broadcast_position_noise_radius=0.0,
+                broadcast_look_at_xy_radius=0.0,
+                broadcast_hfov_jitter_deg=0.0,
+            )
+        ).cameras()
+        assert len(subset_cams) == 4
 
     def test_unknown_layout_raises(self) -> None:
         projector = CameraProjector(config=CameraConfig(layout="satellite"))

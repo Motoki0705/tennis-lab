@@ -30,6 +30,7 @@ from src.tennis_scene.pipeline.definition import (
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.source_identity import compatible_source_digests
 from src.tennis_scene.pipeline.video_batch import run_video_batch
+from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
 from src.utils.paths import PROJECT_ROOT
 from tests.support.tennis_scene.video_dataset import add_clip
@@ -53,12 +54,28 @@ FASTHMR = (
 def test_only_the_exact_standard_recipe_patch_preserves_previous_source_identity() -> None:
     manifest = PROJECT_ROOT / "src/tennis_scene/pipeline/standard_recipe_cache_compatibility.json"
     records = json.loads(manifest.read_text())["files"]
-    patches = {path: entry["after"] for path, entry in records.items()}
-    baseline = {path: entry["before"] for path, entry in records.items() if entry["before"] is not None}
-    assert compatible_source_digests(patches, standard_recipe=True, tensorrt=True) == baseline
-    assert compatible_source_digests(patches, tensorrt=True) == patches
-    local_edit = {**patches, "tennis_scene/pipeline/definition.py": "a" * 64}
+    people = json.loads(manifest.with_name("ecpose_recipe_cache_compatibility.json").read_text())["files"]
+    plcs_path = "tennis_scene/pipeline/components/monocular_plcs.py"
+    actual = {
+        path: dual_sha256(PROJECT_ROOT / "src" / path)
+        for path in records.keys() | people.keys() | {plcs_path}
+    }
+    assert {path: actual[path] for path in people} == {path: entry["after"] for path, entry in people.items()}
+    outside_fast = {path: entry["before"] for path, entry in people.items()
+                    if path not in records and entry["before"] is not None}
+    outside_fast[plcs_path] = actual[plcs_path]
+    fast_sources = compatible_source_digests(actual, standard_people=True, tensorrt=True)
+    assert fast_sources == {**outside_fast, **{path: entry["after"] for path, entry in records.items()}}
+    baseline = {
+        **outside_fast,
+        **{path: entry["before"] for path, entry in records.items() if entry["before"] is not None},
+    }
+    assert compatible_source_digests(actual, standard_recipe=True, tensorrt=True) == baseline
+    assert compatible_source_digests(actual, tensorrt=True) == actual
+    local_edit = {**fast_sources, "tennis_scene/pipeline/definition.py": "a" * 64}
     assert compatible_source_digests(local_edit, standard_recipe=True, tensorrt=True) == local_edit
+    people_edit = {**actual, "submodules/models/ecpose/runtime.py": "b" * 64}
+    assert compatible_source_digests(people_edit, standard_recipe=True, tensorrt=True) == people_edit
 
 
 @pytest.mark.parametrize("override,message", [

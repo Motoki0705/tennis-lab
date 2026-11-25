@@ -1,0 +1,5 @@
+#2496 の固定384 cropで、RTMPose-M/X × PT32・PT16・TRT16 × batch 1・4・8・16 の **24ケース**を共有GPU queueに登録しました。batch 16はRTMPoseのTensorRT profile上限の確認です。全ケースで入力順とmanifest SHA-256を固定しています。[測定条件と再現手順](https://github.com/Motoki0705/tennis-lab/blob/7d60496604526fab703bac71d79fb1fe343ccedd/knowledge/runs/run-meiji-topdown-pose-comparison/rtmpose.md)
+
+統合用 branch は `codex/parent-2492-issue-2490-rtmpose`、commit は `7d60496604526fab703bac71d79fb1fe343ccedd` です。共通の `measure_forward` APIに合わせ、89テストとpre-commitが通過しました。更新した #2495 採点器でM TRT16の26,276行を再採点し、保存済みの全指標が一致しました。速度・VRAM・parityはqueueの結果待ちです。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204471182921321101_2026-11-24T14-00-17-078678898Z_2310221_i2490-rtmpose-m-speed-sweep.job","0-8204471182614046695_2026-11-24T14-00-17-385953304Z_2310299_i2490-rtmpose-x-speed-sweep.job"]}}

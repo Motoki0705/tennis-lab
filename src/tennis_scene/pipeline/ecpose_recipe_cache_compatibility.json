@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "877f60e6a6aedac30139df61e315f71277ad32b7",
+  "baseline_commit": "8a25fe12b543656cb1e883e7251bd1a3fd299fd0",
   "files": {
     "submodules/models/ecpose/__init__.py": {
       "before": null,
@@ -30,8 +30,8 @@
       "after": "4cb29adcefbbbd3051ec30807e22c2439a93880b7ce704535b064d4fd43e105f"
     },
     "tennis_scene/pipeline/definition.py": {
-      "before": "72d739996c472b909e034ca6b2294d1bca8b923d9dcda2aaf8a70019ba1b2a0f",
-      "after": "2348605b9509a00d8c5d4aba4f3e55673fa5f7165d56b04c03830e02a2a4df05"
+      "before": "cde439330a39d226a5fc5a75d05c2d607bcee47ef8fb7c8103fc0cde0e48a8bf",
+      "after": "bad21de385645ca668ba8435ba0f2354b2b5a45c13743c7b15e84407aeb2a428"
     },
     "tennis_scene/pipeline/input_assembly/ecpose.py": {
       "before": null,
