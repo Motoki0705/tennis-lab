@@ -433,7 +433,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-l-coco /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16",
       "job_id": "0-8204385483118668058_2026-11-25T13-48-36-881331941Z_1163401_i2487-ecdet-l-coco-pt16-speed-threads4-1.job",
       "queue_log": {
-        "path": ".training_queue/logs/0-8204385483118668058_2026-11-25T13-48-36-881331941Z_1163401_i2487-ecdet-l-coco-pt16-speed-threads4-1.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204385483118668058_2026-11-25T13-48-36-881331941Z_1163401_i2487-ecdet-l-coco-pt16-speed-threads4-1.log",
         "sha256": "baf0b0d1a12b2ec8c3cc3cc09dd6d1251bbc2422d2ef33abc0cdf027d22bc15d"
       },
       "reproduction": {
@@ -795,7 +795,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-l-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16",
       "job_id": "0-8204385482505987943_2026-11-25T13-48-37-494012056Z_1163508_i2487-ecdet-l-o365-pt16-speed-threads4-1.job",
       "queue_log": {
-        "path": ".training_queue/logs/0-8204385482505987943_2026-11-25T13-48-37-494012056Z_1163508_i2487-ecdet-l-o365-pt16-speed-threads4-1.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204385482505987943_2026-11-25T13-48-37-494012056Z_1163508_i2487-ecdet-l-o365-pt16-speed-threads4-1.log",
         "sha256": "eb72721695c9a574e5d7d1626d3c66cc778a18b07d7dc0e118a80b246ca38c96"
       },
       "reproduction": {
@@ -1157,7 +1157,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-x-coco /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16",
       "job_id": "0-8204385482836440906_2026-11-25T13-48-37-163559093Z_1163447_i2487-ecdet-x-coco-pt16-speed-threads4-1.job",
       "queue_log": {
-        "path": ".training_queue/logs/0-8204385482836440906_2026-11-25T13-48-37-163559093Z_1163447_i2487-ecdet-x-coco-pt16-speed-threads4-1.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204385482836440906_2026-11-25T13-48-37-163559093Z_1163447_i2487-ecdet-x-coco-pt16-speed-threads4-1.log",
         "sha256": "2df4c657b2bba110075e293cf65c58597b6144cf7f8b62a373ef3575c1b8008d"
       },
       "reproduction": {
@@ -1519,7 +1519,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-x-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16",
       "job_id": "0-8204385482195415864_2026-11-25T13-48-37-804584135Z_1163781_i2487-ecdet-x-o365-pt16-speed-threads4-1.job",
       "queue_log": {
-        "path": ".training_queue/logs/0-8204385482195415864_2026-11-25T13-48-37-804584135Z_1163781_i2487-ecdet-x-o365-pt16-speed-threads4-1.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204385482195415864_2026-11-25T13-48-37-804584135Z_1163781_i2487-ecdet-x-o365-pt16-speed-threads4-1.log",
         "sha256": "4f2885e6842b34d308bd619e658baed2f32b8d891f5956319af6e762bca062de"
       },
       "reproduction": {
@@ -1881,7 +1881,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecpose-l-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16",
       "job_id": "0-8204385481889489464_2026-11-25T13-48-38-110510535Z_1163961_i2487-ecpose-l-o365-pt16-speed-threads4-1.job",
       "queue_log": {
-        "path": ".training_queue/logs/0-8204385481889489464_2026-11-25T13-48-38-110510535Z_1163961_i2487-ecpose-l-o365-pt16-speed-threads4-1.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204385481889489464_2026-11-25T13-48-38-110510535Z_1163961_i2487-ecpose-l-o365-pt16-speed-threads4-1.log",
         "sha256": "3804c9b10eeaaa4a3704e72e85a4dc6344ae357ed91dc07e13a293582d412b23"
       },
       "reproduction": {
@@ -2243,7 +2243,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecpose-x-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16",
       "job_id": "0-8204385481606919777_2026-11-25T13-48-38-393080222Z_1164088_i2487-ecpose-x-o365-pt16-speed-threads4-1.job",
       "queue_log": {
-        "path": ".training_queue/logs/0-8204385481606919777_2026-11-25T13-48-38-393080222Z_1164088_i2487-ecpose-x-o365-pt16-speed-threads4-1.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204385481606919777_2026-11-25T13-48-38-393080222Z_1164088_i2487-ecpose-x-o365-pt16-speed-threads4-1.log",
         "sha256": "f0dc3a33103717862bd0e90e559d11387d436fc65f3e5fcc561e45439925db22"
       },
       "reproduction": {

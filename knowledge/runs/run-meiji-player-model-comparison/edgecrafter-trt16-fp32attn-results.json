@@ -6,7 +6,7 @@
     ],
     "diagnosis": {
       "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt-diagnosis-v3.json",
-      "sha256": "edd95e47ce7058f4d9b49edeec6df31e0622b6d1d96167ac51a8d10f2744b874"
+      "sha256": "dc9c97923890061b7232ba7ac06ad319c0e1f14afc11fc1f42abad715a7a9e00"
     },
     "matches": {
       "candidate_rows": 160,
@@ -178,7 +178,7 @@
         "sha256": "bf7d522a88ead74d8dcae629d764f6022693d2c9d980de1ce2dccfcfbfab8848"
       },
       "queue_log": {
-        "path": ".training_queue/logs/0-8204383228858026608_2026-11-25T14-26-11-141973391Z_1285078_i2487-ecdet-l-coco-trt16-fp32attn.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204383228858026608_2026-11-25T14-26-11-141973391Z_1285078_i2487-ecdet-l-coco-trt16-fp32attn.log",
         "sha256": "a165ce42167542788672c5f1550f08a020c2992d819cd31fe86193207a33137c"
       },
       "references": {
@@ -816,7 +816,7 @@
         "sha256": "67f9b68a01b573278b91a08d892b1523ed77cf7759292264abdd18cf30df7a65"
       },
       "queue_log": {
-        "path": ".training_queue/logs/0-8204383228271215821_2026-11-25T14-26-11-728784178Z_1285356_i2487-ecdet-l-o365-trt16-fp32attn.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204383228271215821_2026-11-25T14-26-11-728784178Z_1285356_i2487-ecdet-l-o365-trt16-fp32attn.log",
         "sha256": "0ca9e609c1078c4234b0e77083644dbda020e1e1471a81571c0e8b4d6de2b626"
       },
       "references": {
@@ -1454,7 +1454,7 @@
         "sha256": "11386141ba4c2d82d7db8286e5f89619e6d6dd0a5e3e355a156b322ac921f7a8"
       },
       "queue_log": {
-        "path": ".training_queue/logs/0-8204383228564005184_2026-11-25T14-26-11-435994815Z_1285215_i2487-ecdet-x-coco-trt16-fp32attn.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204383228564005184_2026-11-25T14-26-11-435994815Z_1285215_i2487-ecdet-x-coco-trt16-fp32attn.log",
         "sha256": "6c528377818761d56279f38974220754acfb1abf0cbd086b4b18a5be940f528a"
       },
       "references": {
@@ -2092,7 +2092,7 @@
         "sha256": "4ad017fcb97c0e8019f294720fae1e0d2b94b3e4451fc17790976066e617458e"
       },
       "queue_log": {
-        "path": ".training_queue/logs/0-8204383227982667381_2026-11-25T14-26-12-017332618Z_1285434_i2487-ecdet-x-o365-trt16-fp32attn.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204383227982667381_2026-11-25T14-26-12-017332618Z_1285434_i2487-ecdet-x-o365-trt16-fp32attn.log",
         "sha256": "4dff0ab53e58feafc3cdc90d21429a3964904a81134b65b87829cfa02cea1f36"
       },
       "references": {
@@ -2574,19 +2574,19 @@
   "references": {
     "original_speed": {
       "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-speed.json",
-      "sha256": "dbad59a352b09c543616eb1283debd5aabbacbc5288f9b792ac3a23f585c3dc4"
+      "sha256": "52c8cb645f55c1cd90cfce38333f9207050685bbacd4523ca96be3d4ee6a1460"
     },
     "original_trt16_accuracy": {
       "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-accuracy.json",
-      "sha256": "e021948180a74be003be641ac5931325048189743f5492a3ac3260a7221b0bc7"
+      "sha256": "4be6798cbeeca9dda8bd6e8bbfe602e162cb2a117bce5940c3217a66a7c5b9df"
     },
     "preflight": {
       "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt16-fp32attn-preflight.json",
-      "sha256": "2337f109191374993a9ade7be951d04134c117efda56efff97e8de3df180d395"
+      "sha256": "3db39b8e5e3698483aa4082ac7803bc58e332601c1b61dcdc1a0e77469841126"
     },
     "pt16": {
       "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-pt16-speed-matched.json",
-      "sha256": "1a7bff723f31b52d103b29087c8c7fdb953f19ea368265dd85dcb0ce6d17c76a"
+      "sha256": "3cb5c30fac84edcaf5bef5bb4ea44cd03f2d16c781a246a3f5df1adf9175f8a1"
     }
   },
   "schema_version": 1,

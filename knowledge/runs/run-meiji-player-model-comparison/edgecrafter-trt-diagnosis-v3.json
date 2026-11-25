@@ -793,7 +793,7 @@
     "command": "mkdir -p outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention && realpath outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention > \"$TENNIS_REPRO_DIR/output_dir.txt\" && exec env PYTHONPATH=.:knowledge/runs/run-person-model-speed-baseline OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/edgecrafter_trt_probe.py --archive outputs/player-model-comparison/trt16-diagnosis-v1 --inputs /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs --output outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention --fp32-decoder-attention",
     "job_id": "0-8204386175902366411_2026-11-25T13-37-04-097633588Z_1139308_i2487-ecdet-l-coco-trt16-fp32-decoder-attention.job",
     "queue_log": {
-      "path": ".training_queue/logs/0-8204386175902366411_2026-11-25T13-37-04-097633588Z_1139308_i2487-ecdet-l-coco-trt16-fp32-decoder-attention.log",
+      "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204386175902366411_2026-11-25T13-37-04-097633588Z_1139308_i2487-ecdet-l-coco-trt16-fp32-decoder-attention.log",
       "sha256": "d9d414793c3b8053b09360a44c1f975a09da540f598501c01d6fc825edcbbf39"
     },
     "reproduction": {

@@ -591,7 +591,7 @@
     "exit_code": 1,
     "job_id": "0-8204405633049949023_2026-11-25T08-12-46-950050976Z_1848524_i2487-edgecrafter-trt16-raw-heads-diagnosis.job",
     "queue_log": {
-      "path": ".training_queue/logs/0-8204405633049949023_2026-11-25T08-12-46-950050976Z_1848524_i2487-edgecrafter-trt16-raw-heads-diagnosis.log",
+      "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204405633049949023_2026-11-25T08-12-46-950050976Z_1848524_i2487-edgecrafter-trt16-raw-heads-diagnosis.log",
       "sha256": "d2b3a4a8cae161dfea704f79947f6553bb4b8e79007ca048f2cf966aff25cb90"
     },
     "state": "failed"

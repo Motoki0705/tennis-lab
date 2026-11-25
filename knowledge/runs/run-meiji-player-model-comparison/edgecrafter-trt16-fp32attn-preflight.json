@@ -217,7 +217,7 @@
   },
   "reference_diagnosis": {
     "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt-diagnosis-v3.json",
-    "sha256": "edd95e47ce7058f4d9b49edeec6df31e0622b6d1d96167ac51a8d10f2744b874"
+    "sha256": "dc9c97923890061b7232ba7ac06ad319c0e1f14afc11fc1f42abad715a7a9e00"
   },
   "reference_diagnosis_batch_order_matches": {
     "candidate_rows": 160,

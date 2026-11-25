@@ -61,6 +61,12 @@ condition="$output/ecdet-l-coco/trt16-trace2"
 
 PT16 uses CUDA FP16 autocast with FP32 weights and input tensors. Following the 2026-11-25 decision, new accuracy runs require `--parity not_measured` and record `PT32未計測` in the metrics. All conditions use the same partial-label pseudo-reference for accuracy. The saved ECDet PT32 v1 results and existing parity reports remain historical evidence. The replacement TensorRT trace addresses the dynamic batch profile.
 
+### Queue log retention
+
+The 26 queue logs referenced in the EdgeCrafter receipts are stored at `.worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/` relative to the main checkout. In the worker checkout, use `outputs/player-model-comparison/queue-logs/`. Each log matches the original SHA-256 recorded in its receipt. Run `sha256sum --check SHA256SUMS` in that directory to verify the archive.
+
+When a new job completes, copy its log into that directory and verify its SHA-256 against the source. Record the retained path and hash in the receipt and add the log to `SHA256SUMS`.
+
 ## Accuracy on the fixed cohort
 
 The six queue jobs at `83507bdd57097ac5b37892b5b1d6db3af0666af2` produced eight new scores and six TensorRT engines. Including the four retained ECDet PT16 results, all 12 PT16/TRT16 conditions contain the same 6,844 frame-and-camera rows and 26,276 eligible boxes. The receipt records the per-condition metrics, prediction digests, queue logs and verified engine artifacts. The raw outputs are under `outputs/player-model-comparison/` in the EdgeCrafter worker checkout. [Accuracy receipts](edgecrafter-accuracy.json)
@@ -137,7 +143,7 @@ PYTHONPATH=".:$baseline" OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREAD
   --model ecdet-l-o365 --output outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-o365
 ```
 
-On `clip_028/cam3` frame 513, ONNX Runtime CPU reproduced all 68 archived PT16 ECDet-L boxes and all 60 archived PT16 ECPose-X boxes at IoU ≥0.50. The same ONNX files yielded 30 and 11 matching boxes through their archived TRT16 plans. The gap on this image points to the TensorRT path. The differing compiler operation or runtime behavior remains under investigation. [ONNX CPU comparison](edgecrafter-trt-onnx-cpu.json)
+On `clip_028/cam3` frame 513, ONNX Runtime CPU reproduced all 68 archived PT16 ECDet-L boxes and all 60 archived PT16 ECPose-X boxes at IoU ≥0.50. The same ONNX files yielded 30 and 11 matching boxes through their archived TRT16 plans. The gap on this image points to the TensorRT path. [ONNX CPU comparison](edgecrafter-trt-onnx-cpu.json)
 
 The first CUDA diagnostic produced raw results for five weights. The upstream YAML loader shares its mutable default dictionary across calls. After loading ECDet-X, the same process tried to construct ECDet-L O365's MLP with width 2304 for a checkpoint with width 1536. The revised command uses one model per process and repeats the original batch order after the swapped execution. The prior speed and accuracy cases already used separate processes.
 
@@ -167,7 +173,7 @@ On the RTX 5060 Ti the rebuilt plan improved agreement with the saved PT16 predi
 | Both images, batch 2 A–B | 88/154 | 134/154 | 17/25 | 22/25 |
 | Both images, batch 2 B–A | 71/154 | 137/154 | 12/25 | 24/25 |
 
-The rebuilt plan matched 122 of 158 boxes after the batch swap, with final logit absolute difference P95 of 2.3712. Repeating the original order reproduced the raw tensors exactly. Against the fixed pseudo-reference at score ≥0.25 and IoU ≥0.50, the rebuilt plan matched 3/4 players in batch 1 and 6/8 and 8/8 in the two batch orders. Saved PT16 matched 4/4 and 8/8 in both orders. Two images provide a diagnostic sample. These results show a plan-level improvement with a residual batch-order effect. The original ECDet TRT16 scores have a suspected conversion defect involving FP16 decoder attention. The original ECPose-X TRT16 scores are also provisional, with the cause unresolved. [Sample pseudo-reference scores and batch-order checks](edgecrafter-trt-diagnosis-v3.json)
+The rebuilt plan matched 122 of 158 boxes after the batch swap, with final logit absolute difference P95 of 2.3712. Repeating the original order reproduced the raw tensors exactly. Against the fixed pseudo-reference at score ≥0.25 and IoU ≥0.50, the rebuilt plan matched 3/4 players in batch 1 and 6/8 and 8/8 in the two batch orders. Saved PT16 matched 4/4 and 8/8 in both orders. Two images provide a diagnostic sample. These results show a plan-level improvement with a residual batch-order effect. [Sample pseudo-reference scores and batch-order checks](edgecrafter-trt-diagnosis-v3.json)
 
 ```bash
 # Submit through the training queue with resource all.
@@ -209,6 +215,8 @@ To run ECDet-L COCO with the diagnosed plan, use the `engine_directory` and `bas
 
 All four ECDet jobs completed at `3acc97cbb78e6018a424e426bc76451d74933967`. Rescoring the 6,844 prediction rows for each model reproduced the saved results for all 26,276 eligible boxes. Each model's accuracy and both speed reports reference the same verified plan SHA-256. The eight speed cases reproduced their summaries from 2,400 timing samples and the fixed input order. [Results, plan checksums and raw reports](edgecrafter-trt16-fp32attn-results.json)
 
+The original `trt16` and `trt16-fp32attn` measurements have the status “conversion defect, cause unresolved”. The accuracy–speed Pareto comparison uses only PT16 for EdgeCrafter.
+
 | Model | Recall@0.50 PT16 / original TRT16 / FP32 attention (%) | Recall@0.75 PT16 / original TRT16 / FP32 attention (%) | FP32 attention batch 1 wall P50 / P95 (ms/image) | FP32 attention batch 2 wall P50 / P95 (ms/image) | Batch 2 images/s | NVML peak increase B1 / B2 (MiB) |
 |---|---:|---:|---:|---:|---:|---:|
 | ECDet-L COCO | 97.61 / 64.88 / 83.05 | 41.60 / 17.85 / 33.47 | 45.78 / 97.98 | 30.19 / 43.97 | 30.20 | 172 / 172 |
@@ -216,7 +224,11 @@ All four ECDet jobs completed at `3acc97cbb78e6018a424e426bc76451d74933967`. Res
 | ECDet-L O365 | 98.19 / 63.02 / 81.04 | 44.88 / 21.53 / 32.56 | 31.48 / 34.10 | 29.34 / 35.74 | 32.86 | 172 / 172 |
 | ECDet-X O365 | 97.97 / 65.88 / 45.46 | 46.62 / 23.87 / 16.01 | 32.11 / 34.74 | 30.07 / 31.77 | 33.01 | 210 / 210 |
 
-The FP32 attention plans left a batch 1 Recall@0.50 gap of 14.56–52.51 percentage points to saved PT16. Both L weights and X COCO improved over their original TRT16 plans. X O365 lost 20.43 points. The cause of the remaining loss is unresolved. ECDet-L COCO's batch 1 preprocessing P95 was 82.62 ms in this run. The other timing stages and per-block medians are in the result record. Batch 2 cohort accuracy is unmeasured. [Accuracy and timing details](edgecrafter-trt16-fp32attn-results.json)
+The FP32 attention plans left a batch 1 Recall@0.50 gap of 14.56–52.51 percentage points to saved PT16. Both L weights and X COCO improved over their original TRT16 plans. X O365 lost 20.43 points. ECDet-L COCO's batch 1 preprocessing P95 was 82.62 ms in this run. The other timing stages and per-block medians are in the result record. Batch 2 cohort accuracy is unmeasured. [Accuracy and timing details](edgecrafter-trt16-fp32attn-results.json)
+
+## 残課題
+
+The TensorRT investigation ended after the full-cohort evaluation. If EdgeCrafter becomes a deployment candidate, compare intermediate outputs on the same images to identify the first operation where TensorRT diverges from PT16 and determine how the divergence depends on image order within a batch.
 
 ## CPU integration check
 
