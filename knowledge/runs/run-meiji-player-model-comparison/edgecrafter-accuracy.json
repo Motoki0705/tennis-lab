@@ -5,7 +5,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecdet-l-coco 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
       "job_id": "0-8204421085375689640_2026-11-25T03-55-14-624310359Z_44137_i2487-ecdet-l-coco-cohort-accuracy-v3.job",
       "log": {
-        "path": ".training_queue/logs/0-8204421085375689640_2026-11-25T03-55-14-624310359Z_44137_i2487-ecdet-l-coco-cohort-accuracy-v3.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204421085375689640_2026-11-25T03-55-14-624310359Z_44137_i2487-ecdet-l-coco-cohort-accuracy-v3.log",
         "sha256": "2790015e653893181a361782f7a85bdd94a56d595228fcb9196077599e8ac9dc"
       },
       "state": "done"
@@ -15,7 +15,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecdet-l-o365 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
       "job_id": "0-8204421084654140811_2026-11-25T03-55-15-345859188Z_44284_i2487-ecdet-l-o365-cohort-accuracy-v3.job",
       "log": {
-        "path": ".training_queue/logs/0-8204421084654140811_2026-11-25T03-55-15-345859188Z_44284_i2487-ecdet-l-o365-cohort-accuracy-v3.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204421084654140811_2026-11-25T03-55-15-345859188Z_44284_i2487-ecdet-l-o365-cohort-accuracy-v3.log",
         "sha256": "390a5e3210305f3bb512c76e1c8267838444f1948b74b11623b1e4fde9835a6a"
       },
       "state": "done"
@@ -25,7 +25,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecdet-x-coco 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
       "job_id": "0-8204421085039610681_2026-11-25T03-55-14-960389318Z_44206_i2487-ecdet-x-coco-cohort-accuracy-v3.job",
       "log": {
-        "path": ".training_queue/logs/0-8204421085039610681_2026-11-25T03-55-14-960389318Z_44206_i2487-ecdet-x-coco-cohort-accuracy-v3.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204421085039610681_2026-11-25T03-55-14-960389318Z_44206_i2487-ecdet-x-coco-cohort-accuracy-v3.log",
         "sha256": "d19b8e8a54978d7f01c89dc7e64ed86146d35cea942853cb7b0453ae543d4a38"
       },
       "state": "done"
@@ -35,7 +35,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecdet-x-o365 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
       "job_id": "0-8204421084319338709_2026-11-25T03-55-15-680661290Z_44417_i2487-ecdet-x-o365-cohort-accuracy-v3.job",
       "log": {
-        "path": ".training_queue/logs/0-8204421084319338709_2026-11-25T03-55-15-680661290Z_44417_i2487-ecdet-x-o365-cohort-accuracy-v3.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204421084319338709_2026-11-25T03-55-15-680661290Z_44417_i2487-ecdet-x-o365-cohort-accuracy-v3.log",
         "sha256": "ac4afea11637a1e45aacc7a46baaa4bd5be2143ca18ff83085edfe3807b1fdbc"
       },
       "state": "done"
@@ -45,7 +45,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecpose-l-o365 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
       "job_id": "0-8204421086015195752_2026-11-25T03-55-13-984804247Z_43984_i2487-ecpose-l-o365-cohort-accuracy-v3.job",
       "log": {
-        "path": ".training_queue/logs/0-8204421086015195752_2026-11-25T03-55-13-984804247Z_43984_i2487-ecpose-l-o365-cohort-accuracy-v3.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204421086015195752_2026-11-25T03-55-13-984804247Z_43984_i2487-ecpose-l-o365-cohort-accuracy-v3.log",
         "sha256": "c8cb71b998930ec6f376fa98f2605f7544a13a72d390a181b7c314f045b8d589"
       },
       "state": "done"
@@ -55,7 +55,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecpose-x-o365 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
       "job_id": "0-8204421085699163410_2026-11-25T03-55-14-300836589Z_44065_i2487-ecpose-x-o365-cohort-accuracy-v3.job",
       "log": {
-        "path": ".training_queue/logs/0-8204421085699163410_2026-11-25T03-55-14-300836589Z_44065_i2487-ecpose-x-o365-cohort-accuracy-v3.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204421085699163410_2026-11-25T03-55-14-300836589Z_44065_i2487-ecpose-x-o365-cohort-accuracy-v3.log",
         "sha256": "dbeecf71c10e7c96adc73dad02b7cf8ceaea62cf37686d976d2161a19d6e1516"
       },
       "state": "done"

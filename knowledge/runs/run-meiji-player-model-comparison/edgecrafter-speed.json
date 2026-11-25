@@ -591,7 +591,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-l-coco /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6",
       "job_id": "0-8204406600618625364_2026-11-25T07-56-39-381374635Z_1736593_i2487-ecdet-l-coco-fixed-speed-13e508cb7.job",
       "queue_log": {
-        "path": ".training_queue/logs/0-8204406600618625364_2026-11-25T07-56-39-381374635Z_1736593_i2487-ecdet-l-coco-fixed-speed-13e508cb7.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204406600618625364_2026-11-25T07-56-39-381374635Z_1736593_i2487-ecdet-l-coco-fixed-speed-13e508cb7.log",
         "sha256": "cd995c5b5355a8ec042909514244c6d02152e4f52d1202a1e6dac7dfdf0ac7b8"
       }
     },
@@ -1184,7 +1184,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-l-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6",
       "job_id": "0-8204406600020428136_2026-11-25T07-56-39-979571863Z_1736732_i2487-ecdet-l-o365-fixed-speed-13e508cb7.job",
       "queue_log": {
-        "path": ".training_queue/logs/0-8204406600020428136_2026-11-25T07-56-39-979571863Z_1736732_i2487-ecdet-l-o365-fixed-speed-13e508cb7.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204406600020428136_2026-11-25T07-56-39-979571863Z_1736732_i2487-ecdet-l-o365-fixed-speed-13e508cb7.log",
         "sha256": "b4edf2e9327478450cf58fd52ad04abab8a9c766b2271bbe164c97b57074f07a"
       }
     },
@@ -1777,7 +1777,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-x-coco /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6",
       "job_id": "0-8204406600340455297_2026-11-25T07-56-39-659544702Z_1736660_i2487-ecdet-x-coco-fixed-speed-13e508cb7.job",
       "queue_log": {
-        "path": ".training_queue/logs/0-8204406600340455297_2026-11-25T07-56-39-659544702Z_1736660_i2487-ecdet-x-coco-fixed-speed-13e508cb7.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204406600340455297_2026-11-25T07-56-39-659544702Z_1736660_i2487-ecdet-x-coco-fixed-speed-13e508cb7.log",
         "sha256": "4474f21d9d41067007919a82af9be73d1968cdeb9e4bee6f082cac91c8524685"
       }
     },
@@ -2370,7 +2370,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-x-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6",
       "job_id": "0-8204406599706080216_2026-11-25T07-56-40-293919783Z_1736800_i2487-ecdet-x-o365-fixed-speed-13e508cb7.job",
       "queue_log": {
-        "path": ".training_queue/logs/0-8204406599706080216_2026-11-25T07-56-40-293919783Z_1736800_i2487-ecdet-x-o365-fixed-speed-13e508cb7.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204406599706080216_2026-11-25T07-56-40-293919783Z_1736800_i2487-ecdet-x-o365-fixed-speed-13e508cb7.log",
         "sha256": "44dee8d0bba8290f281daace387624e09038ce6190b4943539d76c203765cbde"
       }
     },
@@ -2963,7 +2963,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecpose-l-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6",
       "job_id": "0-8204406601172825111_2026-11-25T07-56-38-827174888Z_1736457_i2487-ecpose-l-o365-fixed-speed-13e508cb7.job",
       "queue_log": {
-        "path": ".training_queue/logs/0-8204406601172825111_2026-11-25T07-56-38-827174888Z_1736457_i2487-ecpose-l-o365-fixed-speed-13e508cb7.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204406601172825111_2026-11-25T07-56-38-827174888Z_1736457_i2487-ecpose-l-o365-fixed-speed-13e508cb7.log",
         "sha256": "0ae8d864f2980694200e35be19493e1ecc8487dc0488ed0beee82b230ba3d78c"
       }
     },
@@ -3556,7 +3556,7 @@
       "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecpose-x-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6",
       "job_id": "0-8204406600906716001_2026-11-25T07-56-39-093283998Z_1736525_i2487-ecpose-x-o365-fixed-speed-13e508cb7.job",
       "queue_log": {
-        "path": ".training_queue/logs/0-8204406600906716001_2026-11-25T07-56-39-093283998Z_1736525_i2487-ecpose-x-o365-fixed-speed-13e508cb7.log",
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204406600906716001_2026-11-25T07-56-39-093283998Z_1736525_i2487-ecpose-x-o365-fixed-speed-13e508cb7.log",
         "sha256": "81590c8ceefb33f13e04d7266d6211677219f0753a9f1d467b0f3d1df264cd63"
       }
     }

@@ -32,11 +32,37 @@ def script(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     return runpy.run_path(str(comparison / "edgecrafter_speed.py"))
 
 
+@pytest.mark.parametrize(
+    "attention_sha", [None, "e" * 64], ids=["pt16", "trt16-fp32attn"]
+)
 def test_case_uses_ordered_full_images_and_explicit_parity_opt_out(
-    script: dict[str, Any], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+    script: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    attention_sha: str | None,
 ) -> None:
     one_case = script["one_case"]
     scope = one_case.__globals__
+    backend = Backend.TRT16 if attention_sha is not None else Backend.PT16
+    model = "ecdet-l-coco"
+    threads = {"torch": 2, "opencv": 8}
+    monkeypatch.setitem(
+        scope,
+        "torch",
+        SimpleNamespace(
+            device=scope["torch"].device,
+            set_num_threads=lambda count: threads.__setitem__("torch", count),
+            get_num_threads=lambda: threads["torch"],
+        ),
+    )
+    monkeypatch.setitem(
+        scope,
+        "cv2",
+        SimpleNamespace(
+            setNumThreads=lambda count: threads.__setitem__("opencv", count),
+            getNumThreads=lambda: threads["opencv"],
+        ),
+    )
     monkeypatch.setitem(scope, "_require_harness_revision", lambda revision: None)
     for key, value in (("first", 12), ("second", 87)):
         np.save(tmp_path / f"{key}.npy", np.full((2, 3, 3), value, dtype=np.uint8))
@@ -52,7 +78,13 @@ def test_case_uses_ordered_full_images_and_explicit_parity_opt_out(
     )
     monkeypatch.setitem(scope, "PinnedBenchmarkInputs", lambda *a, **kw: pins)
     adapter = object()
-    monkeypatch.setitem(scope, "make_benchmark_adapter", lambda *a, **kw: adapter)
+
+    def make_adapter(*args: object, **kwargs: object) -> object:
+        assert args[2] == backend
+        assert kwargs["attention_base_onnx_sha256"] == attention_sha
+        return adapter
+
+    monkeypatch.setitem(scope, "make_benchmark_adapter", make_adapter)
     monkeypatch.setitem(scope, "_adapter_with_receipt", lambda value: value)
 
     def run_benchmark(
@@ -61,10 +93,17 @@ def test_case_uses_ordered_full_images_and_explicit_parity_opt_out(
         backends: dict[Backend, object],
         **settings: Any,
     ) -> BenchmarkReport:
-        assert case.backend is Backend.PT16
+        assert case.backend is backend
+        if attention_sha is not None:
+            assert case.name == f"{model}/trt16-fp32attn"
+            assert case.settings["engine_condition"] == "trt16-fp32attn"
+            assert case.settings["attention_base_onnx_sha256"] == attention_sha
+        else:
+            assert case.name == model
         assert case.input_manifest_sha256 == "a" * 64
         assert case.settings["timed_input_ids_sha256"] == "c" * 64
-        assert backends == {Backend.PT16: adapter}
+        assert threads == {"torch": 4, "opencv": 1}
+        assert backends == {backend: adapter}
         assert [batch.ids for batch in batches] == [("second", "first")]
         assert [image[0, 0, 0] for image in batches[0].data] == [87, 12]
         assert settings["protocol"] is schedule.protocol
@@ -82,10 +121,10 @@ def test_case_uses_ordered_full_images_and_explicit_parity_opt_out(
     assert (
         one_case(
             argparse.Namespace(
-                backend="pt16",
+                backend=backend.value.lower(),
                 parity="not_measured",
                 harness_commit="d" * 40,
-                model="ecdet-l-coco",
+                model=model,
                 device="cuda:0",
                 assets=tmp_path,
                 engine=None,
@@ -96,6 +135,7 @@ def test_case_uses_ordered_full_images_and_explicit_parity_opt_out(
                 batch_size=2,
                 pose_box_margin=None,
                 conversion=[],
+                attention_base_onnx_sha256=attention_sha,
                 output=tmp_path,
             )
         )
@@ -103,6 +143,8 @@ def test_case_uses_ordered_full_images_and_explicit_parity_opt_out(
     )
     report = json.loads((tmp_path / "speed-b2.json").read_text(encoding="utf-8"))
     assert report["case"]["settings"]["harness_commit"] == "d" * 40
+    assert report["case"]["settings"]["host_threads"] == 4
+    assert report["case"]["settings"]["opencv_threads"] == 1
     assert report["parity_status"] == "not_evaluated"
     assert report["parity_not_evaluated_reason"] == "PT32未計測"
     assert report["parity"] is None

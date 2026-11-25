@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Callable
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from functools import cached_property
 from pathlib import Path
@@ -45,7 +45,12 @@ def export_settings() -> dict[str, JsonValue]:
 
 
 def read_engine(
-    directory: Path, model_id: str, *, digest: Callable[[Path], str] = dual_sha256
+    directory: Path,
+    model_id: str,
+    *,
+    digest: Callable[[Path], str] = dual_sha256,
+    extra_export_settings: Mapping[str, JsonValue] | None = None,
+    extra_export_sources: Mapping[str, str] | None = None,
 ) -> EngineBundle:
     release = RELEASES[model_id]
     bundle = EngineBundle.read(directory, digest=digest)
@@ -66,8 +71,8 @@ def read_engine(
         outputs[name] = TensorSpec(dtype=spec.dtype, shape=shape)
     return bundle.for_model(
         model=model_id,
-        settings=export_settings(),
-        sources={"weights": release.sha256},
+        settings={**(extra_export_settings or {}), **export_settings()},
+        sources={**(extra_export_sources or {}), "weights": release.sha256},
         inputs={INPUT_NAME: TensorSpec(dtype="float32", shape=(-1, 3, *IMAGE_SIZE))},
         outputs=outputs,
     )
@@ -80,18 +85,29 @@ def load_backend(
     backend: str,
     device: torch.device,
     engine: Path | None,
+    *,
+    extra_export_settings: Mapping[str, JsonValue] | None = None,
+    extra_export_sources: Mapping[str, str] | None = None,
 ) -> EdgeCrafterInference:
     _validate_backend(backend, device, engine)
     release = RELEASES[model_id]
     if engine is not None:
         require_weight(checkpoint, release)
-        runner = TensorRTRunner(read_engine(engine, model_id), device)
+        bundle = read_engine(
+            engine,
+            model_id,
+            extra_export_settings=extra_export_settings,
+            extra_export_sources=extra_export_sources,
+        )
+        runner = TensorRTRunner(bundle, device)
 
         def run_trt(pixels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
             outputs = runner({INPUT_NAME: pixels})
             return outputs[HEADS[0]], outputs[HEADS[1]]
 
         return run_trt
+    if extra_export_settings or extra_export_sources:
+        raise ValueError("Extra export settings and sources require a TensorRT engine")
     network = load_network(repository, checkpoint, release).to(device)
 
     def run_pytorch(pixels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
@@ -143,7 +159,9 @@ class ECPoseConfig:
 
     @property
     def model_config(self) -> Path:
-        return self.repository.joinpath(self.release.family, "configs", self.release.config)
+        return self.repository.joinpath(
+            self.release.family, "configs", self.release.config
+        )
 
     @cached_property
     def source_assets(self) -> dict[str, Path]:

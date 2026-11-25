@@ -22,6 +22,7 @@ from edgecrafter_diagnose import (
     head_stats,
     tensor_difference,
 )
+from edgecrafter_trt import export_fp32_attention
 from numpy.typing import NDArray
 from speed_inputs import InputSet
 
@@ -47,9 +48,6 @@ PROBE_NODES = (
     "/model/decoder/GatherElements_1",
 )
 BATCH_NAMES = ("pair1_b", "pair1_ab", "pair1_ba", "pair1_ab_repeat")
-SELF_ATTENTION_SOFTMAX = tuple(
-    f"/model/decoder/decoder/layers.{index}/self_attn/Softmax" for index in range(4)
-)
 
 
 def add_probe_outputs(
@@ -70,93 +68,17 @@ def add_probe_outputs(
     return inferred, names
 
 
-def promote_attention_scores(model: Any, softmax_names: tuple[str, ...]) -> Any:
-    """Compute QK and Softmax in FP32 and retain the original FP16 interface."""
-    onnx = import_module("onnx")
-    inferred = onnx.shape_inference.infer_shapes(model, strict_mode=True)
-    graph = inferred.graph
-    by_name = {node.name: node for node in graph.node}
-    producers = {value: node for node in graph.node for value in node.output}
-    value_types = {
-        value.name: value.type.tensor_type.elem_type
-        for value in (*graph.input, *graph.output, *graph.value_info)
-    }
-    half, single = onnx.TensorProto.FLOAT16, onnx.TensorProto.FLOAT
-    replacements: dict[str, list[Any]] = {}
-    removed = set()
-    for name in softmax_names:
-        softmax = by_name[name]
-        (score,) = softmax.input
-        (probabilities,) = softmax.output
-        matmul = producers[score]
-        if (
-            softmax.op_type != "Softmax"
-            or matmul.op_type != "MatMul"
-            or [node.name for node in graph.node if score in node.input] != [name]
-            or score in {value.name for value in graph.output}
-            or any(
-                value_types.get(value) != half
-                for value in (*matmul.input, score, probabilities)
-            )
-        ):
-            raise ValueError(
-                f"Expected an isolated FP16 MatMul-to-Softmax region at {name}"
-            )
-        fp32_inputs = [
-            f"{name}_fp32_input_{index}" for index in range(len(matmul.input))
-        ]
-        replacements[matmul.name] = [
-            *(
-                onnx.helper.make_node("Cast", [original], [cast], name=cast, to=single)
-                for original, cast in zip(matmul.input, fp32_inputs, strict=True)
-            ),
-            onnx.helper.make_node(
-                "MatMul", fp32_inputs, [f"{score}_fp32"], name=matmul.name
-            ),
-        ]
-        widened = onnx.NodeProto()
-        widened.CopyFrom(softmax)
-        widened.input[0] = f"{score}_fp32"
-        widened.output[0] = f"{probabilities}_fp32"
-        replacements[name] = [
-            widened,
-            onnx.helper.make_node(
-                "Cast",
-                [widened.output[0]],
-                [probabilities],
-                name=f"{name}_restore_fp16",
-                to=half,
-            ),
-        ]
-        removed.add(score)
-    nodes = [
-        replacement
-        for node in graph.node
-        for replacement in replacements.get(node.name, [node])
-    ]
-    infos = [value for value in graph.value_info if value.name not in removed]
-    del graph.node[:]
-    graph.node.extend(nodes)
-    del graph.value_info[:]
-    graph.value_info.extend(infos)
-    onnx.checker.check_model(inferred, full_check=True)
-    return onnx.shape_inference.infer_shapes(inferred, strict_mode=True)
-
-
 def export_probe(
     original: EngineBundle, directory: Path, *, fp32_decoder_attention: bool = False
 ) -> tuple[str, ...]:
+    if fp32_decoder_attention:
+        export_fp32_attention(original, directory, MODEL, ASSETS)
+        return ()
+
     onnx = import_module("onnx")
     source = original.root / ONNX_FILE
-    graph = onnx.load(source)
-    names: tuple[str, ...] = ()
-    settings = dict(original.export.settings)
-    if fp32_decoder_attention:
-        graph = promote_attention_scores(graph, SELF_ATTENTION_SOFTMAX)
-        settings["fp32_decoder_attention_softmax"] = list(SELF_ATTENTION_SOFTMAX)
-    else:
-        graph, names = add_probe_outputs(graph, PROBE_NODES)
-        settings["diagnostic_outputs"] = list(names)
+    graph, names = add_probe_outputs(onnx.load(source), PROBE_NODES)
+    settings = {**original.export.settings, "diagnostic_outputs": list(names)}
     export_bundle(
         directory,
         model=MODEL,

@@ -5,10 +5,21 @@ from __future__ import annotations
 import runpy
 import sys
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
 import pytest
+
+from src.submodules.models.ecpose import runtime
+from src.utils.models.tensorrt_artifacts import (
+    EngineBundle,
+    EngineEnvironment,
+    EngineManifest,
+    ExportManifest,
+    InputProfile,
+    TensorSpec,
+)
 
 
 @pytest.fixture
@@ -152,8 +163,8 @@ def test_attention_probe_widens_matmul_and_softmax_and_restores_fp16(
     onnx = pytest.importorskip("onnx")
     helper = onnx.helper
     half, single = onnx.TensorProto.FLOAT16, onnx.TensorProto.FLOAT
-    probe = runpy.run_path(
-        str(Path(script["__file__"]).with_name("edgecrafter_trt_probe.py"))
+    attention = runpy.run_path(
+        str(Path(script["__file__"]).with_name("edgecrafter_attention.py"))
     )
     graph = helper.make_graph(
         [
@@ -171,7 +182,9 @@ def test_attention_probe_widens_matmul_and_softmax_and_restores_fp16(
         [helper.make_tensor_value_info("out", half, [1, 2, 2])],
     )
     model = helper.make_model(graph)
-    result = probe["promote_attention_scores"](model, ("softmax",))
+    with pytest.raises(attention["AttentionRewriteUnavailable"], match="missing"):
+        attention["promote_attention_scores"](model, ("softmax", "missing"))
+    result = attention["promote_attention_scores"](model, ("softmax",))
     nodes = {node.name: node for node in result.graph.node}
     types = {
         value.name: value.type.tensor_type.elem_type
@@ -188,3 +201,68 @@ def test_attention_probe_widens_matmul_and_softmax_and_restores_fp16(
     assert types[nodes["softmax"].output[0]] == single
     assert nodes["head"].input[0] == "weights"
     assert types["weights"] == types["out"] == half
+
+
+def test_attention_plan_requires_explicit_variant_and_matching_base_onnx(
+    script: dict[str, Any], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
+) -> None:
+    load = script["_load_forward"]
+    scope = load.__globals__
+    model = "ecdet-l-coco"
+    base_onnx_sha = "a" * 64
+    export = ExportManifest(
+        model=model,
+        settings={
+            **runtime.export_settings(),
+            scope["FP32_ATTENTION_SETTING"]: list(scope["SELF_ATTENTION_SOFTMAX"]),
+        },
+        sources={
+            "weights": scope["RELEASES"][model].sha256,
+            "base_onnx": base_onnx_sha,
+        },
+        onnx_files={"model.onnx": "b" * 64},
+        inputs={"pixels": TensorSpec(dtype="float32", shape=(-1, 3, 640, 640))},
+        outputs={
+            "logits": TensorSpec(dtype="float16", shape=(-1, 300, 80)),
+            "coordinates": TensorSpec(dtype="float32", shape=(-1, 300, 4)),
+        },
+    )
+    manifest = EngineManifest(
+        export_sha256="b" * 64,
+        plan_sha256="d" * 64,
+        environment=EngineEnvironment(
+            tensorrt_version="test", device_name="test GPU", compute_capability=(12, 0)
+        ),
+        profiles={
+            "pixels": InputProfile(
+                minimum=(1, 3, 640, 640),
+                optimum=(1, 3, 640, 640),
+                maximum=(2, 3, 640, 640),
+            )
+        },
+    )
+    bundle = EngineBundle(tmp_path, export, manifest)
+    monkeypatch.setattr(
+        runtime, "EngineBundle", SimpleNamespace(read=lambda _, **kwargs: bundle)
+    )
+    monkeypatch.setattr(runtime, "require_weight", lambda *_: None)
+    initialized: list[EngineBundle] = []
+    monkeypatch.setattr(
+        runtime, "TensorRTRunner", lambda bundle, device: initialized.append(bundle)
+    )
+    args = (
+        model,
+        tmp_path,
+        scope["Backend"].TRT16,
+        scope["torch"].device("cuda:0"),
+        tmp_path,
+    )
+    with pytest.raises(ValueError, match="export settings mismatch"):
+        load(*args)
+    with pytest.raises(ValueError, match="source assets mismatch"):
+        load(*args, attention_base_onnx_sha256="c" * 64)
+    with pytest.raises(ValueError, match="does not apply to ECPose"):
+        load("ecpose-l-o365", *args[1:], attention_base_onnx_sha256=base_onnx_sha)
+    assert not initialized
+    load(*args, attention_base_onnx_sha256=base_onnx_sha)
+    assert len(initialized) == 1 and initialized[0].export == export
