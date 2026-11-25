@@ -47,6 +47,8 @@ The six jobs submitted with the earlier timing program were cancelled before exe
 
 The first synchronized RF-DETR run completed 300 timed batches per condition with two PyTorch CPU threads. The DINO run used four. The speed command now sets four PyTorch CPU threads and one OpenCV thread, matching the baseline runner. The original reports, conversion receipts and exact queue commands are indexed with their SHA-256 digests. [Initial speed run](rfdetr-speed-initial.json) · [DINO runner](../run-person-model-speed-baseline/run.py)
 
+The rerun with matched host threads completed all four conditions. Its report index includes the raw file paths and SHA-256 digests for the batch-1 comparison in #2487. [Findings](../../nodes/player_detection/000010-run-meiji-rfdetr-large-speed.md) · [Comparison table](../run-meiji-rfdetr-large-speed/comparison.csv) · [Report index](../run-meiji-rfdetr-large-speed/results.json)
+
 Use a fresh `speed_out`. Submit each speed condition to the shared training queue with the complete GPU reservation. Both batch-specific plans from the completed runs have been verified. To regenerate the batch-2 plan, run `export --batch-size 2` followed by `build --batch-size 2` in a fresh output root and point `--engine-dir` at the resulting plan directory.
 
 ```bash

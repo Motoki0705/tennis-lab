@@ -75,4 +75,4 @@ RTX 5060 Ti、PyTorch 2.13.0+cu130、TensorRT 10.14.1.48.post1を使用した。
 
 RF-DETR-2XLは2026-11-24のユーザー判断により、Roboflow PML 1.0の契約・報告・商用自前運用の条件を理由に比較対象外となった。RF-DETR系列の比較対象はApache-2.0のLのみ。 [日付とライセンス上の理由](../../runs/run-meiji-player-model-comparison/rfdetr.md#checkpoints-and-licenses)
 
-RF-DETR-Lの速度とVRAMは #2496 が公開した96画像と非既定CUDA streamで計測する。この精度runの `summary_impact` は `none`。採用判断には共通条件の速度と下流での検証を用いる。 [速度計測の再現手順](../../runs/run-meiji-player-model-comparison/rfdetr.md#fixed-speed-comparison)
+RF-DETR-LのPT16・TRT16の速度とVRAMは #2496 が公開した96画像で計測した。この精度runの `summary_impact` は `none`。下流での品質は未検証。 [DINOとの速度・VRAM比較](000010-run-meiji-rfdetr-large-speed.md)

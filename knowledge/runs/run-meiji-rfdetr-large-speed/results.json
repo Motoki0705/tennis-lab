@@ -1,0 +1,1043 @@
+{
+  "schema_version": 1,
+  "measurement_commit": "8875cd0c17459660ff4f9f491c3a5fb1b965bfb5",
+  "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+  "baseline_measurement_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+  "integration_verified_commit": "00de353607ba62224e51400a05e6702f151869dc",
+  "artifact_root": ".worktree-outputs",
+  "input_manifest": {
+    "path": "parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs/manifest.json",
+    "bytes": 1340,
+    "sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62"
+  },
+  "timing_protocol": {
+    "path": "knowledge/runs/run-person-model-speed-baseline/timing-protocol.json",
+    "bytes": 1082,
+    "sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+  },
+  "input_id": "meiji_4cam/person-model-speed-v1",
+  "verified_images": 96,
+  "weight_sha256": "0f4e20e19a99c0f8a62b5685f57f6c8b5c371c59081feda6752a0561a79ccf38",
+  "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+  "evaluation": {
+    "id": "meiji_4cam/multiview-player-evaluation-v1",
+    "sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+    "images": 6844,
+    "eligible_boxes": 26276,
+    "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+  },
+  "batch_1_accuracy": [
+    {
+      "model_id": "dino-swin-l",
+      "backend": "pt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l/pt16/accuracy.json",
+        "sha256": "e6abb41e9f78ac4fc22282d6c846822e2325287dbd6e08eee90b48dd90a980cb"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l/pt16/predictions.jsonl",
+        "sha256": "1c6134680738a81906ba425e082c415d2364e5969024068b3112a20026f3f22e"
+      }
+    },
+    {
+      "model_id": "dino-swin-l",
+      "backend": "trt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/rescored-0d4bf0990/dino-swin-l/trt16/accuracy.json",
+        "sha256": "618778689cd87d0b07b61fd57551ce93a7a4b73487dde4f987717785bef8333b"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l/trt16/predictions.jsonl",
+        "sha256": "71b43453c7c49d1372197369c7274aa94da13c82a8344e5e74fb0f387cff992d"
+      }
+    },
+    {
+      "model_id": "rfdetr-l",
+      "backend": "pt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/rescored-0d4bf0990/rfdetr-l/pt16/accuracy.json",
+        "sha256": "26339a5488589d429e13afef6952d96b87b9b0a83d2bf10d5f828574f9b07f84"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/pt16/predictions.jsonl",
+        "sha256": "d9021ee4c51b4845d4c48701c791a93656fc8fa53e6f6ae90c02ecc2fe0dad43"
+      }
+    },
+    {
+      "model_id": "rfdetr-l",
+      "backend": "trt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/rescored-0d4bf0990/rfdetr-l/trt16/accuracy.json",
+        "sha256": "09323e538c5938994d3bac8fb4221d34e83914cf788e7b04e69a607608eee4aa"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/predictions.jsonl",
+        "sha256": "fc94b4ab47216d9799242bb3d82f44d97bf35bc248a89ea627bedad9dec1b11a"
+      }
+    }
+  ],
+  "original_rf_accuracy": {
+    "path": "knowledge/runs/run-meiji-rfdetr-large-accuracy/results.json",
+    "bytes": 28200,
+    "sha256": "10562ad68296a4823d02cc0098bf3437a81b4d9b2717a7032b457288b39c915f"
+  },
+  "baseline_index": {
+    "path": "knowledge/runs/run-person-model-speed-low-precision/cases.json",
+    "bytes": 112878,
+    "sha256": "8476a42829d0e96d4ed859dd17aff10f63cb1a3cfd0a111ea9afb3df99fa0a2f"
+  },
+  "initial_speed": {
+    "path": "knowledge/runs/run-meiji-player-model-comparison/rfdetr-speed-initial.json",
+    "bytes": 30024,
+    "sha256": "6fb3043ceadfbff7f0dcce30de9c146e68b2fb43c0205436443e4409c2a9bb2e"
+  },
+  "conditions": [
+    {
+      "model_id": "rfdetr-l",
+      "backend": "pt16",
+      "batch_size": 1,
+      "status": "ok",
+      "parity_status": "PT32未計測",
+      "sample_count": 300,
+      "distinct_inputs": 96,
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "forward_medians_ms": {
+        "": {
+          "gpu": 19.186767578125,
+          "wall": 19.2295745
+        }
+      },
+      "case": {
+        "backend": "PT16",
+        "batch_size": 1,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "image",
+        "name": "rfdetr-l",
+        "settings": {
+          "coco_person_label": 1,
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "forward": "PyTorch eager, CUDA FP16 autocast",
+          "global_top_k_query_class_pairs": 300,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "license": "Apache-2.0",
+          "mean": [
+            0.485,
+            0.456,
+            0.406
+          ],
+          "min_person_score_inclusive": 0.25,
+          "nms": false,
+          "opencv_threads": 1,
+          "queries": 300,
+          "resize": "RGB, float32 bilinear, antialias=False, stretch to square",
+          "resolution": [
+            704,
+            704
+          ],
+          "rfdetr_commit": "f29e2a8bbb7cdcb8920bf74a335062f88a35046d",
+          "rfdetr_version": "1.12.1",
+          "source_commit": "8875cd0c17459660ff4f9f491c3a5fb1b965bfb5",
+          "std": [
+            0.229,
+            0.224,
+            0.225
+          ],
+          "tf32": false,
+          "timed_input_ids_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9043,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "summary": {
+        "d2h": {
+          "items": 300,
+          "items_per_second": 2772.1165767054763,
+          "p50_ms": 0.34902900000000003,
+          "p50_ms_per_item": 0.34902900000000003,
+          "p95_ms": 0.460112,
+          "p95_ms_per_item": 0.460112,
+          "samples": 300,
+          "total_ms": 108.22055700000004
+        },
+        "forward": {
+          "items": 300,
+          "items_per_second": 49.733226439366774,
+          "p50_ms": 19.2295745,
+          "p50_ms_per_item": 19.2295745,
+          "p95_ms": 25.8139016,
+          "p95_ms_per_item": 25.8139016,
+          "samples": 300,
+          "total_ms": 6032.184546999998
+        },
+        "h2d": {
+          "items": 300,
+          "items_per_second": 1123.463820510387,
+          "p50_ms": 0.868278,
+          "p50_ms_per_item": 0.868278,
+          "p95_ms": 1.1155549500000004,
+          "p95_ms_per_item": 1.1155549500000004,
+          "samples": 300,
+          "total_ms": 267.031296
+        },
+        "model_gpu": {
+          "items": 300,
+          "items_per_second": 49.85253372387629,
+          "p50_ms": 19.186767578125,
+          "p50_ms_per_item": 19.186767578125,
+          "p95_ms": 25.784952640533447,
+          "p95_ms_per_item": 25.784952640533447,
+          "samples": 300,
+          "total_ms": 6017.7482986450195
+        },
+        "postprocess": {
+          "items": 300,
+          "items_per_second": 898.0218321200756,
+          "p50_ms": 1.0696435,
+          "p50_ms_per_item": 1.0696435,
+          "p95_ms": 1.4112827000000001,
+          "p95_ms_per_item": 1.4112827000000001,
+          "samples": 300,
+          "total_ms": 334.06760199999974
+        },
+        "preprocess": {
+          "items": 300,
+          "items_per_second": 82.18269188902684,
+          "p50_ms": 11.5109685,
+          "p50_ms_per_item": 11.5109685,
+          "p95_ms": 15.793803200000003,
+          "p95_ms_per_item": 15.793803200000003,
+          "samples": 300,
+          "total_ms": 3650.4036689999984
+        },
+        "stage_wall": {
+          "items": 300,
+          "items_per_second": 24.252083473936807,
+          "p50_ms": 39.7737985,
+          "p50_ms_per_item": 39.7737985,
+          "p95_ms": 48.47618485,
+          "p95_ms_per_item": 48.47618485,
+          "samples": 300,
+          "total_ms": 12370.071228
+        }
+      },
+      "setup_wall_ms": {
+        "cold_start": 7778.234327,
+        "load": 2146.378171
+      },
+      "nvml_used_bytes": {
+        "after_cold_start": 803311616,
+        "after_load": 583110656,
+        "after_warmup": 805408768,
+        "before_load": 419532800,
+        "block_1": 805408768,
+        "block_2": 805408768,
+        "block_3": 805408768
+      },
+      "nvml_device_peak_sampled_bytes": 805408768,
+      "nvml_peak_minus_before_load_bytes": 385875968,
+      "torch_peak_allocated_bytes": 299346432,
+      "torch_peak_reserved_bytes": 343932928,
+      "timing": {
+        "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/speed-synchronized-v2/rfdetr-l/pt16/speed-b1/report.json",
+        "bytes": 154366,
+        "sha256": "0017239a15f88de704972826254a7ebf418f78956ef13c5b3deabc5e5595f9cb"
+      },
+      "dino_timing": {
+        "path": "parent-2492-issue-2496-primary/person-model-speed-low-precision/results/dino/PT16-b1/report.json",
+        "bytes": 160809,
+        "sha256": "5ca29b2c5d56f346075967772a58821efa23ddf7bef9e7e96a7cbbe67335707d"
+      },
+      "tensorrt": null,
+      "job": {
+        "id": "0-8204389561547152306_2026-11-25T12-40-38-452847693Z_3832713_i2487-rfdetr-l-pt16-b1-matched-speed.job",
+        "state": "done",
+        "finished_at_ns": 1795612789088683283,
+        "command": "if [[ $(git rev-parse HEAD) != 8875cd0c17459660ff4f9f491c3a5fb1b965bfb5 ]] || ! git diff --quiet HEAD; then printf \"Expected clean RF-DETR measurement HEAD %s\\n\" 8875cd0c17459660ff4f9f491c3a5fb1b965bfb5 >&2; exit 2; fi; env OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 HF_HUB_OFFLINE=1 PYTHONPATH=outputs/player-model-comparison/tooling/python:. .venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/rfdetr.py --weights outputs/player-model-comparison/tooling/rf-detr-large-2026.pth --output-root outputs/player-model-comparison/speed-synchronized-v2 speed --backend pt16 --batch-size 1 --speed-inputs /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs --parity not_measured ",
+        "completion": {
+          "path": ".training_queue/control/completions/0-8204389561547152306_2026-11-25T12-40-38-452847693Z_3832713_i2487-rfdetr-l-pt16-b1-matched-speed.json",
+          "bytes": 258,
+          "sha256": "af258527a9724e021824a3f1b48407827075c50c2159c2d5c059b3d69b0550c8"
+        },
+        "log": {
+          "path": ".training_queue/logs/0-8204389561547152306_2026-11-25T12-40-38-452847693Z_3832713_i2487-rfdetr-l-pt16-b1-matched-speed.log",
+          "bytes": 849,
+          "sha256": "a45464922bcc9e8be9eba879cdc53cbed3c5782107457c50d06cd5244913e2ba"
+        },
+        "repro_metadata": {
+          "path": ".training_queue/repro/0-8204389561547152306_2026-11-25T12-40-38-452847693Z_3832713_i2487-rfdetr-l-pt16-b1-matched-speed/run.json",
+          "bytes": 1514,
+          "sha256": "04d1f9d0e266acb1b7a19bebe55ae94d9cc1250915062266f2f21073e4c9c81b"
+        }
+      }
+    },
+    {
+      "model_id": "rfdetr-l",
+      "backend": "pt16",
+      "batch_size": 2,
+      "status": "ok",
+      "parity_status": "PT32未計測",
+      "sample_count": 300,
+      "distinct_inputs": 96,
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "forward_medians_ms": {
+        "": {
+          "gpu": 21.444527626037598,
+          "wall": 21.49854
+        }
+      },
+      "case": {
+        "backend": "PT16",
+        "batch_size": 2,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "image",
+        "name": "rfdetr-l",
+        "settings": {
+          "coco_person_label": 1,
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "forward": "PyTorch eager, CUDA FP16 autocast",
+          "global_top_k_query_class_pairs": 300,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "license": "Apache-2.0",
+          "mean": [
+            0.485,
+            0.456,
+            0.406
+          ],
+          "min_person_score_inclusive": 0.25,
+          "nms": false,
+          "opencv_threads": 1,
+          "queries": 300,
+          "resize": "RGB, float32 bilinear, antialias=False, stretch to square",
+          "resolution": [
+            704,
+            704
+          ],
+          "rfdetr_commit": "f29e2a8bbb7cdcb8920bf74a335062f88a35046d",
+          "rfdetr_version": "1.12.1",
+          "source_commit": "8875cd0c17459660ff4f9f491c3a5fb1b965bfb5",
+          "std": [
+            0.229,
+            0.224,
+            0.225
+          ],
+          "tf32": false,
+          "timed_input_ids_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9140,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "summary": {
+        "d2h": {
+          "items": 600,
+          "items_per_second": 4867.54667259296,
+          "p50_ms": 0.396273,
+          "p50_ms_per_item": 0.1981365,
+          "p95_ms": 0.52029475,
+          "p95_ms_per_item": 0.260147375,
+          "samples": 300,
+          "total_ms": 123.26538199999996
+        },
+        "forward": {
+          "items": 600,
+          "items_per_second": 90.08145487641542,
+          "p50_ms": 21.49854,
+          "p50_ms_per_item": 10.74927,
+          "p95_ms": 26.17792995,
+          "p95_ms_per_item": 13.088964975,
+          "samples": 300,
+          "total_ms": 6660.638427999994
+        },
+        "h2d": {
+          "items": 600,
+          "items_per_second": 1275.6325877948284,
+          "p50_ms": 1.4995965,
+          "p50_ms_per_item": 0.74979825,
+          "p95_ms": 2.1213640000000002,
+          "p95_ms_per_item": 1.0606820000000001,
+          "samples": 300,
+          "total_ms": 470.3548699999999
+        },
+        "model_gpu": {
+          "items": 600,
+          "items_per_second": 90.30565995393306,
+          "p50_ms": 21.444527626037598,
+          "p50_ms_per_item": 10.722263813018799,
+          "p95_ms": 26.113914394378664,
+          "p95_ms_per_item": 13.056957197189332,
+          "samples": 300,
+          "total_ms": 6644.101823806763
+        },
+        "postprocess": {
+          "items": 600,
+          "items_per_second": 1561.2897564871987,
+          "p50_ms": 1.20492,
+          "p50_ms_per_item": 0.60246,
+          "p95_ms": 1.7334422000000005,
+          "p95_ms_per_item": 0.8667211000000002,
+          "samples": 300,
+          "total_ms": 384.29765999999984
+        },
+        "preprocess": {
+          "items": 600,
+          "items_per_second": 59.23160128972584,
+          "p50_ms": 29.6186595,
+          "p50_ms_per_item": 14.80932975,
+          "p95_ms": 57.56074715000005,
+          "p95_ms_per_item": 28.780373575000024,
+          "samples": 300,
+          "total_ms": 10129.727830000005
+        },
+        "stage_wall": {
+          "items": 600,
+          "items_per_second": 33.65730292174896,
+          "p50_ms": 54.8097705,
+          "p50_ms_per_item": 27.40488525,
+          "p95_ms": 82.29105445000005,
+          "p95_ms_per_item": 41.14552722500002,
+          "samples": 300,
+          "total_ms": 17826.74034799999
+        }
+      },
+      "setup_wall_ms": {
+        "cold_start": 3579.720615,
+        "load": 1646.923981
+      },
+      "nvml_used_bytes": {
+        "after_cold_start": 883003392,
+        "after_load": 583110656,
+        "after_warmup": 883003392,
+        "before_load": 419532800,
+        "block_1": 883003392,
+        "block_2": 883003392,
+        "block_3": 883003392
+      },
+      "nvml_device_peak_sampled_bytes": 883003392,
+      "nvml_peak_minus_before_load_bytes": 463470592,
+      "torch_peak_allocated_bytes": 370628096,
+      "torch_peak_reserved_bytes": 421527552,
+      "timing": {
+        "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/speed-synchronized-v2/rfdetr-l/pt16/speed-b2/report.json",
+        "bytes": 166391,
+        "sha256": "94c2c4bace2bf84fb222c2d73b0314d854e34501197fa75e4ff0d73a4ddeb575"
+      },
+      "dino_timing": {
+        "path": "parent-2492-issue-2496-primary/person-model-speed-low-precision/results/dino/PT16-b2/report.json",
+        "bytes": 172688,
+        "sha256": "a14fd4e750cffb068b273ca736f737a860da43e9c144858ff296908332bc8318"
+      },
+      "tensorrt": null,
+      "job": {
+        "id": "0-8204389561265977834_2026-11-25T12-40-38-734022165Z_3832782_i2487-rfdetr-l-pt16-b2-matched-speed.job",
+        "state": "done",
+        "finished_at_ns": 1795612831737080910,
+        "command": "if [[ $(git rev-parse HEAD) != 8875cd0c17459660ff4f9f491c3a5fb1b965bfb5 ]] || ! git diff --quiet HEAD; then printf \"Expected clean RF-DETR measurement HEAD %s\\n\" 8875cd0c17459660ff4f9f491c3a5fb1b965bfb5 >&2; exit 2; fi; env OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 HF_HUB_OFFLINE=1 PYTHONPATH=outputs/player-model-comparison/tooling/python:. .venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/rfdetr.py --weights outputs/player-model-comparison/tooling/rf-detr-large-2026.pth --output-root outputs/player-model-comparison/speed-synchronized-v2 speed --backend pt16 --batch-size 2 --speed-inputs /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs --parity not_measured ",
+        "completion": {
+          "path": ".training_queue/control/completions/0-8204389561265977834_2026-11-25T12-40-38-734022165Z_3832782_i2487-rfdetr-l-pt16-b2-matched-speed.json",
+          "bytes": 258,
+          "sha256": "3e5cdb6f7e48258c82d8ee9cb7716344782098b98b903d6990a1a74b4d5a2f2d"
+        },
+        "log": {
+          "path": ".training_queue/logs/0-8204389561265977834_2026-11-25T12-40-38-734022165Z_3832782_i2487-rfdetr-l-pt16-b2-matched-speed.log",
+          "bytes": 849,
+          "sha256": "92453255844fe00ddfc7a3217538b4cd54a7cff963e81b9ff36fd3e0bc6dd288"
+        },
+        "repro_metadata": {
+          "path": ".training_queue/repro/0-8204389561265977834_2026-11-25T12-40-38-734022165Z_3832782_i2487-rfdetr-l-pt16-b2-matched-speed/run.json",
+          "bytes": 1514,
+          "sha256": "dffd031d903604c659facf22e35eed31117e900a19218f4b7abbd3b0d1ce536d"
+        }
+      }
+    },
+    {
+      "model_id": "rfdetr-l",
+      "backend": "trt16",
+      "batch_size": 1,
+      "status": "ok",
+      "parity_status": "PT32未計測",
+      "sample_count": 300,
+      "distinct_inputs": 96,
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "forward_medians_ms": {
+        "": {
+          "gpu": 4.364015817642212,
+          "wall": 4.406898
+        }
+      },
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 1,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "image",
+        "name": "rfdetr-l",
+        "settings": {
+          "coco_person_label": 1,
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "forward": "Strongly typed TensorRT, upstream FP16 ONNX cast, FP32 bindings",
+          "global_top_k_query_class_pairs": 300,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "license": "Apache-2.0",
+          "mean": [
+            0.485,
+            0.456,
+            0.406
+          ],
+          "min_person_score_inclusive": 0.25,
+          "nms": false,
+          "opencv_threads": 1,
+          "queries": 300,
+          "resize": "RGB, float32 bilinear, antialias=False, stretch to square",
+          "resolution": [
+            704,
+            704
+          ],
+          "rfdetr_commit": "f29e2a8bbb7cdcb8920bf74a335062f88a35046d",
+          "rfdetr_version": "1.12.1",
+          "source_commit": "8875cd0c17459660ff4f9f491c3a5fb1b965bfb5",
+          "std": [
+            0.229,
+            0.224,
+            0.225
+          ],
+          "tf32": false,
+          "timed_input_ids_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9282,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "summary": {
+        "d2h": {
+          "items": 300,
+          "items_per_second": 2328.1590102803584,
+          "p50_ms": 0.4136975,
+          "p50_ms_per_item": 0.4136975,
+          "p95_ms": 0.5708382500000002,
+          "p95_ms_per_item": 0.5708382500000002,
+          "samples": 300,
+          "total_ms": 128.857178
+        },
+        "forward": {
+          "items": 300,
+          "items_per_second": 209.63664435126503,
+          "p50_ms": 4.406898,
+          "p50_ms_per_item": 4.406898,
+          "p95_ms": 7.418481750000004,
+          "p95_ms_per_item": 7.418481750000004,
+          "samples": 300,
+          "total_ms": 1431.0475200000008
+        },
+        "h2d": {
+          "items": 300,
+          "items_per_second": 1077.6668228780654,
+          "p50_ms": 0.901134,
+          "p50_ms_per_item": 0.901134,
+          "p95_ms": 1.21967205,
+          "p95_ms_per_item": 1.21967205,
+          "samples": 300,
+          "total_ms": 278.37917399999986
+        },
+        "model_gpu": {
+          "items": 300,
+          "items_per_second": 211.5912077443957,
+          "p50_ms": 4.364015817642212,
+          "p50_ms_per_item": 4.364015817642212,
+          "p95_ms": 7.373791861534123,
+          "p95_ms_per_item": 7.373791861534123,
+          "samples": 300,
+          "total_ms": 1417.8282887935638
+        },
+        "postprocess": {
+          "items": 300,
+          "items_per_second": 560.8565902878765,
+          "p50_ms": 1.6717,
+          "p50_ms_per_item": 1.6717,
+          "p95_ms": 2.4580892000000003,
+          "p95_ms_per_item": 2.4580892000000003,
+          "samples": 300,
+          "total_ms": 534.8960949999998
+        },
+        "preprocess": {
+          "items": 300,
+          "items_per_second": 79.41532636648272,
+          "p50_ms": 12.1206105,
+          "p50_ms_per_item": 12.1206105,
+          "p95_ms": 15.394115200000002,
+          "p95_ms_per_item": 15.394115200000002,
+          "samples": 300,
+          "total_ms": 3777.608349999997
+        },
+        "stage_wall": {
+          "items": 300,
+          "items_per_second": 36.798111094865554,
+          "p50_ms": 26.4302925,
+          "p50_ms_per_item": 26.4302925,
+          "p95_ms": 33.45892985,
+          "p95_ms_per_item": 33.45892985,
+          "samples": 300,
+          "total_ms": 8152.592376999999
+        }
+      },
+      "setup_wall_ms": {
+        "cold_start": 951.266741,
+        "load": 2183.892622
+      },
+      "nvml_used_bytes": {
+        "after_cold_start": 568430592,
+        "after_load": 545361920,
+        "after_warmup": 568430592,
+        "before_load": 419532800,
+        "block_1": 568430592,
+        "block_2": 568430592,
+        "block_3": 568430592
+      },
+      "nvml_device_peak_sampled_bytes": 568430592,
+      "nvml_peak_minus_before_load_bytes": 148897792,
+      "torch_peak_allocated_bytes": 7062528,
+      "torch_peak_reserved_bytes": 23068672,
+      "timing": {
+        "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/speed-synchronized-v2/rfdetr-l/trt16/speed-b1/report.json",
+        "bytes": 154278,
+        "sha256": "3ef1a8be1d09b3bb50159b4af07b6750629e63cf013a176c4084c75a63186902"
+      },
+      "dino_timing": {
+        "path": "parent-2492-issue-2496-primary/person-model-speed-low-precision/results/dino/TRT16-b1/report.json",
+        "bytes": 160049,
+        "sha256": "f14870d5ebdfef85e328de5be5d2a0280086e0073c4284d5d1a8f85664f0afc0"
+      },
+      "tensorrt": {
+        "artifacts": {
+          "engine.json": {
+            "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/batch-1/engine/engine.json",
+            "bytes": 427,
+            "sha256": "01c13be32f903fd540b61c95a77614a7aa206d79439703674bb87f8032cfd2b8"
+          },
+          "export.json": {
+            "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/batch-1/engine/export.json",
+            "bytes": 1036,
+            "sha256": "f3e6eca601f102448ed7fab33775655562ffb8341f73b40a97f4151413e7247d"
+          },
+          "engine.plan": {
+            "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/batch-1/engine/engine.plan",
+            "bytes": 68466812,
+            "sha256": "4e3ae2a8206caa607565a8fe5726509201a11c9f11b3134b13c7aa2ae3c40e35"
+          },
+          "model.onnx": {
+            "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/batch-1/engine/model.onnx",
+            "bytes": 61233732,
+            "sha256": "9cbf28254313462f421cfd7050bec08c18ca903029013a55d33102e2f5fdd21e"
+          }
+        },
+        "receipts": [
+          {
+            "failure": null,
+            "phase": "onnx_export",
+            "wall_ms": 13679.644171
+          },
+          {
+            "failure": null,
+            "phase": "engine_build",
+            "wall_ms": 96430.636659
+          }
+        ]
+      },
+      "job": {
+        "id": "0-8204389560981567683_2026-11-25T12-40-39-018432316Z_3832852_i2487-rfdetr-l-trt16-b1-matched-speed.job",
+        "state": "done",
+        "finished_at_ns": 1795612859388410988,
+        "command": "if [[ $(git rev-parse HEAD) != 8875cd0c17459660ff4f9f491c3a5fb1b965bfb5 ]] || ! git diff --quiet HEAD; then printf \"Expected clean RF-DETR measurement HEAD %s\\n\" 8875cd0c17459660ff4f9f491c3a5fb1b965bfb5 >&2; exit 2; fi; env OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 HF_HUB_OFFLINE=1 PYTHONPATH=outputs/player-model-comparison/tooling/python:. .venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/rfdetr.py --weights outputs/player-model-comparison/tooling/rf-detr-large-2026.pth --output-root outputs/player-model-comparison/speed-synchronized-v2 speed --backend trt16 --batch-size 1 --speed-inputs /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs --parity not_measured --engine-dir outputs/player-model-comparison/rfdetr-l/trt16/batch-1/engine ",
+        "completion": {
+          "path": ".training_queue/control/completions/0-8204389560981567683_2026-11-25T12-40-39-018432316Z_3832852_i2487-rfdetr-l-trt16-b1-matched-speed.json",
+          "bytes": 259,
+          "sha256": "a7e09d527574d6e38429c7702a9c5a121da6fcc756ad187cfbf01c7eee52d76b"
+        },
+        "log": {
+          "path": ".training_queue/logs/0-8204389560981567683_2026-11-25T12-40-39-018432316Z_3832852_i2487-rfdetr-l-trt16-b1-matched-speed.log",
+          "bytes": 372,
+          "sha256": "831c96ff44fe8746e4e7f7de941526d30d7eb5aeabb4948daa5a1a4c537034cf"
+        },
+        "repro_metadata": {
+          "path": ".training_queue/repro/0-8204389560981567683_2026-11-25T12-40-39-018432316Z_3832852_i2487-rfdetr-l-trt16-b1-matched-speed/run.json",
+          "bytes": 1592,
+          "sha256": "4c07483b1b479d500fe938e3cc47808dfaae7bab95a9dad2e9e9217309e45c22"
+        }
+      }
+    },
+    {
+      "model_id": "rfdetr-l",
+      "backend": "trt16",
+      "batch_size": 2,
+      "status": "ok",
+      "parity_status": "PT32未計測",
+      "sample_count": 300,
+      "distinct_inputs": 96,
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "forward_medians_ms": {
+        "": {
+          "gpu": 6.808063983917236,
+          "wall": 6.880898
+        }
+      },
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 2,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "image",
+        "name": "rfdetr-l",
+        "settings": {
+          "coco_person_label": 1,
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "forward": "Strongly typed TensorRT, upstream FP16 ONNX cast, FP32 bindings",
+          "global_top_k_query_class_pairs": 300,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "license": "Apache-2.0",
+          "mean": [
+            0.485,
+            0.456,
+            0.406
+          ],
+          "min_person_score_inclusive": 0.25,
+          "nms": false,
+          "opencv_threads": 1,
+          "queries": 300,
+          "resize": "RGB, float32 bilinear, antialias=False, stretch to square",
+          "resolution": [
+            704,
+            704
+          ],
+          "rfdetr_commit": "f29e2a8bbb7cdcb8920bf74a335062f88a35046d",
+          "rfdetr_version": "1.12.1",
+          "source_commit": "8875cd0c17459660ff4f9f491c3a5fb1b965bfb5",
+          "std": [
+            0.229,
+            0.224,
+            0.225
+          ],
+          "tf32": false,
+          "timed_input_ids_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9368,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "summary": {
+        "d2h": {
+          "items": 600,
+          "items_per_second": 3746.2234087677252,
+          "p50_ms": 0.5082990000000001,
+          "p50_ms_per_item": 0.25414950000000003,
+          "p95_ms": 0.7582666499999999,
+          "p95_ms_per_item": 0.37913332499999997,
+          "samples": 300,
+          "total_ms": 160.161297
+        },
+        "forward": {
+          "items": 600,
+          "items_per_second": 272.4361089886484,
+          "p50_ms": 6.880898,
+          "p50_ms_per_item": 3.440449,
+          "p95_ms": 10.319517950000005,
+          "p95_ms_per_item": 5.159758975000003,
+          "samples": 300,
+          "total_ms": 2202.351231
+        },
+        "h2d": {
+          "items": 600,
+          "items_per_second": 1156.3758148932184,
+          "p50_ms": 1.6440315,
+          "p50_ms_per_item": 0.82201575,
+          "p95_ms": 2.54456,
+          "p95_ms_per_item": 1.27228,
+          "samples": 300,
+          "total_ms": 518.86246
+        },
+        "model_gpu": {
+          "items": 600,
+          "items_per_second": 274.3984333210996,
+          "p50_ms": 6.808063983917236,
+          "p50_ms_per_item": 3.404031991958618,
+          "p95_ms": 10.250833368301397,
+          "p95_ms_per_item": 5.125416684150698,
+          "samples": 300,
+          "total_ms": 2186.601405620575
+        },
+        "postprocess": {
+          "items": 600,
+          "items_per_second": 834.1177330154733,
+          "p50_ms": 1.9613525,
+          "p50_ms_per_item": 0.98067625,
+          "p95_ms": 5.2048427,
+          "p95_ms_per_item": 2.60242135,
+          "samples": 300,
+          "total_ms": 719.3229160000003
+        },
+        "preprocess": {
+          "items": 600,
+          "items_per_second": 45.59910078062547,
+          "p50_ms": 35.8611765,
+          "p50_ms_per_item": 17.93058825,
+          "p95_ms": 87.27825225000011,
+          "p95_ms_per_item": 43.639126125000054,
+          "samples": 300,
+          "total_ms": 13158.15421200001
+        },
+        "stage_wall": {
+          "items": 600,
+          "items_per_second": 35.64230111847046,
+          "p50_ms": 48.288409,
+          "p50_ms_per_item": 24.1442045,
+          "p95_ms": 103.99771710000005,
+          "p95_ms_per_item": 51.99885855000002,
+          "samples": 300,
+          "total_ms": 16833.929942
+        }
+      },
+      "setup_wall_ms": {
+        "cold_start": 1709.679245,
+        "load": 2601.873894
+      },
+      "nvml_used_bytes": {
+        "after_cold_start": 585207808,
+        "after_load": 568430592,
+        "after_warmup": 585207808,
+        "before_load": 419532800,
+        "block_1": 585207808,
+        "block_2": 585207808,
+        "block_3": 585207808
+      },
+      "nvml_device_peak_sampled_bytes": 585207808,
+      "nvml_peak_minus_before_load_bytes": 165675008,
+      "torch_peak_allocated_bytes": 15455744,
+      "torch_peak_reserved_bytes": 16777216,
+      "timing": {
+        "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/speed-synchronized-v2/rfdetr-l/trt16/speed-b2/report.json",
+        "bytes": 166328,
+        "sha256": "6f7f2bec273a9be27f1e95b297f8fc9460fe7628f941423b0e1156b4425436cc"
+      },
+      "dino_timing": {
+        "path": "parent-2492-issue-2496-primary/person-model-speed-low-precision/results/dino/TRT16-b2/report.json",
+        "bytes": 172923,
+        "sha256": "241390b7e1fc1fc99fc5a30ea8dfb4f46a6518eedabe4d499e587ae00fa7ffb7"
+      },
+      "tensorrt": {
+        "artifacts": {
+          "engine.json": {
+            "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/speed-synchronized-v1/rfdetr-l/trt16/batch-2/engine/engine.json",
+            "bytes": 427,
+            "sha256": "fbf4f68db68fb6f9d1f7322d8c2b3ce3c0de327ad637b9911ac9951b7199d8b4"
+          },
+          "export.json": {
+            "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/speed-synchronized-v1/rfdetr-l/trt16/batch-2/engine/export.json",
+            "bytes": 979,
+            "sha256": "d6081f46e98002c2a036935746fe22b74db0870d5137e5a4b7724dabeba91cd8"
+          },
+          "engine.plan": {
+            "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/speed-synchronized-v1/rfdetr-l/trt16/batch-2/engine/engine.plan",
+            "bytes": 69557156,
+            "sha256": "bcb835fe6e6369ec18bbecd8f00f36a6a64db2a420fb194dc07d9397569a5a49"
+          },
+          "model.onnx": {
+            "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/speed-synchronized-v1/rfdetr-l/trt16/batch-2/engine/model.onnx",
+            "bytes": 61239891,
+            "sha256": "fc2ab53f2e154179caff482809ae9efcd37a829c51097656b11721b242f50049"
+          }
+        },
+        "receipts": [
+          {
+            "failure": null,
+            "phase": "onnx_export",
+            "wall_ms": 12924.107989
+          },
+          {
+            "failure": null,
+            "phase": "engine_build",
+            "wall_ms": 92109.192659
+          }
+        ]
+      },
+      "job": {
+        "id": "0-8204389560691772196_2026-11-25T12-40-39-308227803Z_3832920_i2487-rfdetr-l-trt16-b2-matched-speed.job",
+        "state": "done",
+        "finished_at_ns": 1795612898083369232,
+        "command": "if [[ $(git rev-parse HEAD) != 8875cd0c17459660ff4f9f491c3a5fb1b965bfb5 ]] || ! git diff --quiet HEAD; then printf \"Expected clean RF-DETR measurement HEAD %s\\n\" 8875cd0c17459660ff4f9f491c3a5fb1b965bfb5 >&2; exit 2; fi; env OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 HF_HUB_OFFLINE=1 PYTHONPATH=outputs/player-model-comparison/tooling/python:. .venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/rfdetr.py --weights outputs/player-model-comparison/tooling/rf-detr-large-2026.pth --output-root outputs/player-model-comparison/speed-synchronized-v2 speed --backend trt16 --batch-size 2 --speed-inputs /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs --parity not_measured --engine-dir outputs/player-model-comparison/speed-synchronized-v1/rfdetr-l/trt16/batch-2/engine ",
+        "completion": {
+          "path": ".training_queue/control/completions/0-8204389560691772196_2026-11-25T12-40-39-308227803Z_3832920_i2487-rfdetr-l-trt16-b2-matched-speed.json",
+          "bytes": 259,
+          "sha256": "ea233b6ed196a74e9d3da9f0f9ab7a626b875cc36b49abafc30336d23c136982"
+        },
+        "log": {
+          "path": ".training_queue/logs/0-8204389560691772196_2026-11-25T12-40-39-308227803Z_3832920_i2487-rfdetr-l-trt16-b2-matched-speed.log",
+          "bytes": 372,
+          "sha256": "ba3c235d0067d9722b25f32fb0db27dc4d5adc59cf248a8581f19e96ca126bb2"
+        },
+        "repro_metadata": {
+          "path": ".training_queue/repro/0-8204389560691772196_2026-11-25T12-40-39-308227803Z_3832920_i2487-rfdetr-l-trt16-b2-matched-speed/run.json",
+          "bytes": 1614,
+          "sha256": "393d410c18f5632da0f8262b273178e6ed66b6604e4dffce78f351938cfa0781"
+        }
+      }
+    }
+  ],
+  "timing_samples": [
+    {
+      "path": "knowledge/runs/run-meiji-rfdetr-large-speed/measurements/pt16.csv",
+      "bytes": 53799,
+      "sha256": "0ff291c96c5d74c3f3f61a28805cc1e7d4164d4f860da485c0b74fd0d56c8128"
+    },
+    {
+      "path": "knowledge/runs/run-meiji-rfdetr-large-speed/measurements/trt16.csv",
+      "bytes": 52943,
+      "sha256": "8c24309954ad7f4ac3cb17ecfa43086ed14fe83a904bbff8015a21267eb4c1fa"
+    }
+  ],
+  "comparison": {
+    "path": "knowledge/runs/run-meiji-rfdetr-large-speed/comparison.csv",
+    "bytes": 1855,
+    "sha256": "50edf0030a72b3094711ce9c07b14b3af79d093530768d9d5fa6fa1d0285405e"
+  }
+}
