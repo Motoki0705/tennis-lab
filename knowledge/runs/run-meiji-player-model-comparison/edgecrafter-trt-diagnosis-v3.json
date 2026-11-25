@@ -1,0 +1,1221 @@
+{
+  "archived_raw_heads": {
+    "path": "outputs/player-model-comparison/trt16-diagnosis-v1/ecdet-l-coco-heads.npz",
+    "sha256": "ecc4eee5621c873e673f17580a73815eec1d7b92a073e716b0b5cb945118b766"
+  },
+  "archived_report": {
+    "path": "outputs/player-model-comparison/trt16-diagnosis-v1/cuda.json",
+    "sha256": "795810ee64032499efd84919dc73c4e5084367b9a77e1ff15a09c2f586084304"
+  },
+  "engine_artifacts": {
+    "engine.json": {
+      "path": "outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine/engine.json",
+      "sha256": "0547cb98fe48f199afa439bb0e8d782e3774803d514e5a7d27f270ea1d69a13b"
+    },
+    "engine.plan": {
+      "path": "outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine/engine.plan",
+      "sha256": "da7991d880b75f2da28882825865a79e190229be0e7287bf5240cf89fb5a0279"
+    },
+    "export.json": {
+      "path": "outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine/export.json",
+      "sha256": "9d85bcf57798062b3a171d8ad3dc6f25dc55111f55011d8b24c1231c5bca7f15"
+    },
+    "model.onnx": {
+      "path": "outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine/model.onnx",
+      "sha256": "60a6c044b4ad70495edb03b6c7dbce3495cb92b36316ad31a84da5ed126a04c5"
+    }
+  },
+  "engine_environment": {
+    "compute_capability": [
+      12,
+      0
+    ],
+    "device_name": "NVIDIA GeForce RTX 5060 Ti",
+    "tensorrt_version": "10.14.1.48.post1"
+  },
+  "measurements": {
+    "archived_raw_heads_sha256": "ecc4eee5621c873e673f17580a73815eec1d7b92a073e716b0b5cb945118b766",
+    "batch_order": {
+      "onnx_cpu": {
+        "coordinates": {
+          "abs_diff_max": 0.7230696082115173,
+          "abs_diff_p95": 0.17053598165512016,
+          "finite_mask_difference": 0,
+          "finite_pairs": 2400
+        },
+        "logits": {
+          "abs_diff_max": 7.8330078125,
+          "abs_diff_p95": 1.32421875,
+          "finite_mask_difference": 0,
+          "finite_pairs": 48000
+        }
+      },
+      "trt16": {
+        "coordinates": {
+          "abs_diff_max": 1.202508807182312,
+          "abs_diff_p95": 0.015453012287616676,
+          "finite_mask_difference": 0,
+          "finite_pairs": 2400
+        },
+        "logits": {
+          "abs_diff_max": 8.05859375,
+          "abs_diff_p95": 2.3711914062499915,
+          "finite_mask_difference": 0,
+          "finite_pairs": 48000
+        }
+      }
+    },
+    "cases": {
+      "pair1_ab": {
+        "archived_pt16_vs_instrumented_trt": {
+          "video_000/clip_003/cam0/frame_000148": {
+            "candidate_slot": 0,
+            "decoded": {
+              "candidate_rows": 82,
+              "matched_iou_p05": 0.9529580666930896,
+              "matches_at_iou_0_50": 80,
+              "reference_rows": 86
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 1.6936452090740204,
+                "abs_diff_p95": 0.3978520944714545,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 8.05859375,
+                "abs_diff_p95": 2.410351562499997,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 0
+          },
+          "video_000/clip_028/cam3/frame_000513": {
+            "candidate_slot": 1,
+            "decoded": {
+              "candidate_rows": 76,
+              "matched_iou_p05": 0.8231390495578604,
+              "matches_at_iou_0_50": 54,
+              "reference_rows": 68
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 0.8365574926137924,
+                "abs_diff_p95": 0.3657969877123831,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 7.8671875,
+                "abs_diff_p95": 2.60546875,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 1
+          }
+        },
+        "frames": [
+          "video_000/clip_003/cam0/frame_000148",
+          "video_000/clip_028/cam3/frame_000513"
+        ],
+        "input_sha256": "d6cc1d9dfd3cfd54b1f80025c06b405fdb60fa02c609babafd637daacbb51f5d",
+        "onnx_cpu_vs_instrumented_trt": {
+          "coordinates": {
+            "cpu": {
+              "finite_count": 2400,
+              "finite_max": 0.9951790571212769,
+              "finite_min": 0.006100475788116455,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            },
+            "difference": {
+              "abs_diff_max": 1.4748843610286713,
+              "abs_diff_p95": 0.3826252758502952,
+              "finite_mask_difference": 0,
+              "finite_pairs": 2400
+            },
+            "shape": [
+              2,
+              300,
+              4
+            ],
+            "trt": {
+              "finite_count": 2400,
+              "finite_max": 1.7426674365997314,
+              "finite_min": 0.003306150436401367,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            }
+          },
+          "logits": {
+            "cpu": {
+              "finite_count": 48000,
+              "finite_max": 2.18359375,
+              "finite_min": -11.875,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            },
+            "difference": {
+              "abs_diff_max": 8.056640625,
+              "abs_diff_p95": 2.4708007812499915,
+              "finite_mask_difference": 0,
+              "finite_pairs": 48000
+            },
+            "shape": [
+              2,
+              300,
+              80
+            ],
+            "trt": {
+              "finite_count": 48000,
+              "finite_max": 2.1015625,
+              "finite_min": -12.6640625,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            }
+          }
+        },
+        "original_vs_instrumented_trt_heads": {
+          "video_000/clip_003/cam0/frame_000148": {
+            "candidate_slot": 0,
+            "decoded": {
+              "candidate_rows": 82,
+              "matched_iou_p05": 0.5357230635874844,
+              "matches_at_iou_0_50": 50,
+              "reference_rows": 98
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 1.48835289478302,
+                "abs_diff_p95": 0.297626882046461,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 6.6953125,
+                "abs_diff_p95": 2.953125,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 0
+          },
+          "video_000/clip_028/cam3/frame_000513": {
+            "candidate_slot": 1,
+            "decoded": {
+              "candidate_rows": 76,
+              "matched_iou_p05": 0.5386732166565313,
+              "matches_at_iou_0_50": 47,
+              "reference_rows": 143
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 0.8519356846809387,
+                "abs_diff_p95": 0.2103304356336593,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 7.201171875,
+                "abs_diff_p95": 2.984375,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 1
+          }
+        }
+      },
+      "pair1_ab_repeat": {
+        "archived_pt16_vs_instrumented_trt": {
+          "video_000/clip_003/cam0/frame_000148": {
+            "candidate_slot": 0,
+            "decoded": {
+              "candidate_rows": 82,
+              "matched_iou_p05": 0.9529580666930896,
+              "matches_at_iou_0_50": 80,
+              "reference_rows": 86
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 1.6936452090740204,
+                "abs_diff_p95": 0.3978520944714545,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 8.05859375,
+                "abs_diff_p95": 2.410351562499997,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 0
+          },
+          "video_000/clip_028/cam3/frame_000513": {
+            "candidate_slot": 1,
+            "decoded": {
+              "candidate_rows": 76,
+              "matched_iou_p05": 0.8231390495578604,
+              "matches_at_iou_0_50": 54,
+              "reference_rows": 68
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 0.8365574926137924,
+                "abs_diff_p95": 0.3657969877123831,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 7.8671875,
+                "abs_diff_p95": 2.60546875,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 1
+          }
+        },
+        "frames": [
+          "video_000/clip_003/cam0/frame_000148",
+          "video_000/clip_028/cam3/frame_000513"
+        ],
+        "input_sha256": "d6cc1d9dfd3cfd54b1f80025c06b405fdb60fa02c609babafd637daacbb51f5d",
+        "onnx_cpu_vs_instrumented_trt": {
+          "coordinates": {
+            "cpu": {
+              "finite_count": 2400,
+              "finite_max": 0.9951790571212769,
+              "finite_min": 0.006100475788116455,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            },
+            "difference": {
+              "abs_diff_max": 1.4748843610286713,
+              "abs_diff_p95": 0.3826252758502952,
+              "finite_mask_difference": 0,
+              "finite_pairs": 2400
+            },
+            "shape": [
+              2,
+              300,
+              4
+            ],
+            "trt": {
+              "finite_count": 2400,
+              "finite_max": 1.7426674365997314,
+              "finite_min": 0.003306150436401367,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            }
+          },
+          "logits": {
+            "cpu": {
+              "finite_count": 48000,
+              "finite_max": 2.18359375,
+              "finite_min": -11.875,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            },
+            "difference": {
+              "abs_diff_max": 8.056640625,
+              "abs_diff_p95": 2.4708007812499915,
+              "finite_mask_difference": 0,
+              "finite_pairs": 48000
+            },
+            "shape": [
+              2,
+              300,
+              80
+            ],
+            "trt": {
+              "finite_count": 48000,
+              "finite_max": 2.1015625,
+              "finite_min": -12.6640625,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            }
+          }
+        },
+        "original_vs_instrumented_trt_heads": {
+          "video_000/clip_003/cam0/frame_000148": {
+            "candidate_slot": 0,
+            "decoded": {
+              "candidate_rows": 82,
+              "matched_iou_p05": 0.5357230635874844,
+              "matches_at_iou_0_50": 50,
+              "reference_rows": 98
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 1.48835289478302,
+                "abs_diff_p95": 0.297626882046461,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 6.6953125,
+                "abs_diff_p95": 2.953125,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 0
+          },
+          "video_000/clip_028/cam3/frame_000513": {
+            "candidate_slot": 1,
+            "decoded": {
+              "candidate_rows": 76,
+              "matched_iou_p05": 0.5386732166565313,
+              "matches_at_iou_0_50": 47,
+              "reference_rows": 143
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 0.8519356846809387,
+                "abs_diff_p95": 0.2103304356336593,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 7.201171875,
+                "abs_diff_p95": 2.984375,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 1
+          }
+        }
+      },
+      "pair1_b": {
+        "archived_pt16_vs_instrumented_trt": {
+          "video_000/clip_028/cam3/frame_000513": {
+            "candidate_slot": 0,
+            "decoded": {
+              "candidate_rows": 77,
+              "matched_iou_p05": 0.8359322996791676,
+              "matches_at_iou_0_50": 56,
+              "reference_rows": 68
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 0.8362530767917633,
+                "abs_diff_p95": 0.41264048889279364,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 6.759765625,
+                "abs_diff_p95": 2.625,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 0
+          }
+        },
+        "frames": [
+          "video_000/clip_028/cam3/frame_000513"
+        ],
+        "input_sha256": "15e7b0e4eb1bb68732e08b62b61d796421c779e1d8eb9af4c81ea550d53526fb",
+        "onnx_cpu_vs_instrumented_trt": {
+          "coordinates": {
+            "cpu": {
+              "finite_count": 1200,
+              "finite_max": 0.9951779842376709,
+              "finite_min": 0.006093502044677734,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            },
+            "difference": {
+              "abs_diff_max": 0.93024742603302,
+              "abs_diff_p95": 0.384884749352932,
+              "finite_mask_difference": 0,
+              "finite_pairs": 1200
+            },
+            "shape": [
+              1,
+              300,
+              4
+            ],
+            "trt": {
+              "finite_count": 1200,
+              "finite_max": 1.0043357610702515,
+              "finite_min": 0.0050508081912994385,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            }
+          },
+          "logits": {
+            "cpu": {
+              "finite_count": 24000,
+              "finite_max": 2.12890625,
+              "finite_min": -11.375,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            },
+            "difference": {
+              "abs_diff_max": 6.474609375,
+              "abs_diff_p95": 2.546875,
+              "finite_mask_difference": 0,
+              "finite_pairs": 24000
+            },
+            "shape": [
+              1,
+              300,
+              80
+            ],
+            "trt": {
+              "finite_count": 24000,
+              "finite_max": 1.263671875,
+              "finite_min": -11.8125,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            }
+          }
+        },
+        "original_vs_instrumented_trt_heads": {
+          "video_000/clip_028/cam3/frame_000513": {
+            "candidate_slot": 0,
+            "decoded": {
+              "candidate_rows": 77,
+              "matched_iou_p05": 0.5224900818331091,
+              "matches_at_iou_0_50": 33,
+              "reference_rows": 112
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 0.8743649572134018,
+                "abs_diff_p95": 0.21794102638959853,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 8.021484375,
+                "abs_diff_p95": 3.0703125,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 0
+          }
+        }
+      },
+      "pair1_ba": {
+        "archived_pt16_vs_instrumented_trt": {
+          "video_000/clip_003/cam0/frame_000148": {
+            "candidate_slot": 1,
+            "decoded": {
+              "candidate_rows": 89,
+              "matched_iou_p05": 0.710837800627399,
+              "matches_at_iou_0_50": 73,
+              "reference_rows": 86
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 0.8393432199954987,
+                "abs_diff_p95": 0.38580833226442335,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 7.2587890625,
+                "abs_diff_p95": 2.90625,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 1
+          },
+          "video_000/clip_028/cam3/frame_000513": {
+            "candidate_slot": 0,
+            "decoded": {
+              "candidate_rows": 71,
+              "matched_iou_p05": 0.9354883378457411,
+              "matches_at_iou_0_50": 64,
+              "reference_rows": 68
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 0.8388393372297287,
+                "abs_diff_p95": 0.36889201402664173,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 6.33203125,
+                "abs_diff_p95": 2.125,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 0
+          }
+        },
+        "frames": [
+          "video_000/clip_028/cam3/frame_000513",
+          "video_000/clip_003/cam0/frame_000148"
+        ],
+        "input_sha256": "e34a3a87244b4f3bbd916db5e2b89f3e58f34ee98f06be161bfa1079279e564b",
+        "onnx_cpu_vs_instrumented_trt": {
+          "coordinates": {
+            "cpu": {
+              "finite_count": 2400,
+              "finite_max": 0.9951779842376709,
+              "finite_min": 0.006093502044677734,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            },
+            "difference": {
+              "abs_diff_max": 0.833208829164505,
+              "abs_diff_p95": 0.38458999842405306,
+              "finite_mask_difference": 0,
+              "finite_pairs": 2400
+            },
+            "shape": [
+              2,
+              300,
+              4
+            ],
+            "trt": {
+              "finite_count": 2400,
+              "finite_max": 0.9951784610748291,
+              "finite_min": 0.004689335823059082,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            }
+          },
+          "logits": {
+            "cpu": {
+              "finite_count": 48000,
+              "finite_max": 2.18359375,
+              "finite_min": -11.875,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            },
+            "difference": {
+              "abs_diff_max": 7.2548828125,
+              "abs_diff_p95": 2.50390625,
+              "finite_mask_difference": 0,
+              "finite_pairs": 48000
+            },
+            "shape": [
+              2,
+              300,
+              80
+            ],
+            "trt": {
+              "finite_count": 48000,
+              "finite_max": 2.1640625,
+              "finite_min": -12.28125,
+              "nan_count": 0,
+              "neginf_count": 0,
+              "posinf_count": 0
+            }
+          }
+        },
+        "original_vs_instrumented_trt_heads": {
+          "video_000/clip_003/cam0/frame_000148": {
+            "candidate_slot": 1,
+            "decoded": {
+              "candidate_rows": 89,
+              "matched_iou_p05": 0.5587687145859833,
+              "matches_at_iou_0_50": 42,
+              "reference_rows": 103
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 0.8234613090753555,
+                "abs_diff_p95": 0.2959705241024493,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 8.935546875,
+                "abs_diff_p95": 2.92578125,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 1
+          },
+          "video_000/clip_028/cam3/frame_000513": {
+            "candidate_slot": 0,
+            "decoded": {
+              "candidate_rows": 71,
+              "matched_iou_p05": 0.5198215323208227,
+              "matches_at_iou_0_50": 30,
+              "reference_rows": 121
+            },
+            "heads": {
+              "coordinates": {
+                "abs_diff_max": 0.8531716763973236,
+                "abs_diff_p95": 0.21041291952133157,
+                "finite_mask_difference": 0,
+                "finite_pairs": 1200
+              },
+              "logits": {
+                "abs_diff_max": 7.919921875,
+                "abs_diff_p95": 2.81640625,
+                "finite_mask_difference": 0,
+                "finite_pairs": 24000
+              }
+            },
+            "reference_slot": 0
+          }
+        }
+      }
+    },
+    "checkout_commit": "9fa9b13a80ec8bdd80dddbaa408f39e094e2a7e5",
+    "cpu_onnxruntime_version": "1.30.0",
+    "fp32_decoder_attention": true,
+    "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+    "probe_onnx_sha256": "60a6c044b4ad70495edb03b6c7dbce3495cb92b36316ad31a84da5ed126a04c5",
+    "probe_plan_sha256": "da7991d880b75f2da28882825865a79e190229be0e7287bf5240cf89fb5a0279",
+    "profile": {
+      "maximum": [
+        2,
+        3,
+        640,
+        640
+      ],
+      "minimum": [
+        1,
+        3,
+        640,
+        640
+      ],
+      "optimum": [
+        1,
+        3,
+        640,
+        640
+      ]
+    },
+    "raw_heads": {
+      "path": "trt16-heads.npz",
+      "sha256": "4af69c19d874823c2a5950d84516f77dc6494a45148fbcebac26daf6c21c81a3"
+    },
+    "source_onnx_sha256": "fa8b643c82da715aee5df2dc556a19ecdf73b9729af1aba938607c564a484c2a",
+    "source_plan_sha256": "22ef7679387090d5bec8346f2b070ce389062f0a22d9c63e3fbf2d3ce8e6de21",
+    "tap_order": [
+      "logits",
+      "coordinates"
+    ],
+    "trt_ab_repeat": {
+      "coordinates": {
+        "abs_diff_max": 0.0,
+        "abs_diff_p95": 0.0,
+        "finite_mask_difference": 0,
+        "finite_pairs": 2400
+      },
+      "logits": {
+        "abs_diff_max": 0.0,
+        "abs_diff_p95": 0.0,
+        "finite_mask_difference": 0,
+        "finite_pairs": 48000
+      }
+    },
+    "trt_decoded_batch_order": {
+      "video_000/clip_003/cam0/frame_000148": {
+        "candidate_slot": 1,
+        "decoded": {
+          "candidate_rows": 89,
+          "matched_iou_p05": 0.7121194559359141,
+          "matches_at_iou_0_50": 69,
+          "reference_rows": 82
+        },
+        "heads": {
+          "coordinates": {
+            "abs_diff_max": 1.202508807182312,
+            "abs_diff_p95": 0.016058854758739468,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1200
+          },
+          "logits": {
+            "abs_diff_max": 7.435546875,
+            "abs_diff_p95": 2.554882812499997,
+            "finite_mask_difference": 0,
+            "finite_pairs": 24000
+          }
+        },
+        "reference_slot": 0
+      },
+      "video_000/clip_028/cam3/frame_000513": {
+        "candidate_slot": 0,
+        "decoded": {
+          "candidate_rows": 71,
+          "matched_iou_p05": 0.7269291652872476,
+          "matches_at_iou_0_50": 53,
+          "reference_rows": 76
+        },
+        "heads": {
+          "coordinates": {
+            "abs_diff_max": 0.19829422235488892,
+            "abs_diff_p95": 0.015232199430465696,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1200
+          },
+          "logits": {
+            "abs_diff_max": 8.05859375,
+            "abs_diff_p95": 2.2109375,
+            "finite_mask_difference": 0,
+            "finite_pairs": 24000
+          }
+        },
+        "reference_slot": 1
+      }
+    }
+  },
+  "model_id": "ecdet-l-coco",
+  "queue": {
+    "checkout_commit": "9fa9b13a80ec8bdd80dddbaa408f39e094e2a7e5",
+    "command": "mkdir -p outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention && realpath outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention > \"$TENNIS_REPRO_DIR/output_dir.txt\" && exec env PYTHONPATH=.:knowledge/runs/run-person-model-speed-baseline OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/edgecrafter_trt_probe.py --archive outputs/player-model-comparison/trt16-diagnosis-v1 --inputs /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs --output outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention --fp32-decoder-attention",
+    "job_id": "0-8204386175902366411_2026-11-25T13-37-04-097633588Z_1139308_i2487-ecdet-l-coco-trt16-fp32-decoder-attention.job",
+    "queue_log": {
+      "path": ".training_queue/logs/0-8204386175902366411_2026-11-25T13-37-04-097633588Z_1139308_i2487-ecdet-l-coco-trt16-fp32-decoder-attention.log",
+      "sha256": "d9d414793c3b8053b09360a44c1f975a09da540f598501c01d6fc825edcbbf39"
+    },
+    "reproduction": {
+      "path": ".training_queue/repro/0-8204386175902366411_2026-11-25T13-37-04-097633588Z_1139308_i2487-ecdet-l-coco-trt16-fp32-decoder-attention/repro.sh",
+      "sha256": "b6ec8ee5ec0456dbee7191500689caa8ff106ddbae1ccacabf5d92a338bead53"
+    },
+    "status": "done"
+  },
+  "raw_heads": {
+    "path": "outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/trt16-heads.npz",
+    "sha256": "4af69c19d874823c2a5950d84516f77dc6494a45148fbcebac26daf6c21c81a3"
+  },
+  "raw_report": {
+    "path": "outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/probes.json",
+    "sha256": "50a19aacc33d26b800e0f63f4af5cdb8cd1fdb0e7cf7515beaff9cc070c971e9"
+  },
+  "saved_heads_verification": {
+    "batch_order": {
+      "fp32_attention_trt16": {
+        "all_person_rows": {
+          "candidate_rows": 160,
+          "matches_at_iou_0_50": 122,
+          "reference_rows": 158
+        },
+        "min_score": {
+          "candidate_rows": 25,
+          "matches_at_iou_0_50": 21,
+          "reference_rows": 23
+        }
+      },
+      "original_trt16": {
+        "all_person_rows": {
+          "candidate_rows": 224,
+          "matches_at_iou_0_50": 124,
+          "reference_rows": 241
+        },
+        "min_score": {
+          "candidate_rows": 51,
+          "matches_at_iou_0_50": 31,
+          "reference_rows": 81
+        }
+      },
+      "pt16_saved": {
+        "all_person_rows": {
+          "candidate_rows": 154,
+          "matches_at_iou_0_50": 154,
+          "reference_rows": 154
+        },
+        "min_score": {
+          "candidate_rows": 25,
+          "matches_at_iou_0_50": 25,
+          "reference_rows": 25
+        }
+      }
+    },
+    "cases": {
+      "pair1_ab": {
+        "pt16_vs_fp32_attention_all_person_rows": {
+          "candidate_rows": 158,
+          "matches_at_iou_0_50": 134,
+          "reference_rows": 154
+        },
+        "pt16_vs_fp32_attention_min_score": {
+          "candidate_rows": 23,
+          "matches_at_iou_0_50": 22,
+          "reference_rows": 25
+        },
+        "pt16_vs_original_trt16_all_person_rows": {
+          "candidate_rows": 241,
+          "matches_at_iou_0_50": 88,
+          "reference_rows": 154
+        },
+        "pt16_vs_original_trt16_min_score": {
+          "candidate_rows": 81,
+          "matches_at_iou_0_50": 17,
+          "reference_rows": 25
+        },
+        "sample_pseudo_ground_truth": {
+          "fp32_attention_trt16": {
+            "matched_at_iou_0_50": 7,
+            "recall_by_iou": {
+              "0.50": 0.875,
+              "0.75": 0.5
+            },
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.75,
+                "0.75": 0.375
+              },
+              "0.5": {
+                "0.50": 0.75,
+                "0.75": 0.375
+              },
+              "0.75": {
+                "0.50": 0.125,
+                "0.75": 0.125
+              }
+            },
+            "references": 8
+          },
+          "original_trt16": {
+            "matched_at_iou_0_50": 5,
+            "recall_by_iou": {
+              "0.50": 0.625,
+              "0.75": 0.0
+            },
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.625,
+                "0.75": 0.0
+              },
+              "0.5": {
+                "0.50": 0.25,
+                "0.75": 0.0
+              },
+              "0.75": {
+                "0.50": 0.0,
+                "0.75": 0.0
+              }
+            },
+            "references": 8
+          },
+          "pt16_saved": {
+            "matched_at_iou_0_50": 8,
+            "recall_by_iou": {
+              "0.50": 1.0,
+              "0.75": 0.25
+            },
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 1.0,
+                "0.75": 0.25
+              },
+              "0.5": {
+                "0.50": 1.0,
+                "0.75": 0.25
+              },
+              "0.75": {
+                "0.50": 0.625,
+                "0.75": 0.25
+              }
+            },
+            "references": 8
+          }
+        }
+      },
+      "pair1_ab_repeat": {
+        "pt16_vs_fp32_attention_all_person_rows": {
+          "candidate_rows": 158,
+          "matches_at_iou_0_50": 134,
+          "reference_rows": 154
+        },
+        "pt16_vs_fp32_attention_min_score": {
+          "candidate_rows": 23,
+          "matches_at_iou_0_50": 22,
+          "reference_rows": 25
+        },
+        "pt16_vs_original_trt16_all_person_rows": {
+          "candidate_rows": 241,
+          "matches_at_iou_0_50": 88,
+          "reference_rows": 154
+        },
+        "pt16_vs_original_trt16_min_score": {
+          "candidate_rows": 81,
+          "matches_at_iou_0_50": 17,
+          "reference_rows": 25
+        },
+        "sample_pseudo_ground_truth": {
+          "fp32_attention_trt16": {
+            "matched_at_iou_0_50": 7,
+            "recall_by_iou": {
+              "0.50": 0.875,
+              "0.75": 0.5
+            },
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.75,
+                "0.75": 0.375
+              },
+              "0.5": {
+                "0.50": 0.75,
+                "0.75": 0.375
+              },
+              "0.75": {
+                "0.50": 0.125,
+                "0.75": 0.125
+              }
+            },
+            "references": 8
+          },
+          "original_trt16": {
+            "matched_at_iou_0_50": 5,
+            "recall_by_iou": {
+              "0.50": 0.625,
+              "0.75": 0.0
+            },
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.625,
+                "0.75": 0.0
+              },
+              "0.5": {
+                "0.50": 0.25,
+                "0.75": 0.0
+              },
+              "0.75": {
+                "0.50": 0.0,
+                "0.75": 0.0
+              }
+            },
+            "references": 8
+          },
+          "pt16_saved": {
+            "matched_at_iou_0_50": 8,
+            "recall_by_iou": {
+              "0.50": 1.0,
+              "0.75": 0.25
+            },
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 1.0,
+                "0.75": 0.25
+              },
+              "0.5": {
+                "0.50": 1.0,
+                "0.75": 0.25
+              },
+              "0.75": {
+                "0.50": 0.625,
+                "0.75": 0.25
+              }
+            },
+            "references": 8
+          }
+        }
+      },
+      "pair1_b": {
+        "pt16_vs_fp32_attention_all_person_rows": {
+          "candidate_rows": 77,
+          "matches_at_iou_0_50": 56,
+          "reference_rows": 68
+        },
+        "pt16_vs_fp32_attention_min_score": {
+          "candidate_rows": 10,
+          "matches_at_iou_0_50": 10,
+          "reference_rows": 12
+        },
+        "pt16_vs_original_trt16_all_person_rows": {
+          "candidate_rows": 112,
+          "matches_at_iou_0_50": 30,
+          "reference_rows": 68
+        },
+        "pt16_vs_original_trt16_min_score": {
+          "candidate_rows": 17,
+          "matches_at_iou_0_50": 3,
+          "reference_rows": 12
+        },
+        "sample_pseudo_ground_truth": {
+          "fp32_attention_trt16": {
+            "matched_at_iou_0_50": 3,
+            "recall_by_iou": {
+              "0.50": 0.75,
+              "0.75": 0.25
+            },
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.75,
+                "0.75": 0.25
+              },
+              "0.5": {
+                "0.50": 0.5,
+                "0.75": 0.0
+              },
+              "0.75": {
+                "0.50": 0.25,
+                "0.75": 0.0
+              }
+            },
+            "references": 4
+          },
+          "original_trt16": {
+            "matched_at_iou_0_50": 1,
+            "recall_by_iou": {
+              "0.50": 0.25,
+              "0.75": 0.0
+            },
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.0,
+                "0.75": 0.0
+              },
+              "0.5": {
+                "0.50": 0.0,
+                "0.75": 0.0
+              },
+              "0.75": {
+                "0.50": 0.0,
+                "0.75": 0.0
+              }
+            },
+            "references": 4
+          },
+          "pt16_saved": {
+            "matched_at_iou_0_50": 4,
+            "recall_by_iou": {
+              "0.50": 1.0,
+              "0.75": 0.25
+            },
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 1.0,
+                "0.75": 0.25
+              },
+              "0.5": {
+                "0.50": 1.0,
+                "0.75": 0.25
+              },
+              "0.75": {
+                "0.50": 0.75,
+                "0.75": 0.25
+              }
+            },
+            "references": 4
+          }
+        }
+      },
+      "pair1_ba": {
+        "pt16_vs_fp32_attention_all_person_rows": {
+          "candidate_rows": 160,
+          "matches_at_iou_0_50": 137,
+          "reference_rows": 154
+        },
+        "pt16_vs_fp32_attention_min_score": {
+          "candidate_rows": 25,
+          "matches_at_iou_0_50": 24,
+          "reference_rows": 25
+        },
+        "pt16_vs_original_trt16_all_person_rows": {
+          "candidate_rows": 224,
+          "matches_at_iou_0_50": 71,
+          "reference_rows": 154
+        },
+        "pt16_vs_original_trt16_min_score": {
+          "candidate_rows": 51,
+          "matches_at_iou_0_50": 12,
+          "reference_rows": 25
+        },
+        "sample_pseudo_ground_truth": {
+          "fp32_attention_trt16": {
+            "matched_at_iou_0_50": 8,
+            "recall_by_iou": {
+              "0.50": 1.0,
+              "0.75": 0.25
+            },
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 1.0,
+                "0.75": 0.25
+              },
+              "0.5": {
+                "0.50": 0.875,
+                "0.75": 0.25
+              },
+              "0.75": {
+                "0.50": 0.5,
+                "0.75": 0.25
+              }
+            },
+            "references": 8
+          },
+          "original_trt16": {
+            "matched_at_iou_0_50": 3,
+            "recall_by_iou": {
+              "0.50": 0.375,
+              "0.75": 0.0
+            },
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.25,
+                "0.75": 0.0
+              },
+              "0.5": {
+                "0.50": 0.25,
+                "0.75": 0.0
+              },
+              "0.75": {
+                "0.50": 0.0,
+                "0.75": 0.0
+              }
+            },
+            "references": 8
+          },
+          "pt16_saved": {
+            "matched_at_iou_0_50": 8,
+            "recall_by_iou": {
+              "0.50": 1.0,
+              "0.75": 0.25
+            },
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 1.0,
+                "0.75": 0.25
+              },
+              "0.5": {
+                "0.50": 1.0,
+                "0.75": 0.25
+              },
+              "0.75": {
+                "0.50": 0.625,
+                "0.75": 0.25
+              }
+            },
+            "references": 8
+          }
+        }
+      }
+    },
+    "checkout_commit": "9fa9b13a80ec8bdd80dddbaa408f39e094e2a7e5",
+    "cohort_manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+    "decoded_score_exclusive_cutoff": 0.0,
+    "diagnostic_min_score": 0.25
+  },
+  "schema_version": 1,
+  "weight_sha256": "60e48c51b33d70acf8e3a3faddbdb70b0876c64509b74cb623106cc7c31e85a1"
+}

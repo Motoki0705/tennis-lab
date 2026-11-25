@@ -2,8 +2,8 @@
 # Time one model on the published inputs in a fresh process for each case.
 set -uo pipefail
 
-if [[ $# -ne 3 ]]; then
-    echo "Usage: $0 MODEL FIXED_SPEED_INPUTS HARNESS_COMMIT" >&2
+if [[ $# -lt 3 || $# -gt 4 ]]; then
+    echo "Usage: $0 MODEL FIXED_SPEED_INPUTS HARNESS_COMMIT [pt16|trt16|both]" >&2
     exit 2
 fi
 
@@ -21,10 +21,16 @@ case "$model" in
     *) echo "Unexpected EdgeCrafter model $model" >&2; exit 2 ;;
 esac
 
+case ${4-both} in
+    pt16|trt16) backends=("$4") ;;
+    both) backends=(pt16 trt16) ;;
+    *) echo "Select pt16, trt16 or both" >&2; exit 2 ;;
+esac
+
 baseline=knowledge/runs/run-person-model-speed-baseline
 experiment=knowledge/runs/run-meiji-player-model-comparison
 output="outputs/player-model-comparison/$model"
-speed="$output/speed-${harness_commit:0:9}"
+speed="$output/speed-${harness_commit:0:9}-threads4-1"
 trt="$output/trt16-trace2"
 export PYTHONPATH=".:$baseline" OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2
 
@@ -34,7 +40,7 @@ if [[ -n ${TENNIS_REPRO_DIR:-} ]]; then
 fi
 
 status=0
-for backend in pt16 trt16; do
+for backend in "${backends[@]}"; do
     args=()
     if [[ $backend == trt16 ]]; then
         if [[ ! -s $trt/engine/engine.plan || ! -s $trt/engine/engine.json ]]; then

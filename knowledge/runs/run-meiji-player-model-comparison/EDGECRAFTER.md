@@ -69,15 +69,15 @@ ECDet's PT16 recall at IoU 0.50 is 97.58–98.19%, and its TRT16 recall is 63.02
 
 ## Fixed-input speed cases
 
-`edgecrafter_speed_run.sh` runs PT16 and TRT16 at batch 1 and 2 in separate processes. `edgecrafter_speed.py` verifies the #2496 manifest, timing protocol and harness revision. It uses the ordered set of 96 native BGR images, 30 warm-ups and three blocks of 100 iterations on a dedicated CUDA stream. TRT16 loads the engine from the full-cohort accuracy run. The shared harness records `parity_status=not_evaluated` with reason `PT32未計測`. The previous six speed jobs were cancelled before execution while the common timing contract was revised.
+`edgecrafter_speed_run.sh` runs the selected backend at batch 1 and 2 in separate processes. The optional fourth argument accepts `pt16`, `trt16` or `both` and defaults to `both`. `edgecrafter_speed.py` verifies the #2496 manifest, timing protocol and harness revision. It uses the ordered set of 96 native BGR images, 30 warm-ups and three blocks of 100 iterations on a dedicated CUDA stream. It sets and records four PyTorch host threads and one OpenCV thread, matching the DINO baseline. TRT16 loads the engine from the full-cohort accuracy run. The shared harness records `parity_status=not_evaluated` with reason `PT32未計測`. The previous six speed jobs were cancelled before execution while the common timing contract was revised.
 
 ```bash
 # Register this command in the shared training queue for each model.
 bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh \
-  ecpose-l-o365 "$fixed_speed_inputs" 13e508cb78c46663fbe58ad8be03bcf9c96816a6
+  ecpose-l-o365 "$fixed_speed_inputs" 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16
 ```
 
-`fixed_speed_inputs` is the published baseline input directory. Receipts are written to `outputs/player-model-comparison/<model>/speed-13e508cb7/<backend>/speed-b<batch>.json`. See the baseline documentation for the input location and schedule. [Baseline inputs and protocol](../run-person-model-speed-baseline/README.md#固定入力と初回の成果物)
+`fixed_speed_inputs` is the published baseline input directory. The runner writes receipts to `outputs/player-model-comparison/<model>/speed-13e508cb7-threads4-1/<backend>/speed-b<batch>.json`. The first measurements are stored under `speed-13e508cb7`. [Baseline inputs and protocol](../run-person-model-speed-baseline/README.md#固定入力と初回の成果物)
 
 All 24 speed cases completed at checkout `3bb026d5de12dbe980bc17e3d0a97c751b58fd4b`. Each case's 300 samples, image order and summary were checked against the common harness. PT16 ECDet stage wall P50 at batch 1 ranged from 52.52 to 64.87 ms/image. The original TRT16 ECDet plans measured 32.79 to 35.41 ms/image. TRT16 timings and accuracy refer to the same plan digests and remain provisional while the conversion issue is investigated. All 24 cases recorded two PyTorch host threads. The DINO baseline sets four, so a matched stage wall comparison requires a rerun with the same host thread count. [Speed and VRAM receipts](edgecrafter-speed.json), [Baseline runner](../run-person-model-speed-baseline/run.py)
 
@@ -144,7 +144,17 @@ PYTHONPATH=".:$baseline" OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREAD
 
 The follow-up builds a separate ECDet-L COCO plan with only the four decoder self-attention score MatMuls and their Softmax operations in FP32. Both output bindings, the input profile and the weights match the original graph. The diagnostic compares raw heads and decoded boxes with the archived PT16 heads on the same input bytes at batch 1, batch 2 and reversed batch order. A matching result would support testing the change across the full cohort. Engine rebuilding can change tactic selection, so further controls would be needed to attribute the difference to those operations alone.
 
-The ONNX CPU check verified all four widened regions and preserved the original binding dtypes, shapes and weight digest. On `clip_028/cam3` frame 513 the rewritten graph matched 68 of 68 archived PT16 boxes at IoU ≥0.50, with matched IoU P05 of 0.993. The TensorRT result is pending.
+The ONNX CPU check verified all four widened regions and preserved the original binding dtypes, shapes and weight digest. On `clip_028/cam3` frame 513 the rewritten graph matched 68 of 68 archived PT16 boxes at IoU ≥0.50, with matched IoU P05 of 0.993.
+
+On the RTX 5060 Ti the rebuilt plan improved agreement with the saved PT16 predictions in all three cases. The table gives the number of boxes matched at IoU ≥0.50, with the number of eligible PT16 rows as the denominator. It shows both the full set of decoded person rows and the shared minimum score of 0.25. [Build, raw heads and verification](edgecrafter-trt-diagnosis-v3.json)
+
+| Fixed input | Original plan | FP32 attention plan | Original plan at score ≥0.25 | FP32 attention plan at score ≥0.25 |
+|---|---:|---:|---:|---:|
+| `clip_028/cam3` frame 513, batch 1 | 30/68 | 56/68 | 3/12 | 10/12 |
+| Both images, batch 2 A–B | 88/154 | 134/154 | 17/25 | 22/25 |
+| Both images, batch 2 B–A | 71/154 | 137/154 | 12/25 | 24/25 |
+
+The rebuilt plan matched 122 of 158 boxes after the batch swap, with final logit absolute difference P95 of 2.3712. Repeating the original order reproduced the raw tensors exactly. Against the fixed pseudo-reference at score ≥0.25 and IoU ≥0.50, the rebuilt plan matched 3/4 players in batch 1 and 6/8 and 8/8 in the two batch orders. Saved PT16 matched 4/4 and 8/8 in both orders. Two images provide a diagnostic sample. These results show a plan-level improvement with a residual batch-order effect. The original ECDet and ECPose-X TRT16 scores remain provisional because a conversion defect is suspected and the cause is still unresolved. [Sample pseudo-reference scores and batch-order checks](edgecrafter-trt-diagnosis-v3.json)
 
 ```bash
 # Submit through the training queue with resource all.
@@ -176,6 +186,6 @@ The parity tests use two rearranged detection rows, perturbations and missing jo
 
 The 2026-11-25 scope change adds five CPU cases. The queue entry-point tests substitute a command recorder for the GPU processes and check that ECPose requests PT16 and TRT16, ECDet requests TRT16, and the TensorRT conversion precedes scoring. The CLI cases reject PT32 and a missing parity setting. A parity receipt test rejects comparison when the candidate declares `PT32未計測`.
 
-The speed entry-point tests check the four half-precision backend and batch combinations, ordered images, harness revision validation and the explicit parity argument. The accuracy wrapper tests check that a failed command or missing engine receipt is reported against the corresponding condition and preserves a successful result from the other backend.
+The speed entry-point tests check explicit PT16 selection, the four default backend and batch combinations, the host thread settings, ordered images, harness revision validation and the explicit parity argument. The accuracy wrapper tests check that a failed command or missing engine receipt is reported against the corresponding condition and preserves a successful result from the other backend.
 
 The decoder precision test uses a small typed ONNX graph to verify FP32 MatMul inputs and scores, FP32 Softmax and restoration of the original FP16 tensor at the next consumer. It checks that the source graph stays intact.

@@ -8,6 +8,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import TypeVar
 
+import cv2
 import numpy as np
 import torch
 from edgecrafter import (
@@ -102,6 +103,8 @@ def one_case(args: argparse.Namespace) -> Status:
     device = torch.device(args.device)
     if device.type != "cuda":
         raise ValueError("Speed measurement requires a CUDA device")
+    torch.set_num_threads(4)
+    cv2.setNumThreads(1)
     schedule = fixed.schedule("frames", args.batch_size)
     images = {}
     for row in fixed.rows("frames"):
@@ -129,6 +132,7 @@ def one_case(args: argparse.Namespace) -> Status:
             "input_decode": "predecoded BGR",
             "cuda_stream": "non-default",
             "host_threads": torch.get_num_threads(),
+            "opencv_threads": cv2.getNumThreads(),
             "image_size_hw": list(IMAGE_SIZE),
             "source_commit": subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], text=True

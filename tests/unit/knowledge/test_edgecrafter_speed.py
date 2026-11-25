@@ -37,6 +37,24 @@ def test_case_uses_ordered_full_images_and_explicit_parity_opt_out(
 ) -> None:
     one_case = script["one_case"]
     scope = one_case.__globals__
+    threads = {"torch": 2, "opencv": 8}
+    monkeypatch.setitem(
+        scope,
+        "torch",
+        SimpleNamespace(
+            device=scope["torch"].device,
+            set_num_threads=lambda count: threads.__setitem__("torch", count),
+            get_num_threads=lambda: threads["torch"],
+        ),
+    )
+    monkeypatch.setitem(
+        scope,
+        "cv2",
+        SimpleNamespace(
+            setNumThreads=lambda count: threads.__setitem__("opencv", count),
+            getNumThreads=lambda: threads["opencv"],
+        ),
+    )
     monkeypatch.setitem(scope, "_require_harness_revision", lambda revision: None)
     for key, value in (("first", 12), ("second", 87)):
         np.save(tmp_path / f"{key}.npy", np.full((2, 3, 3), value, dtype=np.uint8))
@@ -64,6 +82,7 @@ def test_case_uses_ordered_full_images_and_explicit_parity_opt_out(
         assert case.backend is Backend.PT16
         assert case.input_manifest_sha256 == "a" * 64
         assert case.settings["timed_input_ids_sha256"] == "c" * 64
+        assert threads == {"torch": 4, "opencv": 1}
         assert backends == {Backend.PT16: adapter}
         assert [batch.ids for batch in batches] == [("second", "first")]
         assert [image[0, 0, 0] for image in batches[0].data] == [87, 12]
@@ -103,6 +122,8 @@ def test_case_uses_ordered_full_images_and_explicit_parity_opt_out(
     )
     report = json.loads((tmp_path / "speed-b2.json").read_text(encoding="utf-8"))
     assert report["case"]["settings"]["harness_commit"] == "d" * 40
+    assert report["case"]["settings"]["host_threads"] == 4
+    assert report["case"]["settings"]["opencv_threads"] == 1
     assert report["parity_status"] == "not_evaluated"
     assert report["parity_not_evaluated_reason"] == "PT32未計測"
     assert report["parity"] is None

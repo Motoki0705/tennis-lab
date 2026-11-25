@@ -143,16 +143,22 @@ def test_accuracy_reports_failed_condition_without_losing_other_output(
         ]
 
 
-def test_speed_runs_only_half_precision_at_both_pinned_batch_sizes(
-    tmp_path: Path, command_log: Path
+@pytest.mark.parametrize(
+    ("backend_args", "backends"), [((), ("pt16", "trt16")), (("pt16",), ("pt16",))]
+)
+def test_speed_runs_selected_half_precision_backends_at_both_pinned_batch_sizes(
+    tmp_path: Path,
+    command_log: Path,
+    backend_args: tuple[str, ...],
+    backends: tuple[str, ...],
 ) -> None:
     model = "ecpose-x-o365"
-    engine = (
-        tmp_path / "outputs/player-model-comparison" / model / "trt16-trace2/engine"
-    )
-    engine.mkdir(parents=True)
-    for name in ("engine.plan", "engine.json"):
-        (engine / name).write_text("fixture", encoding="utf-8")
+    output = Path("outputs/player-model-comparison") / model
+    engine = tmp_path / output / "trt16-trace2/engine"
+    if "trt16" in backends:
+        engine.mkdir(parents=True)
+        for name in ("engine.plan", "engine.json"):
+            (engine / name).write_text("fixture", encoding="utf-8")
     subprocess.run(
         [
             "bash",
@@ -160,6 +166,7 @@ def test_speed_runs_only_half_precision_at_both_pinned_batch_sizes(
             model,
             "fixed-inputs",
             "b" * 40,
+            *backend_args,
         ],
         cwd=tmp_path,
         check=True,
@@ -169,15 +176,15 @@ def test_speed_runs_only_half_precision_at_both_pinned_batch_sizes(
         dict(zip(call[3::2], call[4::2], strict=True)) for call in _calls(command_log)
     ]
     assert [(row["--backend"], row["--batch-size"]) for row in args] == [
-        ("pt16", "1"),
-        ("pt16", "2"),
-        ("trt16", "1"),
-        ("trt16", "2"),
+        (backend, batch) for backend in backends for batch in ("1", "2")
     ]
     for row in args:
         assert row["--harness-commit"] == "b" * 40
         assert row["--parity"] == "not_measured"
         assert row["--pose-box-margin"] == "0.10"
+        assert Path(row["--output"]) == (
+            output / "speed-bbbbbbbbb-threads4-1" / row["--backend"]
+        )
         if row["--backend"] == "trt16":
             assert tmp_path / row["--engine"] == engine
         else:
