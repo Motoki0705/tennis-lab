@@ -195,6 +195,8 @@ class PLCSHTDRefiner:
         views: Sequence[HTDRefineCameraView],
         fps: float,
         valid_frame_mask: Tensor | None = None,
+        vel_valid_mask: Tensor | None = None,
+        acc_valid_mask: Tensor | None = None,
     ) -> HTDRefineResult:
         """Optimize ``world_kp_3d`` ``(T, 17, 3)`` [m] without crossing invalid/padded gaps."""
         if world_kp_init.ndim != 3 or world_kp_init.shape[1:] != (NUM_HUMAN_KP, 3):
@@ -217,6 +219,18 @@ class PLCSHTDRefiner:
             ):
                 raise ValueError("valid_frame_mask must be bool of shape (T,).")
             valid_mask = valid_frame_mask.to(device=device)
+
+        vel_mask_t: Tensor | None = None
+        if vel_valid_mask is not None:
+            if vel_valid_mask.shape != (seq_len,) or vel_valid_mask.dtype != torch.bool:
+                raise ValueError("vel_valid_mask must be bool of shape (T,).")
+            vel_mask_t = vel_valid_mask.to(device=device)
+
+        acc_mask_t: Tensor | None = None
+        if acc_valid_mask is not None:
+            if acc_valid_mask.shape != (seq_len,) or acc_valid_mask.dtype != torch.bool:
+                raise ValueError("acc_valid_mask must be bool of shape (T,).")
+            acc_mask_t = acc_valid_mask.to(device=device)
 
         if not torch.isfinite(world_kp_init[valid_mask]).all():
             raise ValueError("world_kp_init contains non-finite coordinates on valid frames.")
@@ -273,6 +287,12 @@ class PLCSHTDRefiner:
             seg_base = base_kp[seg_start:seg_end]
             seg_vel = vel_target[seg_start:seg_end] if vel_target is not None else None
             seg_acc = acc_target[seg_start:seg_end] if acc_target is not None else None
+            seg_vel_mask = (
+                vel_mask_t[seg_start:seg_end] if vel_mask_t is not None else None
+            )
+            seg_acc_mask = (
+                acc_mask_t[seg_start:seg_end] if acc_mask_t is not None else None
+            )
             seg_contact = (
                 contact_probs[seg_start:seg_end] if contact_probs is not None else None
             )
@@ -353,6 +373,8 @@ class PLCSHTDRefiner:
                     _seg_len: int = seg_len,
                     _seg_vel: Tensor | None = seg_vel,
                     _seg_acc: Tensor | None = seg_acc,
+                    _seg_vel_mask: Tensor | None = seg_vel_mask,
+                    _seg_acc_mask: Tensor | None = seg_acc_mask,
                     _seg_contact: Tensor | None = seg_contact,
                     _prepared_views: list[
                         tuple[
@@ -380,23 +402,43 @@ class PLCSHTDRefiner:
                     if cfg.vel_weight > 0.0 and _seg_vel is not None and _seg_len >= 2:
                         step_disp = kp[1:] - kp[:-1]
                         target_disp = _seg_vel[:-1] * dt
-                        loss_v = F.huber_loss(
-                            step_disp,
-                            target_disp,
-                            delta=vel_delta_m,
-                        )
-                        total = total + cfg.vel_weight * loss_v
+                        if _seg_vel_mask is None:
+                            loss_v = F.huber_loss(
+                                step_disp,
+                                target_disp,
+                                delta=vel_delta_m,
+                            )
+                            total = total + cfg.vel_weight * loss_v
+                        else:
+                            v_step_mask = _seg_vel_mask[:-1]
+                            if bool(v_step_mask.any()):
+                                loss_v = F.huber_loss(
+                                    step_disp[v_step_mask],
+                                    target_disp[v_step_mask],
+                                    delta=vel_delta_m,
+                                )
+                                total = total + cfg.vel_weight * loss_v
 
                     # 2. Stage A 2nd-order acceleration alignment in metres per step^2
                     if cfg.acc_weight > 0.0 and _seg_acc is not None and _seg_len >= 3:
                         second_diff = kp[2:] - 2.0 * kp[1:-1] + kp[:-2]
                         target_dd = _seg_acc[1:-1] * (dt * dt)
-                        loss_a = F.huber_loss(
-                            second_diff,
-                            target_dd,
-                            delta=acc_delta_m,
-                        )
-                        total = total + cfg.acc_weight * loss_a
+                        if _seg_acc_mask is None:
+                            loss_a = F.huber_loss(
+                                second_diff,
+                                target_dd,
+                                delta=acc_delta_m,
+                            )
+                            total = total + cfg.acc_weight * loss_a
+                        else:
+                            a_step_mask = _seg_acc_mask[1:-1]
+                            if bool(a_step_mask.any()):
+                                loss_a = F.huber_loss(
+                                    second_diff[a_step_mask],
+                                    target_dd[a_step_mask],
+                                    delta=acc_delta_m,
+                                )
+                                total = total + cfg.acc_weight * loss_a
 
                     # 3. Confidence-weighted metric 2D pinhole reprojection across 1..V views
                     # Uses per-axis focal lengths (fx, fy) for in-front joints and a smooth
