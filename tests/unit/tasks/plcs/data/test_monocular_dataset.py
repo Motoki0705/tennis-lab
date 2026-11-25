@@ -164,26 +164,20 @@ def _write_mixed_synthetic_dataset(root: Path) -> Path:
 
 def _compose_monocular_config(data_root: Path) -> DictConfig:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        cfg = compose(config_name="train", overrides=["data=_monocular_sequence"])
+        cfg = compose(
+            config_name="train",
+            overrides=[
+                "data=monocular_sequence",
+                "model=monocular_gvhmr_htd",
+                "loss=monocular_htd",
+            ],
+        )
     with open_dict(cfg):
         cfg.paths.data_root = str(data_root)
         cfg.data.scene_dir = "plcs_mono_test"
         cfg.data.seq_len_range = [12, 20]
         cfg.data.batch_size = 2
         cfg.data.num_workers = 0
-        cfg.model = {
-            "name": "plcs_monocular_gvhmr",
-            "io": {"input_profile": "monocular"},
-            "hidden_dim": 512,
-            "num_layers": 12,
-            "num_heads": 8,
-            "mlp_ratio": 4.0,
-            "dropout": 0.1,
-            "max_seq_len": 256,
-            "sliding_window_len": 120,
-            "enable_pva_heads": True,
-            "predict_static_contact": True,
-        }
     return cfg
 
 
