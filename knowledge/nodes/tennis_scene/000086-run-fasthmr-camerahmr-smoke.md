@@ -50,4 +50,4 @@ PT32とPT16はどちらも8フレーム分の有限な69次元SMPL姿勢、6890�
 
 ## 再現
 
-キューの元コマンドは [run.json](../../runs/run-fasthmr-camerahmr-smoke/run.json) に記録した。固定HEADでFastHMRの外部checkout・利用者取得資産・依存を用意し、同梱した `smoke_fixed_body_inputs.py` と `run_gpu_smoke.sh` を `outputs/fasthmr-setup/` に置いて、元コマンドを共有GPUキューから実行できる。生予測は元ジョブの `.training_queue/repro/<job>/predictions/` にある。`verify_predictions.py` は元の2予測を再照合する。
+元コマンドと固定HEADは [run.json](../../runs/run-fasthmr-camerahmr-smoke/run.json) と [キューが生成した再現スクリプト](../../runs/run-fasthmr-camerahmr-smoke/repro.queue.sh) に保存した。再実行時は `TENNIS_REPO` に外部checkout・利用者取得資産・依存を用意した固定HEADのworktreeを指定し、同梱の [repro.sh](../../runs/run-fasthmr-camerahmr-smoke/repro.sh) を共有GPUキュー経由で呼ぶ。生予測は元ジョブの `.training_queue/repro/<job>/predictions/` にあり、[verify_predictions.py](../../runs/run-fasthmr-camerahmr-smoke/verify_predictions.py) で照合できる。
