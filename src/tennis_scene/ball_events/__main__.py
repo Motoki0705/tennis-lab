@@ -23,11 +23,42 @@ from src.tennis_scene.ball_events.rules import (
     BallEvent,
 )
 from src.utils.checksum import FileIntegrityError
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
 from src.utils.configuration.output_layout import new_run_id, task_output_path
 from src.utils.io import write_json_atomic
+from src.utils.paths import PROJECT_ROOT
 
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 _CLIP_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.rule_ball_events",
+    fields=(
+        BoundaryPathField(
+            "benchmark",
+            PathRole.DATA,
+            PathDirection.INPUT,
+            PathKind.DIRECTORY,
+            must_exist=True,
+            allow_role_root=True,
+        ),
+        BoundaryPathField(
+            "output_root",
+            PathRole.OUTPUT,
+            PathDirection.OUTPUT,
+            PathKind.DIRECTORY,
+            allow_role_root=True,
+        ),
+    ),
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -210,7 +241,7 @@ def run_benchmark(
     return failures == 0
 
 
-def main() -> int:
+def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--benchmark", type=Path, required=True)
     parser.add_argument("--manifest-sha256", required=True)
@@ -219,20 +250,38 @@ def main() -> int:
     parser.add_argument(
         "--clip-id", action="append", help="Select a clip. Repeat to select multiple."
     )
-    args = parser.parse_args()
-    checkout = Path(__file__).resolve().parents[3]
-    commit = subprocess.check_output(
-        ["git", "rev-parse", "HEAD"], cwd=checkout, text=True
-    ).strip()
+    args = parser.parse_args(argv)
+    benchmark = args.benchmark.expanduser().resolve()
+    output_root = args.output_root.expanduser().resolve()
+    resolver = PathResolver(
+        RuntimePathRoots(
+            project_root=PROJECT_ROOT,
+            data_root=benchmark,
+            checkpoint_root=PROJECT_ROOT,
+            artifact_root=PROJECT_ROOT,
+            output_root=output_root,
+            cache_root=PROJECT_ROOT,
+            external_asset_root=PROJECT_ROOT,
+        )
+    )
+    paths = PATH_BOUNDARY.validate(
+        {"benchmark": benchmark, "output_root": output_root}, resolver=resolver
+    )
     run_path = task_output_path(
         "tennis_scene", "analyze", "rule_ball_events", args.run_id
     )
+    output = resolver.validate(
+        PathRole.OUTPUT, paths.declared("output_root").path / run_path
+    )
+    commit = subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=PROJECT_ROOT, text=True
+    ).strip()
     return (
         0
         if run_benchmark(
-            args.benchmark,
+            paths.declared("benchmark").path,
             args.manifest_sha256,
-            args.output_root / run_path,
+            output,
             method_version=commit,
             clip_ids=args.clip_id,
         )

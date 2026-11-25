@@ -11,8 +11,9 @@ import pytest
 from numpy.typing import NDArray
 
 from src.tennis_scene.ball_events import detect_scene_events
-from src.tennis_scene.ball_events.__main__ import run_benchmark
+from src.tennis_scene.ball_events.__main__ import main, run_benchmark
 from src.tennis_scene.schema import SceneResult
+from src.utils.configuration import PathContractError
 from tests.support.tennis_scene.annotations import publish_scene_to_clip_store
 
 
@@ -152,3 +153,29 @@ def test_benchmark_records_success_and_pinned_scene_failure(tmp_path: Path) -> N
     )
     assert progress["clips"][first_id]["events"] == {"shot": 1, "bounce": 0, "net": 0}
     assert progress["clips"][second_id]["reason"] == failed["reason"]
+
+
+def test_cli_rejects_output_symlink_outside_declared_root(tmp_path: Path) -> None:
+    benchmark = tmp_path / "benchmark"
+    output_root = tmp_path / "outputs"
+    outside = tmp_path / "outside"
+    for directory in (benchmark, output_root, outside):
+        directory.mkdir()
+    (output_root / "tennis_scene").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(
+        PathContractError, match="Resolved output path is outside its root"
+    ):
+        main(
+            [
+                "--benchmark",
+                str(benchmark),
+                "--manifest-sha256",
+                "a" * 64,
+                "--output-root",
+                str(output_root),
+                "--run-id",
+                "symlink-escape",
+            ]
+        )
+    assert list(outside.iterdir()) == []
