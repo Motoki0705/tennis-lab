@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "8a25fe12b543656cb1e883e7251bd1a3fd299fd0",
+  "baseline_commit": "824ec3151f0be969319a0a5c6035fcb3781934a4",
   "files": {
     "submodules/models/ecpose/__init__.py": {
       "before": null,
@@ -7,7 +7,7 @@
     },
     "submodules/models/ecpose/inference.py": {
       "before": null,
-      "after": "e59efcbf931489202bf6692dbafe87453c9eb128576d9cc9090a2b8513ad9633"
+      "after": "57478b4063616f1f2bac3cecfcbbf289f7736b7bcb0fae2e0aa43d9c11f5c098"
     },
     "submodules/models/ecpose/releases.py": {
       "before": null,
@@ -30,8 +30,8 @@
       "after": "4cb29adcefbbbd3051ec30807e22c2439a93880b7ce704535b064d4fd43e105f"
     },
     "tennis_scene/pipeline/definition.py": {
-      "before": "cde439330a39d226a5fc5a75d05c2d607bcee47ef8fb7c8103fc0cde0e48a8bf",
-      "after": "bad21de385645ca668ba8435ba0f2354b2b5a45c13743c7b15e84407aeb2a428"
+      "before": "8ebc602ea634bae6f8fa0d52286284287d76e70589b411fc2e08426ab7737f9d",
+      "after": "4cb7d079e4f11f012c450c13a52fe07da792c6fef44b01a44e9cbea50bf6819b"
     },
     "tennis_scene/pipeline/input_assembly/ecpose.py": {
       "before": null,

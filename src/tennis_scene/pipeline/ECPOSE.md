@@ -2,7 +2,7 @@
 
 Select `recipe=ecpose` to use the published Objects365-to-COCO ECPose-L or ECPose-X model. The declaration for each camera is `ecpose → person_detection + person_pose_features`. The two readers publish the existing v2 artifact types from the same inference and source rows. Appearance features, tracking, selection and body recovery consume those types through their usual inputs.
 
-Place the pinned EdgeCrafter repository under `paths.external_asset_root` and the chosen release checkpoint under `paths.checkpoint_root`. The selected variant, checkpoint checksum, source, batch size, confidence and box margin participate in the model identity. See the [release pins and license](../../../knowledge/runs/run-meiji-player-model-comparison/EDGECRAFTER.md).
+Place the pinned EdgeCrafter repository under `paths.external_asset_root` and the chosen release checkpoint under `paths.checkpoint_root`. The selected variant, checkpoint checksum, source, batch size, confidence and box margin participate in the model identity. Plan and publication identities check the release checkpoint even for reuse without inference. PyTorch restores the model on CPU before moving it to the configured device. See the [release pins and license](../../../knowledge/runs/run-meiji-player-model-comparison/EDGECRAFTER.md).
 
 ```bash
 # Register this CUDA command with the shared training queue.
@@ -17,4 +17,4 @@ Place the pinned EdgeCrafter repository under `paths.external_asset_root` and th
 
 The official head supplies one score per person and COCO17 coordinates. The confidence option retains scores strictly above the cutoff. Boxes come from the envelope of in-image COCO17 points plus the configured margin per side. The third joint value records coordinate availability as 1 or 0, and a missing joint is `[0,0,0]`. Set the score cutoff and box margin explicitly. The example uses 0.30 and 0.10. The accuracy benchmark's cutoff is documented separately.
 
-The recipe requires person observations enabled and duplicate box merging disabled. Direct annotation is available through the standard recipe. The component store, clip publication and output file for ECPose use `recipes/ecpose`. Reuse requires the same model, backend and decode settings. `recipe=standard` remains the default.
+The recipe requires person observations enabled and duplicate box merging disabled. Direct annotation is available through the standard recipe. The component store, clip publication and output file for ECPose use `recipes/ecpose`. Reuse requires artifacts produced by the declared components with the same inputs, model, backend and decode settings. `recipe=standard` is the default.

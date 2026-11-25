@@ -59,10 +59,13 @@ def require_source(repository: Path) -> None:
         )
 
 
-def require_weight(checkpoint: Path, release: EdgeCrafterRelease) -> None:
+def require_weight(
+    checkpoint: Path, release: EdgeCrafterRelease, *, sha256: str | None = None
+) -> None:
+    """Verify the official weight using the bound asset digest when available."""
     if (
         checkpoint.stat().st_size != release.size
-        or dual_sha256(checkpoint) != release.sha256
+        or (dual_sha256(checkpoint) if sha256 is None else sha256) != release.sha256
     ):
         raise ValueError(
             f"EdgeCrafter weight does not match {release.filename}: {checkpoint}"
@@ -123,7 +126,7 @@ def load_network(
     payload = torch.load(checkpoint, map_location="cpu", weights_only=True)
     state = payload["ema"]["module"] if "ema" in payload else payload["model"]
     family = repository / release.family
-    with _LOAD_LOCK:
+    with _LOAD_LOCK, torch.device("cpu"):
         cfg = _yaml_config(family / "engine")(str(family / "configs" / release.config))
         if tuple(cfg.yaml_cfg["eval_spatial_size"]) != IMAGE_SIZE:
             raise ValueError("Unexpected EdgeCrafter input size")

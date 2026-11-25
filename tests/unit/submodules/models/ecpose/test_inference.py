@@ -1,12 +1,52 @@
 """CPU fixtures for the official EdgeCrafter image and output contracts."""
 
+from dataclasses import replace
+from pathlib import Path
+from types import SimpleNamespace
+from typing import Self
+
 import numpy as np
 import pytest
 import torch
 from numpy.typing import NDArray
 
+import src.submodules.models.ecpose.inference as inference
 from src.submodules.models.ecpose.inference import decode_predictions, preprocess_images
-from src.submodules.models.ecpose.releases import RELEASES
+from src.submodules.models.ecpose.releases import IMAGE_SIZE, RELEASES
+from src.utils.checksum import dual_sha256
+
+
+def test_load_network_restores_on_cpu_under_a_different_default_device(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class Deployable(torch.nn.Linear):
+        def deploy(self) -> Self:
+            return self
+
+    def config(_path: str) -> SimpleNamespace:
+        return SimpleNamespace(
+            yaml_cfg={"eval_spatial_size": IMAGE_SIZE, "ViTAdapter": {}},
+            model=Deployable(2, 1),
+        )
+
+    checkpoint = tmp_path / "ecpose.pth"
+    weight, bias = torch.tensor([[0.25, -0.5]]), torch.tensor([0.75])
+    torch.save({"ema": {"module": {"weight": weight, "bias": bias}}}, checkpoint)
+    release = replace(
+        RELEASES["ecpose-l-o365"],
+        size=checkpoint.stat().st_size,
+        sha256=dual_sha256(checkpoint),
+    )
+    monkeypatch.setattr(inference, "require_source", lambda _: None)
+    monkeypatch.setattr(inference, "_yaml_config", lambda _: config)
+
+    with torch.device("meta"):
+        network = inference.load_network(tmp_path, checkpoint, release)
+
+    restored = network.model.state_dict()
+    torch.testing.assert_close(restored["weight"], weight)
+    torch.testing.assert_close(restored["bias"], bias)
 
 
 def test_preprocess_converts_bgr_and_preserves_native_width_and_height() -> None:

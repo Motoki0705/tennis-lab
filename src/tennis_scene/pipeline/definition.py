@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
+from src.submodules.models.ecpose.inference import require_weight
 from src.submodules.models.fasthmr.assets import require_checkpoint_sha256
 from src.submodules.smpl_assets import require_smpl_asset
 from src.tasks.court_side.hypothesis import PlayerCourtSideConfig
@@ -214,7 +215,11 @@ def declared_model_identities(cfg: PipelineRuntimeConfig, stage: str, component:
     specs = component.model_specs()
     file_identity = cfg.court_kp.asset_catalog.file_identity
     if cfg.fasthmr is None or stage not in {FASTHMR_RECIPE, "body_placement"}:
-        return dict(model_identities(specs, file_identity))
+        identities = dict(model_identities(specs, file_identity))
+        if cfg.ecpose is not None and stage == ECPOSE_RECIPE:
+            checkpoint_identity = identities[ECPOSE_RECIPE]["assets"]["checkpoint"]
+            require_weight(cfg.ecpose.checkpoint, cfg.ecpose.release, sha256=checkpoint_identity["sha256"])
+        return identities
     pins = {path: name for name, path in cfg.fasthmr.pinned_weights.items()}
 
     def bind_pinned_asset(path: Path) -> dict[str, Any]:
@@ -452,11 +457,12 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             joint_node = f"{ECPOSE_RECIPE}/{camera}"
             ecpose_module = components[ECPOSE_RECIPE]
             add(joint_node, ecpose_module, PersonDetectionInputAssembler(),
-                {}, ecpose_module.cache_identity, camera=camera)
+                {}, ecpose_module.cache_identity, camera=camera, component_origin_only=True)
             add(detection_node, components["person_detection"], ECPoseDetectionsAssembler(),
-                {"joint": joint_node}, lambda: {"recipe": cfg.recipe}, camera=camera)
+                {"joint": joint_node}, lambda: {"recipe": cfg.recipe}, camera=camera, component_origin_only=True)
             add(f"person_pose_features/{camera}", components["person_pose_features"], ECPoseFeaturesAssembler(),
-                {"joint": joint_node, "detections": detection_node}, lambda: {"recipe": cfg.recipe}, camera=camera)
+                {"joint": joint_node, "detections": detection_node}, lambda: {"recipe": cfg.recipe},
+                camera=camera, component_origin_only=True)
         add(f"person_appearance_features/{camera}", components["person_appearance_features"],
             PersonAppearanceFeaturesInputAssembler(expected_decoder=decoders.get(camera)), {"detections": f"person_detection/{camera}"},
             lambda: {**components['person_appearance_features'].cache_identity(), "encoder": cfg.tracking.encoder,
