@@ -69,6 +69,10 @@ done
 
 Reports at `rfdetr-l/<backend>/speed-b<batch>/report.json` include case status, timings, VRAM, per-batch input IDs, and the measured Git HEAD and harness merge. Preflight failures have a `speed-failure.json` in the condition directory. Export and build receipts are under `rfdetr-l/trt16/batch-<batch>/` in the corresponding asset root.
 
+## Queue log retention
+
+Completed RF-DETR queue logs are stored in `.worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/queue-logs/` relative to the main checkout. After each job completes, copy its log there, verify its SHA-256 against the source, and record the retained path, byte count and digest in `job.log`. Add the digest and filename to `SHA256SUMS` in the retained directory and verify the copies with `sha256sum -c SHA256SUMS` from that directory.
+
 ## CPU preflight
 
 - The official L checkpoint loaded on CPU with 33,933,218 parameters, 300 queries and 91 sparse COCO logit slots. At `video_000/clip_003`, `cam0`, source frame 120, the adapter's 10 person boxes and scores exactly matched the vendor API at cutoff 0.25.

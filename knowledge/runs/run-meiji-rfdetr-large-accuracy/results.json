@@ -39,7 +39,7 @@
         "id": "0-8204479781165493285_2026-11-24T11-36-58-834506714Z_1136517_i2487-rfdetr-l-pt16-accuracy.job",
         "log": {
           "bytes": 1547,
-          "path": ".training_queue/logs/0-8204479781165493285_2026-11-24T11-36-58-834506714Z_1136517_i2487-rfdetr-l-pt16-accuracy.log",
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/queue-logs/0-8204479781165493285_2026-11-24T11-36-58-834506714Z_1136517_i2487-rfdetr-l-pt16-accuracy.log",
           "sha256": "fe59a72aa5bad92c4014a57dfb4f4d5322ab26e32627305695a7b970d1d42b7a"
         },
         "repro": ".training_queue/repro/0-8204479781165493285_2026-11-24T11-36-58-834506714Z_1136517_i2487-rfdetr-l-pt16-accuracy",
@@ -290,7 +290,7 @@
         "id": "0-8204479781438562013_2026-11-24T11-36-58-561437986Z_1136476_i2487-rfdetr-l-pt32-accuracy.job",
         "log": {
           "bytes": 1547,
-          "path": ".training_queue/logs/0-8204479781438562013_2026-11-24T11-36-58-561437986Z_1136476_i2487-rfdetr-l-pt32-accuracy.log",
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/queue-logs/0-8204479781438562013_2026-11-24T11-36-58-561437986Z_1136476_i2487-rfdetr-l-pt32-accuracy.log",
           "sha256": "aa64179c17e88f7e3f257d39f0c0611018226d3df9b08d71587d39400e9b3964"
         },
         "repro": ".training_queue/repro/0-8204479781438562013_2026-11-24T11-36-58-561437986Z_1136476_i2487-rfdetr-l-pt32-accuracy",
@@ -517,7 +517,7 @@
         "id": "0-8204479780885618164_2026-11-24T11-36-59-114381835Z_1136558_i2487-rfdetr-l-trt16-accuracy.job",
         "log": {
           "bytes": 1304,
-          "path": ".training_queue/logs/0-8204479780885618164_2026-11-24T11-36-59-114381835Z_1136558_i2487-rfdetr-l-trt16-accuracy.log",
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/queue-logs/0-8204479780885618164_2026-11-24T11-36-59-114381835Z_1136558_i2487-rfdetr-l-trt16-accuracy.log",
           "sha256": "5fe9b57f052aaa18e31ef8c58b84180ac2fb3ce1276c986e8fe46db3c299250d"
         },
         "repro": ".training_queue/repro/0-8204479780885618164_2026-11-24T11-36-59-114381835Z_1136558_i2487-rfdetr-l-trt16-accuracy",
