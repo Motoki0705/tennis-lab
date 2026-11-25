@@ -454,6 +454,17 @@ def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
             "predictions_sha256": dual_sha256(raw_path),
             "weight_sha256": release.sha256,
             "source_commit": SOURCE_COMMIT,
+            "scorer_commit": subprocess.check_output(
+                [
+                    "git",
+                    "log",
+                    "-1",
+                    "--format=%H",
+                    "--",
+                    "src/tennis_scene/evaluation/player_pose/scoring.py",
+                ],
+                text=True,
+            ).strip(),
             "input_size_hw": IMAGE_SIZE,
             "image_batch_size": args.batch_size,
             "execution": {

@@ -43,24 +43,23 @@ OMP_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 .venv/bin/python "$runner" smoke \
 
 The evaluation records `predictions.jsonl` with every fixed `FrameKey` and `metrics.json` with the cohort, backend, settings, artifact checksums and shared scorer results. Use `make_benchmark_adapter` in `edgecrafter.py` with the #2496 harness for fixed speed inputs. Each timed invocation receives already decoded native BGR images and measures resize and normalization, H2D, forward, decode and D2H through the harness.
 
-`edgecrafter_run.sh` runs one model in an exclusive queue reservation. It uses the #2496 `InputSet` and the identical 96 full images, batch 1 and 2, 30 warm-up iterations, 100 iterations in each of three blocks, and a non-default CUDA stream. Each case runs in a fresh process and saves `speed-b1.json` or `speed-b2.json` with the shared report schema. Its parity reference is the same model's PT32 batch-1 output on the fixed speed images. The driver writes both conversion receipts for the batch-2-traced TensorRT attempt to `trt16-trace2`. A TensorRT case that passes batch-1 parity advances to full-cohort scoring. The initial batch-1 trace and its outputs remain available under `trt16`.
+`edgecrafter_run.sh` runs one model's full-cohort accuracy cases in an exclusive queue reservation. It reuses the existing ECDet PyTorch results and runs ECPose in PT32, PT16 and TRT16. The batch-2-traced TensorRT attempt writes both conversion receipts and the batch-1 full-cohort accuracy to `trt16-trace2` for each model. A successful engine build advances to scoring. The initial batch-1 trace and its outputs are recorded under `trt16`.
 
 ```bash
 # Register this command in the shared training queue from the worker checkout.
 bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh \
-  ecpose-l-o365 "$SHARED_PERSON_SPEED_INPUTS" \
-  64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62 "$manifest_sha"
+  ecpose-l-o365 "$manifest_sha"
 ```
 
 For TensorRT, run export and build as separate Python processes in the training queue. The exporter traces the official deployed network under CUDA FP16 autocast, with an FP32 image binding and dynamic batch axis. It records the graph's FP16 and FP32 initializer and cast counts. Use an example batch of 2 to trace ECDet's anchor replication. A batch-1 trace dropped that branch and TensorRT warned about a batch extent of 1 in the decoder `GatherElements` at the maximum profile shape. Postprocessing uses FP32 and the same implementation for all backends. TensorRT uses a strongly typed graph and an explicit workspace and batch profile. `--engine` points to the profile to use during evaluation.
 
 ```bash
 conversion=knowledge/runs/run-meiji-player-model-comparison/edgecrafter_trt.py
-condition="$output/ecdet-l-coco/trt16"
+condition="$output/ecdet-l-coco/trt16-trace2"
 
 .venv/bin/python "$conversion" export --model ecdet-l-coco \
   --engine "$condition/engine" --receipt "$condition/onnx-export.json"
-.venv/bin/python "$conversion" build --max-batch 16 \
+.venv/bin/python "$conversion" build --max-batch 2 \
   --engine "$condition/engine" --receipt "$condition/engine-build.json"
 .venv/bin/python "$runner" evaluate --model ecdet-l-coco --backend trt16 \
   --manifest-sha256 "$manifest_sha" --engine "$condition/engine" --output "$condition"
@@ -69,7 +68,11 @@ condition="$output/ecdet-l-coco/trt16"
   --pt32 "$output/ecdet-l-coco/pt32" --candidate "$condition"
 ```
 
-CUDA PT32 fixes matmul and cuDNN convolution to IEEE precision. PT16 uses CUDA FP16 autocast with FP32 weights and input tensors. The separate PT32 parity receipt aligns the exact same source frames and verifies prediction hashes and evaluation settings. It uses one-to-one IoU 0.50 matching for rows with score ≥0.25, then requires at least 98% matches in both directions, matched IoU P05 ≥0.90, and absolute score error P95 ≤0.025. Pose parity adds ≥98% joint availability agreement and paired joint error P95 ≤8 native pixels. All precision conditions use the same partial-label pseudo-reference for accuracy.
+CUDA PT32 fixes matmul and cuDNN convolution to IEEE precision. PT16 uses CUDA FP16 autocast with FP32 weights and input tensors. The separate `parity-vs-pt32-shared.json` aligns exact source frames and verifies prediction hashes and evaluation settings. It passes all saved prediction rows and ECPose joint validity to the common `compare_detections` policy. Detection uses IoU P05 ≥0.98, score difference P95 ≤0.01, and missing and extra fractions ≤1%. ECPose also uses the common COCO17 rules. All precision conditions use the same partial-label pseudo-reference for accuracy. [Shared parity contract](../../../src/utils/inference_benchmark.md#出力のparity)
+
+## Fixed-input speed cases
+
+`edgecrafter_speed.py` reads the #2496 input manifest and timing protocol through the shared checksum loader. It runs the ordered set of 96 native BGR images in batch 1 or 2, with 30 warm-ups and three blocks of 100 iterations on a dedicated CUDA stream. The PT32 batch-1 output supplies the precision reference. The harness retains speed and VRAM results for `parity_failed` and records execution blockers under `infeasible`. Use the same engine as its full-cohort accuracy report. The previous six speed jobs were cancelled before execution while the common timing contract was revised.
 
 ## Rescoring stored predictions
 
@@ -87,11 +90,13 @@ PYTHONPATH=.:"$helper" .venv/bin/python "$run/edgecrafter_rescore.py" \
   --summary "$output/edgecrafter-rescore.json" "${conditions[@]}"
 ```
 
-All nine previously measured ECDet conditions retained their numeric aggregates after the `0d4bf0990` equal-IoU scoring change. Each report covers 6,844 images and 26,276 eligible boxes. The receipt contains paths and hashes for the original predictions, updated accuracy reports and PT32 parity reports. [Rescoring receipt](edgecrafter-rescore.json)
+All nine previously measured ECDet conditions retained their numeric aggregates after the `0d4bf0990` equal-IoU scoring change. Each report covers 6,844 images and 26,276 eligible boxes. The receipt contains paths and hashes for the original predictions, updated accuracy reports and historical parity reports from the original diagnostic. [Rescoring receipt](edgecrafter-rescore.json)
+
+On the same saved frames, the shared parity rules passed the two COCO-only PT16 variants. ECDet-L O365 PT16 exceeded the missing and extra fractions at 1.39% and 1.14%. ECDet-X O365 PT16 also fell below the IoU threshold with P05 0.9767. These comparisons cover all saved person rows from the full accuracy cohort. The fixed-speed cohort receives its own parity report. [Shared parity on the full cohort](edgecrafter-shared-parity.json)
 
 ## First TensorRT precision check
 
-The original ECDet-L COCO TensorRT plan ran all 6,844 images at batch 1 on the RTX 5060 Ti. It matched 66.4% of the person rows in both directions against PT32 at the parity cutoff. The matched IoU P05 was 0.884 and absolute score error P95 was 0.313. For original frames 0 and 2 of `clip_003/cam0`, ONNX Runtime CPU running the same exported graph matched 24 of 24 PT32 rows. The TensorRT plan matched 17 of 24 on those inputs. The dynamic batch warning and the batch-1 precision mismatch are separate observations.
+The original ECDet-L COCO TensorRT plan ran all 6,844 images at batch 1 on the RTX 5060 Ti. The initial diagnostic at score ≥0.25 matched 66.4% of the person rows in both directions against PT32. The matched IoU P05 was 0.884 and absolute score error P95 was 0.313. For original frames 0 and 2 of `clip_003/cam0`, ONNX Runtime CPU running the same exported graph matched 24 of 24 PT32 rows. The TensorRT plan matched 17 of 24 on those inputs. The dynamic batch warning and the batch-1 precision mismatch are separate observations.
 
 ## CPU integration check
 

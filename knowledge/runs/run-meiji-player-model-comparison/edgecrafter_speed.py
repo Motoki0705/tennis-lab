@@ -8,6 +8,7 @@ from collections.abc import Callable, Iterator, Mapping
 from pathlib import Path
 from typing import TypeVar
 
+import numpy as np
 import torch
 from edgecrafter import (
     ASSETS,
@@ -16,9 +17,8 @@ from edgecrafter import (
     Frames,
     make_benchmark_adapter,
 )
-from edgecrafter_parity import _prediction, prediction_parity
-from run import SWEEPS, inputs, load_conversion, read_json
-from speed_inputs import InputSet
+from edgecrafter_parity import _prediction, detection_output
+from run import load_conversion, read_json
 
 from src.submodules.models.ecpose.releases import IMAGE_SIZE, RELEASES, SOURCE_COMMIT
 from src.tennis_scene.evaluation.player_pose.scoring import Predictions
@@ -29,12 +29,13 @@ from src.utils.inference_benchmark import (
     BatchStages,
     BenchmarkAdapter,
     BenchmarkCase,
-    BenchmarkProtocol,
     ConditionUnavailable,
     ParityResult,
     Status,
     benchmark,
 )
+from src.utils.inference_benchmark_inputs import PinnedBenchmarkInputs
+from src.utils.inference_parity import compare_detections
 from src.utils.io import write_json_atomic
 
 Value = TypeVar("Value")
@@ -82,6 +83,7 @@ def read_pt32_reference(
         "official_source_commit",
         "weight_sha256",
         "dataset_id",
+        "timing_protocol_sha256",
         "image_size_hw",
         "pose_box_margin",
         "person_score_exclusive",
@@ -122,39 +124,48 @@ def compare_speed_rows(
     *,
     has_pose: bool,
 ) -> ParityResult:
-    if reference.keys() != candidate.keys():
-        return ParityResult(
-            False,
-            {"reference_ids": len(reference), "candidate_ids": len(candidate)},
-            "Speed input IDs differ from PT32",
-        )
-    return prediction_parity(
-        ((reference[key], value) for key, value in candidate.items()), has_pose=has_pose
+    return compare_detections(
+        {key: detection_output(value) for key, value in reference.items()},
+        {key: detection_output(value) for key, value in candidate.items()},
+        with_pose=has_pose,
     )
 
 
 def one_case(args: argparse.Namespace) -> Status:
     backend = BACKENDS[args.backend]
     release = RELEASES[args.model]
-    fixed = InputSet(args.inputs)
-    if fixed.sha256 != args.inputs_sha256:
-        raise ValueError(
-            f"Expected fixed speed manifest SHA-256 {args.inputs_sha256}, got {fixed.sha256}"
-        )
+    fixed = PinnedBenchmarkInputs(
+        args.inputs,
+        args.timing_protocol,
+        manifest_sha256=args.inputs_sha256,
+        timing_sha256=args.timing_protocol_sha256,
+    )
     device = torch.device(args.device)
     if device.type != "cuda":
         raise ValueError("Speed measurement requires a CUDA device")
-    protocol = BenchmarkProtocol(batch_sizes=SWEEPS["dino"])
-    batches: list[Batch[Frames]] = inputs(fixed, "dino", args.batch_size)
+    schedule = fixed.schedule("frames", args.batch_size)
+    images = {}
+    for row in fixed.rows("frames"):
+        path = fixed.verified_asset(row)
+        frame = np.load(path, allow_pickle=False)
+        if frame.dtype != np.uint8 or list(frame.shape) != row["shape"]:
+            raise ValueError(f"Unexpected native BGR frame shape or dtype: {path}")
+        images[row["id"]] = frame
+    batches: list[Batch[Frames]] = [
+        Batch(ids, tuple(images[key] for key in ids)) for ids in schedule.batch_ids
+    ]
+    schedule.require_batches([batch.ids for batch in batches])
     conversion = tuple(load_conversion(path) for path in args.conversion)
     case = BenchmarkCase(
         args.model,
         backend,
         args.batch_size,
         "image",
-        fixed.sha256,
+        fixed.manifest_sha256,
         {
             "dataset_id": fixed.manifest["id"],
+            "timing_protocol_sha256": fixed.timing_sha256,
+            "timed_input_ids_sha256": schedule.timed_ids_sha256,
             "input_decode": "predecoded BGR",
             "cuda_stream": "non-default",
             "host_threads": torch.get_num_threads(),
@@ -201,7 +212,9 @@ def one_case(args: argparse.Namespace) -> Status:
         if tuple(actual) != expected_ids:
             raise ValueError("Speed predictions do not cover the fixed batch order")
         path = args.output / f"speed-b{args.batch_size}-predictions.json"
-        write_json_atomic(path, {"input_manifest_sha256": fixed.sha256, "rows": actual})
+        write_json_atomic(
+            path, {"input_manifest_sha256": fixed.manifest_sha256, "rows": actual}
+        )
         reference = (
             actual
             if backend is Backend.PT32 and args.batch_size == 1
@@ -214,18 +227,19 @@ def one_case(args: argparse.Namespace) -> Status:
             parity.passed,
             {**parity.metrics, "predictions_sha256": dual_sha256(path)},
             parity.reason,
+            parity.criteria,
         )
 
-    with torch.cuda.stream(torch.cuda.Stream(device=device)):
-        report = benchmark(
-            case,
-            batches,
-            {backend: adapter},
-            device=device,
-            conversion=conversion,
-            check_parity=check,
-            protocol=protocol,
-        )
+    report = benchmark(
+        case,
+        batches,
+        {backend: adapter},
+        device=device,
+        conversion=conversion,
+        check_parity=check,
+        protocol=schedule.protocol,
+        dedicated_stream=True,
+    )
     path = args.output / f"speed-b{args.batch_size}.json"
     write_json_atomic(path, report.to_dict())
     print(
@@ -240,9 +254,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", choices=RELEASES, required=True)
     parser.add_argument("--backend", choices=BACKENDS, required=True)
-    parser.add_argument("--batch-size", choices=SWEEPS["dino"], type=int, required=True)
+    parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--inputs", type=Path, required=True)
     parser.add_argument("--inputs-sha256", required=True)
+    parser.add_argument("--timing-protocol", type=Path, required=True)
+    parser.add_argument("--timing-protocol-sha256", required=True)
     parser.add_argument("--assets", type=Path, default=ASSETS)
     parser.add_argument("--device", default="cuda:0")
     parser.add_argument("--engine", type=Path)

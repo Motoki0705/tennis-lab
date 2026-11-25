@@ -31,7 +31,7 @@ def test_speed_rows_require_equal_image_ids(script: dict[str, Any]) -> None:
     assert compare({"frame0": frame}, {"frame0": frame}, has_pose=False).passed
     report = compare({"frame0": frame}, {"frame1": frame}, has_pose=False)
     assert not report.passed
-    assert report.reason == "Speed input IDs differ from PT32"
+    assert report.metrics["invalid"] is True
 
 
 def test_speed_reference_validates_manifest_and_prediction_digest(
@@ -41,6 +41,7 @@ def test_speed_reference_validates_manifest_and_prediction_digest(
         "official_source_commit": "a" * 40,
         "weight_sha256": "b" * 64,
         "dataset_id": "speed-example",
+        "timing_protocol_sha256": "e" * 64,
         "image_size_hw": [640, 640],
         "pose_box_margin": None,
         "person_score_exclusive": 0.0,
