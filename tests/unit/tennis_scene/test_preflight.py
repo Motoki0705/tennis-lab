@@ -8,8 +8,9 @@ from pathlib import Path
 
 import pytest
 from hydra import compose, initialize_config_dir
-from omegaconf import DictConfig
+from omegaconf import DictConfig, open_dict
 
+from src.submodules.models.fasthmr.assets import CHECKPOINT_SHA256
 from src.tennis_scene import preflight
 from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
@@ -100,7 +101,7 @@ def test_acquired_gvhmr_weights_keep_byte_pins_in_preflight(
     assert requirement.size_bytes == len(valid)
 
     def extension() -> Path:
-        return requirement.path.parent / "unused-extension.so"
+        return Path(requirement.path).parent / "unused-extension.so"
 
     accepted = check_assets([requirement], extension_validator=extension)
     assert all(check.status == "ok" for check in accepted)
@@ -152,6 +153,21 @@ def test_diagnostic_inventory_matches_typed_runtime(installation_config: DictCon
     runtime = PipelineRuntimeConfig.from_config(installation_config)
     diagnostic = preflight.configured_requirements(installation_config)
     assert {item.name: item for item in diagnostic} == {item.name: item for item in standard_requirements(runtime)}
+
+
+def test_fasthmr_inventory_uses_native_assets(installation_config: DictConfig) -> None:
+    installation_config.recipe = "fasthmr"
+    with open_dict(installation_config):
+        installation_config.fasthmr = dict(
+            repository="FastHMR", assets="fasthmr", backend="pt32", feature_batch_size=16, seed=0,
+        )
+    runtime = PipelineRuntimeConfig.from_config(installation_config)
+    requirements = {item.name: item for item in preflight.configured_requirements(installation_config)}
+    assert requirements == {item.name: item for item in standard_requirements(runtime)}
+    for asset in ("backbone", "fov", "mean_params", "smpl"):
+        assert requirements[f"fasthmr_{asset}"].sha256 == CHECKPOINT_SHA256[asset]
+    assert requirements["fasthmr_smpl"].path.name == "SMPL_NEUTRAL.pkl"
+    assert not {"hmr2", "gvhmr", "body_model"} & requirements.keys()
 
 
 def test_normalized_sample_spelling_keeps_byte_pins_and_companion_files(installation_config: DictConfig) -> None:

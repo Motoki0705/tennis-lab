@@ -10,9 +10,15 @@ from typing import Any, cast
 from src.tennis_scene.pipeline.components.body_view_selection import (
     BodyViewSelectionOutput,
 )
+from src.tennis_scene.pipeline.components.fasthmr import FastHMRInput, FastHMROutput
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRInput
 from src.tennis_scene.pipeline.components.hmr2_features import HMR2FeaturesOutput
 from src.tennis_scene.pipeline.contracts import ClipSource
+from src.tennis_scene.pipeline.recipes import (
+    FASTHMR_RECIPE,
+    STANDARD_RECIPE,
+    RecipeName,
+)
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec, restore_type
 from src.tennis_scene.pipeline.storage.scene_index import (
     assert_current_component_lineage,
@@ -20,7 +26,10 @@ from src.tennis_scene.pipeline.storage.scene_index import (
 )
 
 
-def require_current_body_artifacts(root: Path, scene_reference: Mapping[str, Any]) -> dict[str, Any]:
+def require_current_body_artifacts(
+    root: Path, scene_reference: Mapping[str, Any], *, recipe: RecipeName = STANDARD_RECIPE,
+    fasthmr_settings: Mapping[str, Any] | None = None,
+) -> dict[str, Any]:
     """Follow this scene's body dependencies, including saved feature integrity.
 
     Active artifacts elsewhere in the index cannot substitute for the actual
@@ -42,6 +51,23 @@ def require_current_body_artifacts(root: Path, scene_reference: Mapping[str, Any
     placement_ref = scene['dependencies'].get('placement')
     placement = read('body_placement', placement_ref, 'placed_bodies', 1)
     recovered_ref = placement['dependencies'].get('recovered')
+    if recipe == FASTHMR_RECIPE:
+        recovered = read(FASTHMR_RECIPE, recovered_ref, 'body_parameters', 3)
+        if recovered['provenance'].get('origin') != 'component':
+            raise ValueError('Published FastHMR requires component origin')
+        if fasthmr_settings is None or recovered['identity'].get('settings') != fasthmr_settings:
+            raise ValueError('Published FastHMR differs from the declared execution settings')
+        selection_ref = recovered['dependencies'].get('selection')
+        selection = read('body_view_selection', selection_ref, 'body_view_selection', 1)
+        body = ArtifactCodec(FastHMROutput).load(
+            recovered['payload'], (root / recovered_ref['path']).parent, recovered['arrays'],
+        )
+        selected = ArtifactCodec(BodyViewSelectionOutput).load(
+            selection['payload'], (root / selection_ref['path']).parent, selection['arrays'],
+        )
+        source = cast(ClipSource, restore_type(document['source'], ClipSource))
+        body.validate_selection(FastHMRInput(source, selected))
+        return {'body_placement': placement_ref, FASTHMR_RECIPE: recovered_ref, 'body_view_selection': selection_ref}
     recovered = read('gvhmr', recovered_ref, 'body_parameters', 2)
     features_ref = recovered['dependencies'].get('features')
     features = read('hmr2_features', features_ref, 'hmr2_features', 1)

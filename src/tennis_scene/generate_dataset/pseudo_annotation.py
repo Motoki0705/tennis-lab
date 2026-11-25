@@ -71,7 +71,8 @@ def generate_pseudo_annotations(
                                         expected_scene=None if scene_export is None else scene_export())
             outcomes.append(AnnotationGenerationResult(record.clip_id, "generated", marker))
         except Exception as error:
-            message = record_annotation_failure(dataset_dir / record.path, record.clip_id, error)
+            message = record_annotation_failure(dataset_dir / record.path, record.clip_id, error,
+                                                publication_identity=publication_identity)
             outcomes.append(AnnotationGenerationResult(record.clip_id, "failed", error=message))
             if not continue_on_error:
                 raise

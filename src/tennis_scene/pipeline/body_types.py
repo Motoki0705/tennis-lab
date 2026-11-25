@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import ClassVar
 
 import numpy as np
 import torch
@@ -12,6 +13,8 @@ from numpy.typing import NDArray
 
 @dataclass(frozen=True)
 class BodyParameters:
+    pose_width: ClassVar[int] = 63
+
     body_pose: NDArray[np.float32]
     global_orient: NDArray[np.float32]
     betas: NDArray[np.float32]
@@ -19,13 +22,20 @@ class BodyParameters:
 
     def __post_init__(self) -> None:
         count = len(self.body_pose)
-        for name, width in (("body_pose", 63), ("global_orient", 3), ("betas", 10), ("transl", 3)):
+        for name, width in (("body_pose", self.pose_width), ("global_orient", 3), ("betas", 10), ("transl", 3)):
             value = getattr(self, name)
             if value.shape != (count, width) or value.dtype != np.float32 or not np.isfinite(value).all():
                 raise ValueError(f"Invalid body parameter {name}")
 
     def tensors(self) -> dict[str, torch.Tensor]:
         return {name: torch.from_numpy(np.array(getattr(self, name), copy=True)) for name in ("body_pose", "global_orient", "betas", "transl")}
+
+
+@dataclass(frozen=True)
+class NativeSMPLParameters(BodyParameters):
+    """SMPL (23 local joints), in the selected camera frame in metres."""
+
+    pose_width: ClassVar[int] = 69
 
 
 @dataclass(frozen=True)
