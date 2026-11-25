@@ -1,0 +1,352 @@
+{
+  "schema_version": 1,
+  "speed_input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+  "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+  "baseline_cases": {
+    "path": "knowledge/runs/run-person-model-speed-low-precision/cases.json",
+    "sha256": "8476a42829d0e96d4ed859dd17aff10f63cb1a3cfd0a111ea9afb3df99fa0a2f"
+  },
+  "validated_candidate_timing_samples": 7200,
+  "jobs": [
+    {
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "state": "done",
+      "finished_at_ns": 1795610268844424593,
+      "execution_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+      "captured_at": "2026-11-25T21:34:23+09:00",
+      "terminal_record": {
+        "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/comparison-evidence/completion.json",
+        "sha256": "e3baf8dfb59fe6c71d0452fb4ee0365d82f6c32e0c838a17f9a262d9b0773b60"
+      },
+      "run": {
+        "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/run.json",
+        "sha256": "b219d1db155c53ff0c929c6e8c78d7fac228962cb6e93ce82af1b2887064c8ac"
+      },
+      "command": {
+        "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/repro.sh",
+        "sha256": "b66a6d561f0d62a3c4080ab6722a5fbe725c432744c376008f48dada7433e82d"
+      },
+      "log": {
+        "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/comparison-evidence/queue.log",
+        "sha256": "9760124f8cec08bd8e5b6c3b8f5d0a31f3eea41b96d4769690db427fd3d80c68"
+      },
+      "case_exits": {
+        "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/case-exits.tsv",
+        "sha256": "336570347ee3d8b60ed3ed37497af098fd9d53b5329a9dd95e9a69d3b4912836"
+      }
+    },
+    {
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "state": "done",
+      "finished_at_ns": 1795610441972908926,
+      "execution_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+      "captured_at": "2026-11-25T21:37:49+09:00",
+      "terminal_record": {
+        "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/comparison-evidence/completion.json",
+        "sha256": "f12cd6eb6050379930bccd8eda7ca9b97cb54b11630216b56227bc4ce3c04bd4"
+      },
+      "run": {
+        "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/run.json",
+        "sha256": "a4a3d071d94ec13dc74254762870070d282388bdf54198baa2e69e41a2d551b7"
+      },
+      "command": {
+        "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/repro.sh",
+        "sha256": "2020b944da71cefa1af3d3e438607460a68c57c9b6da4ec94bb58502b998fb95"
+      },
+      "log": {
+        "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/comparison-evidence/queue.log",
+        "sha256": "d2ba0a45becda9a3a384e28f71cca0336079b6a77de4147db966b6de2e4d4125"
+      },
+      "case_exits": {
+        "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/case-exits.tsv",
+        "sha256": "336570347ee3d8b60ed3ed37497af098fd9d53b5329a9dd95e9a69d3b4912836"
+      }
+    },
+    {
+      "job_id": "0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync.job",
+      "state": "done",
+      "finished_at_ns": 1795608698898834892,
+      "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+      "captured_at": "2026-11-25T21:07:12+09:00",
+      "terminal_record": {
+        "path": ".training_queue/repro/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync/comparison-evidence/completion.json",
+        "sha256": "52dddc7d906310cbdf27c2bb4cefaa8ffc0ad63d903a25504185f7104221fd09"
+      },
+      "run": {
+        "path": ".training_queue/repro/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync/run.json",
+        "sha256": "524addeae787e55a7d7b3b09581eb566ed51d702a834e55c5a7e0bfd9018a65d"
+      },
+      "command": {
+        "path": ".training_queue/repro/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync/repro.sh",
+        "sha256": "88df69cdca5e4ed43b133aefad7932c5f30b08a90bc9ae6931270020256ac342"
+      },
+      "log": {
+        "path": ".training_queue/repro/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync/comparison-evidence/queue.log",
+        "sha256": "4b41392e79b9212c937b8667a24fc24e26b1c907531572c46ffe57c528d26ed9"
+      }
+    },
+    {
+      "job_id": "0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync.job",
+      "state": "done",
+      "finished_at_ns": 1795608945223336483,
+      "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+      "captured_at": "2026-11-25T21:11:39+09:00",
+      "terminal_record": {
+        "path": ".training_queue/repro/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync/comparison-evidence/completion.json",
+        "sha256": "93d4318e617df9991e1553d7d4bb145de2457a5efb25777e003e915d5416923a"
+      },
+      "run": {
+        "path": ".training_queue/repro/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync/run.json",
+        "sha256": "ce3054113125ffe6532a57d6f529acdc4d59494218ab61dba4215947f8868e4d"
+      },
+      "command": {
+        "path": ".training_queue/repro/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync/repro.sh",
+        "sha256": "0893088adc5e6f965de579da005fcfdf5f097b80c65b7d50f2f3a0aabe4cc160"
+      },
+      "log": {
+        "path": ".training_queue/repro/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync/comparison-evidence/queue.log",
+        "sha256": "53856123405c13114c91bae243ecf64cad64314eed6e3de23c172177aa3061af"
+      }
+    },
+    {
+      "job_id": "0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync.job",
+      "state": "done",
+      "finished_at_ns": 1795609315396505583,
+      "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+      "captured_at": "2026-11-25T21:15:45+09:00",
+      "terminal_record": {
+        "path": ".training_queue/repro/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync/comparison-evidence/completion.json",
+        "sha256": "6db6964e57f1132837e5e11779fba5cd57ea89fd50c2ea9ef25bd04778df1b8a"
+      },
+      "run": {
+        "path": ".training_queue/repro/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync/run.json",
+        "sha256": "0bbaae96deb297f4e723aa4c8ece3e82affd4e9cf5f60b14300d1038a0991015"
+      },
+      "command": {
+        "path": ".training_queue/repro/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync/repro.sh",
+        "sha256": "797198feb3a014229c2479b2e876b0b3d944f6a01859261f5c81c3c007b9e688"
+      },
+      "log": {
+        "path": ".training_queue/repro/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync/comparison-evidence/queue.log",
+        "sha256": "c779c16118387123db4196ef8e2e96755035336358cbab7842adbdd5206ceadc"
+      }
+    },
+    {
+      "job_id": "0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync.job",
+      "state": "done",
+      "finished_at_ns": 1795609696019249443,
+      "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+      "captured_at": "2026-11-25T21:21:56+09:00",
+      "terminal_record": {
+        "path": ".training_queue/repro/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync/comparison-evidence/completion.json",
+        "sha256": "666520b1aea477cffe757385c085dce5e90ee1dd5ff382afe4e8c39d37fe0d6f"
+      },
+      "run": {
+        "path": ".training_queue/repro/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync/run.json",
+        "sha256": "30a8c21af3f906b231c18538fcdc8656dfaed2672aab681f5ead507cde5d946d"
+      },
+      "command": {
+        "path": ".training_queue/repro/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync/repro.sh",
+        "sha256": "03ec13bdc3d69709cb5bcaf9c2af62070f80a48f8e88f8c877a4d34dffbc5b3b"
+      },
+      "log": {
+        "path": ".training_queue/repro/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync/comparison-evidence/queue.log",
+        "sha256": "229b93523d6fe366b92752b4e9af5212fbc09badb19bf7d48b0171af0a9f8698"
+      }
+    }
+  ],
+  "reports": [
+    {
+      "model": "rtmpose-m",
+      "backend": "PT16",
+      "batch_size": 1,
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/rtmpose-m/PT16-b1/report.json",
+      "sha256": "d05dd3be02d9ce2ceba0c4132b866d2c2529e7faeb36f40801acbc84cd99ff8c"
+    },
+    {
+      "model": "rtmpose-m",
+      "backend": "PT16",
+      "batch_size": 4,
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/rtmpose-m/PT16-b4/report.json",
+      "sha256": "c8b3d8b68c06bc27c531e10392d391e8345d4f3b2c0df3ded3cd3b9e9110a31b"
+    },
+    {
+      "model": "rtmpose-m",
+      "backend": "PT16",
+      "batch_size": 8,
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/rtmpose-m/PT16-b8/report.json",
+      "sha256": "65b49b09237ffdcda144dae35be27f2f7858dba0c73fa95c3eb3457227beb805"
+    },
+    {
+      "model": "rtmpose-m",
+      "backend": "TRT16",
+      "batch_size": 1,
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/rtmpose-m/TRT16-b1/report.json",
+      "sha256": "3f0ac1ae77a0fc76b889fcd1facd586622b510712059f0552310cea262929ba4"
+    },
+    {
+      "model": "rtmpose-m",
+      "backend": "TRT16",
+      "batch_size": 4,
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/rtmpose-m/TRT16-b4/report.json",
+      "sha256": "f396312881a38c6790077698025f7dd35c817346ac14acad6d2001166ac5de45"
+    },
+    {
+      "model": "rtmpose-m",
+      "backend": "TRT16",
+      "batch_size": 8,
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/rtmpose-m/TRT16-b8/report.json",
+      "sha256": "6982790f68b0246b8d1de9b67f4e45e99a7a20b6168565f8350e418f40e3f173"
+    },
+    {
+      "model": "rtmpose-x",
+      "backend": "PT16",
+      "batch_size": 1,
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/rtmpose-x/PT16-b1/report.json",
+      "sha256": "088b47a1974965d81d7c6db9f073341949b1df41c2854454c846e9f7246ed1ac"
+    },
+    {
+      "model": "rtmpose-x",
+      "backend": "PT16",
+      "batch_size": 4,
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/rtmpose-x/PT16-b4/report.json",
+      "sha256": "e55760ece4a0870a78507ff995ef23eb8b913339844c0e3010fa2bb5d8a42d2a"
+    },
+    {
+      "model": "rtmpose-x",
+      "backend": "PT16",
+      "batch_size": 8,
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/rtmpose-x/PT16-b8/report.json",
+      "sha256": "269e03f9c6cc85a715d8b2efe55c6ff758a0b24b72d4e4584d29dc648ef012de"
+    },
+    {
+      "model": "rtmpose-x",
+      "backend": "TRT16",
+      "batch_size": 1,
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/rtmpose-x/TRT16-b1/report.json",
+      "sha256": "cb0998012c3a9743b249aefcbb1384b4d6ce00ade5457b84acf45a90ec015bf1"
+    },
+    {
+      "model": "rtmpose-x",
+      "backend": "TRT16",
+      "batch_size": 4,
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/rtmpose-x/TRT16-b4/report.json",
+      "sha256": "f6fa487dba3ffc70d9b40b1017fc8357d0f49569cc174cf0a8bd99a7c8cdbb0b"
+    },
+    {
+      "model": "rtmpose-x",
+      "backend": "TRT16",
+      "batch_size": 8,
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/rtmpose-x/TRT16-b8/report.json",
+      "sha256": "d46d6a7a5686fb99edb8f275cb739aa116dde29f580eefd80629fbd97ec60c99"
+    },
+    {
+      "model": "pmpose-l",
+      "backend": "PT16",
+      "batch_size": 1,
+      "job_id": "0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync.job",
+      "path": ".training_queue/repro/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync/comparison-evidence/PT16-b1/report.json",
+      "sha256": "a3e7a49e3d4078a5e92497c3555142636a9432175257ffd9df46ab9905e42b98"
+    },
+    {
+      "model": "pmpose-l",
+      "backend": "PT16",
+      "batch_size": 4,
+      "job_id": "0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync.job",
+      "path": ".training_queue/repro/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync/comparison-evidence/PT16-b4/report.json",
+      "sha256": "9aa27b8e9a1897c49a5a5e306e0864093af33628e70c5978fe154fd0c1adf66b"
+    },
+    {
+      "model": "pmpose-l",
+      "backend": "PT16",
+      "batch_size": 8,
+      "job_id": "0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync.job",
+      "path": ".training_queue/repro/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync/comparison-evidence/PT16-b8/report.json",
+      "sha256": "11c3497cfeca45ff37377119f413533be454d3e94d7a7749beda3e04dbe65e45"
+    },
+    {
+      "model": "pmpose-l",
+      "backend": "TRT16",
+      "batch_size": 1,
+      "job_id": "0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync.job",
+      "path": ".training_queue/repro/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync/comparison-evidence/TRT16-b1/report.json",
+      "sha256": "84c2e54d4ccf869bd66ebfd2d8bbfaccc726b77e7eeba5c9e9afaf58a06cf443"
+    },
+    {
+      "model": "pmpose-l",
+      "backend": "TRT16",
+      "batch_size": 4,
+      "job_id": "0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync.job",
+      "path": ".training_queue/repro/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync/comparison-evidence/TRT16-b4/report.json",
+      "sha256": "24b360fe9bfdf2b46703226522204c4c08dce870f1007e8407371bd9680bf31f"
+    },
+    {
+      "model": "pmpose-l",
+      "backend": "TRT16",
+      "batch_size": 8,
+      "job_id": "0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync.job",
+      "path": ".training_queue/repro/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync/comparison-evidence/TRT16-b8/report.json",
+      "sha256": "827447c7c0ab0b9f018862f67e315e03fb5e9f788e3fcc7955022fb5f8483e4f"
+    },
+    {
+      "model": "pmpose-h",
+      "backend": "PT16",
+      "batch_size": 1,
+      "job_id": "0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync.job",
+      "path": ".training_queue/repro/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync/comparison-evidence/PT16-b1/report.json",
+      "sha256": "c515c349d556dbb8294b2a6f8699cadee55a61681f02704b26dccf87d9f3859c"
+    },
+    {
+      "model": "pmpose-h",
+      "backend": "PT16",
+      "batch_size": 4,
+      "job_id": "0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync.job",
+      "path": ".training_queue/repro/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync/comparison-evidence/PT16-b4/report.json",
+      "sha256": "5790764b6bb656f515e937e3137faf6a3df684d47f987ebf2a285f90084f9001"
+    },
+    {
+      "model": "pmpose-h",
+      "backend": "PT16",
+      "batch_size": 8,
+      "job_id": "0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync.job",
+      "path": ".training_queue/repro/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync/comparison-evidence/PT16-b8/report.json",
+      "sha256": "63751b9d6f6cef3d7be39e0f1ec7218ed0f5bdd9204e042a7364fddf9f469307"
+    },
+    {
+      "model": "pmpose-h",
+      "backend": "TRT16",
+      "batch_size": 1,
+      "job_id": "0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync.job",
+      "path": ".training_queue/repro/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync/comparison-evidence/TRT16-b1/report.json",
+      "sha256": "f2a27feff1e0c10e9be29d92e89afcae39301c4cec47edbf870bca88a8b24921"
+    },
+    {
+      "model": "pmpose-h",
+      "backend": "TRT16",
+      "batch_size": 4,
+      "job_id": "0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync.job",
+      "path": ".training_queue/repro/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync/comparison-evidence/TRT16-b4/report.json",
+      "sha256": "04315d5da3bdeea529daabd6c506b04c8ab16fb3c6a4a1d5b49ecc75e750ae7a"
+    },
+    {
+      "model": "pmpose-h",
+      "backend": "TRT16",
+      "batch_size": 8,
+      "job_id": "0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync.job",
+      "path": ".training_queue/repro/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync/comparison-evidence/TRT16-b8/report.json",
+      "sha256": "ae56ac8e74e2ce77ffd60e5e4febbd01b2ecd5d6c0a2401a486b3b2653b06590"
+    }
+  ]
+}
