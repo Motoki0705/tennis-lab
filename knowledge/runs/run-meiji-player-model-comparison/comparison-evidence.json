@@ -560,6 +560,11 @@
       "speed": {
         "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-speed.json",
         "sha256": "dbad59a352b09c543616eb1283debd5aabbacbc5288f9b792ac3a23f585c3dc4"
+      },
+      "diagnosis": {
+        "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt-diagnosis-v2.json",
+        "sha256": "c3665d4d91a748fa43a67a9df64e18e6fd7cb9c98c98c11654006da446786554",
+        "commit": "9fa9b13a80ec8bdd80dddbaa408f39e094e2a7e5"
       }
     },
     "rt_detr_v4": {
