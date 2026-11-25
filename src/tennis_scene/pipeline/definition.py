@@ -457,7 +457,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
             joint_node = f"{ECPOSE_RECIPE}/{camera}"
             ecpose_module = components[ECPOSE_RECIPE]
             add(joint_node, ecpose_module, PersonDetectionInputAssembler(),
-                {}, ecpose_module.cache_identity, camera=camera, component_origin_only=True)
+                {}, lambda: {"recipe": cfg.recipe}, camera=camera, component_origin_only=True)
             add(detection_node, components["person_detection"], ECPoseDetectionsAssembler(),
                 {"joint": joint_node}, lambda: {"recipe": cfg.recipe}, camera=camera, component_origin_only=True)
             add(f"person_pose_features/{camera}", components["person_pose_features"], ECPoseFeaturesAssembler(),

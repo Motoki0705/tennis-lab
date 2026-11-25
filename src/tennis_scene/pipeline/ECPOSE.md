@@ -18,3 +18,5 @@ Place the pinned EdgeCrafter repository under `paths.external_asset_root` and th
 The official head supplies one score per person and COCO17 coordinates. The confidence option retains scores strictly above the cutoff. Boxes come from the envelope of in-image COCO17 points plus the configured margin per side. The third joint value records coordinate availability as 1 or 0, and a missing joint is `[0,0,0]`. Set the score cutoff and box margin explicitly. The example uses 0.30 and 0.10. The accuracy benchmark's cutoff is documented separately.
 
 The recipe requires person observations enabled and duplicate box merging disabled. Direct annotation is available through the standard recipe. The component store, clip publication and output file for ECPose use `recipes/ecpose`. Reuse requires artifacts produced by the declared components with the same inputs, model, backend and decode settings. `recipe=standard` is the default.
+
+Dataset publication and completed-annotation reuse check each camera's ECPose result and its two views against the declared execution identity. The scene must reference both views from the same ECPose result.

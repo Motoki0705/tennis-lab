@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -13,14 +14,23 @@ import torch
 from src.submodules.models.ecpose.releases import RELEASES
 from src.submodules.models.ecpose.runtime import ECPoseConfig
 from src.tennis_scene.configuration import PipelineRuntimeConfig
-from src.tennis_scene.pipeline.artifacts import json_value
+from src.tennis_scene.pipeline.artifacts import document_digest, json_value
+from src.tennis_scene.pipeline.clip_inputs import (
+    resolve_dataset_clip,
+    select_dataset_clips,
+)
 from src.tennis_scene.pipeline.components import ecpose, person_features
 from src.tennis_scene.pipeline.contracts import ClipSource, SourceVideo
-from src.tennis_scene.pipeline.dataset_publication import annotation_root
+from src.tennis_scene.pipeline.dataset_publication import (
+    annotation_root,
+    completed_annotation,
+    publish_annotation,
+)
 from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
     standard_definition,
 )
+from src.tennis_scene.pipeline.ecpose_artifacts import require_current_ecpose_artifacts
 from src.tennis_scene.pipeline.imports.publish import (
     BoundImport,
     bind_import,
@@ -31,10 +41,13 @@ from src.tennis_scene.pipeline.runner import ComponentRunner
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.utils.checksum import dual_sha256
+from src.utils.configuration import PathRole
 from src.utils.video.types import FramePacket
+from tests.support.tennis_scene.video_dataset import add_clip
 from tests.unit.tennis_scene.pipeline.test_auto_pipeline import (
     materialize_assets,
     runtime,
+    setup_pipeline,
 )
 
 OPTIONS = (
@@ -302,3 +315,120 @@ def test_recipe_rejects_changed_checkpoint_before_inference(
             )
         else:
             orchestrator.publication_identity()
+
+
+def test_dataset_publication_binds_ecpose_to_the_scene_backend_and_release(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    ecpose_config: PipelineRuntimeConfig,
+    model_calls: tuple[list[str], list[int]],
+) -> None:
+    cfg = ecpose_config
+    assert cfg.ecpose is not None
+    _, _, stages = setup_pipeline(tmp_path, monkeypatch)
+    overrides = {
+        name: component
+        for name, component in stages.items()
+        if not name.startswith(("person_detection/", "person_pose_features/"))
+    }
+    dataset = tmp_path / "dataset"
+    clip = add_clip(dataset, "video_000/clip_000")
+    record = select_dataset_clips(dataset, ("video_000/clip_000",))[0]
+    inputs = resolve_dataset_clip(dataset, record)
+    image = np.zeros((record.height, record.width, 3), np.uint8)
+    frames = [
+        FramePacket(i, image, (record.width, record.height))
+        for i in range(record.num_frames)
+    ]
+    monkeypatch.setattr(
+        person_features, "OpenCVVideoFrameReader", lambda *_a, **_kw: frames
+    )
+    orchestrator = TennisSceneOrchestrator(cfg, components=overrides)
+    identity = orchestrator.publication_identity()
+    scene = orchestrator.run(
+        inputs.video_paths,
+        video_role=PathRole.DATA,
+        camera_ids=inputs.camera_ids,
+        store_root=annotation_root(clip, {}),
+        clip_id=record.clip_id,
+    )
+    config_yaml = "recipe: ecpose\n"
+    marker = publish_annotation(
+        inputs, scene, pipeline_config_yaml=config_yaml, publication_identity=identity
+    )
+    assert completed_annotation(inputs, identity) == marker
+    marker_bytes = marker.read_bytes()
+
+    x_path = cfg.ecpose.checkpoint.with_name("x.pth")
+    x_path.write_bytes(b"x checkpoint")
+    x_model = "ecpose-x-o365"
+    monkeypatch.setitem(
+        RELEASES,
+        x_model,
+        replace(
+            RELEASES[x_model], size=x_path.stat().st_size, sha256=dual_sha256(x_path)
+        ),
+    )
+    for different in (
+        replace(cfg.ecpose, backend="pt16", device="cuda:1"),
+        replace(cfg.ecpose, model_id=x_model, checkpoint=x_path),
+        replace(cfg.ecpose, box_margin=0.2),
+    ):
+        wrong = TennisSceneOrchestrator(
+            replace(cfg, ecpose=different), components=overrides
+        ).publication_identity()
+        message = (
+            "Published ecpose/cam0 differs from the declared ECPose execution settings"
+        )
+        with pytest.raises(ValueError, match=message):
+            publish_annotation(
+                inputs,
+                scene,
+                pipeline_config_yaml=config_yaml,
+                publication_identity=wrong,
+            )
+        assert marker.read_bytes() == marker_bytes
+
+        # Simulate a marker written before the publication boundary validated the actual scene.
+        old_marker = {
+            **json.loads(marker_bytes),
+            "publication_identity_sha256": document_digest(wrong),
+        }
+        marker.write_text(json.dumps(old_marker))
+        with pytest.raises(ValueError, match=message):
+            completed_annotation(inputs, wrong)
+        marker.write_bytes(marker_bytes)
+    assert completed_annotation(inputs, identity) == marker
+    assert model_calls[0] == ["ecpose-l-o365"]
+
+    store, runner = orchestrator.last_store, orchestrator.last_runner
+    assert store is not None and runner is not None
+    nodes = store.references()
+    node = "person_pose_features/cam0"
+    pose_ref = nodes[node]
+    descriptor = store.descriptor(pose_ref)
+    output: person_features.PersonPoseFeaturesOutput = runner.output(node)
+    mixed = {
+        "joint": nodes["ecpose/cam1"],
+        "detections": nodes["person_detection/cam0"],
+    }
+    store.publish(
+        node,
+        output,
+        ArtifactCodec(type(output)),
+        schema=pose_ref.schema,
+        version=pose_ref.version,
+        identity={**descriptor["identity"], "dependencies": json_value(mixed)},
+        dependencies=mixed,
+        provenance={"origin": "component"},
+    )
+    with pytest.raises(
+        ValueError,
+        match="Published person_pose_features/cam0 has different ECPose dependencies",
+    ):
+        require_current_ecpose_artifacts(
+            store.root,
+            json.loads(store.index_path.read_bytes()),
+            inputs.camera_ids,
+            identity,
+        )

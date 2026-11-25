@@ -19,6 +19,7 @@ from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.clip_inputs import DatasetClipInputs
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.recipes import (
+    ECPOSE_RECIPE,
     FASTHMR_RECIPE,
     STANDARD_RECIPE,
     RecipeName,
@@ -144,7 +145,7 @@ def validate_dataset_result(result: SceneResult, record: DatasetClipRecord) -> N
         )
 
 
-def _required_body_and_appearance_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
+def _required_publication_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
     # Custom SceneRunner identities retain their own declared output contract.
     if identity.get('schema') != 'declared_component_pipeline_v1':
         return {}
@@ -161,6 +162,12 @@ def _required_body_and_appearance_components(inputs: DatasetClipInputs, identity
             raise ValueError('FastHMR publication requires declared model settings')
         fasthmr_settings = overrides.get(recipe, {'recipe': recipe, 'models': models[recipe]})
     required: dict[str, Any] = require_current_body_artifacts(root, reference, recipe=recipe, fasthmr_settings=fasthmr_settings)
+    if recipe == ECPOSE_RECIPE:
+        from src.tennis_scene.pipeline.ecpose_artifacts import (
+            require_current_ecpose_artifacts,
+        )
+
+        required.update(require_current_ecpose_artifacts(root.resolve(), document, inputs.camera_ids, identity))
     if APPEARANCE_MEDIA in identity:
         node = "player_association"
         reference = document["artifacts"][node]
@@ -173,7 +180,7 @@ def _required_body_and_appearance_components(inputs: DatasetClipInputs, identity
 def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> dict[str, Any]:
     """Admit shared sides first, then verify the other required scene components."""
     if "video_court_side_digest" not in identity:
-        return _required_body_and_appearance_components(inputs, identity)
+        return _required_publication_components(inputs, identity)
     from src.tennis_scene.pipeline.video_court_side.component import (
         SharedCourtSideModule,
     )
@@ -205,7 +212,7 @@ def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str,
     if evidence not in ("ball", "player"):
         raise ValueError(f"Invalid shared court side evidence for publication ({clip})")
     PinnedSideInputs.from_store(root, evidence=evidence).verify_arrays()
-    return {**_required_body_and_appearance_components(inputs, identity), "court_side": ref}
+    return {**_required_publication_components(inputs, identity), "court_side": ref}
 
 
 def _clip_publication_identity(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> Mapping[str, object]:

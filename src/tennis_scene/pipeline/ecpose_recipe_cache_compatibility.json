@@ -29,9 +29,17 @@
       "before": "73af0dcffbbe5c472815044aef7a70cc6f6930a4f1c35157a63923b28bf8cf53",
       "after": "4cb29adcefbbbd3051ec30807e22c2439a93880b7ce704535b064d4fd43e105f"
     },
+    "tennis_scene/pipeline/dataset_publication.py": {
+      "before": "73c9abe6d2c5ff420ddad72ffc63a1c686e21d3c152b869ec5d9de16d36574c9",
+      "after": "886093f9691f43b4d6aa3ac1237d78c052d83022d9a8e99052abfc7c70ed81db"
+    },
     "tennis_scene/pipeline/definition.py": {
       "before": "8ebc602ea634bae6f8fa0d52286284287d76e70589b411fc2e08426ab7737f9d",
-      "after": "4cb7d079e4f11f012c450c13a52fe07da792c6fef44b01a44e9cbea50bf6819b"
+      "after": "a313c9a55ad0d9706b19e6945fc150b19c388b375023610309b4dacbe353b123"
+    },
+    "tennis_scene/pipeline/ecpose_artifacts.py": {
+      "before": null,
+      "after": "39f692060a144902a8eb5586a48e86d40c78846ec311a9222d73f108a93b9878"
     },
     "tennis_scene/pipeline/input_assembly/ecpose.py": {
       "before": null,
