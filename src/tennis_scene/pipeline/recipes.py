@@ -5,11 +5,12 @@ from typing import Final, Literal
 
 STANDARD_RECIPE: Final = "standard"
 FASTHMR_RECIPE: Final = "fasthmr"
-RecipeName = Literal["standard", "fasthmr"]
+ECPOSE_RECIPE: Final = "ecpose"
+RecipeName = Literal["standard", "fasthmr", "ecpose"]
 
 
 def parse_recipe(value: object) -> RecipeName:
-    if value not in (STANDARD_RECIPE, FASTHMR_RECIPE):
+    if value not in (STANDARD_RECIPE, FASTHMR_RECIPE, ECPOSE_RECIPE):
         raise ValueError(f"Unknown pipeline recipe: {value!r}")
     return value
 

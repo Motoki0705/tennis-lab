@@ -1,0 +1,604 @@
+{
+  "cpu_onnx_batch_order": {
+    "frames": [
+      "video_000/clip_003/cam0/frame_000148",
+      "video_000/clip_028/cam3/frame_000513"
+    ],
+    "input_sha256": "d6cc1d9dfd3cfd54b1f80025c06b405fdb60fa02c609babafd637daacbb51f5d",
+    "models": {
+      "ecdet-l-coco": {
+        "backend": "CPUExecutionProvider",
+        "onnx_sha256": "fa8b643c82da715aee5df2dc556a19ecdf73b9729af1aba938607c564a484c2a",
+        "raw_heads": {
+          "coordinates": {
+            "abs_diff_max": 0.7230697870254517,
+            "abs_diff_p95": 0.17053479254245688
+          },
+          "logits": {
+            "abs_diff_max": 7.8330078125,
+            "abs_diff_p95": 1.32421875
+          }
+        }
+      },
+      "ecpose-x-o365": {
+        "backend": "CPUExecutionProvider",
+        "onnx_sha256": "597ff7b61c45670508b14aca85f6d469e7b996e6b9cb38c0ca7489d1ce0383ee",
+        "raw_heads": {
+          "coordinates": {
+            "abs_diff_max": 0.6678734421730042,
+            "abs_diff_p95": 0.3733184844255447
+          },
+          "logits": {
+            "abs_diff_max": 1.328125,
+            "abs_diff_p95": 0.059374999999999734
+          }
+        }
+      }
+    },
+    "onnxruntime_version": "1.30.0"
+  },
+  "cpu_onnx_ecdet_layer_order": {
+    "frames": [
+      "video_000/clip_003/cam0/frame_000148",
+      "video_000/clip_028/cam3/frame_000513"
+    ],
+    "onnx_sha256": "fa8b643c82da715aee5df2dc556a19ecdf73b9729af1aba938607c564a484c2a",
+    "outputs": {
+      "video_000/clip_003/cam0/frame_000148": {
+        "candidate_slot": 1,
+        "decoded": {
+          "candidate_rows": 86,
+          "matched_iou_p05": 0.9986524202740296,
+          "matches_at_iou_0_50": 86,
+          "reference_rows": 86
+        },
+        "heads": {
+          "coordinates": {
+            "abs_diff_max": 0.8036955147981644,
+            "abs_diff_p95": 0.1664758652448651,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1200
+          },
+          "logits": {
+            "abs_diff_max": 7.833984375,
+            "abs_diff_p95": 1.328125,
+            "finite_mask_difference": 0,
+            "finite_pairs": 24000
+          }
+        },
+        "reference_slot": 0
+      },
+      "video_000/clip_028/cam3/frame_000513": {
+        "candidate_slot": 0,
+        "decoded": {
+          "candidate_rows": 68,
+          "matched_iou_p05": 0.9978165672169054,
+          "matches_at_iou_0_50": 68,
+          "reference_rows": 68
+        },
+        "heads": {
+          "coordinates": {
+            "abs_diff_max": 0.7191156446933746,
+            "abs_diff_p95": 0.17744131684303283,
+            "finite_mask_difference": 0,
+            "finite_pairs": 1200
+          },
+          "logits": {
+            "abs_diff_max": 5.115234375,
+            "abs_diff_p95": 1.2813476562499986,
+            "finite_mask_difference": 0,
+            "finite_pairs": 24000
+          }
+        },
+        "reference_slot": 1
+      }
+    },
+    "probes": {
+      "/model/backbone/backbone/blocks.0/Add_1_output_0": {
+        "dtype": "float32",
+        "equal_fraction": 0.9533437760254008,
+        "max": 6.183981895446777e-05,
+        "p95": 0.0,
+        "shape": [
+          2,
+          1601,
+          384
+        ]
+      },
+      "/model/backbone/backbone/blocks.11/Add_1_output_0": {
+        "dtype": "float32",
+        "equal_fraction": 7.15698521757235e-05,
+        "max": 0.004220008850097656,
+        "p95": 0.0005081295967102051,
+        "shape": [
+          2,
+          1601,
+          384
+        ]
+      },
+      "/model/backbone/backbone/blocks.5/Add_1_output_0": {
+        "dtype": "float32",
+        "equal_fraction": 9.678195919217157e-05,
+        "max": 0.0024818480014801025,
+        "p95": 0.0002888888120651245,
+        "shape": [
+          2,
+          1601,
+          384
+        ]
+      },
+      "/model/backbone/backbone/patch_embed/proj/Conv_output_0": {
+        "dtype": "float16",
+        "equal_fraction": 1.0,
+        "max": 0.0,
+        "p95": 0.0,
+        "shape": [
+          2,
+          384,
+          40,
+          40
+        ]
+      },
+      "/model/backbone/projector.0/conv_bn_fused/Conv_output_0": {
+        "dtype": "float16",
+        "equal_fraction": 0.45206024169921877,
+        "max": 0.0064697265625,
+        "p95": 0.0009765625,
+        "shape": [
+          2,
+          256,
+          80,
+          80
+        ]
+      },
+      "/model/decoder/GatherElements_1_output_0": {
+        "dtype": "float16",
+        "equal_fraction": 0.30197265625,
+        "max": 4.1519775390625,
+        "p95": 0.3248291015625,
+        "shape": [
+          2,
+          300,
+          256
+        ]
+      },
+      "/model/decoder/TopK_output_0": {
+        "dtype": "float16",
+        "equal_fraction": 0.58,
+        "max": 0.005859375,
+        "p95": 0.001953125,
+        "shape": [
+          2,
+          300
+        ]
+      },
+      "/model/decoder/TopK_output_1": {
+        "dtype": "int64",
+        "equal_fraction": 0.8083333333333333,
+        "max": 7163.0,
+        "p95": 2358.849999999965,
+        "shape": [
+          2,
+          300
+        ]
+      },
+      "/model/decoder/enc_score_head/Add_output_0": {
+        "dtype": "float16",
+        "equal_fraction": 0.7854010416666667,
+        "max": 0.0625,
+        "p95": 0.0078125,
+        "shape": [
+          2,
+          8400,
+          80
+        ]
+      },
+      "/model/encoder/fpn_blocks.1/cv4/act/Mul_output_0": {
+        "dtype": "float16",
+        "equal_fraction": 0.3238870239257812,
+        "max": 0.0234375,
+        "p95": 0.00048828125,
+        "shape": [
+          2,
+          256,
+          80,
+          80
+        ]
+      },
+      "coordinates": {
+        "dtype": "float32",
+        "equal_fraction": 0.0033333333333333335,
+        "max": 0.8036955147981644,
+        "p95": 0.17318833172321196,
+        "shape": [
+          2,
+          300,
+          4
+        ]
+      },
+      "logits": {
+        "dtype": "float16",
+        "equal_fraction": 0.5879583333333334,
+        "max": 7.833984375,
+        "p95": 1.304882812499983,
+        "shape": [
+          2,
+          300,
+          80
+        ]
+      }
+    }
+  },
+  "frames": {
+    "video_000/clip_003/cam0/frame_000148": {
+      "pixel_tensor_sha256": "a4d9f10629a15a028286f4b02874b4873dd4f2313787fb4aaeccd26eadbc8f3f",
+      "source_image_sha256": "b42c3c7d5106d4d6799c02a20f3f5c1a187df8dcab078043a44ad12cba0eda12",
+      "width_height": [
+        1920.0,
+        1080.0
+      ]
+    },
+    "video_000/clip_013/cam0/frame_000096": {
+      "pixel_tensor_sha256": "39154f9736f8d0c3998b5e053c02a465649305ec75f8d0d55fe80e4098487440",
+      "source_image_sha256": "6430a8472922dd157e194fd923693356a7347f372c5ffb4976325146e252d359",
+      "width_height": [
+        1920.0,
+        1080.0
+      ]
+    },
+    "video_000/clip_028/cam3/frame_000513": {
+      "pixel_tensor_sha256": "15e7b0e4eb1bb68732e08b62b61d796421c779e1d8eb9af4c81ea550d53526fb",
+      "source_image_sha256": "19f326095d28b79cf1526623c8a0488321d65c875b228d8897a2befce6acc5dd",
+      "width_height": [
+        1920.0,
+        1080.0
+      ]
+    },
+    "video_000/clip_057/cam3/frame_000114": {
+      "pixel_tensor_sha256": "8164638fe612b36be3679ca5c336642ca2bb65570174c334f4603883b0cf8c64",
+      "source_image_sha256": "47fb4704c0d5e19ffd0736fa631087537c67d295d5332ba084bc78e524955d39",
+      "width_height": [
+        1920.0,
+        1080.0
+      ]
+    }
+  },
+  "manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+  "models": {
+    "ecdet-l-coco": {
+      "binding_stride_mismatch_count": 0,
+      "engine_layers": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v1/ecdet-l-coco-engine-layers.json",
+        "sha256": "63c45d4098945f0e70c595ea69fdbfd78568d684b0b1074887ff4d948aaf3b74"
+      },
+      "nonfinite_values": {
+        "pt16": 0,
+        "trt16": 0
+      },
+      "pair1_b_pt16_vs_trt16": {
+        "video_000/clip_028/cam3/frame_000513": {
+          "candidate_slot": 0,
+          "decoded": {
+            "candidate_rows": 112,
+            "matched_iou_p05": 0.526584248881311,
+            "matches_at_iou_0_50": 30,
+            "reference_rows": 68
+          },
+          "heads": {
+            "coordinates": {
+              "abs_diff_max": 0.8363067880272865,
+              "abs_diff_p95": 0.36770093590021125,
+              "finite_mask_difference": 0,
+              "finite_pairs": 1200
+            },
+            "logits": {
+              "abs_diff_max": 8.0166015625,
+              "abs_diff_p95": 3.02734375,
+              "finite_mask_difference": 0,
+              "finite_pairs": 24000
+            }
+          },
+          "reference_slot": 0
+        }
+      },
+      "plan_sha256": "22ef7679387090d5bec8346f2b070ce389062f0a22d9c63e3fbf2d3ce8e6de21",
+      "raw_heads": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v1/ecdet-l-coco-heads.npz",
+        "sha256": "ecc4eee5621c873e673f17580a73815eec1d7b92a073e716b0b5cb945118b766"
+      },
+      "status": "ok",
+      "swap_comparison": {
+        "pt16": {
+          "candidate_rows": 283,
+          "matches_at_iou_0_50": 283,
+          "max_abs_diff_p95": {
+            "coordinates": 0.0,
+            "logits": 0.0
+          },
+          "reference_rows": 283
+        },
+        "trt16": {
+          "candidate_rows": 455,
+          "matches_at_iou_0_50": 256,
+          "max_abs_diff_p95": {
+            "coordinates": 0.03584727421402929,
+            "logits": 2.535351562499997
+          },
+          "reference_rows": 479
+        }
+      }
+    },
+    "ecdet-l-o365": {
+      "failure": "RuntimeError: Error(s) in loading state_dict for ECDet:\n\tsize mismatch for backbone.backbone.blocks.0.mlp.fc1.weight: copying a param with shape torch.Size([1536, 384]) from checkpoint, the shape in current model is torch.Size([2304, 384]).",
+      "status": "diagnosis_incomplete"
+    },
+    "ecdet-x-coco": {
+      "binding_stride_mismatch_count": 0,
+      "engine_layers": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v1/ecdet-x-coco-engine-layers.json",
+        "sha256": "f3dc27e8f30ba290fc26091b39eef0e965ccfa4066f40d5d08fabb1846a79ed0"
+      },
+      "nonfinite_values": {
+        "pt16": 0,
+        "trt16": 0
+      },
+      "pair1_b_pt16_vs_trt16": {
+        "video_000/clip_028/cam3/frame_000513": {
+          "candidate_slot": 0,
+          "decoded": {
+            "candidate_rows": 59,
+            "matched_iou_p05": 0.7450707874689552,
+            "matches_at_iou_0_50": 44,
+            "reference_rows": 73
+          },
+          "heads": {
+            "coordinates": {
+              "abs_diff_max": 0.8004660755395889,
+              "abs_diff_p95": 0.3978557363152504,
+              "finite_mask_difference": 0,
+              "finite_pairs": 1200
+            },
+            "logits": {
+              "abs_diff_max": 9.3134765625,
+              "abs_diff_p95": 3.027539062499997,
+              "finite_mask_difference": 0,
+              "finite_pairs": 24000
+            }
+          },
+          "reference_slot": 0
+        }
+      },
+      "plan_sha256": "109a76de71ed81fe4e8033d3ac05aeac99a81d83d6c1aa1e46ae97b8ea7c0b95",
+      "raw_heads": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v1/ecdet-x-coco-heads.npz",
+        "sha256": "4b38e953b1d784cff9dac04ed46d65390abfd2655212c1e1ef917403ee6e9987"
+      },
+      "status": "ok",
+      "swap_comparison": {
+        "pt16": {
+          "candidate_rows": 301,
+          "matches_at_iou_0_50": 301,
+          "max_abs_diff_p95": {
+            "coordinates": 0.0,
+            "logits": 0.0
+          },
+          "reference_rows": 301
+        },
+        "trt16": {
+          "candidate_rows": 249,
+          "matches_at_iou_0_50": 155,
+          "max_abs_diff_p95": {
+            "coordinates": 0.024052398651838287,
+            "logits": 2.765625
+          },
+          "reference_rows": 263
+        }
+      }
+    },
+    "ecdet-x-o365": {
+      "binding_stride_mismatch_count": 0,
+      "engine_layers": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v1/ecdet-x-o365-engine-layers.json",
+        "sha256": "68280a3c237eea1ece7745b8aa24da7bf1b14f7909b407499bbad1714ec83bb3"
+      },
+      "nonfinite_values": {
+        "pt16": 0,
+        "trt16": 0
+      },
+      "pair1_b_pt16_vs_trt16": {
+        "video_000/clip_028/cam3/frame_000513": {
+          "candidate_slot": 0,
+          "decoded": {
+            "candidate_rows": 58,
+            "matched_iou_p05": 0.5941295736438064,
+            "matches_at_iou_0_50": 36,
+            "reference_rows": 52
+          },
+          "heads": {
+            "coordinates": {
+              "abs_diff_max": 0.8776512145996094,
+              "abs_diff_p95": 0.4024406969547272,
+              "finite_mask_difference": 0,
+              "finite_pairs": 1200
+            },
+            "logits": {
+              "abs_diff_max": 8.97265625,
+              "abs_diff_p95": 2.7734375,
+              "finite_mask_difference": 0,
+              "finite_pairs": 24000
+            }
+          },
+          "reference_slot": 0
+        }
+      },
+      "plan_sha256": "b4986ec8b18cb5a869a07b9548bdd992cde0efd59a506a933a3af3b8abdbaf1b",
+      "raw_heads": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v1/ecdet-x-o365-heads.npz",
+        "sha256": "89b52c0f70fe5474ea482cb3562f4b434abffd096adae9b50ff3a8928919909d"
+      },
+      "status": "ok",
+      "swap_comparison": {
+        "pt16": {
+          "candidate_rows": 204,
+          "matches_at_iou_0_50": 204,
+          "max_abs_diff_p95": {
+            "coordinates": 0.0,
+            "logits": 0.0
+          },
+          "reference_rows": 204
+        },
+        "trt16": {
+          "candidate_rows": 229,
+          "matches_at_iou_0_50": 131,
+          "max_abs_diff_p95": {
+            "coordinates": 0.0224062331020832,
+            "logits": 3.6484375
+          },
+          "reference_rows": 200
+        }
+      }
+    },
+    "ecpose-l-o365": {
+      "binding_stride_mismatch_count": 0,
+      "engine_layers": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v1/ecpose-l-o365-engine-layers.json",
+        "sha256": "13424de9d58ee4fdde0f5933b3d45108ebf653645861d04fc84a0563e383ca11"
+      },
+      "nonfinite_values": {
+        "pt16": 0,
+        "trt16": 0
+      },
+      "pair1_b_pt16_vs_trt16": {
+        "video_000/clip_028/cam3/frame_000513": {
+          "candidate_slot": 0,
+          "decoded": {
+            "candidate_rows": 55,
+            "matched_iou_p05": 0.614911409713217,
+            "matches_at_iou_0_50": 53,
+            "reference_rows": 60
+          },
+          "heads": {
+            "coordinates": {
+              "abs_diff_max": 0.9845817522145808,
+              "abs_diff_p95": 0.6927031580358743,
+              "finite_mask_difference": 0,
+              "finite_pairs": 2040
+            },
+            "logits": {
+              "abs_diff_max": 5.794921875,
+              "abs_diff_p95": 2.4055908203124994,
+              "finite_mask_difference": 0,
+              "finite_pairs": 120
+            }
+          },
+          "reference_slot": 0
+        }
+      },
+      "plan_sha256": "f601d900dba10a8e3eba087ed7dd78ddad0e39f838e7a8bf6c7202447dcef3b8",
+      "raw_heads": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v1/ecpose-l-o365-heads.npz",
+        "sha256": "c6cd1e6eafeaa4475134df2ef8e9e0d65a63cde00663881356cfba9e3f7f4801"
+      },
+      "status": "ok",
+      "swap_comparison": {
+        "pt16": {
+          "candidate_rows": 231,
+          "matches_at_iou_0_50": 231,
+          "max_abs_diff_p95": {
+            "coordinates": 0.0,
+            "logits": 0.0
+          },
+          "reference_rows": 231
+        },
+        "trt16": {
+          "candidate_rows": 186,
+          "matches_at_iou_0_50": 104,
+          "max_abs_diff_p95": {
+            "coordinates": 0.1527862548828125,
+            "logits": 3.008935546875
+          },
+          "reference_rows": 188
+        }
+      }
+    },
+    "ecpose-x-o365": {
+      "binding_stride_mismatch_count": 0,
+      "engine_layers": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v1/ecpose-x-o365-engine-layers.json",
+        "sha256": "c93f68e56eb34ebf91e87579e81b89c351d270dfc860510503a4c86b9929813f"
+      },
+      "nonfinite_values": {
+        "pt16": 0,
+        "trt16": 0
+      },
+      "pair1_b_pt16_vs_trt16": {
+        "video_000/clip_028/cam3/frame_000513": {
+          "candidate_slot": 0,
+          "decoded": {
+            "candidate_rows": 19,
+            "matched_iou_p05": 0.5415906988331894,
+            "matches_at_iou_0_50": 12,
+            "reference_rows": 60
+          },
+          "heads": {
+            "coordinates": {
+              "abs_diff_max": 0.9152855202555656,
+              "abs_diff_p95": 0.6155975252389907,
+              "finite_mask_difference": 0,
+              "finite_pairs": 2040
+            },
+            "logits": {
+              "abs_diff_max": 6.490234375,
+              "abs_diff_p95": 2.8358398437499996,
+              "finite_mask_difference": 0,
+              "finite_pairs": 120
+            }
+          },
+          "reference_slot": 0
+        }
+      },
+      "plan_sha256": "c878bc92ee859de02efc62daa5cefb97e8b49a44cad0e386207a5320baf8559e",
+      "raw_heads": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v1/ecpose-x-o365-heads.npz",
+        "sha256": "4830867f9eab47e1025fcb7f8691bd5cee9caee81e4fc1f5dea358fee43675a0"
+      },
+      "status": "ok",
+      "swap_comparison": {
+        "pt16": {
+          "candidate_rows": 240,
+          "matches_at_iou_0_50": 240,
+          "max_abs_diff_p95": {
+            "coordinates": 0.0,
+            "logits": 0.0
+          },
+          "reference_rows": 240
+        },
+        "trt16": {
+          "candidate_rows": 94,
+          "matches_at_iou_0_50": 35,
+          "max_abs_diff_p95": {
+            "coordinates": 0.16459808349609373,
+            "logits": 2.7407714843749997
+          },
+          "reference_rows": 83
+        }
+      }
+    }
+  },
+  "queue": {
+    "checkout_commit": "3bb026d5de12dbe980bc17e3d0a97c751b58fd4b",
+    "command": "realpath outputs/player-model-comparison/trt16-diagnosis-v1 > \"$TENNIS_REPRO_DIR/output_dir.txt\" && exec env PYTHONPATH=.:knowledge/runs/run-person-model-speed-baseline OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/edgecrafter_diagnose.py --inputs /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs --output outputs/player-model-comparison/trt16-diagnosis-v1",
+    "exit_code": 1,
+    "job_id": "0-8204405633049949023_2026-11-25T08-12-46-950050976Z_1848524_i2487-edgecrafter-trt16-raw-heads-diagnosis.job",
+    "queue_log": {
+      "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204405633049949023_2026-11-25T08-12-46-950050976Z_1848524_i2487-edgecrafter-trt16-raw-heads-diagnosis.log",
+      "sha256": "d2b3a4a8cae161dfea704f79947f6553bb4b8e79007ca048f2cf966aff25cb90"
+    },
+    "state": "failed"
+  },
+  "raw_cuda_report": {
+    "path": "outputs/player-model-comparison/trt16-diagnosis-v1/cuda.json",
+    "sha256": "795810ee64032499efd84919dc73c4e5084367b9a77e1ff15a09c2f586084304"
+  },
+  "schema_version": 1
+}

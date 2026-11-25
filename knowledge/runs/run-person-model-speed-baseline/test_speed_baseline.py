@@ -16,13 +16,14 @@ import torch
 from parity import compare
 from run import PARITY_NOT_EVALUATED_REASON, start_suite
 from speed_inputs import ClipRows, publish, require_sha, write_crops
-from speed_models import classify_startup, dino_decode_gpu
+from speed_models import classify_startup, dino_decode_gpu, two_stage
 
 from src.submodules.models.dino.architecture import COCO_PERSON_CLASS_ID
 from src.submodules.models.dino.person_detector import (
     PersonDetectionResult,
     decode_person_detections,
 )
+from src.tasks.person_tracking.features import FeatureConfig
 from src.utils.checksum import dual_sha256
 from src.utils.inference_benchmark import (
     Backend,
@@ -58,6 +59,49 @@ def test_detector_postprocess_retains_production_order_and_coordinates() -> None
         np.testing.assert_array_equal(score.numpy(), result.scores)
     assert actual[0][0].shape == (2, 4)
     assert actual[1][0].shape == (0, 4)
+
+
+def test_joint_uses_every_detection_and_keeps_each_images_rows() -> None:
+    images = tuple(np.full((18, 128, 3), i, np.uint8) for i in range(3))
+    centers = ([5 + i * 10 for i in range(9)], [], [105, 115, 125])
+    detections = [
+        PersonDetectionResult(
+            np.asarray([[x - 2, 1, x + 2, 11] for x in xs], np.float32).reshape(-1, 4),
+            np.full(len(xs), 0.9, np.float32),
+        )
+        for xs in centers
+    ]
+    calls = []
+
+    def pose(groups, _stages):
+        rows = []
+        seen = []
+        for image, boxes in groups:
+            assert boxes[:, 1:].tolist() == [[6.0, 12.0]] * len(boxes)
+            for x in boxes[:, 0].tolist():
+                seen.append((int(image[0, 0, 0]), x))
+                rows.append([[x, 6.0, 0.8]] * 17)
+        calls.append(seen)
+        return rows
+
+    result = two_stage(
+        lambda _, __: detections,
+        pose,
+        images,
+        SimpleNamespace(stage=lambda _, operation, **kw: operation()),
+        crop_batch=8,
+        features=FeatureConfig(bbox_enlarge=1.2),
+    )
+    assert calls == [
+        [(0, x) for x in centers[0][:8]],
+        [(0, 85), (2, 105), (2, 115), (2, 125)],
+    ]
+    for (found, keypoints), expected, xs in zip(
+        result, detections, centers, strict=True
+    ):
+        assert found is expected
+        assert keypoints.shape == (len(xs), 17, 3)
+        assert keypoints[:, 0, 0].tolist() == xs
 
 
 def test_fixed_crops_prioritize_observations_and_pin_exact_bytes(
@@ -174,7 +218,7 @@ def test_baseline_suites_only_schedule_the_authorized_conditions(
             pins=SimpleNamespace(schedule=lambda *a: None),
         ),
     )
-    for group in ("detection", "pose", "body"):
+    for group in ("detection", "pose", "body", "joint"):
         args = SimpleNamespace(
             group=group,
             output=tmp_path,
@@ -190,11 +234,21 @@ def test_baseline_suites_only_schedule_the_authorized_conditions(
             invocation["settings"]["parity_not_evaluated_reason"]
             == PARITY_NOT_EVALUATED_REASON
         )
-    assert len(launched) == len(set(launched)) == 22
+    assert len(launched) == len(set(launched)) == 26
+    joint_cases = [case for case in launched if case[0] == "dino-vitpose"]
+    assert joint_cases == [
+        ("dino-vitpose", "PT16", 1),
+        ("dino-vitpose", "PT16", 2),
+        ("dino-vitpose", "TRT16", 1),
+        ("dino-vitpose", "TRT16", 2),
+    ]
+    assert len(json.loads((tmp_path / "attempts-joint.json").read_bytes())) == 4
     assert {backend for _, backend, _ in launched} == {"PT16", "TRT16"}
     assert {(workload, size) for workload, _, size in launched} == {
         ("dino", 1),
         ("dino", 2),
+        ("dino-vitpose", 1),
+        ("dino-vitpose", 2),
         ("vitpose", 1),
         ("vitpose", 4),
         ("vitpose", 8),
@@ -368,7 +422,9 @@ def test_outcomes_reach_public_json_and_csv(
 
     publication = tmp_path / "published"
     publication.mkdir()
-    publish_run.record(tmp_path, publication, input_dir=tmp_path / "inputs")
+    publish_run.record(
+        tmp_path, publication, input_dir=tmp_path / "inputs", groups=("detection",)
+    )
     conditions = json.loads((publication / "cases.json").read_bytes())["conditions"]
     with (publication / "cases.csv").open() as file:
         rows = {row["backend"]: row for row in csv.DictReader(file)}

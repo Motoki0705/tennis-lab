@@ -25,6 +25,7 @@ from src.submodules.models.dino.architecture import (
 from src.submodules.models.dino.person_detector import PersonDetectionResult
 from src.submodules.vendor.gvhmr.vitpose.flip_utils import flip_heatmap_coco17
 from src.submodules.vendor.gvhmr.vitpose.kp2d_utils import keypoints_from_heatmaps
+from src.tasks.person_tracking.features import FeatureConfig, pose_boxes
 from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline.model_resources import (
     dino_tensorrt,
@@ -39,7 +40,7 @@ HMR2_CROP_BATCH = 16
 DEVICE = "cuda:0"
 
 
-def people_config(external_assets: Path):
+def pipeline_config(external_assets: Path) -> PipelineRuntimeConfig:
     config = Path("src/tennis_scene/configs").resolve()
     with initialize_config_dir(config_dir=str(config), version_base="1.3"):
         raw = compose(
@@ -49,7 +50,7 @@ def people_config(external_assets: Path):
                 f"device={DEVICE}",
             ],
         )
-    return PipelineRuntimeConfig.from_config(raw, bind_inputs=False).people
+    return PipelineRuntimeConfig.from_config(raw, bind_inputs=False)
 
 
 def dino_eager(config, backend: Backend):
@@ -298,6 +299,33 @@ class Pose:
         if self.model._runner is not None:
             return timed_engine(self.model._runner, {"pixels": pixels})["heatmaps"]
         return self.model._forward_heatmaps(pixels)
+
+
+def two_stage(dino, pose, images, stages, *, crop_batch: int, features: FeatureConfig):
+    """Run a ViTPose crop for every DINO row and restore the per-image row order."""
+    detections = dino(images, stages)
+    crops = stages.stage(
+        Stage.PREPROCESS,
+        lambda: [
+            (i, image, box.tolist())
+            for i, (image, detection) in enumerate(zip(images, detections, strict=True))
+            for box in pose_boxes(detection.boxes_xyxy, features)
+        ],
+        name="dino_to_pose",
+    )
+    poses = []
+    for start in range(0, len(crops), crop_batch):
+        poses.extend(pose(pose_groups(crops[start : start + crop_batch]), stages))
+    if len(poses) != len(crops):
+        raise ValueError("ViTPose changed the DINO crop count")
+    by_image = []
+    offset = 0
+    for detection in detections:
+        count = len(detection.boxes_xyxy)
+        joints = np.asarray(poses[offset : offset + count], dtype=np.float32)
+        by_image.append((detection, joints.reshape(count, 17, 3)))
+        offset += count
+    return by_image
 
 
 class Body:

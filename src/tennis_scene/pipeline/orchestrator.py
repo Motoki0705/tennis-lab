@@ -83,7 +83,8 @@ class TennisSceneOrchestrator:
         self._video_court_side_key: tuple[object, ...] | None = None
         self.code_identity = document_digest(compatible_source_digests(
             source_digests(PROJECT_ROOT / "src"), ball_court_side=config.court_side_evidence == "ball",
-            tensorrt=config.people.runtime.uses_tensorrt, standard_recipe=config.recipe == STANDARD_RECIPE))
+            tensorrt=config.people.runtime.uses_tensorrt or (config.ecpose is not None and config.ecpose.engine is not None),
+            standard_recipe=config.recipe == STANDARD_RECIPE, standard_people=config.ecpose is None))
 
     @classmethod
     def from_runtime_config(cls, cfg: PipelineRuntimeConfig, *, model_event: ModelEventHook | None = None) -> TennisSceneOrchestrator:

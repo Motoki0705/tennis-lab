@@ -16,6 +16,7 @@ from src.submodules.configuration import (
     SmplAssetPaths,
     SubmoduleRuntimeConfig,
 )
+from src.submodules.models.ecpose.runtime import ECPoseConfig
 from src.submodules.models.fasthmr.assets import FastHMRConfig
 from src.tasks.ball_detection.inference.trajectory_gate import TrajectoryGateConfig
 from src.tasks.ball_detection.model_io.contracts import BallCandidateConfig
@@ -53,6 +54,7 @@ from src.tennis_scene.pipeline.feature_flags import (
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
 from src.tennis_scene.pipeline.recipes import (
+    ECPOSE_RECIPE,
     FASTHMR_RECIPE,
     STANDARD_RECIPE,
     RecipeName,
@@ -304,10 +306,18 @@ _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory
 _EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={
     **{name: ConfigField.of(str) for name in STANDARD_COMPONENTS},
     FASTHMR_RECIPE: ConfigField.of(str, required=False),
+    ECPOSE_RECIPE: ConfigField.of(str, required=False),
 })
 _FASTHMR_SCHEMA = StrictConfigSchema(name="tennis_scene.fasthmr", fields={
     "repository": ConfigField.of(str), "assets": ConfigField.of(str), "backend": ConfigField.of(str),
     "feature_batch_size": ConfigField.of(int), "seed": ConfigField.of(int),
+})
+_ECPOSE_SCHEMA = StrictConfigSchema(name="tennis_scene.ecpose", fields={
+    "repository": ConfigField.of(str), "checkpoint": ConfigField.of(str),
+    "model": ConfigField.of(str), "backend": ConfigField.of(str),
+    "engine": ConfigField.of(str, type(None), required=False),
+    "batch_size": ConfigField.of(int), "confidence": ConfigField.of(float, int),
+    "box_margin": ConfigField.of(float, int),
 })
 _DIRECT_ANNOTATION_SCHEMA = StrictConfigSchema(name="tennis_scene.direct_annotation", fields={
     "request": ConfigField.of(str, type(None)), "request_sha256": ConfigField.of(str, type(None)),
@@ -317,6 +327,7 @@ _DIRECT_ANNOTATION_SCHEMA = StrictConfigSchema(name="tennis_scene.direct_annotat
 _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "recipe": ConfigField.of(str, required=False),
     "fasthmr": ConfigField.mapping(_FASTHMR_SCHEMA, required=False),
+    "ecpose": ConfigField.mapping(_ECPOSE_SCHEMA, required=False),
     "person_tracking": ConfigField.mapping(StrictConfigSchema(name='tennis_scene.person_tracking', fields={
         'method': ConfigField.of(str), 'encoder': ConfigField.of(str), 'aflink_checkpoint': ConfigField.of(str),
     })),
@@ -435,11 +446,21 @@ class PipelineRuntimeConfig:
     court_side_unobservable_policy: str
     recipe: RecipeName
     fasthmr: FastHMRConfig | None
+    ecpose: ECPoseConfig | None
 
     def __post_init__(self) -> None:
         parse_recipe(self.recipe)
         if (self.recipe == FASTHMR_RECIPE) != (self.fasthmr is not None):
             raise SemanticConfigurationError("FastHMR options require recipe=fasthmr, and vice versa")
+        if (self.recipe == ECPOSE_RECIPE) != (self.ecpose is not None):
+            raise SemanticConfigurationError("ECPose options require recipe=ecpose, and vice versa")
+        if self.ecpose is not None:
+            if not self.enabled["person_observations"]:
+                raise SemanticConfigurationError("recipe=ecpose requires person_observations.enabled=true")
+            if self.merge_duplicate_person_boxes:
+                raise SemanticConfigurationError("recipe=ecpose requires merge_duplicate_person_boxes=false")
+            if self.direct_annotation is not None:
+                raise SemanticConfigurationError("recipe=ecpose is unavailable for direct_annotation")
         if self.recipe == FASTHMR_RECIPE:
             if not self.enabled["gvhmr"]:
                 raise SemanticConfigurationError("recipe=fasthmr requires body recovery enabled (gvhmr.enabled=true)")
@@ -639,6 +660,24 @@ class PipelineRuntimeConfig:
             component_sources.setdefault(FASTHMR_RECIPE, "execute")
         elif "fasthmr" in value or FASTHMR_RECIPE in component_sources:
             raise SemanticConfigurationError("FastHMR options and execution.fasthmr require recipe=fasthmr")
+        ecpose = None
+        if recipe == ECPOSE_RECIPE:
+            if "ecpose" not in value:
+                raise MissingConfigurationKeyError("recipe=ecpose requires ecpose configuration")
+            options = _mapping(value["ecpose"], name="ecpose")
+            engine = options.get("engine")
+            ecpose = ECPoseConfig(
+                repository=resolver.resolve(PathRole.EXTERNAL_ASSET, cast(str, options["repository"])),
+                checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, options["checkpoint"])),
+                model_id=cast(str, options["model"]), backend=cast(str, options["backend"]),
+                device=device, batch_size=cast(int, options["batch_size"]),
+                confidence=float(cast(float, options["confidence"])),
+                box_margin=float(cast(float, options["box_margin"])),
+                engine=None if engine is None else resolver.resolve(PathRole.CHECKPOINT, cast(str, engine)),
+            )
+            component_sources.setdefault(ECPOSE_RECIPE, "execute")
+        elif "ecpose" in value or ECPOSE_RECIPE in component_sources:
+            raise SemanticConfigurationError("ECPose options and execution.ecpose require recipe=ecpose")
         if ball_method == "gpt_annotation":
             if not enabled["ball_reconstruction"]:
                 raise SemanticConfigurationError("GPT scene annotation requires ball reconstruction")
@@ -662,7 +701,7 @@ class PipelineRuntimeConfig:
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,
             tracking, tracking_weights, aflink_checkpoint, cast(bool, models['merge_duplicate_person_boxes']), ball_smoothing,
             ball_method, direct_config, cast(str | None, value["clip_id"]), video_court, video_court_drift, unobservable_policy,
-            video_court_side, side_policy, recipe, fasthmr)
+            video_court_side, side_policy, recipe, fasthmr, ecpose)
 
 
 _EXPORT_SCHEMA = StrictConfigSchema(
