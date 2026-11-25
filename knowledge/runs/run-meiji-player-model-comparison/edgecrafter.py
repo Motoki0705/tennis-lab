@@ -61,6 +61,7 @@ COHORT = SOURCE.with_name("multiview-player-evaluation-v1")
 BACKENDS = {backend.value.lower(): backend for backend in Backend}
 MEASURED_BACKENDS = ("pt16", "trt16")
 PARITY_NOT_MEASURED = "not_measured"
+PARITY_NOT_MEASURED_REASON = "PT32未計測"
 SCORE_THRESHOLD = 0.0  # Keep all positive-scoring person rows from the official top-k.
 
 Frames = tuple[NDArray[np.uint8], ...]
@@ -355,7 +356,7 @@ def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
         raise ValueError(
             "Select PT16 or TRT16 and explicitly set parity to not_measured"
         )
-    parity = {"status": args.parity, "reason": "PT32未計測"}
+    parity = {"status": args.parity, "reason": PARITY_NOT_MEASURED_REASON}
     manifest = _cohort(args)
     release = RELEASES[args.model]
     validate_decode_policy(release, SCORE_THRESHOLD, args.pose_box_margin)

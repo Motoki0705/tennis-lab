@@ -1,0 +1,1310 @@
+{
+  "accuracy_v3_queue_jobs": {
+    "ecdet-l-coco": {
+      "checkout_commit": "83507bdd57097ac5b37892b5b1d6db3af0666af2",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecdet-l-coco 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+      "job_id": "0-8204421085375689640_2026-11-25T03-55-14-624310359Z_44137_i2487-ecdet-l-coco-cohort-accuracy-v3.job",
+      "log": {
+        "path": ".training_queue/logs/0-8204421085375689640_2026-11-25T03-55-14-624310359Z_44137_i2487-ecdet-l-coco-cohort-accuracy-v3.log",
+        "sha256": "2790015e653893181a361782f7a85bdd94a56d595228fcb9196077599e8ac9dc"
+      },
+      "state": "done"
+    },
+    "ecdet-l-o365": {
+      "checkout_commit": "83507bdd57097ac5b37892b5b1d6db3af0666af2",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecdet-l-o365 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+      "job_id": "0-8204421084654140811_2026-11-25T03-55-15-345859188Z_44284_i2487-ecdet-l-o365-cohort-accuracy-v3.job",
+      "log": {
+        "path": ".training_queue/logs/0-8204421084654140811_2026-11-25T03-55-15-345859188Z_44284_i2487-ecdet-l-o365-cohort-accuracy-v3.log",
+        "sha256": "390a5e3210305f3bb512c76e1c8267838444f1948b74b11623b1e4fde9835a6a"
+      },
+      "state": "done"
+    },
+    "ecdet-x-coco": {
+      "checkout_commit": "83507bdd57097ac5b37892b5b1d6db3af0666af2",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecdet-x-coco 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+      "job_id": "0-8204421085039610681_2026-11-25T03-55-14-960389318Z_44206_i2487-ecdet-x-coco-cohort-accuracy-v3.job",
+      "log": {
+        "path": ".training_queue/logs/0-8204421085039610681_2026-11-25T03-55-14-960389318Z_44206_i2487-ecdet-x-coco-cohort-accuracy-v3.log",
+        "sha256": "d19b8e8a54978d7f01c89dc7e64ed86146d35cea942853cb7b0453ae543d4a38"
+      },
+      "state": "done"
+    },
+    "ecdet-x-o365": {
+      "checkout_commit": "83507bdd57097ac5b37892b5b1d6db3af0666af2",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecdet-x-o365 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+      "job_id": "0-8204421084319338709_2026-11-25T03-55-15-680661290Z_44417_i2487-ecdet-x-o365-cohort-accuracy-v3.job",
+      "log": {
+        "path": ".training_queue/logs/0-8204421084319338709_2026-11-25T03-55-15-680661290Z_44417_i2487-ecdet-x-o365-cohort-accuracy-v3.log",
+        "sha256": "ac4afea11637a1e45aacc7a46baaa4bd5be2143ca18ff83085edfe3807b1fdbc"
+      },
+      "state": "done"
+    },
+    "ecpose-l-o365": {
+      "checkout_commit": "83507bdd57097ac5b37892b5b1d6db3af0666af2",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecpose-l-o365 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+      "job_id": "0-8204421086015195752_2026-11-25T03-55-13-984804247Z_43984_i2487-ecpose-l-o365-cohort-accuracy-v3.job",
+      "log": {
+        "path": ".training_queue/logs/0-8204421086015195752_2026-11-25T03-55-13-984804247Z_43984_i2487-ecpose-l-o365-cohort-accuracy-v3.log",
+        "sha256": "c8cb71b998930ec6f376fa98f2605f7544a13a72d390a181b7c314f045b8d589"
+      },
+      "state": "done"
+    },
+    "ecpose-x-o365": {
+      "checkout_commit": "83507bdd57097ac5b37892b5b1d6db3af0666af2",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecpose-x-o365 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+      "job_id": "0-8204421085699163410_2026-11-25T03-55-14-300836589Z_44065_i2487-ecpose-x-o365-cohort-accuracy-v3.job",
+      "log": {
+        "path": ".training_queue/logs/0-8204421085699163410_2026-11-25T03-55-14-300836589Z_44065_i2487-ecpose-x-o365-cohort-accuracy-v3.log",
+        "sha256": "dbeecf71c10e7c96adc73dad02b7cf8ceaea62cf37686d976d2161a19d6e1516"
+      },
+      "state": "done"
+    }
+  },
+  "benchmark_id": "meiji_4cam/multiview-player-evaluation-v1",
+  "conditions": [
+    {
+      "backend": "pt16",
+      "detection": {
+        "matched_iou": {
+          "count": 25647,
+          "mean": 0.7306751259127009,
+          "median": 0.731999631845392,
+          "p95": 0.8823597114474594
+        },
+        "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+        "recall_by_iou": {
+          "0.50": 0.9760618054498401,
+          "0.75": 0.4159689450449079
+        },
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.9639595067742427,
+            "0.75": 0.36618967879433706
+          },
+          "0.5": {
+            "0.50": 0.9496879281473588,
+            "0.75": 0.3638681686710306
+          },
+          "0.75": {
+            "0.50": 0.6620109605723854,
+            "0.75": 0.2798371137159385
+          }
+        },
+        "references": 26276
+      },
+      "execution": {
+        "device": "cuda:0",
+        "eager_autocast": "float16",
+        "fp32_matmul_and_cudnn_conv": "ieee",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "postprocess_dtype": "float32",
+        "torch_cuda_version": "13.0",
+        "torch_version": "2.13.0+cu130"
+      },
+      "failure": null,
+      "has_pose": false,
+      "historical_parity": {
+        "abs_score_error_p95": 0.001980378059670329,
+        "matched_fraction_both_directions": 0.9987466291921455,
+        "matched_iou_p05": 0.9978533452542729,
+        "path": "outputs/player-model-comparison/ecdet-l-coco/pt16/parity-vs-pt32.json",
+        "sha256": "1988fc7a517d276c9b700e372d974137c0539277427dc0b65ff4ae595155919b",
+        "status": "ok"
+      },
+      "metrics": {
+        "path": "outputs/player-model-comparison/ecdet-l-coco/pt16/metrics.scorer-0d4bf0990.json",
+        "sha256": "a3510fba5aab2f2233a244ece7320546fd2cec887a9c64ed86e0d0cc7db6c5d7"
+      },
+      "model_id": "ecdet-l-coco",
+      "predictions": {
+        "bytes": 41352670,
+        "empty_images": 0,
+        "images": 6844,
+        "path": "outputs/player-model-comparison/ecdet-l-coco/pt16/predictions.jsonl",
+        "sha256": "748017508555a99b194d61ce8539c20d393ab452cbb9db65862603f575316d14"
+      },
+      "run": "retained_pt16",
+      "status": "ok",
+      "weight_sha256": "60e48c51b33d70acf8e3a3faddbdb70b0876c64509b74cb623106cc7c31e85a1"
+    },
+    {
+      "backend": "trt16",
+      "detection": {
+        "matched_iou": {
+          "count": 17047,
+          "mean": 0.6881923187985467,
+          "median": 0.6857855522639231,
+          "p95": 0.8524686940290978
+        },
+        "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+        "recall_by_iou": {
+          "0.50": 0.6487669356066372,
+          "0.75": 0.17852793423656568
+        },
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.46795554878977014,
+            "0.75": 0.12323032425026641
+          },
+          "0.5": {
+            "0.50": 0.32249961942456995,
+            "0.75": 0.09236565687319227
+          },
+          "0.75": {
+            "0.50": 0.12003349063784442,
+            "0.75": 0.03760085248896331
+          }
+        },
+        "references": 26276
+      },
+      "engine": {
+        "engine_build": {
+          "path": "outputs/player-model-comparison/ecdet-l-coco/trt16-trace2/engine-build.json",
+          "sha256": "d94f3c2c4eb4d34ea5c1a5bb8357a6f8e4c3a2d070b61445a478cb0ede3d99e6"
+        },
+        "environment": {
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_name": "NVIDIA GeForce RTX 5060 Ti",
+          "tensorrt_version": "10.14.1.48.post1"
+        },
+        "onnx_export": {
+          "path": "outputs/player-model-comparison/ecdet-l-coco/trt16-trace2/onnx-export.json",
+          "sha256": "bcdc3bb6ef9888b327d81e41083313be802f54b9204a183c4fee20dd9bec599b"
+        },
+        "onnx_files": {
+          "model.onnx": "fa8b643c82da715aee5df2dc556a19ecdf73b9729af1aba938607c564a484c2a"
+        },
+        "plan": {
+          "path": "outputs/player-model-comparison/ecdet-l-coco/trt16-trace2/engine/engine.plan",
+          "sha256": "22ef7679387090d5bec8346f2b070ce389062f0a22d9c63e3fbf2d3ce8e6de21"
+        },
+        "profiles": {
+          "pixels": {
+            "maximum": [
+              2,
+              3,
+              640,
+              640
+            ],
+            "minimum": [
+              1,
+              3,
+              640,
+              640
+            ],
+            "optimum": [
+              1,
+              3,
+              640,
+              640
+            ]
+          }
+        }
+      },
+      "execution": {
+        "cuda_stream": "non-default",
+        "device": "cuda:0",
+        "eager_autocast": null,
+        "fp32_matmul_and_cudnn_conv": "ieee",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "postprocess_dtype": "float32",
+        "torch_cuda_version": "13.0",
+        "torch_version": "2.13.0+cu130"
+      },
+      "failure": null,
+      "has_pose": false,
+      "job_id": "0-8204421085375689640_2026-11-25T03-55-14-624310359Z_44137_i2487-ecdet-l-coco-cohort-accuracy-v3.job",
+      "metrics": {
+        "path": "outputs/player-model-comparison/ecdet-l-coco/trt16-trace2/metrics.json",
+        "sha256": "d204bebd599028dbab3cdd0ba3bea9a54234a460c07349f809b23572770be98f"
+      },
+      "model_id": "ecdet-l-coco",
+      "parity": {
+        "reason": "PT32未計測",
+        "status": "not_measured"
+      },
+      "predictions": {
+        "bytes": 53606840,
+        "empty_images": 0,
+        "images": 6844,
+        "path": "outputs/player-model-comparison/ecdet-l-coco/trt16-trace2/predictions.jsonl",
+        "sha256": "dcc1b9600febc44434d7663340441bce129d10b6d94f176d0b5b6ecdfcb8d712"
+      },
+      "run": "cohort_accuracy_v3",
+      "status": "ok",
+      "weight_sha256": "60e48c51b33d70acf8e3a3faddbdb70b0876c64509b74cb623106cc7c31e85a1"
+    },
+    {
+      "backend": "pt16",
+      "detection": {
+        "matched_iou": {
+          "count": 25801,
+          "mean": 0.737280430028558,
+          "median": 0.7388559585373953,
+          "p95": 0.891043618253731
+        },
+        "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+        "recall_by_iou": {
+          "0.50": 0.9819226670726138,
+          "0.75": 0.44877454711523823
+        },
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.96780331861775,
+            "0.75": 0.39796772720353174
+          },
+          "0.5": {
+            "0.50": 0.9579464149794489,
+            "0.75": 0.3949992388491399
+          },
+          "0.75": {
+            "0.50": 0.7671639518952657,
+            "0.75": 0.33768457908357435
+          }
+        },
+        "references": 26276
+      },
+      "execution": {
+        "device": "cuda:0",
+        "eager_autocast": "float16",
+        "fp32_matmul_and_cudnn_conv": "ieee",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "postprocess_dtype": "float32",
+        "torch_cuda_version": "13.0",
+        "torch_version": "2.13.0+cu130"
+      },
+      "failure": null,
+      "has_pose": false,
+      "historical_parity": {
+        "abs_score_error_p95": 0.0029283075127750635,
+        "matched_fraction_both_directions": 0.9983990741633716,
+        "matched_iou_p05": 0.9973961934961266,
+        "path": "outputs/player-model-comparison/ecdet-l-o365/pt16/parity-vs-pt32.json",
+        "sha256": "f4620b43a2ff746b0e7b11e16b461f9f797d77a7762213697b68a5f6ac9d504a",
+        "status": "ok"
+      },
+      "metrics": {
+        "path": "outputs/player-model-comparison/ecdet-l-o365/pt16/metrics.scorer-0d4bf0990.json",
+        "sha256": "a05e7b121de9dc8281f31ed1ba7786c1ab10b48ff6a26f77ecaf7a102b666fdc"
+      },
+      "model_id": "ecdet-l-o365",
+      "predictions": {
+        "bytes": 35127101,
+        "empty_images": 0,
+        "images": 6844,
+        "path": "outputs/player-model-comparison/ecdet-l-o365/pt16/predictions.jsonl",
+        "sha256": "4d85d131068cef31073f52cc7af3828ce120de4734f26da95f99b409f8e97661"
+      },
+      "run": "retained_pt16",
+      "status": "ok",
+      "weight_sha256": "6259432a6184029e17cb008dcd3fa6ebf036c3e10cd56aa552a0d848ddcef19e"
+    },
+    {
+      "backend": "trt16",
+      "detection": {
+        "matched_iou": {
+          "count": 16559,
+          "mean": 0.7061860179324718,
+          "median": 0.7086844871440222,
+          "p95": 0.866500633869076
+        },
+        "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+        "recall_by_iou": {
+          "0.50": 0.6301948546201858,
+          "0.75": 0.2153295783224235
+        },
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.3840386664636931,
+            "0.75": 0.13327751560359263
+          },
+          "0.5": {
+            "0.50": 0.3422514842441772,
+            "0.75": 0.12033795098188461
+          },
+          "0.75": {
+            "0.50": 0.1845410260313594,
+            "0.75": 0.062262140356218604
+          }
+        },
+        "references": 26276
+      },
+      "engine": {
+        "engine_build": {
+          "path": "outputs/player-model-comparison/ecdet-l-o365/trt16-trace2/engine-build.json",
+          "sha256": "b153ddb6cf4514dee1fa54933d84b531309a493af1b7b7326a5ee12b2264669b"
+        },
+        "environment": {
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_name": "NVIDIA GeForce RTX 5060 Ti",
+          "tensorrt_version": "10.14.1.48.post1"
+        },
+        "onnx_export": {
+          "path": "outputs/player-model-comparison/ecdet-l-o365/trt16-trace2/onnx-export.json",
+          "sha256": "a621abb17dd02bdbfdba107bc9ae6346864dd759333f72a00910088d3ce09cd6"
+        },
+        "onnx_files": {
+          "model.onnx": "c1b4aee5b46e8486ea71b7fd234ed24a126ebb3607d199f845d35a07db5b0a19"
+        },
+        "plan": {
+          "path": "outputs/player-model-comparison/ecdet-l-o365/trt16-trace2/engine/engine.plan",
+          "sha256": "3079363e81757e38f527c6152c2fbe54c666759301c992a94f923a82ea0e72e1"
+        },
+        "profiles": {
+          "pixels": {
+            "maximum": [
+              2,
+              3,
+              640,
+              640
+            ],
+            "minimum": [
+              1,
+              3,
+              640,
+              640
+            ],
+            "optimum": [
+              1,
+              3,
+              640,
+              640
+            ]
+          }
+        }
+      },
+      "execution": {
+        "cuda_stream": "non-default",
+        "device": "cuda:0",
+        "eager_autocast": null,
+        "fp32_matmul_and_cudnn_conv": "ieee",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "postprocess_dtype": "float32",
+        "torch_cuda_version": "13.0",
+        "torch_version": "2.13.0+cu130"
+      },
+      "failure": null,
+      "has_pose": false,
+      "job_id": "0-8204421084654140811_2026-11-25T03-55-15-345859188Z_44284_i2487-ecdet-l-o365-cohort-accuracy-v3.job",
+      "metrics": {
+        "path": "outputs/player-model-comparison/ecdet-l-o365/trt16-trace2/metrics.json",
+        "sha256": "0c7109e8e57eb05c055446f37edd91e6db7e941157c1b12bce8f12de9ee03170"
+      },
+      "model_id": "ecdet-l-o365",
+      "parity": {
+        "reason": "PT32未計測",
+        "status": "not_measured"
+      },
+      "predictions": {
+        "bytes": 33549588,
+        "empty_images": 0,
+        "images": 6844,
+        "path": "outputs/player-model-comparison/ecdet-l-o365/trt16-trace2/predictions.jsonl",
+        "sha256": "9b4ad498f52182d9c8b6aeef0dbbab48254ac38a1d09500cbf01635ee32bdd72"
+      },
+      "run": "cohort_accuracy_v3",
+      "status": "ok",
+      "weight_sha256": "6259432a6184029e17cb008dcd3fa6ebf036c3e10cd56aa552a0d848ddcef19e"
+    },
+    {
+      "backend": "pt16",
+      "detection": {
+        "matched_iou": {
+          "count": 25639,
+          "mean": 0.7270093442893515,
+          "median": 0.7267491503922839,
+          "p95": 0.8808766445227825
+        },
+        "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+        "recall_by_iou": {
+          "0.50": 0.9757573451057999,
+          "0.75": 0.39792966966052673
+        },
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.9607246156188156,
+            "0.75": 0.3594915512254529
+          },
+          "0.5": {
+            "0.50": 0.949954330948394,
+            "0.75": 0.35682752321510125
+          },
+          "0.75": {
+            "0.50": 0.6864058456386055,
+            "0.75": 0.2837189831024509
+          }
+        },
+        "references": 26276
+      },
+      "execution": {
+        "device": "cuda:0",
+        "eager_autocast": "float16",
+        "fp32_matmul_and_cudnn_conv": "ieee",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "postprocess_dtype": "float32",
+        "torch_cuda_version": "13.0",
+        "torch_version": "2.13.0+cu130"
+      },
+      "failure": null,
+      "has_pose": false,
+      "historical_parity": {
+        "abs_score_error_p95": 0.0013683438301086426,
+        "matched_fraction_both_directions": 0.9989199053986108,
+        "matched_iou_p05": 0.9976388141598176,
+        "path": "outputs/player-model-comparison/ecdet-x-coco/pt16/parity-vs-pt32.json",
+        "sha256": "cb20fcae15b64ebeaac102afb469fc64be8cb861d231bfed79e21d5873f09539",
+        "status": "ok"
+      },
+      "metrics": {
+        "path": "outputs/player-model-comparison/ecdet-x-coco/pt16/metrics.scorer-0d4bf0990.json",
+        "sha256": "7a602a7605c0f32d95067d1ca5ba6cd205aeb74d4a7e5e420f07494e91f79807"
+      },
+      "model_id": "ecdet-x-coco",
+      "predictions": {
+        "bytes": 45749831,
+        "empty_images": 0,
+        "images": 6844,
+        "path": "outputs/player-model-comparison/ecdet-x-coco/pt16/predictions.jsonl",
+        "sha256": "f762173cbf1c78cd084680718ae035490ac725b6cd2817c0721dac06b909f68d"
+      },
+      "run": "retained_pt16",
+      "status": "ok",
+      "weight_sha256": "c87394be021b573fd8e25969b85a8670127120c9d0209ac7807fbadae1a5cec6"
+    },
+    {
+      "backend": "trt16",
+      "detection": {
+        "matched_iou": {
+          "count": 18470,
+          "mean": 0.6988335188738696,
+          "median": 0.698632104113404,
+          "p95": 0.8541516308734461
+        },
+        "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+        "recall_by_iou": {
+          "0.50": 0.7029228193027858,
+          "0.75": 0.2122469173390166
+        },
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.4399071395950677,
+            "0.75": 0.13114629319531132
+          },
+          "0.5": {
+            "0.50": 0.3588826305373725,
+            "0.75": 0.10751255898919165
+          },
+          "0.75": {
+            "0.50": 0.08581975947632821,
+            "0.75": 0.02804840919470239
+          }
+        },
+        "references": 26276
+      },
+      "engine": {
+        "engine_build": {
+          "path": "outputs/player-model-comparison/ecdet-x-coco/trt16-trace2/engine-build.json",
+          "sha256": "f44d976c8851d0034271632e1aa40cdbd08efa650833fed8717dbeba7bcab9dc"
+        },
+        "environment": {
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_name": "NVIDIA GeForce RTX 5060 Ti",
+          "tensorrt_version": "10.14.1.48.post1"
+        },
+        "onnx_export": {
+          "path": "outputs/player-model-comparison/ecdet-x-coco/trt16-trace2/onnx-export.json",
+          "sha256": "9fac92c346e857c51a3e50bf8e09dcec4087a6d95dc2f1b724e52dcbe1f73de9"
+        },
+        "onnx_files": {
+          "model.onnx": "899e62e3a6ae70b2db10e6fe6fbda3bdeef2cfe7260259dcf11445be7fe8c5ed"
+        },
+        "plan": {
+          "path": "outputs/player-model-comparison/ecdet-x-coco/trt16-trace2/engine/engine.plan",
+          "sha256": "109a76de71ed81fe4e8033d3ac05aeac99a81d83d6c1aa1e46ae97b8ea7c0b95"
+        },
+        "profiles": {
+          "pixels": {
+            "maximum": [
+              2,
+              3,
+              640,
+              640
+            ],
+            "minimum": [
+              1,
+              3,
+              640,
+              640
+            ],
+            "optimum": [
+              1,
+              3,
+              640,
+              640
+            ]
+          }
+        }
+      },
+      "execution": {
+        "cuda_stream": "non-default",
+        "device": "cuda:0",
+        "eager_autocast": null,
+        "fp32_matmul_and_cudnn_conv": "ieee",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "postprocess_dtype": "float32",
+        "torch_cuda_version": "13.0",
+        "torch_version": "2.13.0+cu130"
+      },
+      "failure": null,
+      "has_pose": false,
+      "job_id": "0-8204421085039610681_2026-11-25T03-55-14-960389318Z_44206_i2487-ecdet-x-coco-cohort-accuracy-v3.job",
+      "metrics": {
+        "path": "outputs/player-model-comparison/ecdet-x-coco/trt16-trace2/metrics.json",
+        "sha256": "d60bc4a5b5e289859b23fea6faffbba758f0fe1faac8408f5f62583d078984f3"
+      },
+      "model_id": "ecdet-x-coco",
+      "parity": {
+        "reason": "PT32未計測",
+        "status": "not_measured"
+      },
+      "predictions": {
+        "bytes": 35970943,
+        "empty_images": 0,
+        "images": 6844,
+        "path": "outputs/player-model-comparison/ecdet-x-coco/trt16-trace2/predictions.jsonl",
+        "sha256": "9e1f2cca5b71e1b0f23b17f0539d411bdaaa841e78fdd9e80636ea09855a4f49"
+      },
+      "run": "cohort_accuracy_v3",
+      "status": "ok",
+      "weight_sha256": "c87394be021b573fd8e25969b85a8670127120c9d0209ac7807fbadae1a5cec6"
+    },
+    {
+      "backend": "pt16",
+      "detection": {
+        "matched_iou": {
+          "count": 25742,
+          "mean": 0.741939963592026,
+          "median": 0.7436481761309104,
+          "p95": 0.8971334862651633
+        },
+        "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+        "recall_by_iou": {
+          "0.50": 0.9796772720353174,
+          "0.75": 0.4662429593545441
+        },
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.969439792966966,
+            "0.75": 0.40249657482112955
+          },
+          "0.5": {
+            "0.50": 0.9604201552747754,
+            "0.75": 0.4001750646978231
+          },
+          "0.75": {
+            "0.50": 0.7889709240371442,
+            "0.75": 0.3494063023291216
+          }
+        },
+        "references": 26276
+      },
+      "execution": {
+        "device": "cuda:0",
+        "eager_autocast": "float16",
+        "fp32_matmul_and_cudnn_conv": "ieee",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "postprocess_dtype": "float32",
+        "torch_cuda_version": "13.0",
+        "torch_version": "2.13.0+cu130"
+      },
+      "failure": null,
+      "has_pose": false,
+      "historical_parity": {
+        "abs_score_error_p95": 0.0042296405881643295,
+        "matched_fraction_both_directions": 0.9977118850691123,
+        "matched_iou_p05": 0.993937634570336,
+        "path": "outputs/player-model-comparison/ecdet-x-o365/pt16/parity-vs-pt32.json",
+        "sha256": "043278cafc3c4b38e79a78a455ba53877406d483988c84102ce50ea73f7d3f89",
+        "status": "ok"
+      },
+      "metrics": {
+        "path": "outputs/player-model-comparison/ecdet-x-o365/pt16/metrics.scorer-0d4bf0990.json",
+        "sha256": "8f63c774eb8059e379276ec501785b86ad3543869f175697ee6a8b32e229a16a"
+      },
+      "model_id": "ecdet-x-o365",
+      "predictions": {
+        "bytes": 31813686,
+        "empty_images": 0,
+        "images": 6844,
+        "path": "outputs/player-model-comparison/ecdet-x-o365/pt16/predictions.jsonl",
+        "sha256": "29783206ffaecdd12552bbfd7d86b0244bef11ce9c1be714637907cbb7cfde46"
+      },
+      "run": "retained_pt16",
+      "status": "ok",
+      "weight_sha256": "be9c77cd4def8aadd0cc679944ba57412f363de2d44f7c6b900289e61316314c"
+    },
+    {
+      "backend": "trt16",
+      "detection": {
+        "matched_iou": {
+          "count": 17311,
+          "mean": 0.7147692396457321,
+          "median": 0.7137141225083116,
+          "p95": 0.876460925653359
+        },
+        "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+        "recall_by_iou": {
+          "0.50": 0.6588141269599634,
+          "0.75": 0.23873496727051302
+        },
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.43792814735880653,
+            "0.75": 0.15367635865428528
+          },
+          "0.5": {
+            "0.50": 0.36835895874562335,
+            "0.75": 0.1278733444968793
+          },
+          "0.75": {
+            "0.50": 0.19474044755670575,
+            "0.75": 0.070977317704369
+          }
+        },
+        "references": 26276
+      },
+      "engine": {
+        "engine_build": {
+          "path": "outputs/player-model-comparison/ecdet-x-o365/trt16-trace2/engine-build.json",
+          "sha256": "b2821167b2236df7c4f98261bbc39a932a3374797ca3de8b93074f91cebc399f"
+        },
+        "environment": {
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_name": "NVIDIA GeForce RTX 5060 Ti",
+          "tensorrt_version": "10.14.1.48.post1"
+        },
+        "onnx_export": {
+          "path": "outputs/player-model-comparison/ecdet-x-o365/trt16-trace2/onnx-export.json",
+          "sha256": "b2a5b52a08c7a5a21f7c0b28054f8e333f48f1fc2373d4760d6ce3d129006e5d"
+        },
+        "onnx_files": {
+          "model.onnx": "fca8a60ab0d2733ea01236f7bcdabc66517843475028d5f84ea2c9fba4d64cdf"
+        },
+        "plan": {
+          "path": "outputs/player-model-comparison/ecdet-x-o365/trt16-trace2/engine/engine.plan",
+          "sha256": "b4986ec8b18cb5a869a07b9548bdd992cde0efd59a506a933a3af3b8abdbaf1b"
+        },
+        "profiles": {
+          "pixels": {
+            "maximum": [
+              2,
+              3,
+              640,
+              640
+            ],
+            "minimum": [
+              1,
+              3,
+              640,
+              640
+            ],
+            "optimum": [
+              1,
+              3,
+              640,
+              640
+            ]
+          }
+        }
+      },
+      "execution": {
+        "cuda_stream": "non-default",
+        "device": "cuda:0",
+        "eager_autocast": null,
+        "fp32_matmul_and_cudnn_conv": "ieee",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "postprocess_dtype": "float32",
+        "torch_cuda_version": "13.0",
+        "torch_version": "2.13.0+cu130"
+      },
+      "failure": null,
+      "has_pose": false,
+      "job_id": "0-8204421084319338709_2026-11-25T03-55-15-680661290Z_44417_i2487-ecdet-x-o365-cohort-accuracy-v3.job",
+      "metrics": {
+        "path": "outputs/player-model-comparison/ecdet-x-o365/trt16-trace2/metrics.json",
+        "sha256": "86620b9203de44fbe91c99f058d2b5398982af00ca92705e822250ae2fe6c2df"
+      },
+      "model_id": "ecdet-x-o365",
+      "parity": {
+        "reason": "PT32未計測",
+        "status": "not_measured"
+      },
+      "predictions": {
+        "bytes": 32731122,
+        "empty_images": 0,
+        "images": 6844,
+        "path": "outputs/player-model-comparison/ecdet-x-o365/trt16-trace2/predictions.jsonl",
+        "sha256": "96eaf26a842b46988d6f8a2eeb069b907c454e016e156e0586edf7dbc06afd3d"
+      },
+      "run": "cohort_accuracy_v3",
+      "status": "ok",
+      "weight_sha256": "be9c77cd4def8aadd0cc679944ba57412f363de2d44f7c6b900289e61316314c"
+    },
+    {
+      "backend": "pt16",
+      "detection": {
+        "matched_iou": {
+          "count": 13713,
+          "mean": 0.8180557311252751,
+          "median": 0.834530219933494,
+          "p95": 0.9458203156407176
+        },
+        "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+        "recall_by_iou": {
+          "0.50": 0.5218830872278886,
+          "0.75": 0.40314355305221494
+        },
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.27363373420611964,
+            "0.75": 0.21879281473588066
+          },
+          "0.5": {
+            "0.50": 0.23085705586847313,
+            "0.75": 0.19074440554117827
+          },
+          "0.75": {
+            "0.50": 0.17795707109149034,
+            "0.75": 0.15173542396102907
+          }
+        },
+        "references": 26276
+      },
+      "execution": {
+        "cuda_stream": "non-default",
+        "device": "cuda:0",
+        "eager_autocast": "float16",
+        "fp32_matmul_and_cudnn_conv": "ieee",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "postprocess_dtype": "float32",
+        "torch_cuda_version": "13.0",
+        "torch_version": "2.13.0+cu130"
+      },
+      "failure": null,
+      "has_pose": true,
+      "job_id": "0-8204421086015195752_2026-11-25T03-55-13-984804247Z_43984_i2487-ecpose-l-o365-cohort-accuracy-v3.job",
+      "metrics": {
+        "path": "outputs/player-model-comparison/ecpose-l-o365/pt16/metrics.json",
+        "sha256": "fece0379f311da4a787319e234cdc16972ee8be224070f8289272a57f67cdaf5"
+      },
+      "model_id": "ecpose-l-o365",
+      "parity": {
+        "reason": "PT32未計測",
+        "status": "not_measured"
+      },
+      "pose": {
+        "matched_only": {
+          "eligible_joints": 231504,
+          "oks": {
+            "count": 13647,
+            "mean": 0.5500206105114209,
+            "median": 0.5936391291805346,
+            "p95": 0.8826575693081821
+          },
+          "pck": {
+            "0.1": 0.4880131660792038,
+            "0.2": 0.7290975533900063
+          },
+          "pixel_error_px": {
+            "count": 231500,
+            "mean": 13.124774449124683,
+            "median": 8.31940266245805,
+            "p95": 39.60070799155881
+          },
+          "pose_references": 13647,
+          "pose_references_with_prediction": 13647,
+          "predicted_joints": 231500,
+          "valid_joint_fraction": 0.9999827216808349
+        },
+        "with_detection_coverage": {
+          "eligible_joints": 437714,
+          "oks": {
+            "count": 25811,
+            "mean": 0.29081133127927483,
+            "median": 0.19024501596972626,
+            "p95": 0.8510912469185705
+          },
+          "pck": {
+            "0.1": 0.25810689171468126,
+            "0.2": 0.38561480784256386
+          },
+          "pixel_error_px": {
+            "count": 231500,
+            "mean": 13.124774449124683,
+            "median": 8.31940266245805,
+            "p95": 39.60070799155881
+          },
+          "pose_references": 25811,
+          "pose_references_with_prediction": 13647,
+          "predicted_joints": 231500,
+          "valid_joint_fraction": 0.5288841572350895
+        }
+      },
+      "predictions": {
+        "bytes": 316318274,
+        "empty_images": 0,
+        "images": 6844,
+        "path": "outputs/player-model-comparison/ecpose-l-o365/pt16/predictions.jsonl",
+        "sha256": "458a797a371d6d14b05f1da3b003f51f08596d5cab393a92a91fe868f8d5b6d0"
+      },
+      "run": "cohort_accuracy_v3",
+      "status": "ok",
+      "weight_sha256": "091ad72c92ee5de3383176cbae8e8836e9cacf2b9fbec94c11c855fbfe35343c"
+    },
+    {
+      "backend": "trt16",
+      "detection": {
+        "matched_iou": {
+          "count": 13223,
+          "mean": 0.8103115448647357,
+          "median": 0.8283265580517469,
+          "p95": 0.9453311822003243
+        },
+        "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+        "recall_by_iou": {
+          "0.50": 0.503234891155427,
+          "0.75": 0.3752473740295327
+        },
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.22922058151925712,
+            "0.75": 0.18069721418785203
+          },
+          "0.5": {
+            "0.50": 0.18301872431115848,
+            "0.75": 0.14819607246156188
+          },
+          "0.75": {
+            "0.50": 0.12794945958288934,
+            "0.75": 0.10576191201096058
+          }
+        },
+        "references": 26276
+      },
+      "engine": {
+        "engine_build": {
+          "path": "outputs/player-model-comparison/ecpose-l-o365/trt16-trace2/engine-build.json",
+          "sha256": "07534c1623f9614cba4460eed890a043e84694db29fbc3452a1b384dcc7aaff5"
+        },
+        "environment": {
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_name": "NVIDIA GeForce RTX 5060 Ti",
+          "tensorrt_version": "10.14.1.48.post1"
+        },
+        "onnx_export": {
+          "path": "outputs/player-model-comparison/ecpose-l-o365/trt16-trace2/onnx-export.json",
+          "sha256": "10a03eec88b9f6bf86654380d1c3424d02873273ea3283053e778711b0f5a867"
+        },
+        "onnx_files": {
+          "model.onnx": "2bac47a53ab2c4a8be0a0fc1393cfab2e025206c105989d35ac0d15638923732"
+        },
+        "plan": {
+          "path": "outputs/player-model-comparison/ecpose-l-o365/trt16-trace2/engine/engine.plan",
+          "sha256": "f601d900dba10a8e3eba087ed7dd78ddad0e39f838e7a8bf6c7202447dcef3b8"
+        },
+        "profiles": {
+          "pixels": {
+            "maximum": [
+              2,
+              3,
+              640,
+              640
+            ],
+            "minimum": [
+              1,
+              3,
+              640,
+              640
+            ],
+            "optimum": [
+              1,
+              3,
+              640,
+              640
+            ]
+          }
+        }
+      },
+      "execution": {
+        "cuda_stream": "non-default",
+        "device": "cuda:0",
+        "eager_autocast": null,
+        "fp32_matmul_and_cudnn_conv": "ieee",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "postprocess_dtype": "float32",
+        "torch_cuda_version": "13.0",
+        "torch_version": "2.13.0+cu130"
+      },
+      "failure": null,
+      "has_pose": true,
+      "job_id": "0-8204421086015195752_2026-11-25T03-55-13-984804247Z_43984_i2487-ecpose-l-o365-cohort-accuracy-v3.job",
+      "metrics": {
+        "path": "outputs/player-model-comparison/ecpose-l-o365/trt16-trace2/metrics.json",
+        "sha256": "16b6d4d42289072aa03173fa92a6e3701ffa08a2b22d173289ae6637e9e72a84"
+      },
+      "model_id": "ecpose-l-o365",
+      "parity": {
+        "reason": "PT32未計測",
+        "status": "not_measured"
+      },
+      "pose": {
+        "matched_only": {
+          "eligible_joints": 223170,
+          "oks": {
+            "count": 13156,
+            "mean": 0.5397437007585337,
+            "median": 0.5755997294894302,
+            "p95": 0.88176136411543
+          },
+          "pck": {
+            "0.1": 0.4745082224313304,
+            "0.2": 0.7165658466639782
+          },
+          "pixel_error_px": {
+            "count": 223127,
+            "mean": 13.59227235521483,
+            "median": 8.705748587471769,
+            "p95": 40.59522156955717
+          },
+          "pose_references": 13156,
+          "pose_references_with_prediction": 13156,
+          "predicted_joints": 223127,
+          "valid_joint_fraction": 0.9998073217726396
+        },
+        "with_detection_coverage": {
+          "eligible_joints": 437714,
+          "oks": {
+            "count": 25811,
+            "mean": 0.2751101517639483,
+            "median": 0.14223511365301944,
+            "p95": 0.845397817034865
+          },
+          "pck": {
+            "0.1": 0.24192966183398293,
+            "0.2": 0.36534358051147553
+          },
+          "pixel_error_px": {
+            "count": 223127,
+            "mean": 13.59227235521483,
+            "median": 8.705748587471769,
+            "p95": 40.59522156955717
+          },
+          "pose_references": 25811,
+          "pose_references_with_prediction": 13156,
+          "predicted_joints": 223127,
+          "valid_joint_fraction": 0.5097552282997574
+        }
+      },
+      "predictions": {
+        "bytes": 312213768,
+        "empty_images": 0,
+        "images": 6844,
+        "path": "outputs/player-model-comparison/ecpose-l-o365/trt16-trace2/predictions.jsonl",
+        "sha256": "7ac43fc6119c47fc7a05969f3213795071ce7a7970fb2bdfe2582d97a0a69d5a"
+      },
+      "run": "cohort_accuracy_v3",
+      "status": "ok",
+      "weight_sha256": "091ad72c92ee5de3383176cbae8e8836e9cacf2b9fbec94c11c855fbfe35343c"
+    },
+    {
+      "backend": "pt16",
+      "detection": {
+        "matched_iou": {
+          "count": 10535,
+          "mean": 0.837854634124914,
+          "median": 0.8555946592061985,
+          "p95": 0.9547369317046472
+        },
+        "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+        "recall_by_iou": {
+          "0.50": 0.4009362155579236,
+          "0.75": 0.3344116303851423
+        },
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.27397625209316484,
+            "0.75": 0.22431115847160907
+          },
+          "0.5": {
+            "0.50": 0.22689907139595067,
+            "0.75": 0.19184807428832396
+          },
+          "0.75": {
+            "0.50": 0.1862916730095905,
+            "0.75": 0.15927081747602376
+          }
+        },
+        "references": 26276
+      },
+      "execution": {
+        "cuda_stream": "non-default",
+        "device": "cuda:0",
+        "eager_autocast": "float16",
+        "fp32_matmul_and_cudnn_conv": "ieee",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "postprocess_dtype": "float32",
+        "torch_cuda_version": "13.0",
+        "torch_version": "2.13.0+cu130"
+      },
+      "failure": null,
+      "has_pose": true,
+      "job_id": "0-8204421085699163410_2026-11-25T03-55-14-300836589Z_44065_i2487-ecpose-x-o365-cohort-accuracy-v3.job",
+      "metrics": {
+        "path": "outputs/player-model-comparison/ecpose-x-o365/pt16/metrics.json",
+        "sha256": "afe07b487c5cf09a5ac3e5e8b8775434d9fe5e1b42571b34c6382a27b20ac44b"
+      },
+      "model_id": "ecpose-x-o365",
+      "parity": {
+        "reason": "PT32未計測",
+        "status": "not_measured"
+      },
+      "pose": {
+        "matched_only": {
+          "eligible_joints": 178064,
+          "oks": {
+            "count": 10501,
+            "mean": 0.6361143599310326,
+            "median": 0.6969779320589913,
+            "p95": 0.904757992180691
+          },
+          "pck": {
+            "0.1": 0.6002111600323479,
+            "0.2": 0.8131065234971696
+          },
+          "pixel_error_px": {
+            "count": 178060,
+            "mean": 12.197464277032434,
+            "median": 7.4256774798692415,
+            "p95": 39.24970643464005
+          },
+          "pose_references": 10501,
+          "pose_references_with_prediction": 10501,
+          "predicted_joints": 178060,
+          "valid_joint_fraction": 0.9999775361667715
+        },
+        "with_detection_coverage": {
+          "eligible_joints": 437714,
+          "oks": {
+            "count": 25811,
+            "mean": 0.2587980664691711,
+            "median": 0.0,
+            "p95": 0.8654690469773232
+          },
+          "pck": {
+            "0.1": 0.24416856668966494,
+            "0.2": 0.33077534645910345
+          },
+          "pixel_error_px": {
+            "count": 178060,
+            "mean": 12.197464277032434,
+            "median": 7.4256774798692415,
+            "p95": 39.24970643464005
+          },
+          "pose_references": 25811,
+          "pose_references_with_prediction": 10501,
+          "predicted_joints": 178060,
+          "valid_joint_fraction": 0.4067953046966741
+        }
+      },
+      "predictions": {
+        "bytes": 329455775,
+        "empty_images": 0,
+        "images": 6844,
+        "path": "outputs/player-model-comparison/ecpose-x-o365/pt16/predictions.jsonl",
+        "sha256": "dea95429c15213ec5e47bf64f0056c141cfc5f4ab550719cbbb34bb141a5598c"
+      },
+      "run": "cohort_accuracy_v3",
+      "status": "ok",
+      "weight_sha256": "2d79c0fd21831e4f3e6d5ba7bfa10b5e6e8ecb2641180299d7a1bd968b33f4f6"
+    },
+    {
+      "backend": "trt16",
+      "detection": {
+        "matched_iou": {
+          "count": 2625,
+          "mean": 0.7425963438660794,
+          "median": 0.753956139292095,
+          "p95": 0.9228025049600442
+        },
+        "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+        "recall_by_iou": {
+          "0.50": 0.09990105038818693,
+          "0.75": 0.05092099254072157
+        },
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.013167909879738164,
+            "0.75": 0.006812300197899223
+          },
+          "0.5": {
+            "0.50": 0.006431724767848987,
+            "0.75": 0.0031587760694169586
+          },
+          "0.75": {
+            "0.50": 0.0035012939564621707,
+            "0.75": 0.0019028771502511799
+          }
+        },
+        "references": 26276
+      },
+      "engine": {
+        "engine_build": {
+          "path": "outputs/player-model-comparison/ecpose-x-o365/trt16-trace2/engine-build.json",
+          "sha256": "e92bec1df365be73cf17c10e70fbcb7e654fa6befcbef04f1a755402b1de0782"
+        },
+        "environment": {
+          "compute_capability": [
+            12,
+            0
+          ],
+          "device_name": "NVIDIA GeForce RTX 5060 Ti",
+          "tensorrt_version": "10.14.1.48.post1"
+        },
+        "onnx_export": {
+          "path": "outputs/player-model-comparison/ecpose-x-o365/trt16-trace2/onnx-export.json",
+          "sha256": "939bc55465710da7277b0dda083287958ba7e826f3f6088b3329cbc511ef7b15"
+        },
+        "onnx_files": {
+          "model.onnx": "597ff7b61c45670508b14aca85f6d469e7b996e6b9cb38c0ca7489d1ce0383ee"
+        },
+        "plan": {
+          "path": "outputs/player-model-comparison/ecpose-x-o365/trt16-trace2/engine/engine.plan",
+          "sha256": "c878bc92ee859de02efc62daa5cefb97e8b49a44cad0e386207a5320baf8559e"
+        },
+        "profiles": {
+          "pixels": {
+            "maximum": [
+              2,
+              3,
+              640,
+              640
+            ],
+            "minimum": [
+              1,
+              3,
+              640,
+              640
+            ],
+            "optimum": [
+              1,
+              3,
+              640,
+              640
+            ]
+          }
+        }
+      },
+      "execution": {
+        "cuda_stream": "non-default",
+        "device": "cuda:0",
+        "eager_autocast": null,
+        "fp32_matmul_and_cudnn_conv": "ieee",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "postprocess_dtype": "float32",
+        "torch_cuda_version": "13.0",
+        "torch_version": "2.13.0+cu130"
+      },
+      "failure": null,
+      "has_pose": true,
+      "job_id": "0-8204421085699163410_2026-11-25T03-55-14-300836589Z_44065_i2487-ecpose-x-o365-cohort-accuracy-v3.job",
+      "metrics": {
+        "path": "outputs/player-model-comparison/ecpose-x-o365/trt16-trace2/metrics.json",
+        "sha256": "440cc17c3c02151a04110dcdf8200f65a43a3c76788acad969fd414b4744da52"
+      },
+      "model_id": "ecpose-x-o365",
+      "parity": {
+        "reason": "PT32未計測",
+        "status": "not_measured"
+      },
+      "pose": {
+        "matched_only": {
+          "eligible_joints": 44283,
+          "oks": {
+            "count": 2617,
+            "mean": 0.5263389473551138,
+            "median": 0.5285503609735203,
+            "p95": 0.8422515730331642
+          },
+          "pck": {
+            "0.1": 0.44583700291308176,
+            "0.2": 0.6827676535013436
+          },
+          "pixel_error_px": {
+            "count": 43533,
+            "mean": 22.486413104602082,
+            "median": 12.973506565247266,
+            "p95": 74.66491048841476
+          },
+          "pose_references": 2617,
+          "pose_references_with_prediction": 2617,
+          "predicted_joints": 43533,
+          "valid_joint_fraction": 0.9830634780841406
+        },
+        "with_detection_coverage": {
+          "eligible_joints": 437714,
+          "oks": {
+            "count": 25811,
+            "mean": 0.05336596897556595,
+            "median": 0.0,
+            "p95": 0.5318573402479169
+          },
+          "pck": {
+            "0.1": 0.045104794454826666,
+            "0.2": 0.06907478399137336
+          },
+          "pixel_error_px": {
+            "count": 43533,
+            "mean": 22.486413104602082,
+            "median": 12.973506565247266,
+            "p95": 74.66491048841476
+          },
+          "pose_references": 25811,
+          "pose_references_with_prediction": 2617,
+          "predicted_joints": 43533,
+          "valid_joint_fraction": 0.09945535212490347
+        }
+      },
+      "predictions": {
+        "bytes": 143215190,
+        "empty_images": 0,
+        "images": 6844,
+        "path": "outputs/player-model-comparison/ecpose-x-o365/trt16-trace2/predictions.jsonl",
+        "sha256": "bad1b56b7ee0d432da0cad6b310f6c3bfa776cbb8d2bcec793e82b77d83f32fb"
+      },
+      "run": "cohort_accuracy_v3",
+      "status": "ok",
+      "weight_sha256": "2d79c0fd21831e4f3e6d5ba7bfa10b5e6e8ecb2641180299d7a1bd968b33f4f6"
+    }
+  ],
+  "image_batch_size": 1,
+  "manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+  "retained_pt16_receipt": "edgecrafter-rescore.json",
+  "schema_version": 1,
+  "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+}

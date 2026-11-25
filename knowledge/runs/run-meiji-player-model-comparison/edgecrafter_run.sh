@@ -28,42 +28,62 @@ if [[ -n ${TENNIS_REPRO_DIR:-} ]]; then
 fi
 
 record() {
+    local backend=$1 phase=$2
+    shift 2
     local exit_code
     if "$@"; then
         return 0
     else
         exit_code=$?
         status=1
-        printf 'Command exited %s. Arguments' "$exit_code" >&2
-        printf ' %q' "$@" >&2
-        printf '\n' >&2
+        printf '%s %s infeasible. Phase %s exited %s. See the preceding output.\n' \
+            "$model" "$backend" "$phase" "$exit_code" >&2
         return "$exit_code"
     fi
+}
+
+require_output() {
+    local backend=$1 phase=$2
+    shift 2
+    local path
+    for path in "$@"; do
+        if [[ ! -s $path ]]; then
+            status=1
+            printf '%s %s infeasible. Phase %s did not produce %s.\n' \
+                "$model" "$backend" "$phase" "$path" >&2
+            return 1
+        fi
+    done
 }
 
 accuracy() {
     local backend=$1 destination=$2
     shift 2
-    record "${python_run[@]}" "$experiment/edgecrafter.py" evaluate \
+    record "$backend" accuracy "${python_run[@]}" "$experiment/edgecrafter.py" evaluate \
         --model "$model" --backend "$backend" --batch-size 1 --parity not_measured \
-        --manifest-sha256 "$cohort_sha" --output "$destination" "${pose[@]}" "$@"
+        --manifest-sha256 "$cohort_sha" --output "$destination" "${pose[@]}" "$@" || return
+    require_output "$backend" accuracy "$destination/metrics.json" "$destination/predictions.jsonl"
+}
+
+trt_accuracy() {
+    local trt="$output/trt16-trace2"
+    local engine="$trt/engine"
+    if [[ ! -s $engine/export.json ]]; then
+        record trt16 onnx_export "${python_run[@]}" "$experiment/edgecrafter_trt.py" export \
+            --model "$model" --trace-batch 2 --engine "$engine" --receipt "$trt/onnx-export.json" || return
+    fi
+    require_output trt16 onnx_export "$engine/export.json" "$trt/onnx-export.json" || return
+    if [[ ! -s $engine/engine.json ]]; then
+        record trt16 engine_build "${python_run[@]}" "$experiment/edgecrafter_trt.py" build \
+            --opt-batch 1 --max-batch 2 --engine "$engine" --receipt "$trt/engine-build.json" || return
+    fi
+    require_output trt16 engine_build "$engine/engine.json" "$trt/engine-build.json" || return
+    accuracy trt16 "$trt" --engine "$engine"
 }
 
 if [[ $model == ecpose-* ]]; then
     accuracy pt16 "$output/pt16" || true
 fi
 
-trt="$output/trt16-trace2"
-engine="$trt/engine"
-if [[ ! -f $engine/export.json ]]; then
-    record "${python_run[@]}" "$experiment/edgecrafter_trt.py" export \
-        --model "$model" --trace-batch 2 --engine "$engine" --receipt "$trt/onnx-export.json" || true
-fi
-if [[ -f $engine/export.json && ! -f $engine/engine.json ]]; then
-    record "${python_run[@]}" "$experiment/edgecrafter_trt.py" build \
-        --opt-batch 1 --max-batch 2 --engine "$engine" --receipt "$trt/engine-build.json" || true
-fi
-if [[ -f $engine/engine.json ]]; then
-    accuracy trt16 "$trt" --engine "$engine" || true
-fi
+trt_accuracy || true
 exit "$status"

@@ -1,88 +1,129 @@
-"""Test that timing parity uses the pinned image IDs and PT32 output bytes."""
+"""Check the EdgeCrafter speed adapter's inputs and receipt on CPU."""
 
 from __future__ import annotations
 
+import argparse
+import json
 import runpy
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any
 
 import numpy as np
 import pytest
 
-from src.tennis_scene.evaluation.player_pose.scoring import Predictions
-from src.utils.checksum import dual_sha256
-from src.utils.inference_benchmark import Backend, BenchmarkCase, ConditionUnavailable
-from src.utils.io import write_json_atomic
+from src.utils.inference_benchmark import (
+    Backend,
+    Batch,
+    BenchmarkCase,
+    BenchmarkProtocol,
+    BenchmarkReport,
+    Status,
+)
+from src.utils.inference_benchmark_inputs import TimingSchedule
 
 
 @pytest.fixture
 def script(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     runs = Path(__file__).resolve().parents[3] / "knowledge/runs"
-    baseline = runs / "run-person-model-speed-baseline"
     comparison = runs / "run-meiji-player-model-comparison"
-    monkeypatch.syspath_prepend(str(baseline))
+    monkeypatch.syspath_prepend(str(runs / "run-person-model-speed-baseline"))
     monkeypatch.syspath_prepend(str(comparison))
     return runpy.run_path(str(comparison / "edgecrafter_speed.py"))
 
 
-def test_speed_rows_require_equal_image_ids(script: dict[str, Any]) -> None:
-    frame = Predictions(np.array([[10.0, 20.0, 30.0, 50.0]]), np.array([0.8]))
-    compare = script["compare_speed_rows"]
-    assert compare({"frame0": frame}, {"frame0": frame}, has_pose=False).passed
-    report = compare({"frame0": frame}, {"frame1": frame}, has_pose=False)
-    assert not report.passed
-    assert report.metrics["invalid"] is True
-
-
-def test_speed_reference_validates_manifest_and_prediction_digest(
-    script: dict[str, Any], tmp_path: Path
+def test_case_uses_ordered_full_images_and_explicit_parity_opt_out(
+    script: dict[str, Any], monkeypatch: pytest.MonkeyPatch, tmp_path: Path
 ) -> None:
-    settings = {
-        "official_source_commit": "a" * 40,
-        "weight_sha256": "b" * 64,
-        "dataset_id": "speed-example",
-        "timing_protocol_sha256": "e" * 64,
-        "image_size_hw": [640, 640],
-        "pose_box_margin": None,
-        "person_score_exclusive": 0.0,
-    }
-    case = BenchmarkCase("ecdet-l-coco", Backend.PT16, 2, "image", "c" * 64, settings)
-    predictions_path = tmp_path / "speed-b1-predictions.json"
-    content = {
-        "input_manifest_sha256": case.input_manifest_sha256,
-        "rows": {
-            "clip/cam/23": {
-                "boxes_xyxy": [[1.0, 4.0, 11.0, 16.0]],
-                "scores": [0.8],
-                "keypoints_xyc": None,
-            }
-        },
-    }
-    write_json_atomic(predictions_path, content)
-    report = {
-        "status": "ok",
-        "case": {
-            "name": case.name,
-            "backend": "PT32",
-            "batch_size": 1,
-            "input_manifest_sha256": case.input_manifest_sha256,
-            "settings": settings,
-        },
-        "parity": {"metrics": {"predictions_sha256": dual_sha256(predictions_path)}},
-    }
-    write_json_atomic(tmp_path / "speed-b1.json", report)
-    read = script["read_pt32_reference"]
-    result = read(tmp_path, case=case, has_pose=False)
-    np.testing.assert_array_equal(
-        result["clip/cam/23"].boxes_xyxy, [[1.0, 4.0, 11.0, 16.0]]
+    one_case = script["one_case"]
+    scope = one_case.__globals__
+    monkeypatch.setitem(scope, "_require_harness_revision", lambda revision: None)
+    for key, value in (("first", 12), ("second", 87)):
+        np.save(tmp_path / f"{key}.npy", np.full((2, 3, 3), value, dtype=np.uint8))
+    keys = ("second", "first")
+    schedule = TimingSchedule(BenchmarkProtocol((1, 2), 2, 3, 1), (keys,), "c" * 64)
+    pins = SimpleNamespace(
+        manifest_sha256="a" * 64,
+        timing_sha256="b" * 64,
+        manifest={"id": "fixed-speed-fixture"},
+        schedule=lambda *_: schedule,
+        rows=lambda _: [{"id": key, "shape": [2, 3, 3]} for key in keys],
+        verified_asset=lambda row: tmp_path / f"{row['id']}.npy",
     )
-    with pytest.raises(ConditionUnavailable, match="input or model"):
-        wrong = BenchmarkCase(
-            case.name, case.backend, case.batch_size, "image", "d" * 64, settings
-        )
-        read(tmp_path, case=wrong, has_pose=False)
+    monkeypatch.setitem(scope, "PinnedBenchmarkInputs", lambda *a, **kw: pins)
+    adapter = object()
+    monkeypatch.setitem(scope, "make_benchmark_adapter", lambda *a, **kw: adapter)
+    monkeypatch.setitem(scope, "_adapter_with_receipt", lambda value: value)
 
-    content["rows"]["clip/cam/23"]["scores"] = [0.9]
-    write_json_atomic(predictions_path, content)
-    with pytest.raises(ConditionUnavailable, match="checksum differs"):
-        read(tmp_path, case=case, has_pose=False)
+    def run_benchmark(
+        case: BenchmarkCase,
+        batches: list[Batch[Any]],
+        backends: dict[Backend, object],
+        **settings: Any,
+    ) -> BenchmarkReport:
+        assert case.backend is Backend.PT16
+        assert case.input_manifest_sha256 == "a" * 64
+        assert case.settings["timed_input_ids_sha256"] == "c" * 64
+        assert backends == {Backend.PT16: adapter}
+        assert [batch.ids for batch in batches] == [("second", "first")]
+        assert [image[0, 0, 0] for image in batches[0].data] == [87, 12]
+        assert settings["protocol"] is schedule.protocol
+        assert settings["dedicated_stream"]
+        assert settings.get("check_parity") is None
+        assert settings["parity_not_evaluated_reason"] == "PT32未計測"
+        return BenchmarkReport(
+            case,
+            schedule.protocol,
+            (),
+            parity_not_evaluated_reason=settings["parity_not_evaluated_reason"],
+        )
+
+    monkeypatch.setitem(scope, "benchmark", run_benchmark)
+    assert (
+        one_case(
+            argparse.Namespace(
+                backend="pt16",
+                parity="not_measured",
+                harness_commit="d" * 40,
+                model="ecdet-l-coco",
+                device="cuda:0",
+                assets=tmp_path,
+                engine=None,
+                inputs=tmp_path,
+                inputs_sha256="a" * 64,
+                timing_protocol=tmp_path / "timing.json",
+                timing_protocol_sha256="b" * 64,
+                batch_size=2,
+                pose_box_margin=None,
+                conversion=[],
+                output=tmp_path,
+            )
+        )
+        is Status.OK
+    )
+    report = json.loads((tmp_path / "speed-b2.json").read_text(encoding="utf-8"))
+    assert report["case"]["settings"]["harness_commit"] == "d" * 40
+    assert report["parity_status"] == "not_evaluated"
+    assert report["parity_not_evaluated_reason"] == "PT32未計測"
+    assert report["parity"] is None
+
+
+def test_speed_refuses_a_changed_harness(
+    script: dict[str, Any], monkeypatch: pytest.MonkeyPatch
+) -> None:
+    check = script["_require_harness_revision"]
+
+    def dirty_diff(command: list[str], *, check: bool) -> SimpleNamespace:
+        assert command[:5] == ["git", "diff", "--quiet", "--no-ext-diff", "a" * 40]
+        assert command[-2:] == [
+            "src/utils/inference_benchmark.py",
+            "src/utils/inference_benchmark_inputs.py",
+        ]
+        return SimpleNamespace(returncode=1)
+
+    monkeypatch.setitem(
+        check.__globals__, "subprocess", SimpleNamespace(run=dirty_diff)
+    )
+
+    with pytest.raises(ValueError, match="The benchmark harness differs"):
+        check("a" * 40)

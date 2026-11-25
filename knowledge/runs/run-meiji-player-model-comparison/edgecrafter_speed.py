@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import argparse
 import subprocess
-from collections.abc import Callable, Iterator, Mapping
+from collections.abc import Callable
 from pathlib import Path
 from typing import TypeVar
 
@@ -13,16 +13,17 @@ import torch
 from edgecrafter import (
     ASSETS,
     BACKENDS,
+    MEASURED_BACKENDS,
+    PARITY_NOT_MEASURED,
+    PARITY_NOT_MEASURED_REASON,
     SCORE_THRESHOLD,
     Frames,
     make_benchmark_adapter,
 )
-from edgecrafter_parity import _prediction, detection_output
 from run import load_conversion, read_json
 
 from src.submodules.models.ecpose.releases import IMAGE_SIZE, RELEASES, SOURCE_COMMIT
 from src.tennis_scene.evaluation.player_pose.scoring import Predictions
-from src.utils.checksum import dual_sha256
 from src.utils.inference_benchmark import (
     Backend,
     Batch,
@@ -30,12 +31,10 @@ from src.utils.inference_benchmark import (
     BenchmarkAdapter,
     BenchmarkCase,
     ConditionUnavailable,
-    ParityResult,
     Status,
     benchmark,
 )
 from src.utils.inference_benchmark_inputs import PinnedBenchmarkInputs
-from src.utils.inference_parity import compare_detections
 from src.utils.io import write_json_atomic
 
 Value = TypeVar("Value")
@@ -66,72 +65,32 @@ def _adapter_with_receipt(
     return BenchmarkAdapter(adapter.backend, load, adapter.weights, adapter.engines)
 
 
-def read_pt32_reference(
-    directory: Path, *, case: BenchmarkCase, has_pose: bool
-) -> dict[str, Predictions]:
-    report_path = directory / "speed-b1.json"
-    predictions_path = directory / "speed-b1-predictions.json"
-    if not report_path.is_file() or not predictions_path.is_file():
-        raise ConditionUnavailable(
-            Status.PARITY_UNAVAILABLE,
-            f"PT32 batch 1 speed reference is absent at {directory}",
-        )
-    report = read_json(report_path)
-    saved_case = report["case"]
-    settings = saved_case["settings"]
-    settings_keys = (
-        "official_source_commit",
-        "weight_sha256",
-        "dataset_id",
-        "timing_protocol_sha256",
-        "image_size_hw",
-        "pose_box_margin",
-        "person_score_exclusive",
+def _require_harness_revision(commit: str) -> None:
+    if len(commit) != 40 or any(value not in "0123456789abcdef" for value in commit):
+        raise ValueError("Specify the complete benchmark harness commit SHA")
+    result = subprocess.run(
+        [
+            "git",
+            "diff",
+            "--quiet",
+            "--no-ext-diff",
+            commit,
+            "--",
+            "src/utils/inference_benchmark.py",
+            "src/utils/inference_benchmark_inputs.py",
+        ],
+        check=False,
     )
-    if (
-        report["status"] != "ok"
-        or saved_case["name"] != case.name
-        or saved_case["backend"] != Backend.PT32.value
-        or saved_case["batch_size"] != 1
-        or saved_case["input_manifest_sha256"] != case.input_manifest_sha256
-        or any(settings[key] != case.settings[key] for key in settings_keys)
-    ):
-        raise ConditionUnavailable(
-            Status.PARITY_UNAVAILABLE,
-            f"PT32 batch 1 speed reference differs from this input or model: {directory}",
-        )
-    predictions = read_json(predictions_path)
-    if predictions["input_manifest_sha256"] != case.input_manifest_sha256:
-        raise ConditionUnavailable(
-            Status.PARITY_UNAVAILABLE,
-            f"PT32 prediction manifest differs: {predictions_path}",
-        )
-    if report["parity"]["metrics"]["predictions_sha256"] != dual_sha256(
-        predictions_path
-    ):
-        raise ConditionUnavailable(
-            Status.PARITY_UNAVAILABLE,
-            f"PT32 prediction checksum differs: {predictions_path}",
-        )
-    return {
-        key: _prediction(value, has_pose) for key, value in predictions["rows"].items()
-    }
-
-
-def compare_speed_rows(
-    reference: Mapping[str, Predictions],
-    candidate: Mapping[str, Predictions],
-    *,
-    has_pose: bool,
-) -> ParityResult:
-    return compare_detections(
-        {key: detection_output(value) for key, value in reference.items()},
-        {key: detection_output(value) for key, value in candidate.items()},
-        with_pose=has_pose,
-    )
+    if result.returncode:
+        raise ValueError(f"The benchmark harness differs from {commit}")
 
 
 def one_case(args: argparse.Namespace) -> Status:
+    if args.backend not in MEASURED_BACKENDS or args.parity != PARITY_NOT_MEASURED:
+        raise ValueError(
+            "Select PT16 or TRT16 and explicitly set parity to not_measured"
+        )
+    _require_harness_revision(args.harness_commit)
     backend = BACKENDS[args.backend]
     release = RELEASES[args.model]
     fixed = PinnedBenchmarkInputs(
@@ -166,6 +125,7 @@ def one_case(args: argparse.Namespace) -> Status:
             "dataset_id": fixed.manifest["id"],
             "timing_protocol_sha256": fixed.timing_sha256,
             "timed_input_ids_sha256": schedule.timed_ids_sha256,
+            "harness_commit": args.harness_commit,
             "input_decode": "predecoded BGR",
             "cuda_stream": "non-default",
             "host_threads": torch.get_num_threads(),
@@ -199,44 +159,13 @@ def one_case(args: argparse.Namespace) -> Status:
         )
     )
 
-    def check(
-        predictions: Iterator[tuple[Batch[Frames], list[Predictions]]],
-    ) -> ParityResult:
-        actual: dict[str, Predictions] = {}
-        for batch, values in predictions:
-            for key, value in zip(batch.ids, values, strict=True):
-                if key in actual:
-                    raise ValueError(f"Duplicate speed input ID: {key}")
-                actual[key] = value
-        expected_ids = tuple(key for batch in batches for key in batch.ids)
-        if tuple(actual) != expected_ids:
-            raise ValueError("Speed predictions do not cover the fixed batch order")
-        path = args.output / f"speed-b{args.batch_size}-predictions.json"
-        write_json_atomic(
-            path, {"input_manifest_sha256": fixed.manifest_sha256, "rows": actual}
-        )
-        reference = (
-            actual
-            if backend is Backend.PT32 and args.batch_size == 1
-            else read_pt32_reference(
-                args.reference, case=case, has_pose=release.has_pose
-            )
-        )
-        parity = compare_speed_rows(reference, actual, has_pose=release.has_pose)
-        return ParityResult(
-            parity.passed,
-            {**parity.metrics, "predictions_sha256": dual_sha256(path)},
-            parity.reason,
-            parity.criteria,
-        )
-
     report = benchmark(
         case,
         batches,
         {backend: adapter},
         device=device,
         conversion=conversion,
-        check_parity=check,
+        parity_not_evaluated_reason=PARITY_NOT_MEASURED_REASON,
         protocol=schedule.protocol,
         dedicated_stream=True,
     )
@@ -253,7 +182,9 @@ def one_case(args: argparse.Namespace) -> Status:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--model", choices=RELEASES, required=True)
-    parser.add_argument("--backend", choices=BACKENDS, required=True)
+    parser.add_argument("--backend", choices=MEASURED_BACKENDS, required=True)
+    parser.add_argument("--parity", choices=(PARITY_NOT_MEASURED,), required=True)
+    parser.add_argument("--harness-commit", required=True)
     parser.add_argument("--batch-size", type=int, required=True)
     parser.add_argument("--inputs", type=Path, required=True)
     parser.add_argument("--inputs-sha256", required=True)
@@ -265,8 +196,9 @@ def main() -> None:
     parser.add_argument("--conversion", type=Path, action="append", default=[])
     parser.add_argument("--pose-box-margin", type=float)
     parser.add_argument("--output", type=Path, required=True)
-    parser.add_argument("--reference", type=Path, required=True)
-    one_case(parser.parse_args())
+    status = one_case(parser.parse_args())
+    if status is not Status.OK:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

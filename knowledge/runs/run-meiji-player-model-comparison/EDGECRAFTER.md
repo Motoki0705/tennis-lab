@@ -61,9 +61,23 @@ condition="$output/ecdet-l-coco/trt16-trace2"
 
 PT16 uses CUDA FP16 autocast with FP32 weights and input tensors. Following the 2026-11-25 decision, new accuracy runs require `--parity not_measured` and record `PT32未計測` in the metrics. All conditions use the same partial-label pseudo-reference for accuracy. The saved ECDet PT32 v1 results and existing parity reports remain historical evidence. The replacement TensorRT trace addresses the dynamic batch profile.
 
+## Accuracy on the fixed cohort
+
+The six queue jobs at `83507bdd57097ac5b37892b5b1d6db3af0666af2` produced eight new scores and six TensorRT engines. Including the four retained ECDet PT16 results, all 12 PT16/TRT16 conditions contain the same 6,844 frame-and-camera rows and 26,276 eligible boxes. The receipt records the per-condition metrics, prediction digests, queue logs and verified engine artifacts. The raw outputs are under `outputs/player-model-comparison/` in the EdgeCrafter worker checkout. [Accuracy receipts](edgecrafter-accuracy.json)
+
+ECDet's PT16 recall at IoU 0.50 is 97.58–98.19%, and its TRT16 recall is 63.02–70.29%. ECPose-L's coverage-inclusive PCK@0.20 is 38.56% on PT16 and 36.53% on TRT16. ECPose-X reaches 33.08% and 6.91%, respectively. All conditions completed scoring. The large ECPose-X difference is measured against the pseudo-reference, and its cause remains open.
+
 ## Fixed-input speed cases
 
-`edgecrafter_speed.py` reads the #2496 input manifest and timing protocol through the shared checksum loader. It runs the ordered set of 96 native BGR images in batch 1 or 2, with 30 warm-ups and three blocks of 100 iterations on a dedicated CUDA stream. The previous six speed jobs were cancelled before execution while the common timing contract was revised. New speed jobs require the common harness to support an explicit parity opt-out. They will use the same engine as the full-cohort accuracy report.
+`edgecrafter_speed_run.sh` runs PT16 and TRT16 at batch 1 and 2 in separate processes. `edgecrafter_speed.py` verifies the #2496 manifest, timing protocol and harness revision. It uses the ordered set of 96 native BGR images, 30 warm-ups and three blocks of 100 iterations on a dedicated CUDA stream. TRT16 loads the engine from the full-cohort accuracy run. The shared harness records `parity_status=not_evaluated` with reason `PT32未計測`. The previous six speed jobs were cancelled before execution while the common timing contract was revised.
+
+```bash
+# Register this command in the shared training queue for each model.
+bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh \
+  ecpose-l-o365 "$fixed_speed_inputs" 13e508cb78c46663fbe58ad8be03bcf9c96816a6
+```
+
+`fixed_speed_inputs` is the published baseline input directory. Receipts are written to `outputs/player-model-comparison/<model>/speed-13e508cb7/<backend>/speed-b<batch>.json`. See the baseline documentation for the input location and schedule. [Baseline inputs and protocol](../run-person-model-speed-baseline/README.md#固定入力と初回の成果物)
 
 ## Rescoring stored predictions
 
@@ -109,3 +123,5 @@ Four new CPU tests use small asymmetric image and model-output fixtures. They ch
 The parity tests use two rearranged detection rows, perturbations and missing joints on a single pose row, and two tiny JSONL files with different source frames. They check the pixel and score difference calculations, reject missing coverage and mismatched input identity, and reuse `test_build_time_is_separate_from_trt_load_and_inference` and `test_profile_bounds_include_tail_and_reject_oversize` for the conversion and engine boundaries.
 
 The 2026-11-25 scope change adds five CPU cases. The queue entry-point tests substitute a command recorder for the GPU processes and check that ECPose requests PT16 and TRT16, ECDet requests TRT16, and the TensorRT conversion precedes scoring. The CLI cases reject PT32 and a missing parity setting. A parity receipt test rejects comparison when the candidate declares `PT32未計測`.
+
+The speed entry-point tests check the four half-precision backend and batch combinations, ordered images, harness revision validation and the explicit parity argument. The accuracy wrapper tests check that a failed command or missing engine receipt is reported against the corresponding condition and preserves a successful result from the other backend.
