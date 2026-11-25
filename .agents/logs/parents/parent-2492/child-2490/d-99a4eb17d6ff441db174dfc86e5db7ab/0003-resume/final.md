@@ -1,0 +1,7 @@
+ViTPose-Hのflipあり・なし各3条件と、flipなし用TensorRT engineの作成を共有GPU queueの排他枠に登録しました。採点対象は #2495 の固定疑似BBox 26,276人物行です。 [PR #2500の投入記録](https://github.com/Motoki0705/tennis-lab/pull/2500#issuecomment-7132222759)
+
+flipありのTRT16は既存engineのSHA-256を照合し、通常の8人物と末尾4人物をprofileがカバーすることを確認しました。flipなしのTRT16は、専用engineの作成後に採点します。精度は結果待ちで、速度・VRAMには #2496 の計測値を使います。
+
+実行元は `codex/parent-2492-issue-2490-primary` の `33ae11e6ff421a61d85aac139fa7a0fbfab1da39` です。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204474787411339166_2026-11-24T13-00-12-588660833Z_1826380_i2490-vitpose-h-pt32-accuracy.job","0-8204474787053735650_2026-11-24T13-00-12-946264349Z_1826653_i2490-vitpose-h-pt16-accuracy.job","0-8204474786723768226_2026-11-24T13-00-13-276231773Z_1826728_i2490-vitpose-h-trt16-accuracy.job","0-8204474786353677687_2026-11-24T13-00-13-646322312Z_1826802_i2490-vitpose-h-no-flip-pt32-accuracy.job","0-8204474786027083591_2026-11-24T13-00-13-972916408Z_1826882_i2490-vitpose-h-no-flip-pt16-accuracy.job","0-8204474785676441981_2026-11-24T13-00-14-323558018Z_1826951_i2490-vitpose-h-no-flip-trt16-engine.job","0-8204474785269370750_2026-11-24T13-00-14-730629249Z_1827025_i2490-vitpose-h-no-flip-trt16-accuracy.job"]}}
