@@ -5,6 +5,7 @@ from __future__ import annotations
 import json
 import runpy
 import sys
+from hashlib import sha256
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -14,6 +15,7 @@ import pytest
 import torch
 from numpy.typing import NDArray
 
+from src.tennis_scene.evaluation.player_pose.bundle import pinned_file
 from src.tennis_scene.evaluation.player_pose.scoring import FrameKey, Predictions
 from src.utils.inference_benchmark import (
     Backend,
@@ -35,12 +37,48 @@ from src.utils.models.tensorrt_artifacts import (
     TensorSpec,
 )
 
-_SCRIPT = runpy.run_path(
-    str(
-        Path(__file__).resolve().parents[3]
-        / "knowledge/runs/run-meiji-player-model-comparison/rfdetr.py"
-    )
+_RUNS = Path(__file__).resolve().parents[3] / "knowledge/runs"
+_SCRIPT = runpy.run_path(str(_RUNS / "run-meiji-player-model-comparison/rfdetr.py"))
+
+
+@pytest.mark.parametrize(
+    ("index_path", "job_count"),
+    [
+        ("run-meiji-rfdetr-large-accuracy/results.json", 3),
+        ("run-meiji-player-model-comparison/rfdetr-speed-initial.json", 4),
+        ("run-meiji-rfdetr-large-speed/results.json", 4),
+    ],
+    ids=["accuracy", "initial-speed", "matched-speed"],
 )
+def test_queue_logs_can_be_read_without_queue_history(
+    tmp_path: Path, index_path: str, job_count: int
+) -> None:
+    conditions = json.loads((_RUNS / index_path).read_bytes())["conditions"]
+    rows = conditions.values() if isinstance(conditions, dict) else conditions
+    jobs = [row["job"] for row in rows]
+    assert len(jobs) == job_count
+
+    checkout = tmp_path / "checkout"
+    checkout.mkdir()
+    retained = tmp_path / "retained"
+    retained.mkdir()
+    artifact_root = checkout / ".worktree-outputs"
+    artifact_root.symlink_to(retained, target_is_directory=True)
+    expected_dir = Path(
+        "parent-2492-issue-2487-rfdetr/player-model-comparison/queue-logs"
+    )
+    (retained / expected_dir).mkdir(parents=True)
+
+    for job in jobs:
+        log = job["log"]
+        relative = Path(log["path"]).relative_to(".worktree-outputs")
+        assert relative == expected_dir / Path(job["id"]).with_suffix(".log").name
+        content = f"Completed {job['id']}\n".encode()
+        (retained / relative).write_bytes(content)
+        pin = {"path": str(relative), "sha256": sha256(content).hexdigest()}
+        assert pinned_file(artifact_root, pin).read_bytes() == content
+
+    assert not (checkout / ".training_queue").exists()
 
 
 def test_preprocess_keeps_native_height_width_and_converts_bgr_to_rgb() -> None:

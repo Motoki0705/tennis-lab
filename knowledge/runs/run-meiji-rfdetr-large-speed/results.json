@@ -78,8 +78,8 @@
   ],
   "original_rf_accuracy": {
     "path": "knowledge/runs/run-meiji-rfdetr-large-accuracy/results.json",
-    "bytes": 28200,
-    "sha256": "10562ad68296a4823d02cc0098bf3437a81b4d9b2717a7032b457288b39c915f"
+    "bytes": 28386,
+    "sha256": "9c8adba8087891a5213b8804cf170833d952cc2e915bdf0abb6042b13a395ce5"
   },
   "baseline_index": {
     "path": "knowledge/runs/run-person-model-speed-low-precision/cases.json",
@@ -88,8 +88,8 @@
   },
   "initial_speed": {
     "path": "knowledge/runs/run-meiji-player-model-comparison/rfdetr-speed-initial.json",
-    "bytes": 30024,
-    "sha256": "6fb3043ceadfbff7f0dcce30de9c146e68b2fb43c0205436443e4409c2a9bb2e"
+    "bytes": 30272,
+    "sha256": "c4f56b5edf34032ccc1c1ad8d350e4625080179113db0e8fefe999c4236e1a9c"
   },
   "conditions": [
     {
@@ -296,7 +296,7 @@
           "sha256": "af258527a9724e021824a3f1b48407827075c50c2159c2d5c059b3d69b0550c8"
         },
         "log": {
-          "path": ".training_queue/logs/0-8204389561547152306_2026-11-25T12-40-38-452847693Z_3832713_i2487-rfdetr-l-pt16-b1-matched-speed.log",
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/queue-logs/0-8204389561547152306_2026-11-25T12-40-38-452847693Z_3832713_i2487-rfdetr-l-pt16-b1-matched-speed.log",
           "bytes": 849,
           "sha256": "a45464922bcc9e8be9eba879cdc53cbed3c5782107457c50d06cd5244913e2ba"
         },
@@ -511,7 +511,7 @@
           "sha256": "3e5cdb6f7e48258c82d8ee9cb7716344782098b98b903d6990a1a74b4d5a2f2d"
         },
         "log": {
-          "path": ".training_queue/logs/0-8204389561265977834_2026-11-25T12-40-38-734022165Z_3832782_i2487-rfdetr-l-pt16-b2-matched-speed.log",
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/queue-logs/0-8204389561265977834_2026-11-25T12-40-38-734022165Z_3832782_i2487-rfdetr-l-pt16-b2-matched-speed.log",
           "bytes": 849,
           "sha256": "92453255844fe00ddfc7a3217538b4cd54a7cff963e81b9ff36fd3e0bc6dd288"
         },
@@ -761,7 +761,7 @@
           "sha256": "a7e09d527574d6e38429c7702a9c5a121da6fcc756ad187cfbf01c7eee52d76b"
         },
         "log": {
-          "path": ".training_queue/logs/0-8204389560981567683_2026-11-25T12-40-39-018432316Z_3832852_i2487-rfdetr-l-trt16-b1-matched-speed.log",
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/queue-logs/0-8204389560981567683_2026-11-25T12-40-39-018432316Z_3832852_i2487-rfdetr-l-trt16-b1-matched-speed.log",
           "bytes": 372,
           "sha256": "831c96ff44fe8746e4e7f7de941526d30d7eb5aeabb4948daa5a1a4c537034cf"
         },
@@ -1011,7 +1011,7 @@
           "sha256": "ea233b6ed196a74e9d3da9f0f9ab7a626b875cc36b49abafc30336d23c136982"
         },
         "log": {
-          "path": ".training_queue/logs/0-8204389560691772196_2026-11-25T12-40-39-308227803Z_3832920_i2487-rfdetr-l-trt16-b2-matched-speed.log",
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/queue-logs/0-8204389560691772196_2026-11-25T12-40-39-308227803Z_3832920_i2487-rfdetr-l-trt16-b2-matched-speed.log",
           "bytes": 372,
           "sha256": "ba3c235d0067d9722b25f32fb0db27dc4d5adc59cf248a8581f19e96ca126bb2"
         },
