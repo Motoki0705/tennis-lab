@@ -7,7 +7,7 @@
     },
     "submodules/models/ecpose/inference.py": {
       "before": null,
-      "after": "57478b4063616f1f2bac3cecfcbbf289f7736b7bcb0fae2e0aa43d9c11f5c098"
+      "after": "97070f8b8088483f36170c10f98bbc378c3191957eedebffa86b2a2c96e30733"
     },
     "submodules/models/ecpose/releases.py": {
       "before": null,

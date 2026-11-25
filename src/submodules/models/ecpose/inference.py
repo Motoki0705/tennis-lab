@@ -72,7 +72,7 @@ def require_weight(
         )
 
 
-def _yaml_config(engine_dir: Path) -> Any:
+def _upstream_core(engine_dir: Path) -> Any:
     package_name = f"_tennis_lab_edgecrafter_{engine_dir.parent.name}"
     existing = sys.modules.get(package_name)
     if existing is None:
@@ -100,7 +100,7 @@ def _yaml_config(engine_dir: Path) -> Any:
         raise ValueError(
             f"An EdgeCrafter model is already loaded from {list(existing.__path__)}"
         )
-    return importlib.import_module(f"{package_name}.core").YAMLConfig
+    return importlib.import_module(f"{package_name}.core")
 
 
 class EdgeCrafterNetwork(nn.Module):
@@ -127,11 +127,23 @@ def load_network(
     state = payload["ema"]["module"] if "ema" in payload else payload["model"]
     family = repository / release.family
     with _LOAD_LOCK, torch.device("cpu"):
-        cfg = _yaml_config(family / "engine")(str(family / "configs" / release.config))
-        if tuple(cfg.yaml_cfg["eval_spatial_size"]) != IMAGE_SIZE:
+        core = _upstream_core(family / "engine")
+        # The upstream YAMLConfig calls load_config with a shared default dict.
+        # Build only the inference model from a fresh include accumulator.
+        yaml_path = family / "configs" / release.config
+        cfg = core.load_config(str(yaml_path), {})
+        if tuple(cfg["eval_spatial_size"]) != IMAGE_SIZE:
             raise ValueError("Unexpected EdgeCrafter input size")
-        cfg.yaml_cfg["ViTAdapter"]["skip_load_backbone"] = True
-        model = cfg.model
+        cfg["ViTAdapter"]["skip_load_backbone"] = True
+        settings = core.merge_config(cfg)
+        model = core.create(cfg["model"], settings)
+        if release.has_pose:
+            adapter = settings["ViTAdapter"]
+            width = int(adapter["embed_dim"] * adapter["ffn_ratio"])
+            if model.backbone.backbone.blocks[0].mlp.fc1.out_features != width:
+                raise ValueError(
+                    f"ECPose backbone FFN width differs from {yaml_path}: expected {width}"
+                )
         model.load_state_dict(state, strict=True)
         model = model.deploy()
     network = EdgeCrafterNetwork(model, release.has_pose)

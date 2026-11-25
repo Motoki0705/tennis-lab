@@ -3,7 +3,7 @@
 from dataclasses import replace
 from pathlib import Path
 from types import SimpleNamespace
-from typing import Self
+from typing import Any, Self
 
 import numpy as np
 import pytest
@@ -24,22 +24,25 @@ def test_load_network_restores_on_cpu_under_a_different_default_device(
         def deploy(self) -> Self:
             return self
 
-    def config(_path: str) -> SimpleNamespace:
-        return SimpleNamespace(
-            yaml_cfg={"eval_spatial_size": IMAGE_SIZE, "ViTAdapter": {}},
-            model=Deployable(2, 1),
-        )
-
     checkpoint = tmp_path / "ecpose.pth"
     weight, bias = torch.tensor([[0.25, -0.5]]), torch.tensor([0.75])
     torch.save({"ema": {"module": {"weight": weight, "bias": bias}}}, checkpoint)
     release = replace(
-        RELEASES["ecpose-l-o365"],
+        RELEASES["ecdet-l-coco"],
         size=checkpoint.stat().st_size,
         sha256=dual_sha256(checkpoint),
     )
     monkeypatch.setattr(inference, "require_source", lambda _: None)
-    monkeypatch.setattr(inference, "_yaml_config", lambda _: config)
+    core = SimpleNamespace(
+        load_config=lambda _path, _: {
+            "eval_spatial_size": IMAGE_SIZE,
+            "ViTAdapter": {},
+            "model": "ECDet",
+        },
+        merge_config=lambda cfg: cfg,
+        create=lambda _model, _cfg: Deployable(2, 1),
+    )
+    monkeypatch.setattr(inference, "_upstream_core", lambda _: core)
 
     with torch.device("meta"):
         network = inference.load_network(tmp_path, checkpoint, release)
@@ -47,6 +50,69 @@ def test_load_network_restores_on_cpu_under_a_different_default_device(
     restored = network.model.state_dict()
     torch.testing.assert_close(restored["weight"], weight)
     torch.testing.assert_close(restored["bias"], bias)
+
+
+@pytest.mark.parametrize(
+    "sizes", [("l", "x", "l"), ("x", "l", "x")], ids=["l-x-l", "x-l-x"]
+)
+def test_load_network_isolates_release_yaml_across_loads(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    sizes: tuple[str, str, str],
+) -> None:
+    class Pose(torch.nn.Module):
+        def __init__(self, width: int) -> None:
+            super().__init__()
+            mlp = torch.nn.ModuleDict({"fc1": torch.nn.Linear(2, width)})
+            blocks = torch.nn.ModuleList([torch.nn.ModuleDict({"mlp": mlp})])
+            self.backbone = torch.nn.ModuleDict(
+                {"backbone": torch.nn.ModuleDict({"blocks": blocks})}
+            )
+
+        def deploy(self) -> Self:
+            return self
+
+    shared_default: dict[str, Any] = {}
+
+    def load_config(
+        path: str, workspace: dict[str, Any] | None = None
+    ) -> dict[str, Any]:
+        # Match the upstream loader's behavior when no accumulator is supplied.
+        cfg = shared_default if workspace is None else workspace
+        cfg.update(eval_spatial_size=IMAGE_SIZE, model="ECPose")
+        adapter = cfg.setdefault("ViTAdapter", {})
+        adapter["embed_dim"] = 2
+        if "ecpose_x_" in path:
+            adapter["ffn_ratio"] = 6
+        return cfg
+
+    def merge_config(cfg: dict[str, Any]) -> dict[str, Any]:
+        return {**cfg, "ViTAdapter": {"ffn_ratio": 4, **cfg["ViTAdapter"]}}
+
+    def create(name: str, settings: dict[str, Any]) -> Pose:
+        assert name == "ECPose" and settings["ViTAdapter"]["skip_load_backbone"]
+        return Pose(settings["ViTAdapter"]["ffn_ratio"] * 2)
+
+    core = SimpleNamespace(
+        load_config=load_config, merge_config=merge_config, create=create
+    )
+    monkeypatch.setattr(inference, "_upstream_core", lambda _: core)
+    monkeypatch.setattr(inference, "require_source", lambda _: None)
+    widths = {"l": 8, "x": 12}
+    for size, width in widths.items():
+        torch.save({"model": Pose(width).state_dict()}, tmp_path / f"{size}.pth")
+    for size in sizes:
+        checkpoint = tmp_path / f"{size}.pth"
+        release = replace(
+            RELEASES[f"ecpose-{size}-o365"],
+            size=checkpoint.stat().st_size,
+            sha256=dual_sha256(checkpoint),
+        )
+        network = inference.load_network(tmp_path, checkpoint, release)
+        assert network.model.state_dict()[
+            "backbone.backbone.blocks.0.mlp.fc1.weight"
+        ].shape == (widths[size], 2)
+    assert shared_default == {}
 
 
 def test_preprocess_converts_bgr_and_preserves_native_width_and_height() -> None:
