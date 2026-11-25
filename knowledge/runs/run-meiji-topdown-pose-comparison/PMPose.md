@@ -53,6 +53,19 @@ The verified run used commit `0860ce5e12c953dc5520f02a502cc50cc2b3381b` and loca
 
 All six conditions produced 26,276 native-pixel COCO17 rows at batch 8 on the RTX 5060 Ti. Each array contained 446,692 finite joint predictions. The TensorRT plans used version `10.14.1.48.post1`, profile batches 1/4/8 and 1,536 MiB builder workspace. Build times were 85.092 s for L and 109.279 s for H. The batch-8 TensorRT inspector shows FP32 bindings on the Sparsemax sort, cumulative sum and threshold computation, and on portions of layer normalization. The original score files and the plan hashes are in the per-condition receipts under `outputs/pmpose/`.
 
+The canonical matcher reproduced every numeric score and count for all six conditions. The score files gained the `policy.candidate_order_for_iou_ties` field. PCK pools 437,714 scoreable joints, and mean OKS averages 25,811 scoreable people. The [accuracy record](pmpose_accuracy.json) pins the rescored files, raw predictions, execution commit, queue commands, engine manifests and layer inspector reports.
+
+| Model | Backend | Mean OKS | PCK@0.10 | PCK@0.20 | Pixel error P95 |
+| --- | --- | ---: | ---: | ---: | ---: |
+| PMPose-L | PT32 | 0.776631 | 0.787578 | 0.966796 | 11.804 px |
+| PMPose-L | PT16 | 0.776622 | 0.787562 | 0.966777 | 11.805 px |
+| PMPose-L | TRT16 | 0.776621 | 0.787523 | 0.966784 | 11.804 px |
+| PMPose-H | PT32 | 0.780841 | 0.794747 | 0.970426 | 11.550 px |
+| PMPose-H | PT16 | 0.780835 | 0.794766 | 0.970424 | 11.549 px |
+| PMPose-H | TRT16 | 0.780849 | 0.794752 | 0.970435 | 11.546 px |
+
+Across all 446,692 output joints, the PT32-relative coordinate P95 was 0.0121/0.0312 px for L and 0.0128/0.0296 px for H in PT16/TRT16 order. The largest differences were 1,926.6/1,325.3 px for L and 88.3/98.7 px for H. The maximum cases were outside the pseudo-GT eligibility mask. Among scoreable joints, the maxima were 71.5/116.2 px for L and 85.5/86.3 px for H. The largest L difference is at the right knee of player 0 in `clip_028`, `cam1`, frame 1005. The PT32 x-coordinate is 2,273.9 px for a box spanning x=778.5–795.2 px. Keep these outputs for the backend comparison. The upstream DARK UDP refinement has no bound on its coordinate update.
+
 Rescore the original queue outputs through the canonical matcher from #2498. Supply the six job filenames from this accuracy run.
 
 ```bash
@@ -68,8 +81,21 @@ CUDA_VISIBLE_DEVICES='' PYTHONPATH="$PWD:$PWD/$run" .venv/bin/python -B "$run/pm
 
 The script writes new score files, retains the original scores for verification, and summarizes coordinate and confidence differences against the matching PT32 predictions. Speed-protocol parity uses the common speed input and the shared thresholds.
 
+### Auxiliary scores
+
+On scoreable PT32 joints, the mean expected OKS was 0.680 for L and 0.695 for H. The mean per-joint pseudo-GT OKS under the common normalization was 0.777 and 0.781. For ranking PCK@0.10 successes, the expected OKS ROC AUC was 0.584 and 0.586. The [diagnostic record](pmpose_diagnostics.json) also reports the AUC for presence, visibility and heatmap peak. The pseudo-GT validity mask gates the analysis. The cohort had zero missing model outputs and provides no independent labels for true joint visibility.
+
+```bash
+CUDA_VISIBLE_DEVICES='' PYTHONPATH="$PWD:$PWD/$run" .venv/bin/python -B "$run/pmpose_diagnostics.py" \
+  --accuracy-record "$run/pmpose_accuracy.json" \
+  --bundle "$media/multiview-player-evaluation-v1" \
+  --output outputs/pmpose/pmpose_diagnostics.json
+```
+
 ## Tests
 
 Use small CPU fixtures with no weight or GPU requirement. Compare the rectangle contour against the demo’s raster-plus-OpenCV calculation, including fractional and edge-clipped boxes. An asymmetric pose with two boxes from one frame exercises row order, native-pixel decoding, flip restoration of eyes and limbs, the full 23-joint auxiliary axis and a missing heatmap. Inject distinct scores including zero to detect silent score filtering. Run the same assertion through the accuracy stages and the shared timing stages to check that both count the two real forwards. Loader tests exercise explicit rejection of an absent source, wrong checkpoint and absent TRT engine. Reuse `tests/unit/utils/test_inference_benchmark.py::test_exact_backend_selection_never_loads_another_backend` and the shared pose scorer tests for backend selection and fixed-denominator coverage. Measure the focused tests with `--durations=0 --durations-min=0`. The real-asset smoke will compare the adapter’s PT32 output against the upstream API on the same images, rectangles and weights.
 
 For rescore verification, check every saved prediction hash, ordered row address and input BBox against the published cohort. Keep the original score files to compare with the canonical matcher. Use a small CPU case with an exchanged person order and a mismatched expected OKS to verify that the archive checks reject incorrect input assignments. The full six-condition run verifies the real queue receipts and engine artifacts.
+
+For the auxiliary-score diagnostic, reuse the common scorer’s PCK normalization and COCO sigmas. Check ROC AUC against a hand-counted set with a tied positive and negative score. Check the PCK success totals against the canonical scorer on both real PT32 archives. Evaluate the largest backend differences against the existing reference validity mask.
