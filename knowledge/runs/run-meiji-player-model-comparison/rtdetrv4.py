@@ -293,6 +293,28 @@ def _export_settings() -> dict[str, JsonValue]:
     }
 
 
+def detector_engine_bundle(
+    assets: Assets, directory: Path, settings: dict[str, JsonValue]
+) -> EngineBundle:
+    """Check an explicitly selected detector graph against the raw I/O contract."""
+    return EngineBundle.read(directory).for_model(
+        model=assets.model_id,
+        settings=settings,
+        sources={"checkpoint": assets.weight_sha256},
+        inputs={
+            INPUT_NAME: TensorSpec(
+                dtype="float32", shape=(-1, 3, IMAGE_SIDE, IMAGE_SIDE)
+            )
+        },
+        outputs={
+            "pred_logits": TensorSpec(
+                dtype="float32", shape=(-1, NUM_QUERIES, NUM_CLASSES)
+            ),
+            "pred_boxes": TensorSpec(dtype="float32", shape=(-1, NUM_QUERIES, 4)),
+        },
+    )
+
+
 def load_detector(
     assets: Assets, backend: Backend, device: torch.device, engine_dir: Path | None
 ) -> Detector:
@@ -303,22 +325,7 @@ def load_detector(
         if engine_dir is None:
             raise ValueError("TRT16 requires --engine-dir")
         _, postprocessor = assets.config_and_postprocessor()
-        bundle = EngineBundle.read(engine_dir).for_model(
-            model=assets.model_id,
-            settings=_export_settings(),
-            sources={"checkpoint": assets.weight_sha256},
-            inputs={
-                INPUT_NAME: TensorSpec(
-                    dtype="float32", shape=(-1, 3, IMAGE_SIDE, IMAGE_SIDE)
-                )
-            },
-            outputs={
-                "pred_logits": TensorSpec(
-                    dtype="float32", shape=(-1, NUM_QUERIES, NUM_CLASSES)
-                ),
-                "pred_boxes": TensorSpec(dtype="float32", shape=(-1, NUM_QUERIES, 4)),
-            },
-        )
+        bundle = detector_engine_bundle(assets, engine_dir, _export_settings())
         runner = TensorRTRunner(bundle, device)
 
         def trt(pixels: torch.Tensor) -> ModelOutputs:

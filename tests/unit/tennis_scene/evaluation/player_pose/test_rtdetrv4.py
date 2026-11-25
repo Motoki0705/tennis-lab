@@ -378,3 +378,128 @@ def test_diagnostic_keeps_prepared_image_order_in_both_batch_sizes(adapter):
         )
         np.testing.assert_array_equal(raw["pred_logits"], [[2.0], [6.0]])
         assert status["pseudo_gt"] == {"0.50": 1.0, "0.75": 1.0}
+
+
+@pytest.fixture
+def fp32_attention_graph(adapter):
+    onnx = pytest.importorskip("onnx")
+    probe = import_module("rtdetrv4_fp32attn")
+    h, half = onnx.helper, onnx.TensorProto.FLOAT16
+    scopes = [
+        *(f"/model/decoder/decoder/layers.{i}/self_attn" for i in range(6)),
+        "/model/encoder/layers.0/self_attn",
+    ]
+    nodes, outputs = [], []
+    for scope in scopes:
+        score, prob, values = (f"{scope}/{part}" for part in ("score", "prob", "value"))
+        operands = ["q", "k"] if "/decoder/" in scope else ["v", "v"]
+        nodes.extend(
+            [
+                h.make_node("MatMul", operands, [score], name=f"{scope}/MatMul_3"),
+                h.make_node(
+                    "Softmax", [score], [prob], name=f"{scope}/Softmax", axis=-1
+                ),
+                h.make_node("MatMul", [prob, "v"], [values], name=f"{scope}/MatMul_4"),
+            ]
+        )
+        outputs.append(h.make_tensor_value_info(values, half, [1, 2, 2]))
+    graph = h.make_graph(
+        nodes,
+        "decoder-attention",
+        [h.make_tensor_value_info(name, half, [1, 2, 2]) for name in ("q", "k")],
+        outputs,
+        [h.make_tensor("v", half, [1, 2, 2], [1.0, 0.0, 0.0, 1.0])],
+    )
+    return onnx, probe, h.make_model(graph, opset_imports=[h.make_opsetid("", 19)])
+
+
+def test_fp32_attention_changes_only_decoder_scores(fp32_attention_graph):
+    onnx, probe, original = fp32_attention_graph
+    rewritten = probe.promote_decoder_attention_scores(original)
+    onnx.checker.check_model(rewritten, full_check=True)
+    before = {node.name: node for node in original.graph.node}
+    after = {node.name: node for node in rewritten.graph.node}
+    changed = {name for name, node in before.items() if node != after[name]}
+    assert changed == {
+        f"/model/decoder/decoder/layers.{i}/self_attn/{kind}"
+        for i in range(6)
+        for kind in ("MatMul_3", "Softmax")
+    }
+    casts = [node for name, node in after.items() if name not in before]
+    assert len(casts) == 18
+    assert {node.op_type for node in casts} == {"Cast"}
+    assert rewritten.graph.input == original.graph.input
+    assert rewritten.graph.output == original.graph.output
+    assert rewritten.graph.initializer == original.graph.initializer
+
+    # The first attention scores have magnitude greater than FP16 can represent.
+    # The promoted score and softmax return exact one-hot FP16 probabilities.
+    types = {
+        info.name: info.type.tensor_type.elem_type
+        for info in rewritten.graph.value_info
+    }
+    first = "/model/decoder/decoder/layers.0/self_attn"
+    assert types[f"{first}/score"] == onnx.TensorProto.FLOAT
+    assert types[f"{first}/prob"] == onnx.TensorProto.FLOAT16
+    evaluator = import_module("onnx.reference").ReferenceEvaluator(rewritten)
+    (result,) = evaluator.run(
+        [f"{first}/value"],
+        {
+            "q": np.array([[[32, 0], [0, 32]]], dtype=np.float16),
+            "k": np.array([[[4096, -4096], [0, 4096]]], dtype=np.float16),
+        },
+    )
+    assert result.dtype == np.float16
+    np.testing.assert_array_equal(result, [[[1, 0], [0, 1]]])
+
+
+@pytest.mark.parametrize("shared_score", [False, True], ids=["missing", "shared"])
+def test_fp32_attention_rejects_an_unexpected_score_region(
+    fp32_attention_graph, shared_score
+):
+    onnx, probe, original = fp32_attention_graph
+    scope = "/model/decoder/decoder/layers.0/self_attn"
+    if shared_score:
+        original.graph.node.append(
+            onnx.helper.make_node(
+                "Identity", [f"{scope}/score"], ["extra"], name="extra"
+            )
+        )
+    else:
+        original.graph.node[1].name = f"{scope}/Other"
+
+    with pytest.raises(ValueError, match="Expected .* decoder|Expected an isolated"):
+        probe.promote_decoder_attention_scores(original)
+
+
+@pytest.mark.parametrize("batch_size", [1, 2])
+def test_fp32_attention_compares_swapped_slots_by_image(adapter, batch_size):
+    pytest.importorskip("onnx")
+    probe = import_module("rtdetrv4_fp32attn")
+    observed_calls: list[list[float]] = []
+    pixels = torch.tensor([[1.0], [6.0], [12.0], [18.0]])
+    sizes = torch.tensor([[4, 10], [12, 12], [14, 8], [30, 15]])
+
+    def forward(prepared):
+        x = prepared[:, 0]
+        observed_calls.append(x.tolist())
+        boxes = torch.stack(
+            (x, torch.ones_like(x), x + 4, torch.full_like(x, 6)), dim=-1
+        )
+        return x[:, None], boxes[:, None, :]
+
+    def decode(output, _sizes):
+        logits, boxes = output
+        return torch.zeros_like(logits, dtype=torch.long), boxes, logits.sigmoid()
+
+    heads, rows = probe.capture_in_frame_order(
+        forward, SimpleNamespace(decode=decode), pixels, sizes, batch_size, (1, 0, 3, 2)
+    )
+    assert observed_calls == (
+        [[6], [1], [18], [12]] if batch_size == 1 else [[6, 1], [18, 12]]
+    )
+    np.testing.assert_array_equal(heads["pred_logits"], [[1], [6], [12], [18]])
+    np.testing.assert_array_equal(
+        np.concatenate([row.boxes_xyxy for row in rows]),
+        [[1, 1, 4, 6], [6, 1, 10, 6], [12, 1, 14, 6], [18, 1, 22, 6]],
+    )

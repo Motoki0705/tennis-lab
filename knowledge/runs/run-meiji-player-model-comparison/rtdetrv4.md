@@ -129,10 +129,33 @@ PYTHONPATH=".:$assets/python-deps:knowledge/runs/run-person-model-speed-baseline
   --output "$NEW_DIAGNOSTIC_OUTPUT"
 ```
 
+## FP32 decoder attention probe
+
+The `trt16-fp32attn` condition tests whether widening decoder self-attention scores improves the measured TensorRT output. Each L/X ONNX graph has six decoder self-attention scopes at `/model/decoder/decoder/layers.{0..5}/self_attn`. Each score `MatMul_3` feeds its `Softmax` directly. Cast the two score operands to FP32 and restore the probabilities to FP16 before the value `MatMul_4`. The plan keeps the base graph's binding types, checkpoint, external weight bytes, optimization profile and 1 GiB workspace limit. The related ECDet-L COCO experiment motivated this intervention. [EdgeCrafter probe and results](https://github.com/Motoki0705/tennis-lab/blob/e9a12d172279a35b5885bbdd37e651772978aac8/knowledge/runs/run-meiji-player-model-comparison/EDGECRAFTER.md)
+
+The CPU export check verified the six FP32 regions and 18 added casts per graph, exact equality of the other nodes and initializers, and the same external weight SHA-256. The rewritten `model.onnx` SHA-256 was `b09b97bd3a7ab216eee35cff6e8aeef3cb67c9b9b925183344d06550101932df` for L and `9654953535a2707ab09db965c16d5b60b4235dd3e6ecf024b34a5038597da954` for X.
+
+The probe verifies the archived PT16 and input SHA-256 values and regenerates the inputs from the fixed speed manifest. It uses the four images from the earlier diagnosis. For both batch sizes, it runs the original plan and the new plan in manifest order and with the two slots of each pair swapped. It restores source image order before comparing with the saved PT16 heads for that batch size. The recorded metrics are raw head differences by query index, one-to-one decoded box matches at IoU 0.50, and subset recall against the 16 pseudo-GT boxes. The receipt includes plan hashes, the case order and raw output hashes. Plan rebuilding can change tactic selection, so a measured improvement would show the effect of this plan variant.
+
+```bash
+PYTHONPATH=".:$assets/python-deps:knowledge/runs/run-person-model-speed-baseline" \
+  OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
+  .venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/rtdetrv4_fp32attn.py \
+  --model-id rtdetrv4-l --upstream "$assets/RT-DETRv4" --weights "$assets/RTv4-L-hgnet.pth" \
+  --engine-dir "$RTDETRV4_RESULTS/rtdetrv4-l/trt16/trace-b2/engine" \
+  --archive "$RTDETRV4_RESULTS/diagnostics/same-input-v1/rtdetrv4-l" \
+  --speed-inputs "$SHARED_PERSON_SPEED_INPUTS" --speed-sha256 "$SPEED_SHA256" \
+  --benchmark "$bench/multiview-player-evaluation-v1" --manifest-sha256 "$COHORT_SHA256" \
+  --output "$NEW_PROBE_OUTPUT"
+```
+
+Submit the probe through the shared GPU queue with an exclusive reservation and a fresh output directory for each variant. A substantial improvement on the four images is the basis for running the fixed 6,844-image accuracy cohort and the shared batch 1 and 2 speed benchmark.
+
 ## Test design
 
 - The CPU unit fixtures check source width/height order and input channel scaling on unequal native image sizes. A stage-level fixture with two images and hand-computed pixel boxes checks alignment and the declared forward backend.
 - A two-image fixture checks that COCO person rows retain their score order and valid clipped coordinates, including a score below the demo threshold. The fixture also checks an empty result. A separate malformed output catches non-finite boxes becoming finite through clipping.
 - A fixture saved in the release's old format reproduces the original load failure and verifies that the EMA state is selected. The encoder test checks that the same cached tensors enter nonpersistent buffers and move with `.to()`.
 - The command tests check that accuracy and speed require an explicit parity status and reject PT32. A stubbed queue suite checks both FP16 backends, TensorRT conversion, and refusal to reuse a run directory. The diagnostic fixture checks that the same prepared images and native boxes align in both batch sizes. The shared harness tests cover the explicit opt-out and its default required-parity behavior.
+- For the FP32 attention probe, a small typed ONNX fixture checks the six intended cast boundaries and preserves the surrounding graph. Missing or shared score nodes must fail. An asymmetric four-image fixture checks that reversing the slots within each pair aligns saved and observed heads by image. Both fixtures run on CPU. Check the six regions and external weight bytes on both real exports before submitting the GPU probe.
 - Reuse `test_exact_backend_selection_never_loads_another_backend` for the shared benchmark's backend routing, `test_one_detection_cannot_match_two_players_and_an_unlabelled_box_has_no_fp` for partial-label scoring, and `test_pose_rows_keep_both_people_and_zero_detection_frames` for JSONL rows. The fixtures run on CPU with generated data. Measure with `pytest --durations=0 --durations-min=0.01` and qualify the upstream adapter separately with the actual L/X checkpoints.
