@@ -47,9 +47,30 @@ PYTHONPATH="$PWD:$PWD/$run" OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THR
 
 Supply the six complete `.job` IDs in `VITPOSE_ACCURACY_JOBS`. `--retain` preserves the original receipt, predictions, scores and log in the queue's retained `repro/<job>/predictions/`. The replay writes its own report directory and keeps the prior scores available for comparison.
 
+## Difficulty and temporal diagnostics
+
+The diagnostic groups are fixed by the reference. A small projected person has a box under 80 native pixels high. Overlap means pseudo-box IoU greater than 0.10 in the same image. An edge case has a box within 10 native pixels of an image edge. The occlusion group has at least one joint flagged by the reference's inter-player occlusion heuristic. An incomplete reference has fewer than 17 scoreable joints.
+
+Fast wrist motion is the top decile of the larger available left/right wrist speed on the placed SMPL in court metres. The cutoff comes from unique clip/player/time samples before repetition across cameras. Speed uses consecutive inferred samples at most two source frames apart and their elapsed time at the original source FPS. This group is a proxy for swings. Temporal jitter is the magnitude of the centered second difference of the signed model-minus-reference residual in native pixels across three samples spaced two source frames apart. The samples must belong to the same player in the same view, and all three joint references and predictions must be valid.
+
+The reports give reference exclusions by clip and joint, valid and missing prediction counts, joint error distributions, PCK at 0.10/0.20 of the square root of the box area, and the fraction of instances with OKS at least 0.50/0.75. OKS requires at least one eligible joint. The occlusion and incomplete-reference results score the eligible joints of affected players. The excluded joints remain in the quality counts.
+
+```bash
+mapfile -t accuracy_jobs < <(jq -r '.conditions[][].job_id' "$run"/{vitpose_accuracy,rtmpose_accuracy,pmpose_accuracy}.json)
+PYTHONPATH="$PWD:$PWD/$run" OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  .venv/bin/python -B "$run/pose_difficulty.py" --queue "$queue_root" \
+  --bundle "$media/multiview-player-evaluation-v1" \
+  --bundle-sha256 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580 \
+  --output outputs/pose-comparison/difficulty-v1.json "${accuracy_jobs[@]}"
+```
+
+The script verifies the original output digest and checks the all-row counts, PCK and mean OKS against the shared score for each condition. The full report is stored with the artifacts in the [knowledge node](../../nodes/tennis_scene/000086-run-meiji-topdown-pose-comparison.md). [PT32 results by group and joint](difficulty_pt32.csv)
+
+The added CPU tests use known 3D wrist displacement, gaps and irregular source timestamps, then use asymmetric 2D residuals and a missing joint to verify temporal alignment and the PCK denominator. They reuse the fixed COCO17 definitions and row addresses. The fixtures use a few rows in memory and require no media, GPU or checkpoint.
+
 ## Review synchronized overlays
 
-Each panel uses the same native frame, player-box geometry and frame label. The SMPL panel draws the eligible reference joints. Model panels draw their finite predictions. Use the original camera frame number for a PNG, or omit `--frame` and set an MP4 output to render the full evaluation timeline of that camera.
+Each panel uses the same native frame, player-box geometry and frame label. The SMPL panel draws the eligible reference joints. Model panels draw their finite predictions. Use the original camera frame number for a PNG, or omit `--frame` and set an MP4 output to render the full evaluation timeline of that camera. When the grid is irregular, the MP4 uses native camera FPS and holds the most recent evaluated panel until the next sampled frame. The frame label always identifies the actual sample used.
 
 ```bash
 mapfile -t vi_jobs < <(jq -r '.conditions["vitpose-h"] | .PT32.job_id, .TRT16.job_id' "$run/vitpose_accuracy.json")
@@ -60,7 +81,17 @@ PYTHONPATH="$PWD:$PWD/$run" .venv/bin/python -B "$run/render_overlays.py" \
   --frame 66 --player 6 --output outputs/pose-comparison/clip_003-cam2-66.png "${vi_jobs[@]}"
 ```
 
-The five-model PT32 video for `clip_003/cam2` uses the PT32 job IDs from `vitpose_accuracy.json`, `rtmpose_accuracy.json` and `pmpose_accuracy.json`. Select `vitpose-h` as the ViTPose variant. The frame count and hashes of both previews are recorded in the [knowledge node](../../nodes/tennis_scene/000086-run-meiji-topdown-pose-comparison.md).
+```bash
+mapfile -t pt32_jobs < <(jq -r '.conditions | to_entries[] | select(.key != "vitpose-h-no-flip") | .value.PT32.job_id' \
+  "$run"/{vitpose_accuracy,rtmpose_accuracy,pmpose_accuracy}.json)
+PYTHONPATH="$PWD:$PWD/$run" .venv/bin/python -B "$run/render_overlays.py" \
+  --queue "$queue_root" --bundle "$media/multiview-player-evaluation-v1" \
+  --bundle-sha256 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580 \
+  --media-root "$media/multiview-v1" --representatives \
+  --output outputs/pose-comparison/representatives-v1 "${pt32_jobs[@]}"
+```
+
+This writes the 24 source frames selected by the fixed bundle. The manifest lists the source addresses and PNG hashes. Use the same five PT32 jobs with `--clip video_000/clip_003 --camera cam2` for the first clip video or with `--clip video_000/clip_004 --camera cam1 --frame 386 --player 4` for the fast-motion example. The variable-spacing video for `clip_004/cam2` uses the ViTPose-H and PMPose-H PT32 jobs. [Representative manifest](representatives.json) · [Playback and artifact hashes](../../nodes/tennis_scene/000086-run-meiji-topdown-pose-comparison.md)
 
 ## Adapter and tests
 

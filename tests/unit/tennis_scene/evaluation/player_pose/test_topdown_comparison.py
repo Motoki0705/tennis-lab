@@ -18,7 +18,7 @@ from src.tennis_scene.evaluation.player_pose.scoring import FrameKey, ReferenceF
 from src.utils.checksum import dual_sha256
 from src.utils.inference_benchmark import Backend, ConditionUnavailable, Status
 from src.utils.io import write_json_atomic
-from src.utils.schema.player import COCO_KP_NAMES
+from src.utils.schema.player import COCO_KP_IDX, COCO_KP_NAMES
 from src.utils.video import FramePacket
 
 RUN = (
@@ -334,3 +334,58 @@ def test_overlay_uses_the_same_source_frame_and_eligible_joints() -> None:
     assert grid[212, 1040].tolist() == list(render.COLORS[1])
     assert grid[212, 800].tolist() == [0, 0, 0]
     assert grid[132, 400].tolist() == [0, 0, 0]
+
+
+@pytest.mark.usefixtures("run_modules")
+def test_overlay_preserves_the_timing_of_irregular_source_frames() -> None:
+    render = import_module("render_overlays")
+    sampled = [(10, "a"), (12, "b"), (13, "c"), (15, "d")]
+    assert list(render.hold_source_frames(sampled)) == ["a", "a", "b", "c", "c", "d"]
+    with pytest.raises(ValueError, match="strictly increasing"):
+        list(render.hold_source_frames([(2, "a"), (2, "b")]))
+
+
+@pytest.mark.usefixtures("run_modules")
+def test_wrist_speed_uses_original_timestamps_and_stops_at_inference_gaps() -> None:
+    difficulty = import_module("pose_difficulty")
+    frames = np.array([0, 2, 6, 7, 9])
+    joints: NDArray[np.float64] = np.full((1, 10, 17, 3), np.nan)
+    left, right = COCO_KP_IDX["left_wrist"], COCO_KP_IDX["right_wrist"]
+    joints[0, frames[:4], left] = [(0, 0, 0), (0.3, 0, 0), (1, 0, 0), (1.3, 0, 0)]
+    joints[0, :3:2, right] = [(0, 0, 0), (0, 0.4, 0)]
+    inferred: NDArray[np.bool_] = np.ones((1, 10), bool)
+    inferred[0, 9] = False
+    speed = difficulty.wrist_speeds(joints, inferred, frames, 60.0)
+    assert speed[0, 2] == pytest.approx(12.0)
+    assert speed[0, 7] == pytest.approx(18.0)
+    assert np.isnan(speed[0, [0, 6, 9]]).all()
+
+
+def test_difficulty_counts_missing_and_aligns_jitter_with_the_center_row(
+    run_modules: tuple[ModuleType, ...],
+) -> None:
+    _, inputs, contract = run_modules
+    difficulty = import_module("pose_difficulty")
+    keys = tuple(
+        inputs.RowKey(FrameKey("video/clip", camera, frame), 5)
+        for camera, frame in (("cam0", 0), ("cam0", 2), ("cam0", 4), ("cam1", 4))
+    )
+    windows = difficulty.temporal_triplets(keys)
+    assert windows.tolist() == [[0, 1, 2]]
+    xy: NDArray[np.float64] = np.zeros((4, 17, 2), np.float64)
+    valid: NDArray[np.bool_] = np.zeros((4, 17), bool)
+    valid[:, :2] = True
+    poses: NDArray[np.float32] = np.full((4, 17, 3), np.nan, np.float32)
+    poses[:, 0] = [(1, 0, -0.5), (2, 0, 0.0), (5, 0, 1.0), (10, 0, 1.0)]
+    poses[0, 1] = poses[2, 1] = (2, 2, 0.4)
+    group = np.array([False, True, False, False])
+    cohort = difficulty.Difficulty(
+        xy, valid, np.full(4, 100.0), {"fast_wrist": group}, windows, {}
+    )
+    result = difficulty.joint_metrics(cohort, contract.PoseBatch(poses))["fast_wrist"]
+    assert result["eligible_joints"] == 2 and result["missing_joints"] == 1
+    assert result["pck"] == {"0.1": 0.0, "0.2": 0.5}
+    assert result["by_joint"]["nose"]["jitter_px"]["median"] == pytest.approx(2.0)
+    eye = result["by_joint"]["left_eye"]
+    assert eye["eligible_temporal_triplets"] == 1
+    assert eye["jitter_px"]["count"] == 0 and eye["coverage"] == 0.0

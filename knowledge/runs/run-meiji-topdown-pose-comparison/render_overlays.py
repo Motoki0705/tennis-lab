@@ -4,24 +4,32 @@ from __future__ import annotations
 
 import argparse
 import math
+from collections.abc import Callable, Iterable, Iterator
 from dataclasses import replace
+from itertools import repeat
 from pathlib import Path
 from tempfile import TemporaryDirectory
+from typing import TypeAlias, TypeVar
 
 import cv2
 import numpy as np
-from fixed_inputs import load_cohort, read_video, row_keys
+from fixed_inputs import Video, load_cohort, read_video, row_keys
 from numpy.typing import NDArray
 from replay_accuracy import read_condition, row_columns
 
 from src.tennis_scene.evaluation.player_pose.bundle import load_manifest
 from src.tennis_scene.evaluation.player_pose.scoring import FrameKey, ReferenceFrame
+from src.utils.checksum import dual_sha256
+from src.utils.io import write_json_atomic
 from src.utils.schema.player import COCO17_SKELETON
+from src.utils.video import read_video_frame
 from src.utils.video.writer import VideoWriter
 
 COLORS = ((42, 204, 255), (125, 223, 83), (248, 166, 88), (250, 121, 207))
 PANEL_WIDTH, PANEL_HEIGHT = 640, 360
 CAPTION_HEIGHT = 32
+Image: TypeAlias = NDArray[np.uint8]
+Value = TypeVar("Value")
 
 
 def draw_panel(
@@ -162,26 +170,92 @@ def _sheet(
     return grid
 
 
+def hold_source_frames(samples: Iterable[tuple[int, Value]]) -> Iterator[Value]:
+    """Expand irregular sample times onto the native video cadence."""
+    previous = None
+    for index, image in samples:
+        if previous is not None:
+            last_index, last_image = previous
+            if index <= last_index:
+                raise ValueError("Source frames must be in strictly increasing order")
+            yield from repeat(last_image, index - last_index)
+        previous = index, image
+    if previous is not None:
+        yield previous[1]
+
+
+def _write_png(path: Path, sheet: Image) -> None:
+    ok, pixels = cv2.imencode(".png", sheet)
+    if not ok:
+        raise RuntimeError("OpenCV did not encode the synchronized sheet")
+    with path.open("xb") as handle:
+        handle.write(pixels.tobytes())
+
+
+def _write_representatives(
+    output: Path,
+    videos: list[Video],
+    samples: dict[tuple[str, str], int],
+    build_sheet: Callable[[FrameKey, Image], Image],
+    bundle_id: str,
+    bundle_sha256: str,
+    jobs: list[str],
+) -> None:
+    output.mkdir(parents=True, exist_ok=False)
+    images = []
+    for video in videos:
+        source_frame = samples[video.clip_id, video.camera_id]
+        if source_frame not in video.frames:
+            raise ValueError(
+                f"Representative frame is outside the cohort for {video.path}"
+            )
+        frame = read_video_frame(video.path, source_frame).frame
+        if frame.shape[:2] != (video.height, video.width):
+            raise ValueError(f"Unexpected native video dimensions for {video.path}")
+        key = FrameKey(video.clip_id, video.camera_id, source_frame)
+        clip = key.clip_id.rsplit("/", 1)[-1]
+        path = output / f"{clip}-{key.camera_id}-{source_frame}.png"
+        _write_png(path, build_sheet(key, frame))
+        images.append({**key._asdict(), "path": path.name, "sha256": dual_sha256(path)})
+    write_json_atomic(
+        output / "manifest.json",
+        {
+            "bundle_id": bundle_id,
+            "bundle_sha256": bundle_sha256,
+            "jobs": jobs,
+            "images": images,
+        },
+    )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--queue", type=Path, required=True)
     parser.add_argument("--bundle", type=Path, required=True)
     parser.add_argument("--bundle-sha256", required=True)
     parser.add_argument("--media-root", type=Path, required=True)
-    parser.add_argument("--clip", required=True)
-    parser.add_argument("--camera", required=True)
+    parser.add_argument("--clip")
+    parser.add_argument("--camera")
     parser.add_argument("--frame", type=int)
     parser.add_argument("--player", type=int)
+    parser.add_argument("--representatives", action="store_true")
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("jobs", nargs="+")
     args = parser.parse_args()
     suffix = args.output.suffix
-    if suffix not in (".png", ".mp4") or (
-        (args.frame is not None) != (suffix == ".png")
+    if args.representatives:
+        if any(
+            value is not None
+            for value in (args.clip, args.camera, args.frame, args.player)
+        ):
+            parser.error("Supply a new output directory for --representatives")
+    elif (
+        args.clip is None
+        or args.camera is None
+        or suffix not in (".png", ".mp4")
+        or ((args.frame is not None) != (suffix == ".png"))
     ):
-        parser.error(
-            "Supply a source --frame for PNG, or an MP4 path for the evaluation timeline"
-        )
+        parser.error("Supply --clip and --camera, plus --frame for a PNG")
     if args.player is not None and args.frame is None:
         parser.error("Supply a source --frame for the single-player crop")
     if args.output.exists():
@@ -189,11 +263,6 @@ def main() -> None:
 
     bundle_id, references, videos = load_cohort(
         args.bundle, args.bundle_sha256, args.media_root
-    )
-    (video,) = (
-        video
-        for video in videos
-        if (video.clip_id, video.camera_id) == (args.clip, args.camera)
     )
     columns = row_columns(references, row_keys(references))
     slices = frame_slices(references)
@@ -207,35 +276,57 @@ def main() -> None:
             raise ValueError(f"Repeated overlay panel: {label}")
         cases[label] = batch.keypoints_xyc
 
+    def build(key: FrameKey, frame: Image) -> Image:
+        return _sheet(frame, key, slices[key], references[key], cases, args.player)
+
+    manifest = load_manifest(args.bundle, expected_sha256=args.bundle_sha256)
+    if args.representatives:
+        selections = {
+            (clip["clip_id"], overlay["camera_id"]): overlay["source_frame"]
+            for clip in manifest["clips"]
+            for overlay in clip["overlays"]
+        }
+        _write_representatives(
+            args.output,
+            videos,
+            selections,
+            build,
+            bundle_id,
+            args.bundle_sha256,
+            args.jobs,
+        )
+        return
+
+    (video,) = (
+        video
+        for video in videos
+        if (video.clip_id, video.camera_id) == (args.clip, args.camera)
+    )
     if args.frame is not None:
         if args.frame not in video.frames:
             raise ValueError(f"Frame {args.frame} is outside the fixed cohort")
         video = replace(video, frames=(args.frame,))
-    frames = (
-        _sheet(image, key, slices[key], references[key], cases, args.player)
-        for key, image in read_video(video)
-    )
+    frames = ((key.source_frame, build(key, image)) for key, image in read_video(video))
     args.output.parent.mkdir(parents=True, exist_ok=True)
     if suffix == ".png":
-        (sheet,) = frames
-        ok, pixels = cv2.imencode(".png", sheet)
-        if not ok:
-            raise RuntimeError("OpenCV did not encode the synchronized sheet")
-        with args.output.open("xb") as handle:
-            handle.write(pixels.tobytes())
+        ((_, sheet),) = frames
+        _write_png(args.output, sheet)
     else:
         steps = set(np.diff(video.frames).tolist())
-        if len(steps) != 1:
-            raise ValueError("The video requires a uniformly sampled source timeline")
-        step = steps.pop()
-        manifest = load_manifest(args.bundle, expected_sha256=args.bundle_sha256)
         (clip,) = (
             clip for clip in manifest["clips"] if clip["clip_id"] == video.clip_id
         )
+        images: Iterable[Image]
+        if len(steps) == 1:
+            fps = clip["fps"] / steps.pop()
+            images = (sheet for _, sheet in frames)
+        else:
+            fps = clip["fps"]
+            images = hold_source_frames(frames)
         with TemporaryDirectory(dir=args.output.parent) as staging:
             path = Path(staging) / args.output.name
-            with VideoWriter(path, fps=clip["fps"] / step, crf=20) as writer:
-                for sheet in frames:
+            with VideoWriter(path, fps=fps, crf=20) as writer:
+                for sheet in images:
                     writer.write_frame(cv2.cvtColor(sheet, cv2.COLOR_BGR2RGB))
             args.output.hardlink_to(path)
 

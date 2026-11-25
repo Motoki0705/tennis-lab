@@ -302,7 +302,7 @@ def _run_batch(
     def selected(
         pixels: torch.Tensor, indices: torch.Tensor, name: str
     ) -> torch.Tensor:
-        maps = stages.forward(backend, lambda: run(pixels), name=name)
+        maps = stages.measure_forward(backend, lambda: run(pixels), name=name)
         if tuple(maps.shape) != (len(rows), *HEATMAP_CHW):
             raise ValueError(f"Unexpected Sapiens2 heatmap shape: {tuple(maps.shape)}")
         return stages.stage(

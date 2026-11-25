@@ -68,7 +68,7 @@ class RecordingStages:
         assert stage is not Stage.FORWARD
         return operation()
 
-    def forward(
+    def measure_forward(
         self, backend: Backend, operation: Callable[[], Value], *, name: str = ""
     ) -> Value:
         self.forwards.append((backend, name))

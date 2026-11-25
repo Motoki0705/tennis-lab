@@ -23,7 +23,15 @@ metrics:
   completed_primary_accuracy_conditions: 15
   completed_supplemental_accuracy_conditions: 3
   accuracy_conditions_with_changed_metrics_after_replay: 0
+  difficulty_conditions: 18
+  fast_wrist_cutoff_mps: 3.7491171123307945
+  fast_wrist_rows: 2609
+  small_person_rows: 13330
+  likely_occlusion_rows: 370
+  likely_occlusion_pose_references: 70
+  representative_comparison_images: 24
   comparison_preview_frames: 185
+  variable_cadence_preview_frames: 586
   vitpose_h_flip_pt32_oks: 0.7777741732740489
   vitpose_h_no_flip_pt32_oks: 0.7759387903821222
   pmpose_h_pt32_oks: 0.7808409943976198
@@ -43,12 +51,28 @@ artifacts:
   vitpose_accuracy: knowledge/runs/run-meiji-topdown-pose-comparison/vitpose_accuracy.json
   rtmpose_accuracy: knowledge/runs/run-meiji-topdown-pose-comparison/rtmpose_accuracy.json
   pmpose_accuracy: knowledge/runs/run-meiji-topdown-pose-comparison/pmpose_accuracy.json
+  sapiens2_conversion: knowledge/runs/run-meiji-topdown-pose-comparison/sapiens2_conversion.json
+  sapiens2_attempts: knowledge/runs/run-meiji-topdown-pose-comparison/sapiens2_attempts.json
+  difficulty_pt32: knowledge/runs/run-meiji-topdown-pose-comparison/difficulty_pt32.csv
+  difficulty_all_backends:
+    path: .worktree-outputs/parent-2492-issue-2490-primary/pose-comparison/difficulty-v1.json
+    sha256: 68c6974a2d7737a1913a600cf3cfd92b562fe0ede0f663dd87daefe3911836b0
+  representative_index: knowledge/runs/run-meiji-topdown-pose-comparison/representatives.json
+  representative_comparisons:
+    path: .worktree-outputs/parent-2492-issue-2490-primary/pose-comparison/representatives-v1/manifest.json
+    sha256: 51a31594c422f503c5b7b348799124d693fee3d9e2c3d001b5d66caff9925366
   comparison_preview:
     path: .worktree-outputs/parent-2492-issue-2490-primary/pose-comparison/clip_003-cam2-pt32.mp4
     sha256: 9ee7c9b4ab805b02a53052cdec3131bc1b48007beacd414ad9fab4a5e9ad9b2f
   backend_outlier:
     path: .worktree-outputs/parent-2492-issue-2490-primary/pose-comparison/clip_003-cam2-66.png
     sha256: 6e11422cb0d156906428d0a1a561ab55bf775b91a54df8d72fa3a9758f758558
+  variable_cadence_preview:
+    path: .worktree-outputs/parent-2492-issue-2490-primary/pose-comparison/clip_004-cam2-pt32.mp4
+    sha256: 4393020f22459686f377d3e8e89b67596948a3685ac33a58aeecf914240130f8
+  fast_motion_outlier:
+    path: .worktree-outputs/parent-2492-issue-2490-primary/pose-comparison/clip_004-cam1-386-player4.png
+    sha256: 6b360f8ce839095ca5930719a3c15074ff1245f065797eff73c417e2406f69e1
 parents:
 - run-meiji-multiview-player-evaluation
 - run-person-model-speed-baseline
@@ -67,8 +91,20 @@ PT32でViTPose-Hのflipありとなしの平均OKSは0.77777と0.77594、pixel�
 
 ViTPose-HのflipありでPT32に対する座標差はPT16がP95 0.0088 px、TRT16が0.0239 pxだった。全446,692出力関節のうちTRT16で97点が5 pxを超え、最大差は `clip_003/cam2` 元frame 66の選手6左手首で90.8 pxだった。この数値は精度用の全コホートでのbackend差を示す。固定速度入力のparityは #2497 の共通規約で判定する。 [座標差と保存済み予測](../../runs/run-meiji-topdown-pose-comparison/vitpose_accuracy.json)
 
-`clip_003/cam2` の全185評価frameを、SMPL・ViTPose-H・RTMPose-M/X・PMPose-L/Hの同期パネルに重ねた。MP4の185 frameと30,000/1,001 fpsを読み戻した。上記の左手首は同一画像の選手6を拡大し、SMPL射影と両backendの出力を目視で照合した。出力先とSHA-256はこのノードのartifactsにある。 [overlayの再現手順](../../runs/run-meiji-topdown-pose-comparison/README.md#review-synchronized-overlays)
+### 難条件別の関節誤差
 
-Sapiens2の精度は結果待ち。5BのPT32は重み20,480,794,652 bytesをRTX 5060 TiでCUDAロードし、torch allocated peakが20,540,379,648 bytes、報告されたデバイス総量が17,074,749,440 bytesだった。これはロード試行の結果で、forwardの可否とメモリの内訳は確認が必要。初回TRT変換は両サイズとも `ReduceMean` のaxes入力に対するTensorRTの制約で停止した。再試行の結果は補助担当から受け取る。
+18条件で7群×17関節のPCK・pixel誤差・欠測・時間方向jitterを集計し、全体のPCK・平均OKS・有効関節数を共通採点結果と照合した。遠距離の代理としてBBox高さ80 px未満の13,330人物行を使った。高速動作はSMPL由来の左右の手首速度の大きい方が上位10%に入る2,609行。6,566時刻・選手の組から得た敷居は3.749 m/sで、対応する手首速度が得られなかった行は120件だった。遮蔽疑い370人物行のうちOKSの母数は70行・989関節で、参照の品質除外を別に集計した。 [群の定義と再現コマンド](../../runs/run-meiji-topdown-pose-comparison/README.md#difficulty-and-temporal-diagnostics) · [PT32の関節別CSV](../../runs/run-meiji-topdown-pose-comparison/difficulty_pt32.csv)
 
-#2496 が公開した速度基準は、384人物crop、batch 1/4/8、30 warm-up、300反復の暫定値として参照する。#2497 のレビュー後の共通速度計測とparity、Sapiens2の条件、難条件別集計、全代表クリップの同期可視化とPareto比較が残っている。採用判断は保留し、標準pipelineのsummaryは更新しない。 [現行モデルの暫定速度基準](000085-run-person-model-speed-baseline.md) · [再現手順と保存形式](../../runs/run-meiji-topdown-pose-comparison/README.md)
+高速群の左手首で、ViTPose-H flipありとPMPose-HのPT32のpixel誤差P95は28.32 pxと28.00 px、残差jitterのP95は33.75 pxと29.04 pxだった。遮蔽疑い群の平均OKSは0.41310と0.56607だった。遮蔽は選手間の重なりと深度から付けた候補ラベルで、採点は該当する人物の有効関節に限る。速度による群分けはスイングの代理指標で、動作種別は未判定。 [関節別の母数と分布](../../runs/run-meiji-topdown-pose-comparison/difficulty_pt32.csv)
+
+### 同期可視化
+
+共通manifestが選んだ6クリップ×4カメラの24画像で、SMPL・ViTPose-H・RTMPose-M/X・PMPose-L/HのPT32を同一動画フレームに描いた。24件の元frame・出力寸法・PNGハッシュを照合し、評価間隔が不規則な2クリップでシーク読み込みと順次読み込みのpixel値が一致した。 `clip_003/cam2` の動画は185 frame・30,000/1,001 fps、`clip_004/cam2` のSMPL・ViTPose-H・PMPose-H比較は586 frame・60,000/1,001 fpsと読み戻した。後者は294評価サンプルを元時刻間隔で表示する。 [代表frameとPNGハッシュ](../../runs/run-meiji-topdown-pose-comparison/representatives.json) · [overlayの再現手順](../../runs/run-meiji-topdown-pose-comparison/README.md#review-synchronized-overlays)
+
+高速群で現行PT32の手首誤差が最大だったのは `clip_004/cam1` 元frame 386の選手4左手首だった。参照との差はViTPose-Hが119.26 px、PMPose-Hが124.98 px。右端で身体の一部が切れる同じ元画像を5モデルで拡大比較した。 `clip_003/cam2` 元frame 66の選手6の比較画像には、現行ViTPose-Hで最大だったbackend間の差を保存した。
+
+### Sapiens2と速度計測
+
+Sapiens2-1B/5Bのadapterに、公式重みのSHA-256・入力仕様・308関節からCOCO17への名前付き対応・変換receiptを統合した。両サイズのONNXを検証し、初回TRT buildは `ReduceMean` のaxes initializer要件で失敗した。1B PT32精度は実行中で、両サイズのPT16/TRT16精度ジョブは取消状態を確認した。5B PT32のCUDAロードは成功し、FP32重み20,480,794,652 bytes、PyTorch allocated peak 20,540,379,648 bytes、報告されたデバイス容量17,074,749,440 bytesだった。forwardと常駐VRAMは未確認。 [モデルと利用条件](../../runs/run-meiji-topdown-pose-comparison/sapiens2.md) · [変換receipt](../../runs/run-meiji-topdown-pose-comparison/sapiens2_conversion.json) · [照合したqueueの記録](../../runs/run-meiji-topdown-pose-comparison/sapiens2_attempts.json)
+
+#2496 が公開した速度基準は384人物crop、batch 1/4/8、30 warm-up、300反復の暫定値。#2497 の修正と親の再投入指示を受けて共通速度計測とparityを更新し、Sapiens2の残る精度結果を受けてPareto比較と採用候補を評価する。 [現行モデルの暫定速度基準](000085-run-person-model-speed-baseline.md)
