@@ -30,6 +30,7 @@ from src.tennis_scene.pipeline.definition import (
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.source_identity import compatible_source_digests
 from src.tennis_scene.pipeline.video_batch import run_video_batch
+from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
 from src.utils.paths import PROJECT_ROOT
 from tests.support.tennis_scene.video_dataset import add_clip
@@ -53,8 +54,14 @@ FASTHMR = (
 def test_only_the_exact_standard_recipe_patch_preserves_previous_source_identity() -> None:
     manifest = PROJECT_ROOT / "src/tennis_scene/pipeline/standard_recipe_cache_compatibility.json"
     records = json.loads(manifest.read_text())["files"]
-    patches = {path: entry["after"] for path, entry in records.items()}
-    baseline = {path: entry["before"] for path, entry in records.items() if entry["before"] is not None}
+    patches = {path: dual_sha256(PROJECT_ROOT / "src" / path) for path in records}
+    assert patches == {path: entry["after"] for path, entry in records.items()}
+    plcs_path = "tennis_scene/pipeline/components/monocular_plcs.py"
+    patches[plcs_path] = dual_sha256(PROJECT_ROOT / "src" / plcs_path)
+    baseline = {
+        **{path: entry["before"] for path, entry in records.items() if entry["before"] is not None},
+        plcs_path: patches[plcs_path],
+    }
     assert compatible_source_digests(patches, standard_recipe=True, tensorrt=True) == baseline
     assert compatible_source_digests(patches, tensorrt=True) == patches
     local_edit = {**patches, "tennis_scene/pipeline/definition.py": "a" * 64}

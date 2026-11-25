@@ -8,11 +8,13 @@
 
 | 構成 | PT32 | PT16 | TRT16 |
 | --- | --- | --- | --- |
-| HMR2特徴＋GVHMR | #2496で計測 | #2496で計測 | #2496で計測 |
-| FastHMR CameraHMR | 固定入力8フレームで動作確認 | 固定入力8フレームで動作確認 | 同等な変換とparityの確認待ち |
+| HMR2特徴＋GVHMR | #2496の既存計測 | #2496の既存計測 | #2496の既存計測 |
+| FastHMR CameraHMR | 固定入力8フレームの既存試行 | 目視用メッシュと参考速度の対象 | エンジン変換を試行 |
 | FastHMR HMR 2.0 | 実行不能（公開版のMask-ToMe非対応） | 同左 | 同左 |
 
 公式重みには両backboneのlayer-mergedチェックポイント、専用diffusion decoder、共通VAEがある。公開デモのMask-ToMeパッチはCameraHMR側のBlockとAttentionにだけ適用される。HMR 2.0で同じ公開デモを呼ぶとlayer mergingとdiffusionは動く構成だが、Mask-ToMeは適用されない。TensorRT用には、person maskの有無で分岐するtoken mergingや `scatter_reduce` を含む処理の同等性確認が要る。[デモ](https://github.com/TaatiTeam/FastHMR/blob/dc5c8daf0beea56a419c631f494ef7bd7ce35d3c/demo.py)・[Mask-ToMe](https://github.com/TaatiTeam/FastHMR/blob/dc5c8daf0beea56a419c631f494ef7bd7ce35d3c/model/hmr2_tools/patch_vit.py)・[論文](https://arxiv.org/abs/2510.10868)
+
+#2491の新規速度計測はPT16・TRT16を対象とし、比較図とは別に参考値として記録する。PT32とのparityは8フレームの既存記録を参照する。代表6 clipのPT16推論は保存済みGVHMRとの同期動画を使う目視確認に供する。 [既存試行](https://github.com/Motoki0705/tennis-lab/pull/2534)
 
 ## 資産と設定
 
@@ -56,7 +58,7 @@ uv pip install --python .venv/bin/python --target outputs/fasthmr-setup/python -
 取得済み資産を持つ環境で、既存のpipeline CLIまたはdataset用のpipeline overridesに次を追加する。既存の身体復元フラグ `gvhmr.enabled=true` は身体復元段の有効化を表す。
 
 ```sh
-recipe=fasthmr '+fasthmr={repository:FastHMR,assets:fasthmr,backend:pt32,feature_batch_size:16,seed:0}'
+recipe=fasthmr '+fasthmr={repository:FastHMR,assets:fasthmr,backend:pt16,feature_batch_size:16,seed:0}'
 ```
 
 PT16は `backend:pt16` で選ぶ。CUDA autocastとYOLOのhalf推論を使い、カメラ変換とHybrIK、SMPL geometryはFP32を使う。PT32/PT16とも、RTX 5060 Tiで固定コホートのclip_003・選手0・cam0の8フレームから有限なSMPLメッシュを生成した。処理済みのFastHMR成果を選択的に読む場合は `+execution.fasthmr=load` を使う。

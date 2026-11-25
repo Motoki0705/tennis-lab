@@ -208,12 +208,13 @@ def phase2_sources() -> dict[str, str]:
         baseline = json.load(stream)
     assert baseline["commit"] == _PHASE2_BASE
     actual = source_identity.source_digests(PROJECT_ROOT / "src")
-    recipe_patch = Path(source_identity.__file__).with_name("standard_recipe_cache_compatibility.json")
-    recipe_paths = json.loads(recipe_patch.read_text(encoding="utf-8"))["files"]
-    # Exercise the exact current recipe patch against the previously pinned
-    # phase-2 tree. Unrelated file changes still affect the real runtime key.
-    paths = set(baseline["revised_paths"]) | recipe_paths.keys()
-    return {**baseline["sources"], **{path: actual[path] for path in paths}}
+    standard = source_identity.compatible_source_digests(actual, standard_recipe=True, tensorrt=True)
+    # Recreate the historical patch in the pinned phase-2 tree. The optional
+    # recipe patch is checked independently against the current source tree.
+    return {
+        **baseline["sources"],
+        **{path: standard[path] for path in baseline["revised_paths"]},
+    }
 
 
 def test_current_fp32_cache_is_adopted_in_execute_and_load_modes(
