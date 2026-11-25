@@ -70,7 +70,7 @@ def ecpose_config(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> PipelineRuntimeConfig:
-    cfg = runtime(tmp_path, overrides=OPTIONS)
+    cfg: PipelineRuntimeConfig = runtime(tmp_path, overrides=OPTIONS)
     assert cfg.ecpose is not None
     upstream = cfg.ecpose.repository / "model.py"
     assets = enabled_model_assets(cfg)

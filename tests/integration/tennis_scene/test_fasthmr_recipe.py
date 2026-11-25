@@ -74,7 +74,7 @@ FASTHMR = (
 
 @pytest.fixture
 def fast_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> PipelineRuntimeConfig:
-    cfg = runtime(tmp_path, overrides=FASTHMR)
+    cfg: PipelineRuntimeConfig = runtime(tmp_path, overrides=FASTHMR)
     fast = cfg.fasthmr
     assert fast is not None
     source_code = fast.repository / "model.py"
