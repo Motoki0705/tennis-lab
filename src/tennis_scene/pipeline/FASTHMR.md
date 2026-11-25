@@ -9,7 +9,7 @@
 | 構成 | PT32 | PT16 | TRT16 |
 | --- | --- | --- | --- |
 | HMR2特徴＋GVHMR | #2496で計測 | #2496で計測 | #2496で計測 |
-| FastHMR CameraHMR | 公式補助資産の取得後に検証 | 公式補助資産の取得後に検証 | 同等な変換とparityの確認待ち |
+| FastHMR CameraHMR | 固定入力8フレームで動作確認 | 固定入力8フレームで動作確認 | 同等な変換とparityの確認待ち |
 | FastHMR HMR 2.0 | 実行不能（公開版のMask-ToMe非対応） | 同左 | 同左 |
 
 公式重みには両backboneのlayer-mergedチェックポイント、専用diffusion decoder、共通VAEがある。公開デモのMask-ToMeパッチはCameraHMR側のBlockとAttentionにだけ適用される。HMR 2.0で同じ公開デモを呼ぶとlayer mergingとdiffusionは動く構成だが、Mask-ToMeは適用されない。TensorRT用には、person maskの有無で分岐するtoken mergingや `scatter_reduce` を含む処理の同等性確認が要る。[デモ](https://github.com/TaatiTeam/FastHMR/blob/dc5c8daf0beea56a419c631f494ef7bd7ce35d3c/demo.py)・[Mask-ToMe](https://github.com/TaatiTeam/FastHMR/blob/dc5c8daf0beea56a419c631f494ef7bd7ce35d3c/model/hmr2_tools/patch_vit.py)・[論文](https://arxiv.org/abs/2510.10868)
@@ -59,7 +59,7 @@ uv pip install --python .venv/bin/python --target outputs/fasthmr-setup/python -
 recipe=fasthmr '+fasthmr={repository:FastHMR,assets:fasthmr,backend:pt32,feature_batch_size:16,seed:0}'
 ```
 
-PT16は `backend:pt16` で選ぶ。CUDA autocastとYOLOのhalf推論を使い、カメラ変換とHybrIK、SMPL geometryはFP32を使う。PT32/PT16とも実重みとGPUでの検証が残っている。処理済みのFastHMR成果を選択的に読む場合は `+execution.fasthmr=load` を使う。
+PT16は `backend:pt16` で選ぶ。CUDA autocastとYOLOのhalf推論を使い、カメラ変換とHybrIK、SMPL geometryはFP32を使う。PT32/PT16とも、RTX 5060 Tiで固定コホートのclip_003・選手0・cam0の8フレームから有限なSMPLメッシュを生成した。処理済みのFastHMR成果を選択的に読む場合は `+execution.fasthmr=load` を使う。
 
 ## 固定入力と出力
 
