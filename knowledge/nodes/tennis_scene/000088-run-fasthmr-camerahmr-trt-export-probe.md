@@ -2,7 +2,7 @@
 id: run-fasthmr-camerahmr-trt-export-probe
 type: run
 task: tennis_scene
-sequence: 87
+sequence: 88
 recorded_at: '2026-11-25'
 title: FastHMR CameraHMRのTRT16書き出し試行
 issue: 2491

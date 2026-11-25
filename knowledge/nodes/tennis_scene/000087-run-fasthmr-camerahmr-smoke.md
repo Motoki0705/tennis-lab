@@ -2,7 +2,7 @@
 id: run-fasthmr-camerahmr-smoke
 type: run
 task: tennis_scene
-sequence: 86
+sequence: 87
 recorded_at: '2026-11-25'
 title: 固定テニス映像でのFastHMR CameraHMR実重みPT32・PT16の動作確認
 issue: 2491

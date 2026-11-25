@@ -2,7 +2,7 @@
 id: run-fasthmr-camerahmr-pt16-review
 type: run
 task: tennis_scene
-sequence: 88
+sequence: 89
 recorded_at: '2026-11-25'
 title: 保存済みGVHMRとFastHMR PT16の目視比較用メッシュ
 issue: 2491
