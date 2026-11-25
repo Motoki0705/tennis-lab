@@ -1,0 +1,639 @@
+{
+  "baseline_case_file_sha256": "8476a42829d0e96d4ed859dd17aff10f63cb1a3cfd0a111ea9afb3df99fa0a2f",
+  "cases": [
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 1,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-frame",
+        "name": "fasthmr-camerahmr",
+        "settings": {
+          "body_window_frames": 16,
+          "boundary": "predecoded BGR plus fixed body_view_selection boxes to native SMPL body parameters",
+          "cuda_stream": "non-default",
+          "diffusion_seed": 0,
+          "feature_batch_size": 4,
+          "flip_test": true,
+          "forward_gpu": [
+            "yolo11x_seg",
+            "humanfov",
+            "camerahmr_eclm_mask_tome",
+            "fast_hmr_diffusion_vae"
+          ],
+          "fp32_ops": [
+            "crop_camera",
+            "hybrik",
+            "native_smpl_parameters"
+          ],
+          "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+          "host_threads": 2,
+          "input_id": "meiji_4cam/person-model-speed-v1",
+          "merging_ratio": 40,
+          "padding": 0,
+          "sequence_execution": "serial",
+          "source_commit": "8a25fe12b543656cb1e883e7251bd1a3fd299fd0",
+          "timed_input_ids_sha256": "f1528a21035b75e3f4dc7680e7efd232c1b96c940f06352d20e58e6ebbee4dd3",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "upstream_commit": "dc5c8daf0beea56a419c631f494ef7bd7ce35d3c",
+          "use": "speed_reference_only",
+          "wall_only": [
+            "remaining crop preprocessing",
+            "crop camera translation",
+            "output D2H"
+          ],
+          "window_length": 243
+        }
+      },
+      "component_gpu_p50_ms": {
+        "camerahmr_eclm_mask_tome": 339.6634750366211,
+        "fast_hmr_diffusion_vae": 40.84956741333008,
+        "humanfov": 182.1286563873291,
+        "yolo11x_seg": 89.31827163696289
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9956,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "gvhmr_pt16": {
+        "case": {
+          "backend": "PT16",
+          "batch_size": 1,
+          "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+          "item_unit": "person-frame",
+          "name": "body",
+          "settings": {
+            "body_coordinate_system": "camera",
+            "body_window_frames": 16,
+            "cuda_stream": "non-default",
+            "dataset_id": "meiji_4cam/person-model-speed-v1",
+            "gvhmr_decode_static_ik": "PyTorch FP32",
+            "hmr2_crop_batch": 16,
+            "host_threads": 4,
+            "input_decode": "predecoded BGR",
+            "pytorch_precision": "CUDA autocast FP16 with FP32 parameters",
+            "source_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+            "timed_input_ids_sha256": "f1528a21035b75e3f4dc7680e7efd232c1b96c940f06352d20e58e6ebbee4dd3",
+            "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+          }
+        },
+        "model_gpu": {
+          "items": 4800,
+          "items_per_second": 113.25320830141978,
+          "p50_ms": 140.59567737579346,
+          "p50_ms_per_item": 8.787229835987091,
+          "p95_ms": 144.33794193267823,
+          "p95_ms_per_item": 9.02112137079239,
+          "samples": 300,
+          "total_ms": 42382.905279159546
+        },
+        "nvml_device_peak_sampled_bytes": 5165387776,
+        "nvml_peak_minus_before_load_bytes": 4745854976,
+        "stage_wall": {
+          "items": 4800,
+          "items_per_second": 31.817673018970446,
+          "p50_ms": 492.284888,
+          "p50_ms_per_item": 30.7678055,
+          "p95_ms": 558.0963435000001,
+          "p95_ms_per_item": 34.881021468750006,
+          "samples": 300,
+          "total_ms": 150859.555227
+        },
+        "torch_peak_allocated_bytes": 4548218368,
+        "torch_peak_reserved_bytes": 4701814784
+      },
+      "nvml_device_peak_sampled_bytes": 5173776384,
+      "nvml_peak_minus_before_load_bytes": 4754243584,
+      "parity_status": "not_evaluated",
+      "raw_report": {
+        "bytes": 861387,
+        "file": "pt16-b1.json",
+        "sha256": "982224d0c8b5f0b27324027e5780afd77c02b93524c17b49f83e758224940827"
+      },
+      "setup_wall_ms": {
+        "cold_start": 28584.18122,
+        "load": 50545.003862
+      },
+      "stage_wall_p50_ratio_to_gvhmr": 2.2160391149362275,
+      "status": "ok",
+      "summary": {
+        "forward": {
+          "items": 4800,
+          "items_per_second": 23.491106565589536,
+          "p50_ms": 666.625853,
+          "p50_ms_per_item": 41.6641158125,
+          "p95_ms": 837.274593,
+          "p95_ms_per_item": 52.3296620625,
+          "samples": 300,
+          "total_ms": 204332.64761699992
+        },
+        "h2d": {
+          "items": 4800,
+          "items_per_second": 1084.9427861151596,
+          "p50_ms": 14.5519855,
+          "p50_ms_per_item": 0.90949909375,
+          "p95_ms": 17.383574,
+          "p95_ms_per_item": 1.086473375,
+          "samples": 300,
+          "total_ms": 4424.1964290000005
+        },
+        "model_gpu": {
+          "items": 4800,
+          "items_per_second": 23.526879346262213,
+          "p50_ms": 665.5379061698914,
+          "p50_ms_per_item": 41.59611913561821,
+          "p95_ms": 836.3255378723145,
+          "p95_ms_per_item": 52.270346117019656,
+          "samples": 300,
+          "total_ms": 204021.9584312439
+        },
+        "postprocess": {
+          "items": 4800,
+          "items_per_second": 228.93414548679158,
+          "p50_ms": 64.873786,
+          "p50_ms_per_item": 4.054611625,
+          "p95_ms": 109.39935565,
+          "p95_ms_per_item": 6.837459728125,
+          "samples": 300,
+          "total_ms": 20966.728181999995
+        },
+        "stage_wall": {
+          "items": 4800,
+          "items_per_second": 14.42127577029961,
+          "p50_ms": 1090.9225675,
+          "p50_ms_per_item": 68.18266046875,
+          "p95_ms": 1291.98109645,
+          "p95_ms_per_item": 80.748818528125,
+          "samples": 300,
+          "total_ms": 332841.56523000024
+        }
+      },
+      "torch_peak_allocated_bytes": 4508705792,
+      "torch_peak_reserved_bytes": 4682940416
+    },
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 2,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-frame",
+        "name": "fasthmr-camerahmr",
+        "settings": {
+          "body_window_frames": 16,
+          "boundary": "predecoded BGR plus fixed body_view_selection boxes to native SMPL body parameters",
+          "cuda_stream": "non-default",
+          "diffusion_seed": 0,
+          "feature_batch_size": 4,
+          "flip_test": true,
+          "forward_gpu": [
+            "yolo11x_seg",
+            "humanfov",
+            "camerahmr_eclm_mask_tome",
+            "fast_hmr_diffusion_vae"
+          ],
+          "fp32_ops": [
+            "crop_camera",
+            "hybrik",
+            "native_smpl_parameters"
+          ],
+          "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+          "host_threads": 2,
+          "input_id": "meiji_4cam/person-model-speed-v1",
+          "merging_ratio": 40,
+          "padding": 0,
+          "sequence_execution": "serial",
+          "source_commit": "8a25fe12b543656cb1e883e7251bd1a3fd299fd0",
+          "timed_input_ids_sha256": "40382008733dffedd36aecd8492c714d17dbc6c044bf0660d8919cf8c20e4000",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "upstream_commit": "dc5c8daf0beea56a419c631f494ef7bd7ce35d3c",
+          "use": "speed_reference_only",
+          "wall_only": [
+            "remaining crop preprocessing",
+            "crop camera translation",
+            "output D2H"
+          ],
+          "window_length": 243
+        }
+      },
+      "component_gpu_p50_ms": {
+        "camerahmr_eclm_mask_tome": 810.2300834655762,
+        "fast_hmr_diffusion_vae": 103.92873764038086,
+        "humanfov": 456.49929428100586,
+        "yolo11x_seg": 218.38179206848145
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 10493,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "gvhmr_pt16": {
+        "case": {
+          "backend": "PT16",
+          "batch_size": 2,
+          "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+          "item_unit": "person-frame",
+          "name": "body",
+          "settings": {
+            "body_coordinate_system": "camera",
+            "body_window_frames": 16,
+            "cuda_stream": "non-default",
+            "dataset_id": "meiji_4cam/person-model-speed-v1",
+            "gvhmr_decode_static_ik": "PyTorch FP32",
+            "hmr2_crop_batch": 16,
+            "host_threads": 4,
+            "input_decode": "predecoded BGR",
+            "pytorch_precision": "CUDA autocast FP16 with FP32 parameters",
+            "source_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+            "timed_input_ids_sha256": "40382008733dffedd36aecd8492c714d17dbc6c044bf0660d8919cf8c20e4000",
+            "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+          }
+        },
+        "model_gpu": {
+          "items": 9600,
+          "items_per_second": 119.40100479889243,
+          "p50_ms": 266.6880030632019,
+          "p50_ms_per_item": 8.33400009572506,
+          "p95_ms": 273.8558473587036,
+          "p95_ms_per_item": 8.557995229959488,
+          "samples": 300,
+          "total_ms": 80401.33344078064
+        },
+        "nvml_device_peak_sampled_bytes": 5148610560,
+        "nvml_peak_minus_before_load_bytes": 4729077760,
+        "stage_wall": {
+          "items": 9600,
+          "items_per_second": 31.91928702344782,
+          "p50_ms": 981.5344145,
+          "p50_ms_per_item": 30.672950453125,
+          "p95_ms": 1096.98074735,
+          "p95_ms_per_item": 34.2806483546875,
+          "samples": 300,
+          "total_ms": 300758.597551
+        },
+        "torch_peak_allocated_bytes": 4548251136,
+        "torch_peak_reserved_bytes": 4685037568
+      },
+      "nvml_device_peak_sampled_bytes": 5173776384,
+      "nvml_peak_minus_before_load_bytes": 4754243584,
+      "parity_status": "not_evaluated",
+      "raw_report": {
+        "bytes": 1687972,
+        "file": "pt16-b2.json",
+        "sha256": "730585c990e2c11395f271132aa26a75b11083f540980db755d1a0be9e0056b5"
+      },
+      "setup_wall_ms": {
+        "cold_start": 9045.979997,
+        "load": 51606.700054
+      },
+      "stage_wall_p50_ratio_to_gvhmr": 2.5664474793614076,
+      "status": "ok",
+      "summary": {
+        "forward": {
+          "items": 9600,
+          "items_per_second": 19.432360054982833,
+          "p50_ms": 1592.8438710000003,
+          "p50_ms_per_item": 49.77637096875001,
+          "p95_ms": 2186.9191570000007,
+          "p95_ms_per_item": 68.34122365625002,
+          "samples": 300,
+          "total_ms": 494021.31150500034
+        },
+        "h2d": {
+          "items": 9600,
+          "items_per_second": 890.649664929037,
+          "p50_ms": 32.438160499999995,
+          "p50_ms_per_item": 1.0136925156249998,
+          "p95_ms": 53.26443755000001,
+          "p95_ms_per_item": 1.6645136734375003,
+          "samples": 300,
+          "total_ms": 10778.648865000005
+        },
+        "model_gpu": {
+          "items": 9600,
+          "items_per_second": 19.460111326741224,
+          "p50_ms": 1590.7454252243042,
+          "p50_ms_per_item": 49.710794538259506,
+          "p95_ms": 2184.3872472763064,
+          "p95_ms_per_item": 68.26210147738458,
+          "samples": 300,
+          "total_ms": 493316.807844162
+        },
+        "postprocess": {
+          "items": 9600,
+          "items_per_second": 192.68386451966526,
+          "p50_ms": 157.1183355,
+          "p50_ms_per_item": 4.909947984375,
+          "p95_ms": 236.03611165000007,
+          "p95_ms_per_item": 7.376128489062502,
+          "samples": 300,
+          "total_ms": 49822.542348999996
+        },
+        "stage_wall": {
+          "items": 9600,
+          "items_per_second": 12.211048245407795,
+          "p50_ms": 2519.056524,
+          "p50_ms_per_item": 78.720516375,
+          "p95_ms": 3381.3733916000006,
+          "p95_ms_per_item": 105.66791848750002,
+          "samples": 300,
+          "total_ms": 786173.2921749997
+        }
+      },
+      "torch_peak_allocated_bytes": 4508705792,
+      "torch_peak_reserved_bytes": 4682940416
+    },
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 4,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-frame",
+        "name": "fasthmr-camerahmr",
+        "settings": {
+          "body_window_frames": 16,
+          "boundary": "predecoded BGR plus fixed body_view_selection boxes to native SMPL body parameters",
+          "cuda_stream": "non-default",
+          "diffusion_seed": 0,
+          "feature_batch_size": 4,
+          "flip_test": true,
+          "forward_gpu": [
+            "yolo11x_seg",
+            "humanfov",
+            "camerahmr_eclm_mask_tome",
+            "fast_hmr_diffusion_vae"
+          ],
+          "fp32_ops": [
+            "crop_camera",
+            "hybrik",
+            "native_smpl_parameters"
+          ],
+          "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+          "host_threads": 2,
+          "input_id": "meiji_4cam/person-model-speed-v1",
+          "merging_ratio": 40,
+          "padding": 0,
+          "sequence_execution": "serial",
+          "source_commit": "8a25fe12b543656cb1e883e7251bd1a3fd299fd0",
+          "timed_input_ids_sha256": "eebe16f07344c65608a059011e60bfc7c08b069eb332f5dc9d62a9a85045a8bb",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "upstream_commit": "dc5c8daf0beea56a419c631f494ef7bd7ce35d3c",
+          "use": "speed_reference_only",
+          "wall_only": [
+            "remaining crop preprocessing",
+            "crop camera translation",
+            "output D2H"
+          ],
+          "window_length": 243
+        }
+      },
+      "component_gpu_p50_ms": {
+        "camerahmr_eclm_mask_tome": 1004.7922277450562,
+        "fast_hmr_diffusion_vae": 128.68956851959229,
+        "humanfov": 548.6057891845703,
+        "yolo11x_seg": 264.7305769920349
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9976,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "gvhmr_pt16": {
+        "case": {
+          "backend": "PT16",
+          "batch_size": 4,
+          "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+          "item_unit": "person-frame",
+          "name": "body",
+          "settings": {
+            "body_coordinate_system": "camera",
+            "body_window_frames": 16,
+            "cuda_stream": "non-default",
+            "dataset_id": "meiji_4cam/person-model-speed-v1",
+            "gvhmr_decode_static_ik": "PyTorch FP32",
+            "hmr2_crop_batch": 16,
+            "host_threads": 4,
+            "input_decode": "predecoded BGR",
+            "pytorch_precision": "CUDA autocast FP16 with FP32 parameters",
+            "source_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+            "timed_input_ids_sha256": "eebe16f07344c65608a059011e60bfc7c08b069eb332f5dc9d62a9a85045a8bb",
+            "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+          }
+        },
+        "model_gpu": {
+          "items": 19200,
+          "items_per_second": 124.36602702755778,
+          "p50_ms": 514.0322179794312,
+          "p50_ms_per_item": 8.031753405928612,
+          "p95_ms": 519.5471785545349,
+          "p95_ms_per_item": 8.117924664914607,
+          "samples": 300,
+          "total_ms": 154382.99718093872
+        },
+        "nvml_device_peak_sampled_bytes": 5148610560,
+        "nvml_peak_minus_before_load_bytes": 4729077760,
+        "stage_wall": {
+          "items": 19200,
+          "items_per_second": 33.162541835830325,
+          "p50_ms": 1924.9195225,
+          "p50_ms_per_item": 30.0768675390625,
+          "p95_ms": 1983.4917600499998,
+          "p95_ms_per_item": 30.992058750781247,
+          "samples": 300,
+          "total_ms": 578966.476546
+        },
+        "torch_peak_allocated_bytes": 4548251136,
+        "torch_peak_reserved_bytes": 4685037568
+      },
+      "nvml_device_peak_sampled_bytes": 5173776384,
+      "nvml_peak_minus_before_load_bytes": 4754243584,
+      "parity_status": "not_evaluated",
+      "raw_report": {
+        "bytes": 3345972,
+        "file": "pt16-b4.json",
+        "sha256": "0eb0a0b01ab01e6a51ca3b4f41067f8514ed78ee912a7630034b27b72567b1dd"
+      },
+      "setup_wall_ms": {
+        "cold_start": 10014.789478,
+        "load": 49571.224339
+      },
+      "stage_wall_p50_ratio_to_gvhmr": 1.678338214007074,
+      "status": "ok",
+      "summary": {
+        "forward": {
+          "items": 19200,
+          "items_per_second": 31.664204513662504,
+          "p50_ms": 1950.8089009999999,
+          "p50_ms_per_item": 30.481389078124998,
+          "p95_ms": 2462.980123550001,
+          "p95_ms_per_item": 38.48406443046876,
+          "samples": 300,
+          "total_ms": 606362.9355259995
+        },
+        "h2d": {
+          "items": 19200,
+          "items_per_second": 1380.3456820310419,
+          "p50_ms": 45.45281949999999,
+          "p50_ms_per_item": 0.7102003046874998,
+          "p95_ms": 53.283820950000006,
+          "p95_ms_per_item": 0.8325597023437501,
+          "samples": 300,
+          "total_ms": 13909.559214000004
+        },
+        "model_gpu": {
+          "items": 19200,
+          "items_per_second": 31.714280234166235,
+          "p50_ms": 1947.8364009857178,
+          "p50_ms_per_item": 30.43494376540184,
+          "p95_ms": 2459.1057489871996,
+          "p95_ms_per_item": 38.423527327924994,
+          "samples": 300,
+          "total_ms": 605405.510017395
+        },
+        "postprocess": {
+          "items": 19200,
+          "items_per_second": 304.21820304864,
+          "p50_ms": 204.12930599999999,
+          "p50_ms_per_item": 3.1895204062499998,
+          "p95_ms": 244.04120970000002,
+          "p95_ms_per_item": 3.8131439015625004,
+          "samples": 300,
+          "total_ms": 63112.594209000046
+        },
+        "stage_wall": {
+          "items": 19200,
+          "items_per_second": 19.20004602611993,
+          "p50_ms": 3230.6659935,
+          "p50_ms_per_item": 50.4791561484375,
+          "p95_ms": 3993.4771694000015,
+          "p95_ms_per_item": 62.39808077187502,
+          "samples": 300,
+          "total_ms": 999997.6028120001
+        }
+      },
+      "torch_peak_allocated_bytes": 4508705792,
+      "torch_peak_reserved_bytes": 4682940416
+    }
+  ],
+  "fixed_body_sequences": 24,
+  "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+  "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+  "parity_not_evaluated_reason": "未判定（PT32計測はスコープ外、ユーザー判断 2026-11-25）",
+  "source_commit": "8a25fe12b543656cb1e883e7251bd1a3fd299fd0",
+  "source_sha256": {
+    "benchmark_fasthmr.py": "f2dfea34527a4ab2081caa3d3e0f4a4a281e821211f7de9690c87c126cd0bd0e",
+    "run.sh": "b012a208ee9ef6cc7649ea7bbfac64b7bbd5679833fd833c60533418b2278a5e"
+  },
+  "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+  "weights": {
+    "backbone": {
+      "bytes": 2210774984,
+      "sha256": "8d814cbf95b0efac89a939db055b6f67feacab0c85a43d3d307f49de313c9d4e"
+    },
+    "coco17": {
+      "bytes": 469227,
+      "sha256": "bacdaf756629493994cc869f4c27d179f5e4a5d06b8797ee3dcb94571522079f"
+    },
+    "diffusion": {
+      "bytes": 678576471,
+      "sha256": "ba9dcf7dfa3bed46c01fb814c25b88cece68919328ea7b757bbf30a20b1fcccc"
+    },
+    "fov": {
+      "bytes": 805295419,
+      "sha256": "cab4a0db880d8d822e87723bd7cd839ba98b27c043ec1d7e437ae966a7bf287e"
+    },
+    "h36m": {
+      "bytes": 937168,
+      "sha256": "c655cd7013d7829eb9acbebf0e43f952a3fa0305a53c35880e39192bfb6444a0"
+    },
+    "mean_params": {
+      "bytes": 1310,
+      "sha256": "6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd"
+    },
+    "segmentor": {
+      "bytes": 125090821,
+      "sha256": "4e53a5f5fd3ee2ae3361c62169c6bb3ed4ae251dd0e57606e230955aa52d919c"
+    },
+    "smpl": {
+      "bytes": 247186228,
+      "sha256": "4924f235e63f7c5d5b690acedf736419c2edb846a2d69fc0956169615fa75688"
+    },
+    "upstream_demo_config": {
+      "bytes": 1049,
+      "sha256": "fec985e63916a611faf7fb031fa87312f8a8317fc4bcd3b3030487857b618ec1"
+    },
+    "vae": {
+      "bytes": 626670806,
+      "sha256": "218055d749b0a00118cfaf26efc4dac8b1c7c6840884e083b108d3da33c95b07"
+    }
+  }
+}
