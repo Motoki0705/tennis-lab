@@ -4,6 +4,8 @@ The six frozen clips and masks from [the player evaluation bundle](../run-meiji-
 
 The reference inherits biases from ViTPose observations, body placement, GVHMR and SMPL. Agreement measures how closely a prediction follows this reference. It cannot establish accuracy against independent human annotations. See the shared bundle for the overlay, exclusions and mask definitions.
 
+The [accuracy table](accuracy.csv) contains 15 primary conditions for ViTPose-H, RTMPose-M/X and PMPose-L/H, plus three ViTPose-H conditions without flip. The six Sapiens2 rows preserve the attempts behind the November 25 decision to exclude both sizes due to GPU time. [Sapiens2 run evidence](sapiens2.md#conversion-and-accuracy-evidence)
+
 ## Accuracy command
 
 From the checkout root, use the published manifest digest. Run CUDA commands through the shared training queue with the `all` reservation.

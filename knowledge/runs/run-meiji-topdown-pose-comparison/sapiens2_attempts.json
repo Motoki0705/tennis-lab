@@ -1,9 +1,34 @@
 {
-  "observed_at": "2026-11-25T10:00:49+09:00",
+  "observed_at": "2026-11-25T12:37:00+09:00",
+  "scope_decision": {
+    "date": "2026-11-25",
+    "source": "https://github.com/Motoki0705/tennis-lab/issues/2492",
+    "status": "excluded",
+    "reason": "GPU time",
+    "models": ["sapiens2-1b", "sapiens2-5b"],
+    "backends": ["PT32", "PT16", "TRT16"]
+  },
   "attempts": {
     "1b-pt32-accuracy": {
       "job_id": "0-8204471621916598843_2026-11-24T13-52-58-083401156Z_2244865_i2490-sapiens2-1b-pt32-accuracy.job",
-      "queue_state": "running"
+      "queue_state": "cancelled",
+      "execution_commit": "4046e29167dedc5aaa4e3606efb717bc4bbebac4",
+      "exit_code": 143,
+      "captured_at": "2026-11-25T04:27:03+09:00",
+      "finished_at_ns": 1795577766922093003,
+      "published_accuracy_artifacts": [],
+      "log": {
+        "path": "logs/0-8204471621916598843_2026-11-24T13-52-58-083401156Z_2244865_i2490-sapiens2-1b-pt32-accuracy.log",
+        "sha256": "9185842fb368f8c9d2498d3dec43b4ad14bf311da44e54caaf64fa18ccf51c04"
+      },
+      "completion_sha256": "4e0b01c14ba459f253dc22fe64fb7d37791e83bf702b29a4754790b9252387cf",
+      "queue_run_sha256": "f2a602ff3985f868350ba3f17e06a70a269a5bc9377907624f4dbd365c32275a",
+      "command_sha256": "a74600c9b3b8e04da4dd525d8162c03e8a7e3106b6f8fe3a55bd596a11e209bf",
+      "parent_reported_estimates": {
+        "fraction_processed_before_cancel": 0.34,
+        "seconds_per_person": 3.2,
+        "full_accuracy_hours": 23
+      }
     },
     "1b-pt16-accuracy": {
       "job_id": "0-8204471621549248572_2026-11-24T13-52-58-450751427Z_2244938_i2490-sapiens2-1b-pt16-accuracy.job",

@@ -22,6 +22,9 @@ metrics:
   eligible_joints: 437714
   completed_primary_accuracy_conditions: 15
   completed_supplemental_accuracy_conditions: 3
+  excluded_sapiens2_conditions: 6
+  downstream_pose_tracks_per_condition: 96
+  downstream_nonfinite_conditions: 1
   accuracy_conditions_with_changed_metrics_after_replay: 0
   difficulty_conditions: 18
   fast_wrist_cutoff_mps: 3.7491171123307945
@@ -57,6 +60,9 @@ artifacts:
   difficulty_all_backends:
     path: .worktree-outputs/parent-2492-issue-2490-primary/pose-comparison/difficulty-v1.json
     sha256: 68c6974a2d7737a1913a600cf3cfd92b562fe0ede0f663dd87daefe3911836b0
+  downstream_contract:
+    path: .worktree-outputs/parent-2492-issue-2490-primary/pose-comparison/downstream_contract-v1.json
+    sha256: 66da7581e62a25035c4e1c7a0952de18894c2984c528e69c7239383e53893bfe
   representative_index: knowledge/runs/run-meiji-topdown-pose-comparison/representatives.json
   representative_comparisons:
     path: .worktree-outputs/parent-2492-issue-2490-primary/pose-comparison/representatives-v1/manifest.json
@@ -97,14 +103,18 @@ ViTPose-HのflipありでPT32に対する座標差はPT16がP95 0.0088 px、TRT1
 
 高速群の左手首で、ViTPose-H flipありとPMPose-HのPT32のpixel誤差P95は28.32 pxと28.00 px、残差jitterのP95は33.75 pxと29.04 pxだった。遮蔽疑い群の平均OKSは0.41310と0.56607だった。遮蔽は選手間の重なりと深度から付けた候補ラベルで、採点は該当する人物の有効関節に限る。速度による群分けはスイングの代理指標で、動作種別は未判定。 [関節別の母数と分布](../../runs/run-meiji-topdown-pose-comparison/difficulty_pt32.csv)
 
+18条件の保存予測から、各条件の96クリップ・カメラ・選手系列で元フレーム順と `Pose2DResult` のCPU float32 `(F,17,3)` への変換を照合した。RTMPose-M TRT16の `clip_028/cam3` 元frame 665、選手1の右手首だけで座標がNaNだった。現行pipelineの有限値チェックを通すには、この条件での欠測の扱いを決める必要がある。 [現行の有限値チェック](https://github.com/Motoki0705/tennis-lab/blob/1dda95b51398b15e9c69d0b4bf2a92ebe7472eeb/src/tennis_scene/pipeline/components/person_features.py#L253)
+
 ### 同期可視化
 
 共通manifestが選んだ6クリップ×4カメラの24画像で、SMPL・ViTPose-H・RTMPose-M/X・PMPose-L/HのPT32を同一動画フレームに描いた。24件の元frame・出力寸法・PNGハッシュを照合し、評価間隔が不規則な2クリップでシーク読み込みと順次読み込みのpixel値が一致した。 `clip_003/cam2` の動画は185 frame・30,000/1,001 fps、`clip_004/cam2` のSMPL・ViTPose-H・PMPose-H比較は586 frame・60,000/1,001 fpsと読み戻した。後者は294評価サンプルを元時刻間隔で表示する。 [代表frameとPNGハッシュ](../../runs/run-meiji-topdown-pose-comparison/representatives.json) · [overlayの再現手順](../../runs/run-meiji-topdown-pose-comparison/README.md#review-synchronized-overlays)
 
 高速群で現行PT32の手首誤差が最大だったのは `clip_004/cam1` 元frame 386の選手4左手首だった。参照との差はViTPose-Hが119.26 px、PMPose-Hが124.98 px。右端で身体の一部が切れる同じ元画像を5モデルで拡大比較した。 `clip_003/cam2` 元frame 66の選手6の比較画像には、現行ViTPose-Hで最大だったbackend間の差を保存した。
 
-### Sapiens2と速度計測
+### Sapiens2の対象外判断と速度計測
 
-Sapiens2-1B/5Bのadapterに、公式重みのSHA-256・入力仕様・308関節からCOCO17への名前付き対応・変換receiptを統合した。両サイズのONNXを検証し、初回TRT buildは `ReduceMean` のaxes initializer要件で失敗した。1B PT32精度は実行中で、両サイズのPT16/TRT16精度ジョブは取消状態を確認した。5B PT32のCUDAロードは成功し、FP32重み20,480,794,652 bytes、PyTorch allocated peak 20,540,379,648 bytes、報告されたデバイス容量17,074,749,440 bytesだった。forwardと常駐VRAMは未確認。 [モデルと利用条件](../../runs/run-meiji-topdown-pose-comparison/sapiens2.md) · [変換receipt](../../runs/run-meiji-topdown-pose-comparison/sapiens2_conversion.json) · [照合したqueueの記録](../../runs/run-meiji-topdown-pose-comparison/sapiens2_attempts.json)
+2026-11-25のユーザー判断で、GPU時間の制約からSapiens2-1B/5Bの全6条件を対象外とした。1B PT32の精度ジョブはGPUを約8時間占有した後、担当親が取り消した。queueは終了値143を記録し、指定された出力先に予測・採点結果はなかった。担当親の観測は進捗約34%、約3.2秒/人物で、固定精度コホート全体の所要時間の見積もりは約23時間。速度用の共通harnessでの計時は未実施。 [ユーザー判断と観測](https://github.com/Motoki0705/tennis-lab/issues/2492) · [終端記録とログのSHA-256](../../runs/run-meiji-topdown-pose-comparison/sapiens2_attempts.json)
 
-#2496 が公開した速度基準は384人物crop、batch 1/4/8、30 warm-up、300反復の暫定値。#2497 の修正と親の再投入指示を受けて共通速度計測とparityを更新し、Sapiens2の残る精度結果を受けてPareto比較と採用候補を評価する。 [現行モデルの暫定速度基準](000085-run-person-model-speed-baseline.md)
+5B PT32のCUDAロードでは、重み20,480,794,652 bytes、PyTorch allocated peak 20,540,379,648 bytes、CUDA報告のデバイス容量17,074,749,440 bytesを記録した。常駐VRAMとforwardは未計測。両サイズのONNXは検証済みで、初回TRT buildはRMSNormの `ReduceMean` に渡されたaxesがinitializerであることを求めるTensorRTの制約で停止した。公式重み、COCO17への名前付き対応、変換receiptを保存した。 [モデル・利用条件・変換の記録](../../runs/run-meiji-topdown-pose-comparison/sapiens2.md#conversion-and-accuracy-evidence)
+
+主比較15条件とViTPose-H flipなしの補助3条件の精度採点は完了した。#2496 の速度基準は384人物crop、batch 1/4/8、30 warm-up、300反復の暫定値。#2497 の修正版と親の再投入指示を受けて、残るモデルの速度・VRAM・共通parityを照合し、Pareto比較と採用候補をまとめる。 [現行モデルの暫定速度基準](000085-run-person-model-speed-baseline.md)

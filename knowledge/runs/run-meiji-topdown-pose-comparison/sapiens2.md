@@ -147,12 +147,14 @@ The 1B export took 138.81 s and the 5B export took 686.88 s.
 
 | Model | PT32 | PT16 | TRT16 |
 |---|---|---|---|
-| Sapiens2-1B | Fixed-cohort accuracy running at observation | Accuracy job cancelled | Initial build stopped during parsing. Accuracy job cancelled |
-| Sapiens2-5B | CUDA weight load completed. Forward and accuracy pending | Accuracy job cancelled | Initial build stopped during parsing. Accuracy job cancelled |
+| Sapiens2-1B | Fixed-cohort accuracy cancelled, exit 143 | Accuracy job cancelled | Initial build stopped during parsing. Accuracy job cancelled |
+| Sapiens2-5B | CUDA weight load completed | Accuracy job cancelled | Initial build stopped during parsing. Accuracy job cancelled |
 
-Both TensorRT builds stopped at the first RMSNorm's `ReduceMean` node because TensorRT required the axes input to be an initializer. These attempts produced no engine or parity result. The queue record contains the build job IDs, exit values and terminal log digests. [Queue observations](sapiens2_attempts.json)
+The user excluded both sizes and all six conditions on November 25 due to GPU time. The parent cancelled 1B PT32 after about eight hours of exclusive GPU reservation. The parent reported about 34% progress and 3.2 s per person, which projects to roughly 23 hours for the 26,276-person accuracy cohort. This estimate comes from the accuracy run. The evaluator publishes predictions after it has processed the full cohort, and the cancelled run left the predictions directory empty. [Decision](https://github.com/Motoki0705/tennis-lab/issues/2492) · [Terminal record](sapiens2_attempts.json)
 
-The 5B PT32 probe completed CUDA weight loading on the RTX 5060 Ti. The FP32 weights alone contain 20,480,794,652 bytes (19.07 GiB), 3,406,045,212 bytes more than CUDA's reported device capacity of 17,074,749,440 bytes. PyTorch reported a peak of 20,540,379,648 bytes allocated and 20,948,451,328 bytes reserved during loading. The resident VRAM and forward memory are unverified. [Load receipt and log digest](sapiens2_attempts.json)
+Both TensorRT builds stopped at the first RMSNorm's `ReduceMean` node because TensorRT required the axes input to be an initializer. The logs cover the parse failures, with engine and parity measurements unavailable. [Queue observations](sapiens2_attempts.json)
+
+The 5B PT32 probe completed CUDA weight loading on the RTX 5060 Ti. The FP32 weights alone contain 20,480,794,652 bytes (19.07 GiB), 3,406,045,212 bytes more than CUDA's reported device capacity of 17,074,749,440 bytes. PyTorch reported a peak of 20,540,379,648 bytes allocated and 20,948,451,328 bytes reserved during loading. The parent attributed the load above device capacity to host memory spill in WSL. The probe's receipt records allocator values. Resident VRAM and forward memory remain unmeasured. [Load receipt and log digest](sapiens2_attempts.json) · [Parent observation](https://github.com/Motoki0705/tennis-lab/issues/2492)
 
 The CPU tests exercise the named source joints and left/right reflection
 using asymmetric predictions, the crop inverse and short batch ordering,
