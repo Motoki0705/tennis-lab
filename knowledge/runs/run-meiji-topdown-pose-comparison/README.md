@@ -35,6 +35,19 @@ For ViTPose-H, reuse the synchronized PT16/TRT16 results with and without flip a
 
 Use the common harness and pinned crop schedule for new candidate runs. Pass `parity_not_evaluated_reason="PT32計測はスコープ外（ユーザー判断 2026-11-25）"` and record the comparison label `PT32未計測`. Keep the original provisional PT32 measurements as historical data. [Harness and opt-out contract](../../../src/utils/inference_benchmark.md) · [Published dataset and timing protocol](../run-person-model-speed-baseline/README.md#固定入力と初回の成果物)
 
+For the primary comparison, join fixed-denominator pseudo-GT accuracy to synchronized speed by model and backend. Accuracy comes from the previously saved batch 8 runs. Compare each speed row to ViTPose-H with flip at the same batch and backend. Compute the Pareto frontier separately for each batch by maximizing mean OKS and minimizing wall P50 per person and sampled NVML device memory. The batch 1 plot shows accuracy against both cost axes and marks membership in the three-metric frontier. Identical points share frontier membership. Supplemental ViTPose-H results without flip are available in the original speed and accuracy tables.
+
+Run the comparison on the CPU after checking the terminal job reports. The positional arguments are the candidate `report.json` paths from the two RTMPose and four PMPose jobs. If a terminal case has no report, pass `--omissions` with a JSON list of entries containing `model`, `backend`, `batch_size`, `reason`, and `evidence` pointing to the terminal log. The command requires evidence for every case before it writes `comparison.csv` and `pareto-batch1.png`.
+
+```bash
+baseline=knowledge/runs/run-person-model-speed-baseline
+CUDA_VISIBLE_DEVICES='' PYTHONPATH="$PWD:$PWD/$run:$PWD/$baseline" \
+  .venv/bin/python -B "$run/compare_speed.py" --inputs "$PERSON_FIXED_INPUTS" \
+  --output outputs/pose-comparison/final-speed "${candidate_reports[@]}"
+```
+
+The comparison tests reuse `test_pinned_schedule_rejects_reordered_loaded_batches` and `test_explicit_parity_opt_out_records_speed_without_extra_inference` from the shared harness. The comparison-specific CPU tests use a short synthetic schedule to reject reordered or missing timed rows, check a dominated point and tied frontier points, and verify a hand-calculated baseline improvement. A preflight against the published ViTPose-H reports uses saved JSON and the fixed input index.
+
 ## Replay retained accuracy
 
 `replay_accuracy.py` verifies each completed queue receipt against the frozen cohort, original file hashes, BBoxes and person addresses. It re-scores the saved COCO17 rows with the current common scorer and records which metric sections changed, the two Recall values, and coordinate and raw-score differences from the same model's PT32 outputs. The PT32 comparison reports observed differences for the accuracy cohort. The shared timing harness uses its own fixed input and parity policy.

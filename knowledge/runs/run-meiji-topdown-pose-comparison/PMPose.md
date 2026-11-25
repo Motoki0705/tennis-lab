@@ -100,7 +100,7 @@ CUDA_VISIBLE_DEVICES='' PYTHONPATH="$PWD:$PWD/$run" .venv/bin/python -B "$run/pm
   --output outputs/pmpose/accuracy-rescored "${job_ids[@]}"
 ```
 
-The script writes new score files, retains the original scores for verification, and summarizes coordinate and confidence differences against the matching PT32 predictions. Speed-protocol parity uses the common speed input and the shared thresholds.
+The script writes new score files, retains the original scores for verification, and summarizes historical coordinate and confidence differences against the matching PT32 predictions. The synchronized speed reports use the explicit parity opt-out documented above.
 
 ### Auxiliary scores
 
