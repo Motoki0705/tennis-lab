@@ -10,6 +10,7 @@ import pytest
 from tests.integration.tasks.plcs.model_contracts import (
     AXIAL,
     CONFIG_DIR,
+    MONOCULAR_GVHMR,
     SELECTORS,
     TEMPORAL,
 )
@@ -36,6 +37,10 @@ def test_axial_real_loss_and_training_update(tmp_path: Path, gan: bool) -> None:
 
 def test_temporal_canonical_head_real_loss_and_training_update(tmp_path: Path) -> None:
     exercise_family(TEMPORAL, tmp_path)
+
+
+def test_monocular_gvhmr_htd_real_loss_and_training_update(tmp_path: Path) -> None:
+    exercise_family(MONOCULAR_GVHMR, tmp_path)
 
 
 def test_every_public_model_selector_is_registered() -> None:
@@ -81,7 +86,9 @@ def test_contract_detects_disconnected_canonical_head(
         exercise_family(AXIAL, tmp_path, mutate=mutate)
 
 
-@pytest.mark.parametrize("family", [AXIAL, TEMPORAL], ids=lambda family: family.name)
+@pytest.mark.parametrize(
+    "family", [AXIAL, TEMPORAL, MONOCULAR_GVHMR], ids=lambda family: family.name
+)
 def test_checkpoint_all_public_outputs(tmp_path, family):
     exercise_checkpoint(family, tmp_path)
 

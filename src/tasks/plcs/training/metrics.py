@@ -143,6 +143,7 @@ class PLCSMetrics:
         position_threshold_m: float,
         angle_threshold_deg: float,
         predict_canonical_pose: bool = False,
+        predict_world_pose: bool = False,
     ) -> None:
         """Initialize the metrics tracker.
 
@@ -150,11 +151,15 @@ class PLCSMetrics:
             position_threshold_m: Threshold for position accuracy (meters).
             angle_threshold_deg: Threshold for angular accuracy (degrees).
             predict_canonical_pose: Whether canonical-pose metrics are required.
+            predict_world_pose: Whether physical court 3D world-pose and
+                higher-order temporal metrics (W-MPJPE, PA-MPJPE, MPJVE, MPJAE)
+                are tracked.
 
         """
         self.position_threshold_m = position_threshold_m
         self.angle_threshold_deg = angle_threshold_deg
         self.predict_canonical_pose = predict_canonical_pose
+        self.predict_world_pose = predict_world_pose
         self.reset()
 
     def reset(self) -> None:
@@ -174,6 +179,167 @@ class PLCSMetrics:
         self._canonical_joint_error_sums = [0.0] * NUM_HUMAN_KP
         self._canonical_joint_error_counts = [0] * NUM_HUMAN_KP
         self._canonical_errors_for_median: list[Tensor] = []
+        self._world_error_sum = 0.0
+        self._world_error_count = 0
+        self._pa_error_sum = 0.0
+        self._pa_error_count = 0
+        self._vel_error_sum = 0.0
+        self._vel_error_count = 0
+        self._acc_error_sum = 0.0
+        self._acc_error_count = 0
+
+    @staticmethod
+    def _procrustes_align_batch(pred: Tensor, target: Tensor) -> Tensor:
+        """Compute similarity Procrustes alignment of ``pred`` onto ``target``.
+
+        Args:
+            pred: ``(N, J, 3)`` float64 predicted poses.
+            target: ``(N, J, 3)`` float64 target poses.
+
+        Returns:
+            ``(N, J, 3)`` aligned predicted poses.
+
+        """
+        mu_p = pred.mean(dim=1, keepdim=True)
+        mu_t = target.mean(dim=1, keepdim=True)
+        p0 = pred - mu_p
+        t0 = target - mu_t
+        var_p = (p0 * p0).sum(dim=(1, 2)).clamp_min(1e-12)
+        cov = torch.matmul(p0.transpose(1, 2), t0)  # (N, 3, 3)
+        u, s, vh = torch.linalg.svd(cov)
+        det = torch.linalg.det(torch.matmul(vh.transpose(1, 2), u.transpose(1, 2)))
+        sign = torch.where(det < 0.0, -torch.ones_like(det), torch.ones_like(det))
+        d_mat = torch.eye(3, dtype=pred.dtype, device=pred.device).unsqueeze(0).repeat(
+            pred.shape[0], 1, 1
+        )
+        d_mat[:, 2, 2] = sign
+        rot = torch.matmul(torch.matmul(vh.transpose(1, 2), d_mat), u.transpose(1, 2))
+        s_signed = s.clone()
+        s_signed[:, 2] = s_signed[:, 2] * sign
+        scale = (s_signed.sum(dim=1) / var_p).view(-1, 1, 1)
+        return scale * torch.matmul(p0, rot.transpose(1, 2)) + mu_t
+
+    def _update_world_pose_metrics(
+        self,
+        pred_world_kp_3d: Tensor | None,
+        target_world_kp_3d: Tensor | None,
+        *,
+        expected_frame_shape: torch.Size,
+        frame_valid: Tensor | None,
+        frame_rate_hz: Tensor | None,
+    ) -> dict[str, float]:
+        """Validate and accumulate court-space 3D world-pose & HTD metrics."""
+        present = (pred_world_kp_3d is not None, target_world_kp_3d is not None)
+        if present[0] != present[1]:
+            raise ValueError(
+                "PLCS world pose metrics require pred_world_kp_3d and "
+                "target_world_kp_3d together."
+            )
+        if not self.predict_world_pose:
+            if any(present):
+                raise ValueError(
+                    "PLCS world pose metric inputs were provided while "
+                    "predict_world_pose=False."
+                )
+            return {}
+        if not all(present):
+            raise ValueError(
+                "PLCS world pose metrics require pred_world_kp_3d and "
+                "target_world_kp_3d when predict_world_pose=True."
+            )
+        pred_kp = cast(Tensor, pred_world_kp_3d).detach().to(dtype=torch.float64)
+        target_kp = cast(Tensor, target_world_kp_3d).detach().to(dtype=torch.float64)
+        if pred_kp.shape != target_kp.shape:
+            raise ValueError(
+                "PLCS world pose prediction and target shapes must match, got "
+                f"{tuple(pred_kp.shape)} and {tuple(target_kp.shape)}."
+            )
+        if pred_kp.ndim not in {3, 4} or pred_kp.shape[-2:] != (NUM_HUMAN_KP, 3):
+            raise ValueError(
+                "PLCS world pose metrics require shape (B, 17, 3) or "
+                f"(B, T, 17, 3), got {tuple(pred_kp.shape)}."
+            )
+        if pred_kp.shape[:-2] != expected_frame_shape:
+            raise ValueError(
+                "PLCS world pose leading axes must match position leading axes."
+            )
+        valid_mask = (
+            torch.ones(pred_kp.shape[:-2], dtype=torch.bool, device=pred_kp.device)
+            if frame_valid is None
+            else frame_valid.to(device=pred_kp.device, dtype=torch.bool)
+        )
+        valid_pred = pred_kp[valid_mask]
+        valid_target = target_kp[valid_mask]
+        if valid_pred.numel() == 0:
+            return {}
+
+        world_err = torch.linalg.vector_norm(valid_pred - valid_target, dim=-1)
+        world_sum = float(world_err.sum().cpu().item())
+        world_cnt = int(world_err.numel())
+        self._world_error_sum += world_sum
+        self._world_error_count += world_cnt
+
+        aligned = self._procrustes_align_batch(valid_pred, valid_target)
+        pa_err = torch.linalg.vector_norm(aligned - valid_target, dim=-1)
+        pa_sum = float(pa_err.sum().cpu().item())
+        pa_cnt = int(pa_err.numel())
+        self._pa_error_sum += pa_sum
+        self._pa_error_count += pa_cnt
+
+        metrics: dict[str, float] = {
+            "world_mpjpe_m": world_sum / world_cnt,
+            "pa_mpjpe_m": pa_sum / pa_cnt,
+        }
+
+        if pred_kp.ndim == 4 and pred_kp.shape[1] >= 2:
+            batch_size = pred_kp.shape[0]
+            if frame_rate_hz is None:
+                fps = torch.full(
+                    (batch_size, 1, 1, 1), 30.0, dtype=torch.float64, device=pred_kp.device
+                )
+            else:
+                fps_raw = frame_rate_hz.detach().to(
+                    device=pred_kp.device, dtype=torch.float64
+                )
+                fps = (
+                    fps_raw.expand(batch_size)
+                    if fps_raw.ndim == 0
+                    else fps_raw
+                ).view(batch_size, 1, 1, 1)
+            mask4 = valid_mask.unsqueeze(-1).unsqueeze(-1)
+            pred_safe = torch.where(mask4, pred_kp, torch.zeros_like(pred_kp))
+            target_safe = torch.where(mask4, target_kp, torch.zeros_like(target_kp))
+
+            valid_v = valid_mask[:, 1:] & valid_mask[:, :-1]
+            if bool(valid_v.any().item()):
+                v_pred = (pred_safe[:, 1:] - pred_safe[:, :-1]) * fps
+                v_gt = (target_safe[:, 1:] - target_safe[:, :-1]) * fps
+                v_err = torch.linalg.vector_norm(v_pred - v_gt, dim=-1)[valid_v]
+                v_sum = float(v_err.sum().cpu().item())
+                v_cnt = int(v_err.numel())
+                self._vel_error_sum += v_sum
+                self._vel_error_count += v_cnt
+                metrics["mpjve_mps"] = v_sum / v_cnt
+
+            if pred_kp.shape[1] >= 3:
+                valid_a = valid_mask[:, 2:] & valid_mask[:, 1:-1] & valid_mask[:, :-2]
+                if bool(valid_a.any().item()):
+                    a_pred = (
+                        pred_safe[:, 2:] - 2.0 * pred_safe[:, 1:-1] + pred_safe[:, :-2]
+                    ) * (fps * fps)
+                    a_gt = (
+                        target_safe[:, 2:]
+                        - 2.0 * target_safe[:, 1:-1]
+                        + target_safe[:, :-2]
+                    ) * (fps * fps)
+                    a_err = torch.linalg.vector_norm(a_pred - a_gt, dim=-1)[valid_a]
+                    a_sum = float(a_err.sum().cpu().item())
+                    a_cnt = int(a_err.numel())
+                    self._acc_error_sum += a_sum
+                    self._acc_error_count += a_cnt
+                    metrics["mpjae_mps2"] = a_sum / a_cnt
+
+        return metrics
 
     def _update_canonical_pose_metrics(
         self,
@@ -300,11 +466,15 @@ class PLCSMetrics:
         target_rotation: Tensor,
         *,
         padding_mask: Tensor | None = None,
+        frame_observed: Tensor | None = None,
         court_reference_provenance: Sequence[CourtReferenceFrameProvenance]
         | None = None,
         reference_view_index: Tensor | None = None,
         pred_canonical_pose: Tensor | None = None,
         target_canonical_pose: Tensor | None = None,
+        pred_world_kp_3d: Tensor | None = None,
+        target_world_kp_3d: Tensor | None = None,
+        frame_rate_hz: Tensor | None = None,
     ) -> dict[str, float]:
         """Update metrics with new predictions.
 
@@ -333,11 +503,30 @@ class PLCSMetrics:
                 padding_mask.all(dim=1) if padding_mask.ndim == 3 else padding_mask
             )
             frame_valid = ~frame_padding
+        if frame_observed is not None:
+            if frame_observed.dtype != torch.bool:
+                raise ValueError(
+                    f"frame_observed must be bool, got {frame_observed.dtype}."
+                )
+            obs_valid = frame_observed.to(device=pred_position.device)
+            if obs_valid.shape != pred_position.shape[:-1]:
+                raise ValueError(
+                    "frame_observed must match position leading axes "
+                    f"{tuple(pred_position.shape[:-1])}, got {tuple(obs_valid.shape)}."
+                )
+            frame_valid = obs_valid if frame_valid is None else (frame_valid & obs_valid)
         canonical_metrics = self._update_canonical_pose_metrics(
             pred_canonical_pose,
             target_canonical_pose,
             expected_frame_shape=pred_position.shape[:-1],
             frame_valid=frame_valid,
+        )
+        world_metrics = self._update_world_pose_metrics(
+            pred_world_kp_3d,
+            target_world_kp_3d,
+            expected_frame_shape=pred_position.shape[:-1],
+            frame_valid=frame_valid,
+            frame_rate_hz=frame_rate_hz,
         )
         if reference_view_index is not None:
             sample_valid = (
@@ -508,6 +697,7 @@ class PLCSMetrics:
             "z_error_m": z_error.mean().item(),
             **reference_metrics,
             **canonical_metrics,
+            **world_metrics,
         }
 
     def compute(self) -> dict[str, float]:
@@ -611,6 +801,18 @@ class PLCSMetrics:
                     for index, name in enumerate(COCO_KP_NAMES)
                 }
             )
+        if self.predict_world_pose:
+            if self._world_error_count == 0:
+                raise RuntimeError(
+                    "PLCSMetrics.compute() requires at least one valid world "
+                    "pose joint when predict_world_pose=True."
+                )
+            metrics["world_mpjpe_m"] = self._world_error_sum / self._world_error_count
+            metrics["pa_mpjpe_m"] = self._pa_error_sum / self._pa_error_count
+            if self._vel_error_count > 0:
+                metrics["mpjve_mps"] = self._vel_error_sum / self._vel_error_count
+            if self._acc_error_count > 0:
+                metrics["mpjae_mps2"] = self._acc_error_sum / self._acc_error_count
         return metrics
 
 

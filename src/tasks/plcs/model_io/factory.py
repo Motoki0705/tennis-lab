@@ -17,6 +17,7 @@ from src.tasks.base.model_io import (
 from src.tasks.plcs.configuration import PLCSModelConfig
 from src.tasks.plcs.model_io.adapters import PLCSModelIOAdapter
 from src.tasks.plcs.model_io.contracts import PLCSDecodedPrediction, PLCSInputProfile
+from src.tasks.plcs.models.plcs_monocular_gvhmr_model import PLCSMonocularGVHMRModel
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 
 PLCSRawOutput = Mapping[str, object]
@@ -105,18 +106,45 @@ def _standard_adapter(runtime: PLCSModelIOConfig) -> PLCSModelIOAdapter:
     )
 
 
-def build_plcs_model_io(runtime: PLCSModelIOConfig) -> PLCSStandardBoundModelIO:
-    if runtime.model.name != "plcs_multiview_axial":
-        raise ValueError(f"Unsupported PLCS model {runtime.model.name!r}.")
-    if runtime.court_keypoint_contract.selector != "physical_v1":
-        raise ValueError("PLCS axial requires physical_v1 court keypoints.")
-    num_court_tokens = runtime.data.num_court_tokens
-    if num_court_tokens is None:
-        raise ValueError("PLCS axial requires data.num_court_kp.")
-    model = PLCSMultiViewAxialModel.from_config(
-        runtime.model, num_court_tokens=num_court_tokens
+def _monocular_adapter(runtime: PLCSModelIOConfig) -> PLCSModelIOAdapter:
+    num_court_tokens = runtime.data.num_court_tokens or 20
+    enable_pva = runtime.model.boolean("enable_pva_heads")
+    predict_contact = runtime.model.boolean("predict_static_contact")
+    return PLCSModelIOAdapter(
+        model_type=PLCSMonocularGVHMRModel,
+        profile=PLCSInputProfile.MONOCULAR,
+        num_court_tokens=num_court_tokens,
+        camera_index=runtime.data.adapter_camera_index,
+        output_rank=3,
+        predict_canonical_pose=True,
+        predict_auxiliary_position=False,
+        predict_world_pose=True,
+        enable_pva_heads=enable_pva,
+        predict_static_contact=predict_contact,
+        max_views=1,
+        max_sequence_length=runtime.model.integer("max_seq_len"),
+        min_views=1,
+        court_keypoint_contract=runtime.court_keypoint_contract,
     )
-    return bind_plcs_model_io(model, _standard_adapter(runtime))
+
+
+def build_plcs_model_io(runtime: PLCSModelIOConfig) -> PLCSStandardBoundModelIO:
+    if runtime.court_keypoint_contract.selector != "physical_v1":
+        raise ValueError(
+            f"PLCS model {runtime.model.name!r} requires physical_v1 court keypoints."
+        )
+    if runtime.model.name == "plcs_multiview_axial":
+        num_court_tokens = runtime.data.num_court_tokens
+        if num_court_tokens is None:
+            raise ValueError("PLCS axial requires data.num_court_kp.")
+        model: nn.Module = PLCSMultiViewAxialModel.from_config(
+            runtime.model, num_court_tokens=num_court_tokens
+        )
+        return bind_plcs_model_io(model, _standard_adapter(runtime))
+    if runtime.model.name == "plcs_monocular_gvhmr":
+        mono_model: nn.Module = PLCSMonocularGVHMRModel.from_config(runtime.model)
+        return bind_plcs_model_io(mono_model, _monocular_adapter(runtime))
+    raise ValueError(f"Unsupported PLCS model {runtime.model.name!r}.")
 
 
 __all__ = [

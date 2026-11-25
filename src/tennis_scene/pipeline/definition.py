@@ -40,6 +40,16 @@ from src.tennis_scene.pipeline.components.identity import (
     PLAYER_ASSOCIATION,
     PlayerAssociationModule,
 )
+from src.tennis_scene.pipeline.components.monocular_plcs import (
+    MonocularPLCSInputAssembler,
+    MonocularPLCSReconstructionModule,
+    SingleViewCameraAlignmentInputAssembler,
+    SingleViewCameraAlignmentModule,
+    SingleViewIdentityInputAssembler,
+    SingleViewIdentityModule,
+    SkeletonOnlyPlacementInputAssembler,
+    SkeletonOnlyPlacementModule,
+)
 from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
 from src.tennis_scene.pipeline.components.person_features import (
     PersonAppearanceFeaturesModule,
@@ -427,26 +437,48 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     add("court_side", side_module, side_assembler, {"calibration": "court_calibration", **side_observations},
         lambda: side_settings, require_component=require_side)
     association_component = overrides.get(PLAYER_ASSOCIATION, components[PLAYER_ASSOCIATION])
-    reuse_clip_embeddings = isinstance(association_component, PlayerAssociationModule) and association_component.reuse_clip_embeddings
-    association_bindings = {"calibration": "court_calibration", "side": "court_side", **tracks}
-    if reuse_clip_embeddings:
-        association_bindings.update({f"detections_{c}": f"person_detection/{c}" for c in ids})
-        association_bindings.update({f"appearance_{c}": f"person_appearance_features/{c}" for c in ids})
-    add(PLAYER_ASSOCIATION, components[PLAYER_ASSOCIATION], PlayerAssociationInputAssembler(reuse_clip_embeddings, expected_decoders=decoders),
+    if isinstance(association_component, SingleViewIdentityModule):
+        association_assembler: Any = SingleViewIdentityInputAssembler(
+            association_component.camera_id
+        )
+        association_bindings = {
+            "calibration": "court_calibration",
+            f"pose_{association_component.camera_id}": f"pose_estimation/{association_component.camera_id}",
+        }
+    else:
+        reuse_clip_embeddings = isinstance(association_component, PlayerAssociationModule) and association_component.reuse_clip_embeddings
+        association_assembler = PlayerAssociationInputAssembler(reuse_clip_embeddings, expected_decoders=decoders)
+        association_bindings = {"calibration": "court_calibration", "side": "court_side", **tracks}
+        if reuse_clip_embeddings:
+            association_bindings.update({f"detections_{c}": f"person_detection/{c}" for c in ids})
+            association_bindings.update({f"appearance_{c}": f"person_appearance_features/{c}" for c in ids})
+    add(PLAYER_ASSOCIATION, components[PLAYER_ASSOCIATION], association_assembler,
         association_bindings, lambda: {**components[PLAYER_ASSOCIATION].cache_identity(),
                                        "assets": bound_assets(people_enabled and weights is not None, encoder_assets)})
     identified = {**observations, "identities": "player_association"}
     ball_threshold = 0.0 if include_ball else None
+    alignment_override = overrides.get("camera_alignment")
+    if isinstance(alignment_override, SingleViewCameraAlignmentModule):
+        alignment_assembler: Any = SingleViewCameraAlignmentInputAssembler()
+        alignment_bindings: dict[str, str] = {"calibration": "court_calibration"}
+    else:
+        alignment_assembler = CameraAlignmentInputAssembler(cfg.human_vis_threshold, ball_threshold)
+        alignment_bindings = {**identified, **balls, "side": "court_side"}
     add("camera_alignment", CameraAlignmentModule(ids, cfg.camera_geometry, player_reprojection_px=cfg.player_reprojection_px,
         ball_reprojection_px=cfg.ball_reprojection_px, joint_confidence=cfg.joint_confidence, max_frames=cfg.sampling_max_frames,
         include_ball=include_ball),
-        CameraAlignmentInputAssembler(cfg.human_vis_threshold, ball_threshold), {**identified, **balls, "side": "court_side"},
+        alignment_assembler, alignment_bindings,
         lambda: {"config": cfg.camera_geometry, "player_reprojection": cfg.player_reprojection_px, "ball_reprojection": cfg.ball_reprojection_px,
          "joint_confidence": cfg.joint_confidence, "visibility": cfg.human_vis_threshold, "max_frames": cfg.sampling_max_frames, "ball_threshold": ball_threshold})
     reconstructed = {**identified, "alignment": "camera_alignment"}
+    player_tri_assembler: Any = (
+        MonocularPLCSInputAssembler(cfg.human_vis_threshold)
+        if isinstance(overrides.get("player_triangulation"), MonocularPLCSReconstructionModule)
+        else PlayerTriangulationInputAssembler(cfg.human_vis_threshold)
+    )
     add("player_triangulation", PlayerTriangulationModule(ids, reprojection_px=cfg.player_reprojection_px,
         joint_confidence=cfg.joint_confidence, enabled=cfg.enabled["player_reconstruction"]),
-        PlayerTriangulationInputAssembler(cfg.human_vis_threshold), reconstructed, lambda: cfg.processing_settings["player_reconstruction"])
+        player_tri_assembler, reconstructed, lambda: cfg.processing_settings["player_reconstruction"])
     if include_ball:
         add("ball_triangulation", BallTriangulationModule(ids, reprojection_px=cfg.ball_reprojection_px,
             min_frames=cfg.ball_min_frames, enabled=cfg.enabled["ball_reconstruction"]),
@@ -462,8 +494,14 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     add("gvhmr", components["gvhmr"], GVHMRInputAssembler(),
         {"selection": "body_view_selection", "features": "hmr2_features"},
         lambda: {"assets": body_assets(), "static_cam": cfg.people.runtime.static_cam, "enabled": body_enabled})
-    add("body_placement", components["body_placement"], BodyPlacementInputAssembler(cfg.human_vis_threshold),
-        {**reconstructed, "skeleton": "player_triangulation", "recovered": "gvhmr"},
+    if isinstance(overrides.get("body_placement"), SkeletonOnlyPlacementModule):
+        placement_assembler: Any = SkeletonOnlyPlacementInputAssembler()
+        placement_bindings: dict[str, str] = {"skeleton": "player_triangulation"}
+    else:
+        placement_assembler = BodyPlacementInputAssembler(cfg.human_vis_threshold)
+        placement_bindings = {**reconstructed, "skeleton": "player_triangulation", "recovered": "gvhmr"}
+    add("body_placement", components["body_placement"], placement_assembler,
+        placement_bindings,
         lambda: {"config": cfg.player_placement, "assets": body_assets()})
     add("scene_assembly", SceneAssemblyModule(ids, require_people=cfg.enabled["player_reconstruction"],
         require_ball=cfg.enabled["ball_reconstruction"], require_body=body_enabled, include_ball=include_ball),

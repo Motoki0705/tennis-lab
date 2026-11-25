@@ -1,0 +1,32 @@
+{
+  "blocks": 3,
+  "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+  "iterations_per_block": 100,
+  "schedules": {
+    "body_sequences": {
+      "batch_sizes": {
+        "1": "f1528a21035b75e3f4dc7680e7efd232c1b96c940f06352d20e58e6ebbee4dd3",
+        "2": "40382008733dffedd36aecd8492c714d17dbc6c044bf0660d8919cf8c20e4000",
+        "4": "eebe16f07344c65608a059011e60bfc7c08b069eb332f5dc9d62a9a85045a8bb"
+      },
+      "records": 24
+    },
+    "crops": {
+      "batch_sizes": {
+        "1": "adc0121c98e2538e0b91d05039083fc7f811ae9723e289a1772ac9a5c3b00837",
+        "4": "5ff2702172638e5bc361a24ec7dce8f270d174a354a1eeefd9ba8b1a942156e9",
+        "8": "a19b4a48919ac34307dd7dc4d958d6c171be82b78296d060ab86847ca69941b7"
+      },
+      "records": 384
+    },
+    "frames": {
+      "batch_sizes": {
+        "1": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+        "2": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888"
+      },
+      "records": 96
+    }
+  },
+  "schema_version": 1,
+  "warmup": 30
+}
