@@ -1,6 +1,6 @@
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-11-20
+更新日: 2026-11-25
 
 研究トピックごとの**現在の判断**（採用中の構成とその根拠、未解決の課題、次の実験）をまとめた入口です。数値・条件・考察の正本は各[ノード](nodes/)、再現手順は[runs](runs/)にあります。2026-11-05までの日付順の記録は、[凍結アーカイブ](history/summary-2026-11-05.md)に原文のまま残しています。
 
@@ -72,7 +72,7 @@
 
 いずれも標準pipelineには入っていない研究用モデルです。PLCSとBLCSは単一対象のaxialモデルだけを残し、multi_object・tracking・axial reference・残差補正モデル・camera_view_v2専用データは廃止しました（[PLCS](../src/tasks/plcs/README.md)・[BLCS](../src/tasks/blcs/README.md)のREADME）。廃止した系統の比較結果は、アーカイブとノードに履歴として残っています。
 
-- **PLCS**: 位置と回転で最適な容量配分が異なり、単一の構成ですべての目的を同時に最適化できないPareto構造を確認しています（[loss・headの調整](nodes/plcs/000067-group-i545-loss-head-tuning.md)）。canonical poseはmotionを復元する代わりにjitterを過剰に生成します（[高周波成分の割合は予測0.391、GTは0.069](nodes/plcs/000087-run-plcs-canonical-temporal-decomp-beta01-noaug.md)）。reprojection lossも一方向の改善ではありません。次は、motionの相関を保ったままjitterを抑え、position・rotationと併用しても平均姿勢へ崩れない構成を探します。
+- **PLCS**: 既存多視点axialモデル（`B0`）は位置と回転のPareto構造を持ちます（[loss・headの調整](nodes/plcs/000067-group-i545-loss-head-tuning.md)、[高周波jitter問題](nodes/plcs/000087-run-plcs-canonical-temporal-decomp-beta01-noaug.md)）。#2475/#2520 で単眼GVHMR型Early Fusion（カメラ内外パラメータ＋COCO17＋合成bbox、HMR2なし）と HTD-Refine Stage A（PVA-Heads）/ Stage B（`PLCSHTDRefiner`）を導入し、[段階アブレーションと実動画6クリップ横断評価](nodes/plcs/000132-group-i2520-monocular-gvhmr-htd.md)（[詳細レポート](reports/plcs-monocular-gvhmr-htd.md)）を完了しました。`M1`＋Stage B単視点（`M2-SV`）は合成3 splitでjerk -61〜-65%・PA-MPJPE 0.070〜0.100 m（`mixed`で4カメラ`B0`の0.092 mを上回る）、実動画`meiji_4cam`でjerk -87.6%・同一視点再投影中央値1.27 px・DLT比PA-MPJPE中央値11.1 cm・DLT欠損392フレーム100%復元をCPU 1.54 ms/f・HMR2/SMPL-X非依存で達成しました。一方、未見実カメラでの単眼絶対深度は光線方向オフセットが残り（vs DLT 3.70 m、多視点Stage B融合`M2-MV`で1.17 m・中央値1.04 mへ改善）、多視点絶対定位（`B0` 0.36〜0.56 m）には届きません。標準多カメラ既定（4カメラDLT+GVHMR）と`B0`は維持し、単眼PLCSは`tennis_scene`の明示プロファイルとして運用します（最終採否・`B0`整理は人間判断待ち）。次は、v1診断で見つかった既定loss重み（加速度整合による深度崩壊）と`torsion_angle`共線停止の修正、複数seed完走、実スタジアム視点分布拡張＋接地光線アンカーによる単眼深度改善です。
 - **BLCS**: #1038の物理GT付きv3データで[再学習](nodes/blcs/000043-run-i1032-blcs-physics-v3-e200-s42.md)しました。[#1044の段階的損失比較](nodes/blcs/000068-group-i1044-progressive-losses-u4000.md)では、最小物理head等の構成（B）が主対照よりtest軌道RMSEを下げました（3seed平均 1.146→0.930 m）。ただし同じtest集合での少数seedの結果で、退行する層もあります。採用の閾値はユーザーの指定で設けず、結果を見て人が判断します。固定128frame窓の境界に誤差が集中することも分かっています。次は窓の結合、A/Bの長い同予算比較、B内部の損失の分離、独立した実3Dデータでの一般化です。
 - **SLCS**: [実RGBの実験群](nodes/slcs/000009-group-slcs-real-rgb.md)で、ボールの低分散出力を脱してRGBの寄与を確認しましたが、入力欠損・位置の裾・時間的スパイクが残り、頑健性は未達で固定testも未評価です（[結果レポート](reports/slcs-real-rgb.md)）。v1 annotation layoutの廃止で、旧datasetでは再学習できません。Meijiの1clipはv2で[再生成](nodes/tennis_scene/000023-run-i931-v2-dataset-meiji-one-clip-20260927.md)し、残りはside・人物対応の確定後に再生成する予定です。
 

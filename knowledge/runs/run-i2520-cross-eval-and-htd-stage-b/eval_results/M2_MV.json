@@ -1,0 +1,93 @@
+{
+  "checkpoint": "outputs/plcs/i2520_v2_m1_mono_gvhmr_htd_e100_s42/logs/version_0/checkpoints/plcs-epoch=59.ckpt",
+  "input_profile": "monocular",
+  "device": "cpu",
+  "meiji": {
+    "benchmark_id": "meiji_4cam/multiview-player-evaluation-v1",
+    "manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+    "htd_refine_mode": "multiview",
+    "lovo_reproj_px": {
+      "mean": 612.569222050175,
+      "median": 109.13766479492188,
+      "p90": 544.0590209960938,
+      "count": 2528291
+    },
+    "same_view_reproj_px": {
+      "mean": 6.425976978794835,
+      "median": 4.796074867248535,
+      "p90": 12.325567245483395,
+      "count": 870380
+    },
+    "cross_camera_3d_consistency_m": {
+      "mean": 5.82569583957719,
+      "median": 5.395463943481445,
+      "p90": 10.244027328491212,
+      "count": 76025
+    },
+    "vs_dlt_mpjpe_m": {
+      "mean": 3.7177511205158336,
+      "median": 3.2776148319244385,
+      "p90": 7.166039466857911,
+      "count": 50297
+    },
+    "vs_dlt_pa_mpjpe_m": {
+      "mean": 0.12434939178992288,
+      "median": 0.12629324197769165,
+      "p90": 0.17272030115127562,
+      "count": 50297
+    },
+    "vs_gvhmr_mpjpe_m": {
+      "mean": 3.6835535327684017,
+      "median": 3.2308040857315063,
+      "p90": 7.106584215164187,
+      "count": 25842
+    },
+    "single_view_frames_total": 0,
+    "single_view_frames_reconstructed": 0,
+    "single_view_recovery_rate": 0.0,
+    "dlt_incomplete_frames_total": 392,
+    "dlt_incomplete_frames_reconstructed": 392,
+    "dlt_incomplete_recovery_rate": 1.0,
+    "single_view_reproj_px": {
+      "mean": NaN,
+      "median": NaN,
+      "p90": NaN,
+      "count": 0
+    },
+    "jerk_mps3": 163335.51890897477,
+    "bone_length_std_m": 0.02390436020040296,
+    "skeleton_valid_rate": 1.0,
+    "latency_ms_per_track": 578.7883492303081,
+    "latency_ms_per_frame": 1.0737358260437035,
+    "peak_vram_mb": 0.0,
+    "multiview_fused": {
+      "vs_dlt_mpjpe_m": {
+        "mean": 1.1655646293910404,
+        "median": 1.041387915611267,
+        "p90": 2.2664254665374757,
+        "count": 12817
+      },
+      "vs_dlt_pa_mpjpe_m": {
+        "mean": 0.14117644929000886,
+        "median": 0.1296354979276657,
+        "p90": 0.22875782847404477,
+        "count": 12817
+      },
+      "vs_gvhmr_mpjpe_m": {
+        "mean": 1.1749754201852907,
+        "median": 1.0477784872055054,
+        "p90": 2.2807867527008066,
+        "count": 6597
+      },
+      "all_cam_reproj_px": {
+        "mean": 54.177474011005586,
+        "median": 19.23475456237793,
+        "p90": 149.20267028808584,
+        "count": 870380
+      },
+      "jerk_mps3": 48336.61792853125,
+      "bone_length_std_m": 0.020351850223960355,
+      "refine_latency_ms_per_frame": 0.6137584888195657
+    }
+  }
+}
