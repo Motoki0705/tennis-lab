@@ -20,6 +20,7 @@ RUN = (
     Path(__file__).resolve().parents[5]
     / "knowledge/runs/run-meiji-player-model-comparison"
 )
+PARITY_REASON = "PT32計測はスコープ外（ユーザー判断 2026-11-25）"
 
 
 @pytest.fixture
@@ -181,11 +182,11 @@ def test_measurement_rejects_pt32_and_requires_explicit_parity_status(
         "cuda:0",
         *inputs,
     ]
-    parity = ["--parity-not-evaluated-reason", "PT32未計測"]
+    parity = ["--parity-not-evaluated-reason", PARITY_REASON]
 
     valid = parser.parse_args([*args, "--backend", "pt16", *parity])
     assert valid.backend is adapter.Backend.PT16
-    assert valid.parity_not_evaluated_reason == "PT32未計測"
+    assert valid.parity_not_evaluated_reason == PARITY_REASON
 
     with pytest.raises(SystemExit):
         parser.parse_args([*args, "--backend", "pt32", *parity])
@@ -216,18 +217,16 @@ def test_queue_suite_runs_only_pt16_and_trt16(tmp_path, monkeypatch):
     monkeypatch.setenv("TENNIS_RUN_ID", "test-queue-job")
     monkeypatch.setenv("TENNIS_REPRO_DIR", str(repro))
 
-    subprocess.run(
-        [
-            "bash",
-            str(RUN / "rtdetrv4_run.sh"),
-            "rtdetrv4-l",
-            "speed",
-            "speed-pin",
-            "eval-pin",
-        ],
-        cwd=tmp_path,
-        check=True,
-    )
+    command = [
+        "bash",
+        str(RUN / "rtdetrv4_run.sh"),
+        "rtdetrv4-l",
+        "speed",
+        "speed-pin",
+        "eval-pin",
+        "run-output",
+    ]
+    subprocess.run(command, cwd=tmp_path, check=True)
 
     invocations = [
         json.loads(line)
@@ -249,8 +248,13 @@ def test_queue_suite_runs_only_pt16_and_trt16(tmp_path, monkeypatch):
     ] * 3
     assert all("--pt32-dir" not in args for args in invocations)
     assert all(
-        args[args.index("--parity-not-evaluated-reason") + 1] == "PT32未計測"
+        args[args.index("--parity-not-evaluated-reason") + 1] == PARITY_REASON
         for args in measures
+    )
+    with pytest.raises(subprocess.CalledProcessError):
+        subprocess.run(command, cwd=tmp_path, check=True)
+    assert len((tmp_path / "invocations.jsonl").read_text().splitlines()) == len(
+        invocations
     )
 
 
@@ -316,7 +320,7 @@ def test_accuracy_receipt_records_unmeasured_parity(adapter, tmp_path, monkeypat
         source=tmp_path,
         manifest_sha256="a" * 64,
         output=tmp_path,
-        parity_not_evaluated_reason="PT32未計測",
+        parity_not_evaluated_reason=PARITY_REASON,
     )
 
     adapter._accuracy(
@@ -332,4 +336,45 @@ def test_accuracy_receipt_records_unmeasured_parity(adapter, tmp_path, monkeypat
         "0.75": 1.0,
     }
     assert receipt["parity_status"] == "not_evaluated"
-    assert receipt["parity_not_evaluated_reason"] == "PT32未計測"
+    assert receipt["parity_not_evaluated_reason"] == PARITY_REASON
+
+
+def test_diagnostic_keeps_prepared_image_order_in_both_batch_sizes(adapter):
+    module = import_module("rtdetrv4_diagnose")
+    keys = (FrameKey("clip-a", "cam0", 2), FrameKey("clip-b", "cam1", 8))
+    pixels = torch.tensor([[2.0], [6.0]])
+    sizes = torch.tensor([[12, 20], [24, 16]])
+    references = {
+        key: ReferenceFrame(
+            np.array([4]),
+            np.array([[x, 1, x + 2, 4]], dtype=np.float32),
+            np.zeros((1, 17, 2)),
+            np.zeros((1, 17), dtype=bool),
+        )
+        for key, x in zip(keys, (2.0, 6.0), strict=True)
+    }
+
+    def forward(prepared):
+        x = prepared[:, 0]
+        boxes = torch.stack(
+            (x, torch.ones_like(x), x + 2, torch.full_like(x, 4)), dim=-1
+        )
+        return x[:, None], boxes[:, None, :]
+
+    def decode(output, native_sizes):
+        logits, boxes = output
+        assert len(native_sizes) == len(logits)
+        return torch.zeros_like(logits, dtype=torch.long), boxes, logits.sigmoid()
+
+    for batch_size in (1, 2):
+        status, raw = module._compare_batches(
+            forward,
+            SimpleNamespace(decode=decode),
+            pixels,
+            sizes,
+            keys,
+            references,
+            batch_size,
+        )
+        np.testing.assert_array_equal(raw["pred_logits"], [[2.0], [6.0]])
+        assert status["pseudo_gt"] == {"0.50": 1.0, "0.75": 1.0}

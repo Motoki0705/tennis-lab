@@ -59,7 +59,7 @@ IMAGE_SIDE = 640
 NUM_QUERIES = 300
 NUM_CLASSES = 80
 PERSON_LABEL = 0  # COCO category 1, before upstream's deploy-time category remap.
-PT32_NOT_MEASURED = "PT32未計測"
+PT32_NOT_MEASURED = "PT32計測はスコープ外（ユーザー判断 2026-11-25）"
 WEIGHT_SHA256 = {
     "rtdetrv4-l": "935c691dbd4f282a6a4ba59a57d77f13ad6963411dbb1b29615a72af2452f6e1",
     "rtdetrv4-x": "2925ec2e53d48e6141db8601c8656566219e696cd63bf8d6955190cae6bfd3f9",
@@ -243,6 +243,26 @@ class Detector:
     model: Callable[[torch.Tensor], ModelOutputs]
     postprocessor: nn.Module
 
+    def forward(self, pixels: torch.Tensor) -> ModelOutputs:
+        with (
+            torch.no_grad(),
+            torch.autocast(
+                self.device.type,
+                dtype=torch.float16,
+                enabled=self.backend is Backend.PT16,
+            ),
+        ):
+            return self.model(pixels)
+
+    def decode(
+        self, output: ModelOutputs, sizes: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        logits, boxes = output
+        labels, xyxy, scores = self.postprocessor(
+            {"pred_logits": logits.float(), "pred_boxes": boxes.float()}, sizes
+        )
+        return labels, xyxy, scores
+
     def __call__(
         self, rows: Sequence[ImageBGR], stages: Stages = _DIRECT
     ) -> list[Predictions]:
@@ -251,24 +271,8 @@ class Detector:
             Stage.H2D, lambda: (pixels_cpu.to(self.device), sizes_cpu.to(self.device))
         )
 
-        def forward() -> ModelOutputs:
-            with (
-                torch.no_grad(),
-                torch.autocast(
-                    self.device.type,
-                    dtype=torch.float16,
-                    enabled=self.backend is Backend.PT16,
-                ),
-            ):
-                return self.model(pixels)
-
-        logits, boxes = stages.measure_forward(self.backend, forward)
-        decoded = stages.stage(
-            Stage.POSTPROCESS,
-            lambda: self.postprocessor(
-                {"pred_logits": logits.float(), "pred_boxes": boxes.float()}, sizes
-            ),
-        )
+        output = stages.measure_forward(self.backend, lambda: self.forward(pixels))
+        decoded = stages.stage(Stage.POSTPROCESS, lambda: self.decode(output, sizes))
         labels, boxes_cpu, scores = stages.stage(
             Stage.D2H, lambda: tuple(tensor.cpu().numpy() for tensor in decoded)
         )
@@ -415,6 +419,10 @@ def _build(args: argparse.Namespace, device: torch.device) -> None:
 def _accuracy(args: argparse.Namespace, assets: Assets, device: torch.device) -> None:
     from prediction_rows import PredictionHeader, write_predictions
 
+    path = args.output / "predictions.jsonl"
+    receipt = args.output / "accuracy.json"
+    if path.exists() or receipt.exists():
+        raise FileExistsError(f"Accuracy output already exists at {args.output}")
     manifest = load_manifest(args.benchmark, expected_sha256=args.manifest_sha256)
     pinned_file(
         args.source,
@@ -452,11 +460,10 @@ def _accuracy(args: argparse.Namespace, assets: Assets, device: torch.device) ->
                     (row,) = detector([image])
                     predictions[FrameKey(clip_id, camera, frame)] = row
 
-    path = args.output / "predictions.jsonl"
     write_predictions(path, header, predictions, expected_frames=references)
     predictions_sha256 = dual_sha256(path)
     write_json_atomic(
-        args.output / "accuracy.json",
+        receipt,
         {
             "condition": header.as_json(),
             "weight_sha256": assets.weight_sha256,
@@ -484,6 +491,9 @@ def _accuracy(args: argparse.Namespace, assets: Assets, device: torch.device) ->
 
 
 def _speed(args: argparse.Namespace, assets: Assets, device: torch.device) -> None:
+    path = args.output / f"speed-b{args.batch_size}.json"
+    if path.exists():
+        raise FileExistsError(f"Speed output already exists at {path}")
     # Use #2496's loader and batching, including the published input order and hashes.
     baseline = import_module("run")
     fixed = baseline.InputSet(args.inputs)
@@ -509,6 +519,7 @@ def _speed(args: argparse.Namespace, assets: Assets, device: torch.device) -> No
             "input_hw": [IMAGE_SIDE, IMAGE_SIDE],
             "cuda_stream": "non-default",
             "timing_protocol_sha256": fixed.pins.timing_sha256,
+            "timed_input_ids_sha256": schedule.timed_ids_sha256,
             "host_threads": torch.get_num_threads(),
             "num_queries": NUM_QUERIES,
             "postprocessor": "official PyTorch FP32 sigmoid/global top-k",
@@ -529,7 +540,7 @@ def _speed(args: argparse.Namespace, assets: Assets, device: torch.device) -> No
         conversion=conversion,
         parity_not_evaluated_reason=args.parity_not_evaluated_reason,
     )
-    write_json_atomic(args.output / f"speed-b{args.batch_size}.json", report.to_dict())
+    write_json_atomic(path, report.to_dict())
     print(
         f"{assets.model_id}/{args.backend}/B{args.batch_size} {report.status}",
         flush=True,

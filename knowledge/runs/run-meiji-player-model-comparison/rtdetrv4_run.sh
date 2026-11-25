@@ -2,8 +2,8 @@
 # Run one RT-DETRv4 variant under an exclusive training-queue reservation.
 set -uo pipefail
 
-if [[ $# -ne 4 || -z ${TENNIS_RUN_ID:-} || -z ${TENNIS_REPRO_DIR:-} ]]; then
-    printf 'In the training queue, run %s MODEL SPEED_INPUTS SPEED_SHA256 COHORT_SHA256\n' "$0" >&2
+if [[ $# -ne 5 || -z ${TENNIS_RUN_ID:-} || -z ${TENNIS_REPRO_DIR:-} ]]; then
+    printf 'In the training queue, run %s MODEL SPEED_INPUTS SPEED_SHA256 COHORT_SHA256 OUTPUT_ROOT\n' "$0" >&2
     exit 2
 fi
 
@@ -17,18 +17,19 @@ esac
 inputs=$2
 speed_sha=$3
 cohort_sha=$4
-parity_reason='PT32未計測'
+parity_reason='PT32計測はスコープ外（ユーザー判断 2026-11-25）'
 benchmark=data/tennis_multiview/processed/meiji_4cam/benchmarks
 baseline=knowledge/runs/run-person-model-speed-baseline
 root=outputs/player-model-comparison
 assets="$root/upstream"
-results="$root/$model"
+results="$5/$model"
 trt="$results/trt16/trace-b2"
 engine="$trt/engine"
 export PYTHONPATH=".:$assets/python-deps:$baseline"
 export OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2
 
-mkdir -p "$results" || exit
+mkdir -p -- "$5" || exit
+mkdir -- "$results" || exit
 realpath "$results" > "$TENNIS_REPRO_DIR/output_dir.txt" || exit
 runner=(.venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/rtdetrv4.py
     --model-id "$model" --upstream "$assets/RT-DETRv4" --weights "$assets/RTv4-$size-hgnet.pth")
