@@ -6,6 +6,7 @@ import argparse
 import csv
 import hashlib
 import json
+import math
 import re
 from dataclasses import asdict
 from pathlib import Path
@@ -13,6 +14,7 @@ from typing import Any
 
 from src.tennis_scene.evaluation.player_pose.bundle import pinned_file
 from src.utils.inference_benchmark_inputs import PinnedBenchmarkInputs, TimingSchedule
+from src.utils.inference_parity import PARITY_RULES
 from src.utils.io import write_json_atomic
 
 REPO_ROOT = Path(__file__).resolve().parents[3]
@@ -38,6 +40,15 @@ MODELS = (
 WORKLOAD_NAMES = {"dino-swin-l": "dino", "dino-swin-l-vitpose-h": "dino-vitpose"}
 POSE_MODELS = {"dino-swin-l-vitpose-h", "ecpose-l-o365", "ecpose-x-o365"}
 QUALITY_METRIC = {"detection": "recall_50", "detection_and_pose": "coverage_oks"}
+PARITY_LABELS = {
+    "iou_p05": "IoU P05",
+    "score_abs_p95": "score error P95",
+    "missing_ratio": "missing ratio",
+    "extra_ratio": "extra ratio",
+    "pose_xy_px_p95": "joint error P95 (px)",
+    "pose_xy_px_max": "max joint error (px)",
+    "pose_confidence_abs_p95": "joint score error P95",
+}
 
 
 def read_json(path: Path) -> Any:
@@ -247,6 +258,190 @@ def condition_id(row):
     return f"{row['model_id']}/{row['backend']}"
 
 
+def saved_parity_fields(
+    metrics: dict[str, Any],
+    *,
+    images: int,
+    scope: str,
+    min_score: float | None,
+) -> dict[str, Any]:
+    """Apply the shared thresholds to stored metrics with their original input scope."""
+    failures = []
+    values = {}
+    for key, label in PARITY_LABELS.items():
+        if key.startswith("pose_") and key not in metrics:
+            continue
+        value = metrics[key]
+        if type(value) not in (int, float) or not math.isfinite(value) or value < 0:
+            raise ValueError(f"Invalid saved PT32 comparison metric: {key}={value}")
+        rule = PARITY_RULES[key]
+        assert rule.limit is not None
+        if rule.comparison == ">=" and value < rule.limit:
+            failures.append(f"{label} {value:.4f} < {rule.limit:g}")
+        if rule.comparison == "<=" and value > rule.limit:
+            failures.append(f"{label} {value:.4f} > {rule.limit:g}")
+        values[f"common_parity_{key}"] = value
+    return {
+        "common_parity_status": "failed" if failures else "passed",
+        "common_parity_scope": scope,
+        "common_parity_images": images,
+        "common_parity_min_score": min_score,
+        "common_parity_failures": ", ".join(failures),
+        **values,
+    }
+
+
+def asset_hashes(report: dict[str, Any], name: str) -> dict[str, str]:
+    return {key: item["sha256"] for key, item in report[name].items()}
+
+
+def rfdetr_saved_parity(
+    receipt: dict[str, Any],
+    case: dict[str, Any],
+    reference: dict[str, Any],
+    timing: dict[str, Any],
+    cohort: dict[str, Any],
+) -> dict[str, Any]:
+    backend = case["backend"]
+    condition = receipt["conditions"][backend]
+    baseline = receipt["conditions"]["pt32"]
+    proof = condition["parity_vs_pt32"]
+    metrics = proof["metrics"]
+    engine_hashes = (
+        {
+            "plan": next(
+                item["sha256"]
+                for item in receipt["conversion"]["tensorrt_bundle"]
+                if Path(item["path"]).suffix == ".plan"
+            )
+        }
+        if backend == "trt16"
+        else {}
+    )
+    if (
+        receipt["model_id"] != case["model_id"]
+        or receipt["benchmark_id"] != cohort["id"]
+        or receipt["manifest_sha256"] != cohort["sha256"]
+        or metrics["images"] != cohort["images"]
+        or condition["artifacts"]["predictions"]["sha256"]
+        != case["predictions"]["sha256"]
+        or baseline["artifacts"]["predictions"]["sha256"]
+        != reference["predictions"]["sha256"]
+        or asset_hashes(timing, "weights") != {"model": receipt["weights"]["sha256"]}
+        or asset_hashes(timing, "engines") != engine_hashes
+    ):
+        raise ValueError(
+            f"Saved RF-DETR PT32 comparison disagrees with accuracy or timing: {backend}"
+        )
+    return {
+        "historical_parity_status": "historical_passed"
+        if proof["passed"]
+        else "historical_failed",
+        **saved_parity_fields(
+            {
+                "iou_p05": metrics["matched_iou_p05"],
+                "score_abs_p95": metrics["abs_score_difference"]["p95"],
+                "missing_ratio": 1 - metrics["pt32_retained_fraction"],
+                "extra_ratio": 1 - metrics["candidate_matched_fraction"],
+            },
+            images=metrics["images"],
+            scope="accuracy cohort",
+            min_score=condition["settings"]["min_person_score_inclusive"],
+        ),
+    }
+
+
+def dino_saved_parity(
+    history: dict[str, Any], timing: dict[str, Any], image_count: int
+) -> dict[str, Any]:
+    old, new = history["case"], timing["case"]
+    settings = (
+        "dino_confidence",
+        "dino_hw",
+        "pose_crop_batch",
+        "vitpose_hw",
+        "flip_test",
+    )
+    proof = history["parity"]
+    metrics = proof["metrics"]
+    if (
+        any(
+            old[key] != new[key]
+            for key in ("name", "backend", "batch_size", "input_manifest_sha256")
+        )
+        or any(old["settings"].get(key) != new["settings"].get(key) for key in settings)
+        or any(
+            asset_hashes(history, key) != asset_hashes(timing, key)
+            for key in ("weights", "engines")
+        )
+        or metrics["checked_ids"] != image_count
+    ):
+        raise ValueError(
+            f"Saved DINO PT32 comparison disagrees with the current condition: {new['name']}/{new['backend']}"
+        )
+    return {
+        "historical_parity_status": "historical_passed"
+        if proof["passed"]
+        else "historical_failed",
+        **saved_parity_fields(
+            {
+                **metrics,
+                "missing_ratio": metrics["missing"]
+                / max(metrics["reference_boxes"], 1),
+                "extra_ratio": metrics["extra"] / max(metrics["candidate_boxes"], 1),
+            },
+            images=metrics["checked_ids"],
+            scope="initial timing inputs",
+            min_score=old["settings"]["dino_confidence"],
+        ),
+    }
+
+
+def edgecrafter_saved_parity(
+    receipt: dict[str, Any],
+    cases: dict[tuple[str, str], dict[str, Any]],
+    historical: list[dict[str, Any]],
+    cohort: dict[str, Any],
+) -> dict[tuple[str, str], dict[str, Any]]:
+    if (
+        receipt["benchmark_id"] != cohort["id"]
+        or receipt["manifest_sha256"] != cohort["sha256"]
+    ):
+        raise ValueError(
+            "Saved EdgeCrafter PT32 comparison uses a different accuracy cohort"
+        )
+    rows: dict[tuple[str, str], dict[str, Any]] = {}
+    archived = {(case["model_id"], case["backend"]): case for case in historical}
+    for proof in receipt["conditions"]:
+        model, backend = key = proof["model_id"], proof["backend"]
+        metrics = proof["metrics"]
+        if (
+            metrics["checked_ids"] != cohort["images"]
+            or proof["pt32_predictions_sha256"]
+            != cases[model, "pt32"]["predictions"]["sha256"]
+        ):
+            raise ValueError(
+                f"Saved EdgeCrafter PT32 comparison has a different reference: {key}"
+            )
+        if proof["candidate_predictions_sha256"] != cases[key]["predictions"]["sha256"]:
+            if proof["candidate_predictions_sha256"] != archived.get(key, {}).get(
+                "predictions", {}
+            ).get("sha256"):
+                raise ValueError(
+                    f"Saved EdgeCrafter PT32 comparison has unknown predictions: {key}"
+                )
+            continue
+        row = saved_parity_fields(
+            metrics, images=cohort["images"], scope="accuracy cohort", min_score=None
+        )
+        if (row["common_parity_status"] == "passed") != (proof["status"] == "ok"):
+            raise ValueError(
+                f"Saved EdgeCrafter PT32 comparison differs from the shared thresholds: {key}"
+            )
+        rows[key] = row
+    return rows
+
+
 def frontiers(rows: list[dict[str, Any]]) -> dict[str, list[str]]:
     result = {}
     for workload, metric in QUALITY_METRIC.items():
@@ -307,6 +502,21 @@ def comparison(artifacts: Path, evidence: dict[str, Any]) -> dict[str, Any]:
             pinned_file(artifacts, job["queue_log"])
     if log_checksums := evidence.get("retained_queue_log_checksums"):
         pinned_file(artifacts, log_checksums)
+
+    receipts = evidence.get("candidate_receipts", {})
+    rf_pin = receipts.get("rf_detr", {}).get("accuracy")
+    rf_receipt = record_json(REPO_ROOT, rf_pin) if rf_pin else None
+    edge_pin = receipts.get("edgecrafter", {}).get("shared_parity")
+    edge_parity = (
+        edgecrafter_saved_parity(
+            record_json(REPO_ROOT, edge_pin),
+            cases,
+            evidence.get("historical_conditions", []),
+            cohort,
+        )
+        if edge_pin
+        else {}
+    )
 
     rows = []
     for model, backend in planned:
@@ -428,9 +638,10 @@ def comparison(artifacts: Path, evidence: dict[str, Any]) -> dict[str, Any]:
                     "historical_passed" if proof["passed"] else "historical_failed"
                 )
         if "timing" in case:
+            timing = record_json(artifacts, case["timing"])
             row.update(
                 summarize_timing(
-                    record_json(artifacts, case["timing"]),
+                    timing,
                     row,
                     inputs["sha256"],
                     schedule_pin["sha256"],
@@ -438,6 +649,16 @@ def comparison(artifacts: Path, evidence: dict[str, Any]) -> dict[str, Any]:
                     verified_opencv_threads=case["timing"].get("opencv_threads"),
                 )
             )
+            if model in WORKLOAD_NAMES and "historical_timing" in case:
+                history = record_json(artifacts, case["historical_timing"])
+                row.update(dino_saved_parity(history, timing, len(schedule.batch_ids)))
+            if model == "rfdetr-l" and rf_receipt is not None:
+                row.update(
+                    rfdetr_saved_parity(
+                        rf_receipt, case, cases[model, "pt32"], timing, cohort
+                    )
+                )
+        row.update(edge_parity.get((model, backend), {}))
         if reason := case.get("pareto_exclusion_reason"):
             row["pareto_exclusion_reason"] = reason
         rows.append(row)
@@ -455,6 +676,18 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
         writer = csv.DictWriter(handle, fieldnames=fields, lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
+
+
+def saved_pt32_note(row: dict[str, Any]) -> str:
+    score = row["common_parity_min_score"]
+    cutoff = "all saved scores" if score is None else f"score ≥ {score:.2f}"
+    observed = (
+        row["common_parity_failures"] or f"IoU P05 {row['common_parity_iou_p05']:.4f}"
+    )
+    return (
+        f"{condition_id(row)}  ·  {row['common_parity_status']}  ·  "
+        f"{row['common_parity_images']:,} images, {row['common_parity_scope']}, {cutoff}  ·  {observed}"
+    )
 
 
 def plot_pareto(directory: Path, result: dict[str, Any]) -> None:
@@ -477,14 +710,24 @@ def plot_pareto(directory: Path, result: dict[str, Any]) -> None:
             and row["speed_status"]
             in {"unmatched_host", "infeasible", "not_applicable"}
         ]
+        saved_notes = [
+            saved_pt32_note(row)
+            for row in result["rows"]
+            if row["workload"] == workload and row.get("common_parity_status")
+        ]
+        chart_rows = 2 if detection else 1
+        chart_height = 6.5 if detection else 4.8
+        note_height = 0.20 * (len(saved_notes) + 1) if saved_notes else 0
         figure = Figure(
-            figsize=(13.5 if without_speed else 9, 6.5 if detection else 4.8),
+            figsize=(13.5 if without_speed else 9, chart_height + note_height),
             layout="constrained",
         )
         grid = figure.add_gridspec(
-            2 if detection else 1,
+            chart_rows + bool(saved_notes),
             2 if without_speed else 1,
             width_ratios=[2.0, 1.0] if without_speed else [1.0],
+            height_ratios=[chart_height / chart_rows] * chart_rows
+            + ([note_height] if saved_notes else []),
         )
         axes = [figure.add_subplot(grid[0, 0])]
         if detection:
@@ -540,7 +783,7 @@ def plot_pareto(directory: Path, result: dict[str, Any]) -> None:
                 fontsize=8,
             )
         if without_speed:
-            diagnostic_axis = figure.add_subplot(grid[:, 1])
+            diagnostic_axis = figure.add_subplot(grid[:chart_rows, 1])
             diagnostic_axis.set_title(
                 "Plans without matched speed", loc="left", fontsize=10
             )
@@ -570,6 +813,23 @@ def plot_pareto(directory: Path, result: dict[str, Any]) -> None:
                     diagnostic_axis.scatter(
                         100 * quality, index, color="#a44827", marker="x", s=34
                     )
+
+        if saved_notes:
+            notes = figure.add_subplot(grid[chart_rows, :])
+            notes.set_axis_off()
+            notes.text(
+                0,
+                1,
+                "\n".join(
+                    [
+                        "Saved PT32 output checks · frontier uses pseudo-GT accuracy and stage wall time",
+                        *saved_notes,
+                    ]
+                ),
+                va="top",
+                fontsize=8.5,
+                linespacing=1.4,
+            )
 
         accuracy_batches = sorted(
             {

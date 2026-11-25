@@ -210,6 +210,60 @@ def test_timing_uses_the_pinned_frame_order_and_wall_boundary(outcome: str) -> N
     ) == (1, 4, 1)
 
 
+@pytest.mark.parametrize(
+    ("backend", "expected_iou", "expected_status"),
+    [("pt16", 0.9963, "passed"), ("trt16", 0.9620, "failed")],
+)
+def test_rfdetr_saved_pt32_comparison_preserves_measured_frontier_point(
+    backend: str,
+    expected_iou: float,
+    expected_status: str,
+) -> None:
+    comparison = runpy.run_path(str(RUN / "compare_conditions.py"))
+    saved = json.loads(
+        (RUN.parent / "run-meiji-rfdetr-large-accuracy/results.json").read_bytes()
+    )
+    reference = saved["conditions"]["pt32"]["artifacts"]
+    candidate = saved["conditions"][backend]["artifacts"]
+    case = {"model_id": "rfdetr-l", "backend": backend, **candidate}
+    cohort = {
+        "id": saved["benchmark_id"],
+        "sha256": saved["manifest_sha256"],
+        "images": 6844,
+    }
+    plan = {
+        "sha256": "4e3ae2a8206caa607565a8fe5726509201a11c9f11b3134b13c7aa2ae3c40e35"
+    }
+    timing = {
+        "weights": {"model": saved["weights"]},
+        "engines": {"plan": plan} if backend == "trt16" else {},
+    }
+    fields = comparison["rfdetr_saved_parity"](saved, case, reference, timing, cohort)
+    row = {
+        **case,
+        **fields,
+        "workload": "detection",
+        "accuracy_status": "measured",
+        "speed_status": "ok",
+        "parity_status": "PT32未計測",
+        "stage_p50_ms": 26.43,
+        "recall_50": 0.9681,
+    }
+    assert row["historical_parity_status"] == "historical_passed"
+    assert row["common_parity_status"] == expected_status
+    assert row["common_parity_iou_p05"] == pytest.approx(expected_iou, abs=0.00005)
+    assert row["parity_status"] == "PT32未計測"
+    assert comparison["frontiers"]([row])["detection"] == [f"rfdetr-l/{backend}"]
+    if backend == "trt16":
+        assert "IoU P05 0.9620 < 0.98" in comparison["saved_pt32_note"](row)
+        different = {**timing, "engines": {"plan": {"sha256": "0" * 64}}}
+        with pytest.raises(
+            ValueError,
+            match="Saved RF-DETR PT32 comparison disagrees with accuracy or timing",
+        ):
+            comparison["rfdetr_saved_parity"](saved, case, reference, different, cohort)
+
+
 def _pin(path: Path) -> dict[str, Any]:
     return {"path": path.name, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
 

@@ -63,7 +63,7 @@ tags:
 | PT16 | 25,440 | 96.82% | 42.03% | 0.7339 | 95.29% |
 | TRT16 | 25,439 | 96.81% | 42.09% | 0.7339 | 95.31% |
 
-PT32との差は、PT16で元座標の絶対誤差P95が0.039 px、score差P95が0.00196、対応IoU P05が0.9963。TRT16ではそれぞれ0.404 px、0.00501、0.9620だった。両条件は双方向98%以上の対応率を含む事前の基準を満たした。疑似GTのRecall@0.50の差は各0.012ポイント以内だった。 [予測間の照合と採点指標](../../runs/run-meiji-rfdetr-large-accuracy/results.json)
+PT32との差は、PT16で元座標の絶対誤差P95が0.039 px、score差P95が0.00196、対応IoU P05が0.9963。TRT16ではそれぞれ0.404 px、0.00501、0.9620だった。両条件は双方向98%以上の対応率を含む当時の基準に合格した。保存値に #2492 の共通基準を適用すると、PT16は成立、TRT16はIoU P05が0.98を下回るため不成立。疑似GTのRecall@0.50の差は各0.012ポイント以内だった。 [予測間の照合と採点指標](../../runs/run-meiji-rfdetr-large-accuracy/results.json) · [共通基準での判定と計測値](../../runs/run-meiji-player-model-comparison/conditions.csv)
 
 2026-11-25に #2495 の正準順序対応版 `0d4bf0990f82ae0b8ebf2afe08d3209e583d2364` で、3条件の生予測をCPUから再採点した。各条件6,844画像・26,276選手を照合し、Recallを含む全採点値が保存済み結果と一致した。採点方針のメタデータにIoU同点時の順序が追加された。RF-DETR-Lの出力は人物BBoxとscoreで、姿勢推定の測定は対象外。 [再採点とSHA-256の照合記録](../../runs/run-meiji-rfdetr-large-accuracy/canonical-rescore.json)
 

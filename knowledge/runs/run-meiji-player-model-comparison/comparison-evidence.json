@@ -727,6 +727,10 @@
       "speed": {
         "path": "knowledge/runs/run-meiji-rfdetr-large-speed/results.json",
         "sha256": "483e5a52cabdc492339c17a57738fc5a4033e6471a12f3a7ed8bc4ad492c5c1a"
+      },
+      "accuracy": {
+        "path": "knowledge/runs/run-meiji-rfdetr-large-accuracy/results.json",
+        "sha256": "9c8adba8087891a5213b8804cf170833d952cc2e915bdf0abb6042b13a395ce5"
       }
     },
     "edgecrafter": {
@@ -754,6 +758,10 @@
       "attention_diagnosis": {
         "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt-diagnosis-v3.json",
         "sha256": "dc9c97923890061b7232ba7ac06ad319c0e1f14afc11fc1f42abad715a7a9e00"
+      },
+      "shared_parity": {
+        "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-shared-parity.json",
+        "sha256": "d80513f7ec8b64f3b96c41792238b87cea646a6ef4903c6844495c794e57f9dd"
       }
     },
     "rt_detr_v4": {
