@@ -19,7 +19,7 @@ from src.tasks.plcs.scripts import generate_dataset as generate_dataset_script
 
 
 @pytest.mark.parametrize("selector", ["physical_v1"])
-@pytest.mark.parametrize("camera", ["default", "corners"])
+@pytest.mark.parametrize("camera", ["default", "corners", "broadcast", "mixed"])
 def test_cli_can_publish_resolved_selector_without_loading_assets(
     selector: str,
     camera: str,
@@ -150,7 +150,7 @@ def test_cli_publishes_root_contract_before_first_scene(
     ]
 
 
-@pytest.mark.parametrize("override", ["generation=multi_object", "camera=broadcast", "court_keypoints=camera_view_v2"])
+@pytest.mark.parametrize("override", ["generation=multi_object", "court_keypoints=camera_view_v2"])
 def test_cli_rejects_retired_generation_profiles(override: str) -> None:
     result = subprocess.run(
         [sys.executable, "-m", "src.tasks.plcs.scripts.generate_dataset", override, "--cfg", "job"],
