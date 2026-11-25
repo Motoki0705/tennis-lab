@@ -11,6 +11,7 @@ from omegaconf import DictConfig
 from yaml import YAMLError
 
 from src.submodules.models import validate_dino_extension
+from src.submodules.models.fasthmr.assets import CHECKPOINT_SHA256
 from src.tasks.player_association.appearance.encoders import encoder_weights
 from src.tasks.player_association.association.config import (
     DEFAULT_CONFIG,
@@ -22,6 +23,11 @@ from src.tennis_scene.configuration import (
 )
 from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
 from src.tennis_scene.pipeline.definition import enabled_model_assets
+from src.tennis_scene.pipeline.recipes import (
+    FASTHMR_RECIPE,
+    STANDARD_RECIPE,
+    parse_recipe,
+)
 from src.utils.checksum import FileIntegrityError, dual_sha256
 from src.utils.configuration import PathContractError, PathRole
 from src.utils.paths import PROJECT_ROOT
@@ -101,14 +107,24 @@ def configured_requirements(cfg: DictConfig) -> tuple[AssetRequirement, ...]:
                 association_path = encoder_weights(association.appearance.encoder, checkpoint_root=roots.checkpoint_root,
                                                     external_root=roots.external_asset_root)
                 checkpoint("association_encoder", association_path.relative_to(roots.checkpoint_root))
-    if section("gvhmr")["enabled"]:
+    recipe = parse_recipe(value.get("recipe", STANDARD_RECIPE))
+    if recipe == FASTHMR_RECIPE:
+        runtime = PipelineRuntimeConfig.from_config(cfg, bind_inputs=False)
+        assert runtime.fasthmr is not None
+        fast = runtime.fasthmr
+        for name, fast_path in {**fast.inference_weights, **fast.geometry_weights}.items():
+            add(f"fasthmr_{name}", PathRole.CHECKPOINT, fast_path.relative_to(roots.checkpoint_root),
+                digest=CHECKPOINT_SHA256.get(name))
+        add("fasthmr_demo_config", PathRole.EXTERNAL_ASSET, fast.demo_config.relative_to(roots.external_asset_root))
+    elif section("gvhmr")["enabled"]:
         checkpoint("hmr2", models["hmr2_checkpoint"])
         checkpoint("gvhmr", models["gvhmr_checkpoint"])
         add("body_model", PathRole.CHECKPOINT, cast(str, models["body_models_dir"]), "smplx/SMPLX_NEUTRAL.npz",
             digest=pins["body_model"].sha256)
         for name, path in cast(Mapping[str, str], models["smpl_assets"]).items():
             checkpoint(f"smpl_{name}", path)
-    for name in ("dinov3", "smpl_faces", "smpl_smpl_neutral_joint_regressor"):
+    installation_only = ("dinov3", "smpl_faces", "smpl_smpl_neutral_joint_regressor") if recipe == STANDARD_RECIPE else ("dinov3", "smpl_faces")
+    for name in installation_only:
         if name not in {item.name for item in requirements}:
             checkpoint(name, pins[name].filename)
     for name, suffix in (("dino_models", "models/__init__.py"), ("dino_util", "util/__init__.py"),
@@ -146,12 +162,19 @@ def standard_requirements(cfg: PipelineRuntimeConfig) -> tuple[AssetRequirement,
     """
     pins = {asset.name: asset for asset in INSTALLATION_ASSETS}
     pins["association_encoder"] = pins["tracking_encoder"]
-    requirements = [AssetRequirement(name, path, pins[name].sha256, size_bytes=pins[name].size_bytes)
-                    for name, path in enabled_model_assets(cfg).items()]
+    requirements = []
+    for name, path in enabled_model_assets(cfg).items():
+        if name.startswith("fasthmr_"):
+            requirements.append(AssetRequirement(name, path, CHECKPOINT_SHA256.get(name.removeprefix("fasthmr_"))))
+        else:
+            pin = pins[name]
+            requirements.append(AssetRequirement(name, path, pin.sha256, size_bytes=pin.size_bytes))
+    if cfg.fasthmr is not None:
+        requirements.append(AssetRequirement("fasthmr_demo_config", cfg.fasthmr.demo_config))
     for name in ("dinov3", "smpl_faces"):
         asset = pins[name]
         requirements.append(AssetRequirement(name, cfg.resolver.resolve(PathRole.CHECKPOINT, asset.filename), asset.sha256))
-    if "smpl_smpl_neutral_joint_regressor" not in {item.name for item in requirements}:
+    if cfg.fasthmr is None and "smpl_smpl_neutral_joint_regressor" not in {item.name for item in requirements}:
         asset = pins["smpl_smpl_neutral_joint_regressor"]
         requirements.append(AssetRequirement(asset.name, cfg.resolver.resolve(PathRole.CHECKPOINT, asset.filename), asset.sha256))
     source_files = {
