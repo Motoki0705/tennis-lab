@@ -12,7 +12,7 @@ from typing import Any
 
 import numpy as np
 import torch
-from edgecrafter import ASSETS, HEADS, INPUT_NAME
+from edgecrafter import ASSETS
 from edgecrafter_diagnose import (
     BATCHES,
     FRAMES,
@@ -27,6 +27,7 @@ from speed_inputs import InputSet
 
 from src.submodules.models.ecpose.inference import preprocess_images
 from src.submodules.models.ecpose.releases import RELEASES
+from src.submodules.models.ecpose.runtime import HEADS, INPUT_NAME
 from src.utils.checksum import dual_sha256
 from src.utils.io import write_json_atomic
 from src.utils.models.tensorrt_artifacts import ONNX_FILE, EngineBundle

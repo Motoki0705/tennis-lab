@@ -44,7 +44,11 @@ def record_json(root: Path, record: dict[str, Any]) -> Any:
 
 
 def summarize_accuracy(
-    document: dict[str, Any], row: dict[str, Any], cohort: dict[str, Any]
+    document: dict[str, Any],
+    row: dict[str, Any],
+    cohort: dict[str, Any],
+    *,
+    verified_scorer_commit: str | None = None,
 ) -> dict[str, Any]:
     header = document.get("condition", document)
     expected = {
@@ -60,8 +64,13 @@ def summarize_accuracy(
         )
     score = document["score"]
     detection = score["overall"]["detection"]
+    reported_scorer = document.get("scorer_commit", verified_scorer_commit)
     if (
-        document["scorer_commit"] != cohort["scorer_commit"]
+        reported_scorer != cohort["scorer_commit"]
+        or (
+            verified_scorer_commit is not None
+            and verified_scorer_commit != reported_scorer
+        )
         or score["images"] != cohort["images"]
         or detection["references"] != cohort["eligible_boxes"]
     ):
@@ -93,6 +102,11 @@ def summarize_timing(
 ) -> dict[str, Any]:
     case, protocol = report["case"], report["protocol"]
     settings = case.get("settings", {})
+    # Successful reports prove the input order with IDs in every raw sample.
+    order_digest_conflicts = (
+        "timed_input_ids_sha256" in settings
+        and settings["timed_input_ids_sha256"] != schedule.timed_ids_sha256
+    )
     if (
         report["schema_version"] != 3
         or case["name"] != WORKLOAD_NAMES.get(row["model_id"], row["model_id"])
@@ -102,7 +116,7 @@ def summarize_timing(
         or case["item_unit"] != "image"
         or case["input_manifest_sha256"] != input_sha256
         or settings.get("timing_protocol_sha256") != timing_sha256
-        or settings.get("timed_input_ids_sha256") != schedule.timed_ids_sha256
+        or order_digest_conflicts
         or {**protocol, "batch_sizes": tuple(protocol["batch_sizes"])}
         != asdict(schedule.protocol)
     ):
@@ -154,10 +168,11 @@ def summarize_timing(
         "images_per_s": wall["items_per_second"],
         "nvml_peak_delta_mib": report["nvml_peak_minus_before_load_bytes"] / 1024**2,
         "torch_peak_allocated_mib": report["torch_peak_allocated_bytes"] / 1024**2,
+        "host_threads": settings.get("host_threads"),
     }
 
 
-def qualified_points(rows, workload):
+def measured_points(rows, workload):
     metric = QUALITY_METRIC[workload]
     return [
         row
@@ -176,7 +191,11 @@ def condition_id(row):
 def frontiers(rows: list[dict[str, Any]]) -> dict[str, list[str]]:
     result = {}
     for workload, metric in QUALITY_METRIC.items():
-        points = qualified_points(rows, workload)
+        points = [
+            row
+            for row in measured_points(rows, workload)
+            if not row.get("pareto_exclusion_reason")
+        ]
         result[workload] = [
             condition_id(point)
             for point in points
@@ -250,7 +269,14 @@ def comparison(artifacts: Path, evidence: dict[str, Any]) -> dict[str, Any]:
                 raise ValueError(
                     f"Accuracy has a different prediction digest for {model} {backend}"
                 )
-            row.update(summarize_accuracy(accuracy, row, cohort))
+            row.update(
+                summarize_accuracy(
+                    accuracy,
+                    row,
+                    cohort,
+                    verified_scorer_commit=case["accuracy"].get("scorer_commit"),
+                )
+            )
             row["accuracy_status"] = "measured"
             if "parity" in case:
                 proof = record_json(artifacts, case["parity"])
@@ -268,7 +294,7 @@ def comparison(artifacts: Path, evidence: dict[str, Any]) -> dict[str, Any]:
                     row.update(
                         accuracy_status="parity_failed", accuracy_reason=proof["reason"]
                     )
-                row["parity_status"] = (
+                row["historical_parity_status"] = row["parity_status"] = (
                     "historical_passed" if proof["passed"] else "historical_failed"
                 )
         if "timing" in case:
@@ -281,6 +307,8 @@ def comparison(artifacts: Path, evidence: dict[str, Any]) -> dict[str, Any]:
                     schedule,
                 )
             )
+        if reason := case.get("pareto_exclusion_reason"):
+            row["pareto_exclusion_reason"] = reason
         rows.append(row)
     return {
         "evaluation": cohort,
@@ -300,31 +328,75 @@ def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
 
 def plot_pareto(directory: Path, result: dict[str, Any]) -> None:
     for workload, metric in QUALITY_METRIC.items():
-        points = qualified_points(result["rows"], workload)
+        points = measured_points(result["rows"], workload)
         if not points:
             continue
         from matplotlib.figure import Figure
 
         front = set(result["pareto"][workload])
-        figure = Figure(figsize=(9, 5), layout="constrained")
-        axis = figure.subplots()
-        for point in points:
-            case = condition_id(point)
-            x, y = point["stage_p50_ms"], 100 * point[metric]
-            color = "#1763a6" if case in front else "#6e7882"
-            axis.scatter(x, y, color=color, s=34)
-            if case in front:
-                axis.annotate(
-                    case, (x, y), xytext=(5, 5), textcoords="offset points", fontsize=8
-                )
-        axis.margins(x=0.15, y=0.15)
-        axis.set_xlabel("Batch 1 stage wall time (ms per image, P50)")
-        axis.set_ylabel(
-            "Recall at IoU 0.50 (%)"
-            if workload == "detection"
-            else "Mean coverage-inclusive OKS (%)"
+        ordered_front = sorted(
+            (point for point in points if condition_id(point) in front),
+            key=lambda point: point["stage_p50_ms"],
         )
-        axis.grid(alpha=0.25)
+        detection = workload == "detection"
+        figure = Figure(figsize=(9, 6 if detection else 4.5), layout="constrained")
+        axes = figure.subplots(2, 1, sharex=True) if detection else [figure.subplots()]
+        front_x = [point["stage_p50_ms"] for point in ordered_front]
+        front_y = [100 * point[metric] for point in ordered_front]
+        ylabel = (
+            "Recall at IoU 0.50 (%)" if detection else "Mean coverage-inclusive OKS (%)"
+        )
+        for axis in axes:
+            axis.set_ylabel(ylabel)
+            axis.grid(alpha=0.25)
+            axis.plot(front_x, front_y, color="#1763a6", alpha=0.55, linewidth=1)
+            for point in points:
+                case = condition_id(point)
+                excluded = point.get("pareto_exclusion_reason")
+                color = (
+                    "#a44827" if excluded else "#1763a6" if case in front else "#6e7882"
+                )
+                marker = (
+                    "x" if excluded else "s" if point.get("host_threads") == 2 else "o"
+                )
+                axis.scatter(
+                    point["stage_p50_ms"],
+                    100 * point[metric],
+                    color=color,
+                    marker=marker,
+                    s=34,
+                )
+            axis.margins(x=0.10)
+
+        axes[-1].set_ylim(-4, 104)
+        axes[-1].set_xlabel("Batch 1 stage wall time (ms per image, P50)")
+        labelled_axis = axes[0]
+        if detection and front_y:
+            labelled_axis.set_ylim(min(front_y) - 0.6, max(front_y) + 0.6)
+            labelled_axis.set_title(
+                "Detail near the Pareto frontier", loc="left", fontsize=10
+            )
+        labels = ordered_front + [
+            point
+            for point in points
+            if point["model_id"] == "dino-swin-l" and condition_id(point) not in front
+        ]
+        for index, point in enumerate(labels):
+            x, y = point["stage_p50_ms"], 100 * point[metric]
+            bottom = index % 2 == 1
+            align_right = bottom or x > sum(axes[-1].get_xlim()) / 2
+            labelled_axis.annotate(
+                condition_id(point),
+                (x, y),
+                xytext=(-6 if align_right else 6, -14 if bottom else 6),
+                ha="right" if align_right else "left",
+                textcoords="offset points",
+                fontsize=8,
+            )
+        legend = "Square · 2 CPU threads    Circle · 4 CPU threads"
+        if any(point.get("pareto_exclusion_reason") for point in points):
+            legend += "    × · TRT diagnosis"
+        figure.suptitle(legend, fontsize=11)
         figure.savefig(directory / f"pareto-{workload}.png", dpi=150)
 
 

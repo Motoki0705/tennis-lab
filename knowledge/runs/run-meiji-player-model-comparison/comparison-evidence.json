@@ -130,6 +130,10 @@
       "parity": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/pt16/parity-vs-pt32.json",
         "sha256": "1988fc7a517d276c9b700e372d974137c0539277427dc0b65ff4ae595155919b"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/speed-13e508cb7/pt16/speed-b1.json",
+        "sha256": "83f85230a119f83b85aab936c3692eb6d44beef02155238a4e759978a6f6d96d"
       }
     },
     {
@@ -148,16 +152,16 @@
       "model_id": "ecdet-l-coco",
       "backend": "trt16",
       "accuracy": {
-        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16/metrics.scorer-0d4bf0990.json",
-        "sha256": "9c39351f31fef206d77a17877d35a9d6cd4a1cddc206371672319dc46d188e19"
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16-trace2/metrics.json",
+        "sha256": "d204bebd599028dbab3cdd0ba3bea9a54234a460c07349f809b23572770be98f"
       },
       "predictions": {
-        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16/predictions.jsonl",
-        "sha256": "53ce6fd1fbf1df98ee760fe9b4af2321fafc954a2de111bcc2a94936149045fe"
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16-trace2/predictions.jsonl",
+        "sha256": "dcc1b9600febc44434d7663340441bce129d10b6d94f176d0b5b6ecdfcb8d712"
       },
-      "parity": {
-        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16/parity-vs-pt32.json",
-        "sha256": "9e460e5fa667254fe56a0b6063f44a92fcb768192f5ec9f7491798083b0114ec"
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/speed-13e508cb7/trt16/speed-b1.json",
+        "sha256": "06e55fd5fae5d5f69ad03c3087448f2e78e0b594d5cb154232ae78b31146bee2"
       }
     },
     {
@@ -174,6 +178,10 @@
       "parity": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/pt16/parity-vs-pt32.json",
         "sha256": "f4620b43a2ff746b0e7b11e16b461f9f797d77a7762213697b68a5f6ac9d504a"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/speed-13e508cb7/pt16/speed-b1.json",
+        "sha256": "1317315ece33c766dfaae40db06de94786ee23adb69ecbbd2e26889275dac586"
       }
     },
     {
@@ -202,6 +210,10 @@
       "parity": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/pt16/parity-vs-pt32.json",
         "sha256": "cb20fcae15b64ebeaac102afb469fc64be8cb861d231bfed79e21d5873f09539"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/speed-13e508cb7/pt16/speed-b1.json",
+        "sha256": "b88faf4b5ddde93566350f441b6ce8ebe9beb4de0b73e8fa1b9cf236c4425c12"
       }
     },
     {
@@ -230,6 +242,10 @@
       "parity": {
         "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/pt16/parity-vs-pt32.json",
         "sha256": "043278cafc3c4b38e79a78a455ba53877406d483988c84102ce50ea73f7d3f89"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/speed-13e508cb7/pt16/speed-b1.json",
+        "sha256": "5100457f451fc4b27def5249289a0e7a7a222eef9c4cbce6fd99643e616a100a"
       }
     },
     {
@@ -254,6 +270,11 @@
       "predictions": {
         "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/pt16/predictions.jsonl",
         "sha256": "d9021ee4c51b4845d4c48701c791a93656fc8fa53e6f6ae90c02ecc2fe0dad43"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/speed-synchronized-v2/rfdetr-l/pt16/speed-b1/report.json",
+        "bytes": 154366,
+        "sha256": "0017239a15f88de704972826254a7ebf418f78956ef13c5b3deabc5e5595f9cb"
       }
     },
     {
@@ -278,7 +299,194 @@
       "predictions": {
         "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/predictions.jsonl",
         "sha256": "fc94b4ab47216d9799242bb3d82f44d97bf35bc248a89ea627bedad9dec1b11a"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/speed-synchronized-v2/rfdetr-l/trt16/speed-b1/report.json",
+        "bytes": 154278,
+        "sha256": "3ef1a8be1d09b3bb50159b4af07b6750629e63cf013a176c4084c75a63186902"
       }
+    },
+    {
+      "model_id": "ecdet-l-o365",
+      "backend": "trt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-trace2/metrics.json",
+        "sha256": "0c7109e8e57eb05c055446f37edd91e6db7e941157c1b12bce8f12de9ee03170"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-trace2/predictions.jsonl",
+        "sha256": "9b4ad498f52182d9c8b6aeef0dbbab48254ac38a1d09500cbf01635ee32bdd72"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/speed-13e508cb7/trt16/speed-b1.json",
+        "sha256": "874323bf090d9ad909036638630287f95c1f00a94a72013857d633654929c09a"
+      }
+    },
+    {
+      "model_id": "ecdet-x-coco",
+      "backend": "trt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-trace2/metrics.json",
+        "sha256": "d60bc4a5b5e289859b23fea6faffbba758f0fe1faac8408f5f62583d078984f3"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-trace2/predictions.jsonl",
+        "sha256": "9e1f2cca5b71e1b0f23b17f0539d411bdaaa841e78fdd9e80636ea09855a4f49"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/speed-13e508cb7/trt16/speed-b1.json",
+        "sha256": "1ffc1293830086cbc77caf726cd1be68c9cdf55cebcb04080e647122317d0840"
+      }
+    },
+    {
+      "model_id": "ecdet-x-o365",
+      "backend": "trt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-trace2/metrics.json",
+        "sha256": "86620b9203de44fbe91c99f058d2b5398982af00ca92705e822250ae2fe6c2df"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-trace2/predictions.jsonl",
+        "sha256": "96eaf26a842b46988d6f8a2eeb069b907c454e016e156e0586edf7dbc06afd3d"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/speed-13e508cb7/trt16/speed-b1.json",
+        "sha256": "1cc908af5e484988535b850912b2605ee990671fa19aed3dac1cecfceb042dc8"
+      }
+    },
+    {
+      "model_id": "ecpose-l-o365",
+      "backend": "pt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/pt16/metrics.json",
+        "sha256": "fece0379f311da4a787319e234cdc16972ee8be224070f8289272a57f67cdaf5"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/pt16/predictions.jsonl",
+        "sha256": "458a797a371d6d14b05f1da3b003f51f08596d5cab393a92a91fe868f8d5b6d0"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/speed-13e508cb7/pt16/speed-b1.json",
+        "sha256": "e9fbf9a4131bcf643fbca5f2da2b4d791c1c5dd293acc0414c16894b7e1f9a69"
+      }
+    },
+    {
+      "model_id": "ecpose-l-o365",
+      "backend": "trt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/trt16-trace2/metrics.json",
+        "sha256": "16b6d4d42289072aa03173fa92a6e3701ffa08a2b22d173289ae6637e9e72a84"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/trt16-trace2/predictions.jsonl",
+        "sha256": "7ac43fc6119c47fc7a05969f3213795071ce7a7970fb2bdfe2582d97a0a69d5a"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/speed-13e508cb7/trt16/speed-b1.json",
+        "sha256": "8ab86fdc47eb7907603c43fca3f6ccb3f4470da109cfe65158d5a9ae0507edd6"
+      }
+    },
+    {
+      "model_id": "ecpose-x-o365",
+      "backend": "pt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/pt16/metrics.json",
+        "sha256": "afe07b487c5cf09a5ac3e5e8b8775434d9fe5e1b42571b34c6382a27b20ac44b"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/pt16/predictions.jsonl",
+        "sha256": "dea95429c15213ec5e47bf64f0056c141cfc5f4ab550719cbbb34bb141a5598c"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/speed-13e508cb7/pt16/speed-b1.json",
+        "sha256": "9051ead56d69669236368ae42b557fabdee5ec8ff43719e3559619bf687942c8"
+      }
+    },
+    {
+      "model_id": "ecpose-x-o365",
+      "backend": "trt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/trt16-trace2/metrics.json",
+        "sha256": "440cc17c3c02151a04110dcdf8200f65a43a3c76788acad969fd414b4744da52"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/trt16-trace2/predictions.jsonl",
+        "sha256": "bad1b56b7ee0d432da0cad6b310f6c3bfa776cbb8d2bcec793e82b77d83f32fb"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/speed-13e508cb7/trt16/speed-b1.json",
+        "sha256": "bc18e2ce462872ce15f8bb03fa2bbd295fce883ca535df576439867103aff990"
+      }
+    },
+    {
+      "model_id": "rtdetrv4-l",
+      "backend": "pt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/pt16/accuracy.json",
+        "sha256": "7c410eb3d5b49969bce2404f736eee69e35f8b2dcf5e71f1fba127693829db77",
+        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/pt16/predictions.jsonl",
+        "sha256": "ba3400d7039167b58230578b523718b2ad098e88b455a21c5f900a10a9c139f9"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/pt16/speed-b1.json",
+        "sha256": "2b032139bbacacd986853cae6cf78ee6de3b46f5e3d7b683fde1ccc34a0bb3d1"
+      }
+    },
+    {
+      "model_id": "rtdetrv4-l",
+      "backend": "trt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/trt16/accuracy.json",
+        "sha256": "649c6531756359c3d9d77b8a2e76cd04762bde52f95344e5d57f55efb5223531",
+        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/trt16/predictions.jsonl",
+        "sha256": "c9cb1e706d6d0a0f94ad95e0175b8acb3c1aa09d433747c2ea3a2a04c9d8be60"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-l/trt16/speed-b1.json",
+        "sha256": "e17b8a013962d610e541c4fa1054fc8dbf4e399a41611967e8ce9089a968d241"
+      },
+      "pareto_exclusion_reason": "Fixed-cohort recall collapsed. The same-input diagnostic reproduced the gap before shared postprocessing in the measured TensorRT engine path. The responsible operation or tactic is unconfirmed."
+    },
+    {
+      "model_id": "rtdetrv4-x",
+      "backend": "pt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/pt16/accuracy.json",
+        "sha256": "7b665c4d0ec7bdd33bae803535e3291664d0f1ec8ce84b55fe9da5b6c1cb75a4",
+        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/pt16/predictions.jsonl",
+        "sha256": "44668c7c09c0babed9f1e1eb9657fd742827af3568b6de53efb490cb9c4446d0"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/pt16/speed-b1.json",
+        "sha256": "35a65e0bd34e45ee12ec01622a29172326dd8ca022ed95ace90dc9e92cd5de72"
+      }
+    },
+    {
+      "model_id": "rtdetrv4-x",
+      "backend": "trt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/trt16/accuracy.json",
+        "sha256": "41827f1c396694376b673a8503ed60500a4a8de44aadc2305ecaba63d88e6be3",
+        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/trt16/predictions.jsonl",
+        "sha256": "278db4463cc316bc659839644b2f7362250423f9aaed1e8c5c65b559324b9223"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2487-rtdetrv4/player-model-comparison/rtdetrv4-x/trt16/speed-b1.json",
+        "sha256": "16f2098ab898362b1762103fd20565cbf593b086f06f195b4cd2520ffd0846ba"
+      },
+      "pareto_exclusion_reason": "Fixed-cohort recall collapsed. The same-input diagnostic reproduced the gap before shared postprocessing in the measured TensorRT engine path. The responsible operation or tactic is unconfirmed."
     }
   ],
   "baseline_accuracy_jobs": {
@@ -315,6 +523,53 @@
     "attempts": {
       "path": "parent-2492-issue-2487-primary/person-model-speed-dino-vitpose-synchronized-v1/attempts-joint.json",
       "sha256": "41b67541ddb2af92353116696dab8f0712e4b0a2ea0a90d510cb8d6109f97165"
+    }
+  },
+  "historical_conditions": [
+    {
+      "model_id": "ecdet-l-coco",
+      "backend": "trt16",
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16/metrics.scorer-0d4bf0990.json",
+        "sha256": "9c39351f31fef206d77a17877d35a9d6cd4a1cddc206371672319dc46d188e19"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16/predictions.jsonl",
+        "sha256": "53ce6fd1fbf1df98ee760fe9b4af2321fafc954a2de111bcc2a94936149045fe"
+      },
+      "parity": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16/parity-vs-pt32.json",
+        "sha256": "9e460e5fa667254fe56a0b6063f44a92fcb768192f5ec9f7491798083b0114ec"
+      }
+    }
+  ],
+  "candidate_receipts": {
+    "rf_detr": {
+      "evidence_commit": "f92c40d600359e4920949ed70704a3f840a3cc3e",
+      "speed": {
+        "path": "knowledge/runs/run-meiji-rfdetr-large-speed/results.json",
+        "sha256": "ea68b4e35c140f0bf208e12143eddd6508f3012496b019ffe76de4b9cf6326ab"
+      }
+    },
+    "edgecrafter": {
+      "evidence_commit": "9c5425765a81a1f939af165b59a5757a2cc7afeb",
+      "accuracy": {
+        "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-accuracy.json",
+        "sha256": "e021948180a74be003be641ac5931325048189743f5492a3ac3260a7221b0bc7"
+      },
+      "speed": {
+        "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-speed.json",
+        "sha256": "dbad59a352b09c543616eb1283debd5aabbacbc5288f9b792ac3a23f585c3dc4"
+      }
+    },
+    "rt_detr_v4": {
+      "evidence_commit": "fef762822f6f8f7e62ae0ec5d0fc5b80eee15447",
+      "results": {
+        "path": "knowledge/runs/run-meiji-player-model-comparison/rtdetrv4-results.json",
+        "sha256": "d4758943a163031732423e9ca8caba22542959dabe7d5084774d95407fdeaa12"
+      },
+      "accuracy_execution_commit": "88ec50e5f777cbecb1dfecf54f8c6353a60612f6",
+      "accuracy_scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
     }
   }
 }

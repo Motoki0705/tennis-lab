@@ -14,7 +14,7 @@ from typing import Any, TypeAlias
 
 import numpy as np
 import torch
-from edgecrafter import ASSETS, HEADS, INPUT_NAME, SCORE_THRESHOLD, _load_forward
+from edgecrafter import ASSETS, SCORE_THRESHOLD, _load_forward
 from numpy.typing import NDArray
 from speed_inputs import InputSet
 
@@ -23,6 +23,7 @@ from src.submodules.models.ecpose.inference import (
     preprocess_images,
 )
 from src.submodules.models.ecpose.releases import RELEASES
+from src.submodules.models.ecpose.runtime import HEADS, INPUT_NAME
 from src.utils.checksum import dual_sha256
 from src.utils.geometry.bbox import match_iou, pairwise_iou
 from src.utils.inference_benchmark import Backend

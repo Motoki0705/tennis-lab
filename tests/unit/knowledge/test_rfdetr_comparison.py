@@ -206,7 +206,9 @@ def test_speed_cli_passes_pinned_schedule_and_explicit_parity_policy(
         manifest_sha256="a" * 64,
         timing_sha256="b" * 64,
     )
-    batches = [Batch(("image",), (np.zeros((1, 1, 3), np.uint8),))]
+    batches: list[Batch[tuple[NDArray[np.uint8], ...]]] = [
+        Batch(("image",), (np.zeros((1, 1, 3), np.uint8),))
+    ]
     reason = "PT32計測はスコープ外（ユーザー判断 2026-11-25）"
     threads = {"torch": 2, "opencv": 12}
 

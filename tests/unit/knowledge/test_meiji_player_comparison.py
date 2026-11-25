@@ -47,6 +47,7 @@ def test_frontier_keeps_equal_points_and_excludes_unqualified_conditions(
         row("failed", 1, 1, status="parity_failed"),
         row("historical", 1, 1, speed="historical"),
         row("no-speed", 1, 1, speed="pending"),
+        {**row("trt-diagnostic", 1, 1), "pareto_exclusion_reason": "Unstable plan"},
         row("joint-fast", 2, 0.80, pose=True),
         row("joint-accurate", 12, 0.92, pose=True),
     ]
@@ -63,7 +64,16 @@ def test_frontier_keeps_equal_points_and_excludes_unqualified_conditions(
 
 
 @pytest.mark.parametrize(
-    "outcome", ["ok", "wrong_order", "legacy", "infeasible", "implicit_parity"]
+    "outcome",
+    [
+        "ok",
+        "no_order_digest",
+        "wrong_order",
+        "wrong_order_digest",
+        "legacy",
+        "infeasible",
+        "implicit_parity",
+    ],
 )
 def test_timing_uses_the_pinned_frame_order_and_wall_boundary(
     outcome: str,
@@ -80,6 +90,11 @@ def test_timing_uses_the_pinned_frame_order_and_wall_boundary(
     samples = [{"block": 1 + i // 100, "ids": [ids[i % 3]]} for i in range(300)]
     if outcome == "wrong_order":
         samples[0], samples[1] = samples[1], samples[0]
+    settings = {"timing_protocol_sha256": timing_pin, "host_threads": 2}
+    if outcome != "no_order_digest":
+        settings["timed_input_ids_sha256"] = (
+            "d" * 64 if outcome == "wrong_order_digest" else schedule.timed_ids_sha256
+        )
     report: dict[str, object] = {
         "schema_version": 2 if outcome == "legacy" else 3,
         "case": {
@@ -88,10 +103,7 @@ def test_timing_uses_the_pinned_frame_order_and_wall_boundary(
             "batch_size": 1,
             "item_unit": "image",
             "input_manifest_sha256": pin,
-            "settings": {
-                "timing_protocol_sha256": timing_pin,
-                "timed_input_ids_sha256": schedule.timed_ids_sha256,
-            },
+            "settings": settings,
         },
         "protocol": {
             "batch_sizes": [1, 2],
@@ -129,6 +141,7 @@ def test_timing_uses_the_pinned_frame_order_and_wall_boundary(
         )
     errors = {
         "wrong_order": "sample order differs",
+        "wrong_order_digest": "Timing protocol or identity mismatch",
         "legacy": "Timing protocol or identity mismatch",
         "implicit_parity": "explicit PT32 parity exclusion",
     }
@@ -140,7 +153,9 @@ def test_timing_uses_the_pinned_frame_order_and_wall_boundary(
             report, condition, pin, timing_pin, schedule
         )
         assert summary["parity_status"] == "PT32未計測"
-        assert summary["speed_status"] == outcome
+        assert summary["speed_status"] == (
+            "infeasible" if outcome == "infeasible" else "ok"
+        )
         if outcome == "infeasible":
             assert summary["speed_reason"] == "Unsupported operator"
             assert "stage_p50_ms" not in summary
@@ -154,6 +169,59 @@ def test_timing_uses_the_pinned_frame_order_and_wall_boundary(
                 summary["nvml_peak_delta_mib"],
                 summary["torch_peak_allocated_mib"],
             ) == (2, 1)
+            assert summary["host_threads"] == 2
+
+
+@pytest.mark.parametrize(
+    ("reported_commit", "verified_commit", "accepted"),
+    [(None, "pinned", True), (None, None, False), ("different", "pinned", False)],
+)
+def test_accuracy_requires_the_pinned_scorer(
+    reported_commit, verified_commit, accepted
+) -> None:
+    summarize = runpy.run_path(str(RUN / "compare_conditions.py"))["summarize_accuracy"]
+    detection = {
+        "references": 10,
+        "recall_by_iou": {"0.50": 0.9, "0.75": 0.7},
+        "recall_by_min_score": {"0.5": {"0.50": 0.8}},
+    }
+    case = {"model_id": "rtdetrv4-l", "backend": "pt16", "workload": "detection"}
+    cohort = {
+        "id": "fixed",
+        "sha256": "digest",
+        "images": 5,
+        "eligible_boxes": 10,
+        "scorer_commit": "pinned",
+    }
+    report = {
+        "condition": {
+            "model_id": "rtdetrv4-l",
+            "backend": "pt16",
+            "has_pose": False,
+            "benchmark_id": "fixed",
+            "manifest_sha256": "digest",
+        },
+        "score": {
+            "images": 5,
+            "overall": {
+                "detection": detection,
+                "pose": {"with_detection_coverage": {}},
+            },
+            "by_size": {"small": {"detection": {"recall_by_iou": {"0.50": 0.6}}}},
+        },
+    }
+    if reported_commit is not None:
+        report["scorer_commit"] = reported_commit
+    if accepted:
+        assert (
+            summarize(report, case, cohort, verified_scorer_commit=verified_commit)[
+                "recall_50"
+            ]
+            == 0.9
+        )
+    else:
+        with pytest.raises(ValueError, match="frozen scorer or cohort"):
+            summarize(report, case, cohort, verified_scorer_commit=verified_commit)
 
 
 def test_panel_keeps_source_pixels_and_does_not_draw_invalid_joints(
