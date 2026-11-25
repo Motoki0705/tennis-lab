@@ -5,12 +5,16 @@ from __future__ import annotations
 import argparse
 import csv
 import json
+from dataclasses import asdict
 from pathlib import Path
 from typing import Any
 
 from src.tennis_scene.evaluation.player_pose.bundle import pinned_file
+from src.utils.inference_benchmark_inputs import PinnedBenchmarkInputs, TimingSchedule
 from src.utils.io import write_json_atomic
 
+REPO_ROOT = Path(__file__).resolve().parents[3]
+PT32_SCOPE = "対象外（ユーザー判断 2026-11-25）"
 BACKENDS = ("pt32", "pt16", "trt16")
 MODELS = (
     "dino-swin-l",
@@ -81,24 +85,46 @@ def summarize_accuracy(
 
 
 def summarize_timing(
-    report: dict[str, Any], row: dict[str, Any], input_sha256: str, frame_ids: list[str]
+    report: dict[str, Any],
+    row: dict[str, Any],
+    input_sha256: str,
+    timing_sha256: str,
+    schedule: TimingSchedule,
 ) -> dict[str, Any]:
     case, protocol = report["case"], report["protocol"]
+    settings = case.get("settings", {})
     if (
-        case["name"] != WORKLOAD_NAMES.get(row["model_id"], row["model_id"])
+        report["schema_version"] != 3
+        or case["name"] != WORKLOAD_NAMES.get(row["model_id"], row["model_id"])
         or case["backend"].lower() != row["backend"]
+        or row["backend"] == "pt32"
         or case["batch_size"] != 1
         or case["item_unit"] != "image"
         or case["input_manifest_sha256"] != input_sha256
-        or (protocol["warmup"], protocol["iterations_per_block"], protocol["blocks"])
-        != (30, 100, 3)
+        or settings.get("timing_protocol_sha256") != timing_sha256
+        or settings.get("timed_input_ids_sha256") != schedule.timed_ids_sha256
+        or {**protocol, "batch_sizes": tuple(protocol["batch_sizes"])}
+        != asdict(schedule.protocol)
     ):
         raise ValueError(
             f"Timing protocol or identity mismatch for {row['model_id']} {row['backend']}"
         )
-    if report["status"] != "ok":
+    reason = report.get("parity_not_evaluated_reason")
+    if (
+        report.get("parity_status") != "not_evaluated"
+        or not isinstance(reason, str)
+        or not reason.strip()
+        or report.get("parity") is not None
+        or report["status"] not in {"ok", "infeasible"}
+    ):
+        raise ValueError(
+            "Current timing requires explicit PT32 parity exclusion and a valid outcome"
+        )
+    parity = {"parity_status": "PT32未計測", "parity_reason": reason}
+    if report["status"] == "infeasible":
         return {
-            "speed_status": report["status"],
+            **parity,
+            "speed_status": "infeasible",
             "speed_reason": report["failure"]["message"],
         }
     environment = report["environment"]
@@ -107,9 +133,11 @@ def summarize_timing(
     ) != {"ieee"}:
         raise ValueError(f"Timing GPU or TF32 policy mismatch for {row['model_id']}")
     samples = report["samples"]
-    if len(samples) != 300 or any(
-        sample["ids"] != [frame_ids[i % len(frame_ids)]]
-        or sample["block"] != 1 + i // 100
+    iterations = schedule.protocol.iterations_per_block
+    batches = schedule.batch_ids
+    if len(samples) != iterations * schedule.protocol.blocks or any(
+        tuple(sample["ids"]) != batches[i % len(batches)]
+        or sample["block"] != 1 + i // iterations
         for i, sample in enumerate(samples)
     ):
         raise ValueError(
@@ -117,6 +145,7 @@ def summarize_timing(
         )
     wall, compute = (report["summary"][name] for name in ("stage_wall", "model_gpu"))
     return {
+        **parity,
         "speed_status": "ok",
         "stage_p50_ms": wall["p50_ms_per_item"],
         "stage_p95_ms": wall["p95_ms_per_item"],
@@ -166,16 +195,15 @@ def frontiers(rows: list[dict[str, Any]]) -> dict[str, list[str]]:
 
 def comparison(artifacts: Path, evidence: dict[str, Any]) -> dict[str, Any]:
     cohort, inputs = evidence["evaluation"], evidence["speed_input"]
-    manifest = pinned_file(artifacts, inputs)
-    manifest_doc = read_json(manifest)
-    index = manifest_doc["indexes"]["frames"]
-    frames = record_json(manifest.parent, index)
-    frame_ids = [frame["id"] for frame in frames]
-    if (
-        len(frame_ids) != 96
-        or len(set(frame_ids)) != 96
-        or manifest_doc["id"] != inputs["id"]
-    ):
+    schedule_pin = inputs["timing_protocol"]
+    pinned = PinnedBenchmarkInputs(
+        pinned_file(artifacts, inputs).parent,
+        pinned_file(REPO_ROOT, schedule_pin),
+        manifest_sha256=inputs["sha256"],
+        timing_sha256=schedule_pin["sha256"],
+    )
+    schedule = pinned.schedule("frames", 1)
+    if len(schedule.batch_ids) != 96 or pinned.manifest["id"] != inputs["id"]:
         raise ValueError("Unexpected speed input cohort")
     cases = {
         (case["model_id"], case["backend"]): case for case in evidence["conditions"]
@@ -201,6 +229,21 @@ def comparison(artifacts: Path, evidence: dict[str, Any]) -> dict[str, Any]:
                 speed_status="excluded",
                 accuracy_reason="RF-DETR-2XL excluded by the 2026-11-24 license decision",
             )
+            rows.append(row)
+            continue
+        if backend == "pt32":
+            row.update(speed_status="excluded", speed_reason=PT32_SCOPE)
+            if "accuracy" not in case:
+                row.update(accuracy_status="excluded", accuracy_reason=PT32_SCOPE)
+        if "historical_timing" in case and "timing" not in case:
+            row["speed_reason"] = case.get(
+                "speed_reason",
+                "Historical timing predates synchronized stage wall measurement",
+            )
+            if backend == "pt32":
+                row["speed_status"] = "historical"
+        if reason := case.get("parity_not_evaluated_reason"):
+            row.update(parity_status="PT32未計測", parity_reason=reason)
         if "accuracy" in case:
             accuracy = record_json(artifacts, case["accuracy"])
             if accuracy["predictions_sha256"] != case["predictions"]["sha256"]:
@@ -225,13 +268,17 @@ def comparison(artifacts: Path, evidence: dict[str, Any]) -> dict[str, Any]:
                     row.update(
                         accuracy_status="parity_failed", accuracy_reason=proof["reason"]
                     )
+                row["parity_status"] = (
+                    "historical_passed" if proof["passed"] else "historical_failed"
+                )
         if "timing" in case:
             row.update(
                 summarize_timing(
                     record_json(artifacts, case["timing"]),
                     row,
                     inputs["sha256"],
-                    frame_ids,
+                    schedule_pin["sha256"],
+                    schedule,
                 )
             )
         rows.append(row)
@@ -286,11 +333,13 @@ def main() -> None:
     parser.add_argument("--artifacts", type=Path, required=True)
     parser.add_argument("--evidence", type=Path, required=True)
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--tables-only", action="store_true")
     args = parser.parse_args()
     result = comparison(args.artifacts, read_json(args.evidence))
     write_json_atomic(args.output / "comparison.json", result)
     write_csv(args.output / "conditions.csv", result["rows"])
-    plot_pareto(args.output, result)
+    if not args.tables_only:
+        plot_pareto(args.output, result)
 
 
 if __name__ == "__main__":

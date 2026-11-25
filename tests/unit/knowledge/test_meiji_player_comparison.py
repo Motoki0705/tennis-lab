@@ -13,6 +13,8 @@ from numpy.typing import NDArray
 
 from src.submodules.models.dino.person_detector import PersonDetectionResult
 from src.submodules.models.vitpose.pose2d import Pose2DResult
+from src.utils.inference_benchmark import BenchmarkProtocol
+from src.utils.inference_benchmark_inputs import TimingSchedule
 
 RUN = (
     Path(__file__).resolve().parents[3]
@@ -43,6 +45,7 @@ def test_frontier_keeps_equal_points_and_excludes_unqualified_conditions(
         row("dino", 20, 0.98),
         row("equal-to-dino", 20, 0.98),
         row("failed", 1, 1, status="parity_failed"),
+        row("historical", 1, 1, speed="historical"),
         row("no-speed", 1, 1, speed="pending"),
         row("joint-fast", 2, 0.80, pose=True),
         row("joint-accurate", 12, 0.92, pose=True),
@@ -59,30 +62,52 @@ def test_frontier_keeps_equal_points_and_excludes_unqualified_conditions(
     }
 
 
-@pytest.mark.parametrize("alter_order", [False, True])
+@pytest.mark.parametrize(
+    "outcome", ["ok", "wrong_order", "legacy", "infeasible", "implicit_parity"]
+)
 def test_timing_uses_the_pinned_frame_order_and_wall_boundary(
-    alter_order: bool,
+    outcome: str,
 ) -> None:
     compare = runpy.run_path(str(RUN / "compare_conditions.py"))
     ids = ["clip_003/cam0/074", "clip_013/cam2/162", "clip_028/cam3/736"]
     pin = "a" * 64
+    timing_pin = "b" * 64
+    schedule = TimingSchedule(
+        BenchmarkProtocol(batch_sizes=(1, 2)),
+        tuple((key,) for key in ids),
+        "c" * 64,
+    )
     samples = [{"block": 1 + i // 100, "ids": [ids[i % 3]]} for i in range(300)]
-    if alter_order:
+    if outcome == "wrong_order":
         samples[0], samples[1] = samples[1], samples[0]
-    report = {
+    report: dict[str, object] = {
+        "schema_version": 2 if outcome == "legacy" else 3,
         "case": {
             "name": "dino",
-            "backend": "PT32",
+            "backend": "PT16",
             "batch_size": 1,
             "item_unit": "image",
             "input_manifest_sha256": pin,
+            "settings": {
+                "timing_protocol_sha256": timing_pin,
+                "timed_input_ids_sha256": schedule.timed_ids_sha256,
+            },
         },
-        "protocol": {"warmup": 30, "iterations_per_block": 100, "blocks": 3},
+        "protocol": {
+            "batch_sizes": [1, 2],
+            "warmup": 30,
+            "iterations_per_block": 100,
+            "blocks": 3,
+        },
         "environment": {
             "gpu": "NVIDIA GeForce RTX 5060 Ti",
             "fp32_precision": {"matmul": "ieee"},
         },
         "status": "ok",
+        "parity_status": "not_evaluated",
+        "parity_not_evaluated_reason": None
+        if outcome == "implicit_parity"
+        else "PT32 excluded by scope",
         "samples": samples,
         "summary": {
             "stage_wall": {
@@ -95,21 +120,40 @@ def test_timing_uses_the_pinned_frame_order_and_wall_boundary(
         "nvml_peak_minus_before_load_bytes": 2 * 1024**2,
         "torch_peak_allocated_bytes": 1024**2,
     }
-    condition = {"model_id": "dino-swin-l", "backend": "pt32"}
-    if alter_order:
-        with pytest.raises(ValueError, match="sample order differs"):
-            compare["summarize_timing"](report, condition, pin, ids)
+    condition = {"model_id": "dino-swin-l", "backend": "pt16"}
+    if outcome == "infeasible":
+        report.update(
+            status="infeasible",
+            summary=None,
+            failure={"message": "Unsupported operator"},
+        )
+    errors = {
+        "wrong_order": "sample order differs",
+        "legacy": "Timing protocol or identity mismatch",
+        "implicit_parity": "explicit PT32 parity exclusion",
+    }
+    if outcome in errors:
+        with pytest.raises(ValueError, match=errors[outcome]):
+            compare["summarize_timing"](report, condition, pin, timing_pin, schedule)
     else:
-        summary = compare["summarize_timing"](report, condition, pin, ids)
-        assert (
-            summary["stage_p50_ms"],
-            summary["model_p50_ms"],
-            summary["images_per_s"],
-        ) == (12, 8, 75)
-        assert (
-            summary["nvml_peak_delta_mib"],
-            summary["torch_peak_allocated_mib"],
-        ) == (2, 1)
+        summary = compare["summarize_timing"](
+            report, condition, pin, timing_pin, schedule
+        )
+        assert summary["parity_status"] == "PT32未計測"
+        assert summary["speed_status"] == outcome
+        if outcome == "infeasible":
+            assert summary["speed_reason"] == "Unsupported operator"
+            assert "stage_p50_ms" not in summary
+        else:
+            assert (
+                summary["stage_p50_ms"],
+                summary["model_p50_ms"],
+                summary["images_per_s"],
+            ) == (12, 8, 75)
+            assert (
+                summary["nvml_peak_delta_mib"],
+                summary["torch_peak_allocated_mib"],
+            ) == (2, 1)
 
 
 def test_panel_keeps_source_pixels_and_does_not_draw_invalid_joints(

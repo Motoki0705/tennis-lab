@@ -2,7 +2,7 @@
 
 This comparison uses the six clips, frame indices and SMPL-derived references from [the fixed player benchmark](../run-meiji-multiview-player-evaluation/README.md). The references are partial. Other people in each image have unknown label status, so player recall is available and precision and AP are N/A.
 
-## Stored DINO and ViTPose-H baseline
+## DINO and ViTPose-H accuracy baseline
 
 The saved [full-video run](../run-i2363-trt-player-video/README.md) contains full-frame DINO detections and ViTPose-H crops for every accepted detection on the same source media. Its upstream 2D outputs remain available when a later 3D step failed. The scorer reads the TensorRT FP16 artifacts before tracking and selection, checks the media hashes and pose-to-detection dependencies, and scores the frame indices in the fixed evaluation manifest.
 
@@ -19,24 +19,25 @@ OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 PYTHONPATH=. \
 
 The stored baseline covers 6,844 images and 26,276 eligible player boxes. DINO's Recall@0.50 is 96.67% and Recall@0.75 is 47.07%. For DINO + ViTPose-H, coverage-inclusive mean OKS is 0.7631 and PCK@0.10 is 77.95%. Joint coverage is 429,996/437,714. The [accuracy receipt](baseline-trt16.json) records the counts, size strata and raw output hashes. The full accuracy reports contain camera, clip and player strata and the archived artifact identities. These results describe agreement with the SMPL-derived reference, which uses some of the same 2D observations during reconstruction.
 
-The archived DINO input is 750 by 1,333 pixels, batch 1, person confidence at least 0.30, and duplicate merging disabled. ViTPose-H uses 256 by 192 pixels, batch up to 8 crops before flip testing, flip testing enabled and a 1.2 box enlargement. Both models use TensorRT FP16 on the RTX 5060 Ti. PT32 and PT16 full-cohort accuracy conditions are pending.
+The archived DINO input is 750 by 1,333 pixels, batch 1, person confidence at least 0.30, and duplicate merging disabled. ViTPose-H uses 256 by 192 pixels, batch up to 8 crops before flip testing, flip testing enabled and a 1.2 box enlargement. Both models use TensorRT FP16 on the RTX 5060 Ti.
 
-To score PT32 and PT16, run `baseline_pytorch.py` once per backend through the shared GPU queue. It checks the #2496 batch-1 receipt, CUDA extension and checkpoint digests, DINO source revision, original media and the fixed scorer. Each image is detected once, all accepted boxes are passed to the existing ViTPose crop path, and the same detection rows feed both accuracy conditions. Both jobs disable TF32. The PT16 job uses CUDA autocast with FP32 deformable attention in DINO. Accuracy files are written to the backend directories with their prediction hashes.
+The PT16 queue run completed both accuracy conditions over the same 6,844 images and 26,276 eligible boxes. All frame keys and the prediction SHA-256 values match their receipts. The two paths retain identical box and score rows. Recall@0.50 is 96.69% and Recall@0.75 is 46.99%. DINO + ViTPose-H reaches coverage-inclusive mean OKS 0.76313, PCK@0.10 77.99% and joint coverage 98.24%. The PT32 accuracy job was cancelled under the 2026-11-25 scope decision. Previously measured PT32 candidate scores and parity records remain available. [Queue and prediction pins](comparison-evidence.json)
+
+The PT16 reproduction command uses the shared GPU queue. `baseline_pytorch.py` checks both checkpoint digests, the DINO CUDA extension and source revision, the original media and the fixed scorer. It uses the earlier #2496 batch-1 receipt to identify assets and settings. Each image is detected once and the existing ViTPose crop path processes every accepted box. The run uses CUDA FP16 autocast, FP32 deformable attention in DINO, and IEEE precision for FP32 matmul and convolution. The CLI writes the detection-only and joint prediction and score artifacts with their hashes.
 
 ```bash
 run=knowledge/runs/run-meiji-player-model-comparison
 media=data/tennis_multiview/processed/meiji_4cam/benchmarks
 evidence="$run/comparison-evidence.json"
 
-# Repeat for backend=pt16. Enqueue this command with resource all.
-backend=pt32
-speed_receipt_sha=$(jq -er --arg backend "$backend" \
-  '.conditions[] | select(.model_id == "dino-swin-l-vitpose-h" and .backend == $backend) | .timing.sha256' "$evidence")
+# Enqueue this command with resource all.
+speed_receipt_sha=$(jq -er \
+  '.conditions[] | select(.model_id == "dino-swin-l-vitpose-h" and .backend == "pt16") | .historical_timing.sha256' "$evidence")
 env PYTHONPATH=. OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
   TENNIS_LAB_DINO_EXTENSION="$TENNIS_LAB_DINO_EXTENSION" \
   .venv/bin/python -B -u "$run/baseline_pytorch.py" \
-  --backend "$backend" --benchmark "$media/multiview-player-evaluation-v1" \
-  --source "$media/multiview-v1" --output outputs/player-model-comparison \
+  --backend pt16 --benchmark "$media/multiview-player-evaluation-v1" \
+  --source "$media/multiview-v1" --output "$BASELINE_REPRO_OUTPUT" \
   --manifest-sha256 "$(jq -er '.evaluation.sha256' "$evidence")" \
   --scorer-commit "$(jq -er '.evaluation.scorer_commit' "$evidence")" \
   --speed-root "$PERSON_SPEED_ROOT" --external-assets "$PERSON_EXTERNAL_ASSETS" \
@@ -44,15 +45,17 @@ env PYTHONPATH=. OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
   --speed-receipt-sha256 "$speed_receipt_sha"
 ```
 
-`PERSON_SPEED_ROOT` contains #2496's `inputs` and `results` directories. `PERSON_EXTERNAL_ASSETS` contains its pinned DINO checkout. The CUDA extension path must match the receipt. The CLI accepts `--check-assets` for a CPU check of these pins before submitting the job.
+`PERSON_SPEED_ROOT` is #2496's initial `person-model-speed-baseline-v1` directory containing `inputs` and `results`. `PERSON_EXTERNAL_ASSETS` contains its pinned DINO checkout. The CUDA extension path must match the receipt. Use a fresh directory for `BASELINE_REPRO_OUTPUT`. The CLI accepts `--check-assets` for a CPU check of these pins before submitting the job.
 
 ## Accuracy and speed snapshot
 
 The [condition table](conditions.csv) covers the 30 candidate and six baseline conditions. Full-cohort results include RF-DETR-L at PT32/PT16/TRT16 and the four ECDet weights at PT32/PT16. ECDet-L O365 has 98.19% Recall@0.50 in both PyTorch conditions. The ECDet-L COCO TRT16 attempt has 74.68% Recall@0.50 and failed PT32 parity. At score 0.25, only 66.40% of boxes matched in both directions and absolute score error P95 was 0.313. The three RF-DETR-2XL rows record the user's license exclusion. The table keeps each model's inference-time cutoff and includes Recall@0.50 with a common extra cutoff of score 0.50.
 
-The #2496 speed manifest has 96 ordered native BGR images. All image IDs, native shapes and file hashes were checked against the fixed evaluation cohort. The speed record now covers all six batch-1 DINO and DINO + ViTPose-H conditions. DINO PT32 and PT16 measured median stage wall times of 289.97 ms/image and 167.68 ms/image, with sampled NVML peak increases of 2,309 MiB and 2,406 MiB. The joint PT32 case measured 590.33 ms/image (P95 890.03) and 4,730 MiB. DINO TRT16 and joint PT16/TRT16 failed the shared PT32 parity gate. The joint PT16 replay over 96 IDs had two missing and two extra detection rows, with a matched joint error of 0.125 px P95 and 30.64 px maximum. Their speed reports have no eligible timing aggregates. Batch 2 has the same pass/fail split and uses the separate `*-b2` reports in the #2496 output tree.
+Current speed uses #2497's synchronized harness on 96 ordered native BGR images. All image IDs, native shapes and file hashes were checked against the fixed evaluation cohort. At image batch 1, DINO PT16 measured stage wall P50/P95 165.69/170.71 ms/image and 2,406 MiB of NVML peak increase. DINO TRT16 measured 94.79/101.53 ms/image and 984 MiB with the same plan used by the archived accuracy condition. Both report `PT32未計測` for parity. The 22 synchronized baseline cases include DINO, standalone ViTPose-H and body recovery. The joint DINO + ViTPose-H workloads remain pending for PT16 and TRT16. [Synchronized baseline records](../run-person-model-speed-low-precision/README.md)
 
-Pareto assessment minimizes batch-1 stage wall P50 and maximizes Recall@0.50 for detection or coverage-inclusive mean OKS for detection plus pose. At this snapshot, paired conditions with qualifying speed and accuracy are still pending. The comparison command produces a plot per workload as qualifying points arrive. [Artifact and manifest pins](comparison-evidence.json)
+The initial speed and parity results remain in the historical receipts. The initial PT32 stage wall P50 was 289.97 ms/image for DINO and 590.33 ms/image for DINO + ViTPose-H. The synchronized harness measures through device synchronization after the adapter returns. The provisional comparison uses timing under that boundary and records the earlier receipt hashes for traceability. [Initial baseline records](../run-person-model-speed-baseline/README.md)
+
+Pareto assessment minimizes batch-1 stage wall P50 and maximizes Recall@0.50 for detection or coverage-inclusive mean OKS for detection plus pose. So far the two DINO detection conditions have both a fixed-cohort score and a synchronized speed result. Candidate speed runs and the joint baseline are pending. The comparison command can render a plot per workload once the comparisons are ready. [Artifact, manifest and timing-schedule pins](comparison-evidence.json)
 
 The [RF-DETR-L accuracy record](../run-meiji-rfdetr-large-accuracy/results.json) contains the complete accuracy, candidate-versus-PT32 parity and box-margin sensitivity results. [RF-DETR licensing and reproduction](rfdetr.md) · [EdgeCrafter evidence](EDGECRAFTER.md) · [RT-DETRv4 evidence](rtdetrv4.md)
 
@@ -70,7 +73,7 @@ artifacts="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 media=data/tennis_multiview/processed/meiji_4cam/benchmarks
 PYTHONPATH=. .venv/bin/python -B "$run/compare_conditions.py" \
   --artifacts "$artifacts" --evidence "$run/comparison-evidence.json" \
-  --output outputs/player-model-comparison/comparison
+  --output outputs/player-model-comparison/comparison-synchronized --tables-only
 OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 PYTHONPATH=. \
   .venv/bin/python -B "$run/render_comparison.py" \
   --artifacts "$artifacts" --evidence "$run/comparison-evidence.json" \
@@ -97,11 +100,11 @@ The ECPose-L TRT16 plan and B=1/B=2 smoke receipts were verified with the same e
 
 The recipe tests use the existing pipeline runtime and component store on CPU. A fake network produces two differently placed people, an empty frame and a trailing partial batch. The actual decoder and compatibility components must preserve source-pixel coordinates, the shared frame boundaries and detection rows through persisted artifacts, with one inference pass. The active graph must keep appearance, tracking and body recovery on their existing input contracts. The tests reject a different recipe or decoding policy in the cache and verify prior standard publication and node identities with the archived FP32 fixture. The small fixture requires no weights or GPU. Run the component tests and the archived-cache integration test separately and measure their durations.
 
-## Downstream multiview validation
+## Downstream constraints
 
-The #1739 validation depends on the integrated #2449, #2469, #2461 and #2470 work. The first stage in #2449 checks `detector=dino`, requires an empty detection dependency map, and requires a pose dependency named `detections` pointing to that exact DINO artifact. The last stage also checks the exact observation references and pose dependency. The ECPose views bind to a common ECPose producer. The downstream readers need an explicit ECPose observation route that verifies both views against the same producer and keeps the existing DINO lineage check. [3D candidate input gates](https://github.com/Motoki0705/tennis-lab/blob/bb9f36ccde8f6f89b7a3e5a4ab5f6a7288424ada/src/tennis_scene/multiview_pose/inputs.py#L195) · [Scene assembly input gates](https://github.com/Motoki0705/tennis-lab/blob/4d2773a05923916e84123f78a38da3665d826af4/src/tennis_scene/multiview_scene/inputs.py#L353)
+ECPose is an opt-in scene recipe and can be used for 2D comparison. The #1739 3D path explicitly rejects its artifacts. The first stage in #2449 checks `detector=dino`, requires an empty detection dependency map, and requires a pose dependency named `detections` pointing to that exact DINO artifact. The scene assembly stage also verifies the exact observation references and pose dependency. The ECPose views depend on a shared producer. Adopting ECPose for #1739 will require an approved change to the downstream readers that verifies both views against the ECPose producer. [3D candidate input gates](https://github.com/Motoki0705/tennis-lab/blob/bb9f36ccde8f6f89b7a3e5a4ab5f6a7288424ada/src/tennis_scene/multiview_pose/inputs.py#L195) · [Scene assembly input gates](https://github.com/Motoki0705/tennis-lab/blob/4d2773a05923916e84123f78a38da3665d826af4/src/tennis_scene/multiview_scene/inputs.py#L353)
 
-For the comparison, reuse the v1 camera matrices, court-side decision and ball input. Run the 3D candidates, tracking and placement on the original contiguous camera frames in a separate ECPose store. Check both players per side, measured 3D joint coverage, track/source row lineage and valid body placement against the DINO control. Use the pinned evaluation frame indices for the coverage comparison.
+When that route is enabled, validate it with the same v1 camera matrices, court-side decision and ball input. Check two players per side, measured 3D joint coverage, track and source-row lineage, and valid body placement against the DINO control.
 
 ## Test design
 

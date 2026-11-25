@@ -1,4 +1,4 @@
-"""Score DINO and DINO plus ViTPose-H on the fixed Meiji PyTorch conditions."""
+"""Score DINO and DINO plus ViTPose-H on the fixed Meiji PT16 condition."""
 
 from __future__ import annotations
 
@@ -153,7 +153,7 @@ def main() -> None:
         "scorer-commit",
     ):
         parser.add_argument(f"--{name}", required=True)
-    parser.add_argument("--backend", required=True, choices=("pt32", "pt16"))
+    parser.add_argument("--backend", required=True, choices=("pt16",))
     parser.add_argument("--check-assets", action="store_true")
     args = parser.parse_args()
     manifest = load_manifest(args.benchmark, expected_sha256=args.manifest_sha256)
@@ -197,13 +197,12 @@ def main() -> None:
     references = load_reference_frames(
         args.benchmark, expected_sha256=args.manifest_sha256
     )
-    precision = "fp16" if args.backend == "pt16" else "fp32"
     det, pose = config.runtime.dino_detector, config.runtime.vitpose
     detector = DinoPersonDetector(
         config.dino_checkpoint,
         config.dino_repository,
         device=DEVICE,
-        precision=precision,
+        precision="fp16",
         confidence=det.confidence,
         short_side=det.short_side,
         max_long_side=det.max_long_side,
@@ -211,7 +210,7 @@ def main() -> None:
     estimator = ViTPosePose2D(
         config.vitpose_checkpoint,
         device=DEVICE,
-        precision=precision,
+        precision="fp16",
         flip_test=pose.flip_test,
         batch_size=provenance["speed_case"]["settings"]["pose_crop_batch"],
         head_config=pose.head,

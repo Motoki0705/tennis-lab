@@ -9,21 +9,40 @@
   "speed_input": {
     "id": "meiji_4cam/person-model-speed-v1",
     "path": "parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs/manifest.json",
-    "sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62"
+    "sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+    "timing_protocol": {
+      "path": "knowledge/runs/run-person-model-speed-baseline/timing-protocol.json",
+      "sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+    },
+    "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+    "baseline_measurement_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6"
   },
   "conditions": [
     {
       "model_id": "dino-swin-l",
       "backend": "pt16",
-      "timing": {
+      "historical_timing": {
         "path": "parent-2492-issue-2496-primary/person-model-speed-baseline-v1/results/dino/PT16-b1/report.json",
         "sha256": "3d2038ad810531265621cbd77d37b80c310cf9fa3d073a5832df38a05255e996"
+      },
+      "accuracy": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l/pt16/accuracy.json",
+        "sha256": "e6abb41e9f78ac4fc22282d6c846822e2325287dbd6e08eee90b48dd90a980cb"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l/pt16/predictions.jsonl",
+        "sha256": "1c6134680738a81906ba425e082c415d2364e5969024068b3112a20026f3f22e"
+      },
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "timing": {
+        "path": "parent-2492-issue-2496-primary/person-model-speed-low-precision/results/dino/PT16-b1/report.json",
+        "sha256": "5ca29b2c5d56f346075967772a58821efa23ddf7bef9e7e96a7cbbe67335707d"
       }
     },
     {
       "model_id": "dino-swin-l",
       "backend": "pt32",
-      "timing": {
+      "historical_timing": {
         "path": "parent-2492-issue-2496-primary/person-model-speed-baseline-v1/results/dino/PT32-b1/report.json",
         "sha256": "b0cd3485605bd8712bad9f85846bd30fa0b8921ede6e89f52631385f3b11c851"
       }
@@ -39,23 +58,37 @@
         "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l/trt16/predictions.jsonl",
         "sha256": "71b43453c7c49d1372197369c7274aa94da13c82a8344e5e74fb0f387cff992d"
       },
-      "timing": {
+      "historical_timing": {
         "path": "parent-2492-issue-2496-primary/person-model-speed-baseline-v1/results/dino/TRT16-b1/report.json",
         "sha256": "b82775a31c3df29e1f5eab4963a6d1a401af63a9038e4d80497b976aaa8b8f90"
+      },
+      "timing": {
+        "path": "parent-2492-issue-2496-primary/person-model-speed-low-precision/results/dino/TRT16-b1/report.json",
+        "sha256": "f14870d5ebdfef85e328de5be5d2a0280086e0073c4284d5d1a8f85664f0afc0"
       }
     },
     {
       "model_id": "dino-swin-l-vitpose-h",
       "backend": "pt16",
-      "timing": {
+      "historical_timing": {
         "path": "parent-2492-issue-2496-primary/person-model-speed-baseline-v1/results/dino-vitpose/PT16-b1/report.json",
         "sha256": "49cb2ab434fea1c318145911a849b24fb1bed9aea7779955d68005d035c2b9ea"
-      }
+      },
+      "accuracy": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l-vitpose-h/pt16/accuracy.json",
+        "sha256": "1574b82488c7b6b65b7ab5f1c759cfaf2a22c55c0a71bfb72bb65c9f964caffc"
+      },
+      "predictions": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l-vitpose-h/pt16/predictions.jsonl",
+        "sha256": "62c76164afad4a8e2181cdfc93f854b3e67e7dba3e7faee811bbfa4cd9aa3e2f"
+      },
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "speed_reason": "No joint workload in the synchronized #2497 run"
     },
     {
       "model_id": "dino-swin-l-vitpose-h",
       "backend": "pt32",
-      "timing": {
+      "historical_timing": {
         "path": "parent-2492-issue-2496-primary/person-model-speed-baseline-v1/results/dino-vitpose/PT32-b1/report.json",
         "sha256": "06721676b540eb7fd205c33bdd1bc25c8161e421da2338904b3da2a9351ada90"
       }
@@ -71,10 +104,11 @@
         "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l-vitpose-h/trt16/predictions.jsonl",
         "sha256": "3b8f03e27c7a9f2f15327ec4788841b65d4eb977a58cdb4a12ab3f0034cb4dae"
       },
-      "timing": {
+      "historical_timing": {
         "path": "parent-2492-issue-2496-primary/person-model-speed-baseline-v1/results/dino-vitpose/TRT16-b1/report.json",
         "sha256": "88c01b11b9ae94761e2df4f62cb39e8926c5129945a3126b43f6593a0cb3659a"
-      }
+      },
+      "speed_reason": "No joint workload in the synchronized #2497 run"
     },
     {
       "model_id": "ecdet-l-coco",
@@ -240,5 +274,21 @@
         "sha256": "fc94b4ab47216d9799242bb3d82f44d97bf35bc248a89ea627bedad9dec1b11a"
       }
     }
-  ]
+  ],
+  "baseline_accuracy_jobs": {
+    "pt16": {
+      "job_id": "0-8204468076215471927_2026-11-24T14-52-03-784528072Z_2687337_i2487-current-dino-vitpose-pt16-cohort.job",
+      "status": "done",
+      "execution_commit": "913f2c27dae88e57343988aa2523e7aa86a08f60",
+      "repro": {
+        "path": ".training_queue/repro/0-8204468076215471927_2026-11-24T14-52-03-784528072Z_2687337_i2487-current-dino-vitpose-pt16-cohort/run.json",
+        "sha256": "f1e3a122f79b09c766b2421d3fdddb302373b290dc2b7adc90f99ee47a85b53e"
+      }
+    },
+    "pt32": {
+      "job_id": "0-8204468076511125596_2026-11-24T14-52-03-488874403Z_2687268_i2487-current-dino-vitpose-pt32-cohort.job",
+      "status": "cancelled",
+      "reason": "対象外（ユーザー判断 2026-11-25）"
+    }
+  }
 }
