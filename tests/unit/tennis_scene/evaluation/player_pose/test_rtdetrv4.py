@@ -339,6 +339,63 @@ def test_accuracy_receipt_records_unmeasured_parity(adapter, tmp_path, monkeypat
     assert receipt["parity_not_evaluated_reason"] == PARITY_REASON
 
 
+def test_speed_uses_and_records_the_dino_host_threads(adapter, tmp_path, monkeypatch):
+    threads = {"host_threads": 2, "opencv_threads": 16}
+    monkeypatch.setattr(
+        adapter.torch,
+        "set_num_threads",
+        lambda count: threads.update(host_threads=count),
+    )
+    monkeypatch.setattr(
+        adapter.torch, "get_num_threads", lambda: threads["host_threads"]
+    )
+    monkeypatch.setattr(
+        adapter.cv2, "setNumThreads", lambda count: threads.update(opencv_threads=count)
+    )
+    monkeypatch.setattr(adapter.cv2, "getNumThreads", lambda: threads["opencv_threads"])
+
+    schedule = SimpleNamespace(timed_ids_sha256="c" * 64, protocol=object())
+    input_sha = "a" * 64
+
+    def load_input(_path):
+        assert threads == {"host_threads": 4, "opencv_threads": 1}
+        return SimpleNamespace(
+            sha256=input_sha,
+            manifest={"id": "fixture"},
+            pins=SimpleNamespace(timing_sha256="b" * 64, schedule=lambda *_: schedule),
+        )
+
+    batches = object()
+    baseline = SimpleNamespace(InputSet=load_input, inputs=lambda *_: batches)
+    monkeypatch.setattr(adapter, "import_module", lambda _: baseline)
+    monkeypatch.setattr(adapter, "benchmark_adapter", lambda *_: object())
+
+    def time_case(case, actual_batches, _adapters, **kwargs):
+        assert actual_batches is batches
+        assert kwargs["protocol"] is schedule.protocol
+        assert kwargs["parity_not_evaluated_reason"] == PARITY_REASON
+        return SimpleNamespace(
+            status="ok", failure=None, to_dict=lambda: {"settings": case.settings}
+        )
+
+    monkeypatch.setattr(adapter, "benchmark", time_case)
+    args = SimpleNamespace(
+        backend=adapter.Backend.PT16,
+        batch_size=2,
+        conversion=[],
+        engine_dir=None,
+        inputs=tmp_path,
+        inputs_sha256=input_sha,
+        output=tmp_path,
+        parity_not_evaluated_reason=PARITY_REASON,
+    )
+    assets = adapter.Assets("rtdetrv4-l", tmp_path, tmp_path / "weights")
+    adapter._speed(args, assets, torch.device("cpu"))
+
+    settings = json.loads((tmp_path / "speed-b2.json").read_text())["settings"]
+    assert (settings["host_threads"], settings["opencv_threads"]) == (4, 1)
+
+
 def test_diagnostic_keeps_prepared_image_order_in_both_batch_sizes(adapter):
     module = import_module("rtdetrv4_diagnose")
     keys = (FrameKey("clip-a", "cam0", 2), FrameKey("clip-b", "cam1", 8))

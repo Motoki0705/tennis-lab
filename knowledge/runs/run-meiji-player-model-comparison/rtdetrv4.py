@@ -14,6 +14,7 @@ from pathlib import Path
 from tempfile import TemporaryDirectory
 from typing import Protocol, TypeAlias, TypeVar
 
+import cv2
 import numpy as np
 import torch
 from numpy.typing import NDArray
@@ -501,6 +502,9 @@ def _speed(args: argparse.Namespace, assets: Assets, device: torch.device) -> No
     path = args.output / f"speed-b{args.batch_size}.json"
     if path.exists():
         raise FileExistsError(f"Speed output already exists at {path}")
+    # Match the host thread settings used by the #2496 DINO baseline.
+    torch.set_num_threads(4)
+    cv2.setNumThreads(1)
     # Use #2496's loader and batching, including the published input order and hashes.
     baseline = import_module("run")
     fixed = baseline.InputSet(args.inputs)
@@ -528,6 +532,7 @@ def _speed(args: argparse.Namespace, assets: Assets, device: torch.device) -> No
             "timing_protocol_sha256": fixed.pins.timing_sha256,
             "timed_input_ids_sha256": schedule.timed_ids_sha256,
             "host_threads": torch.get_num_threads(),
+            "opencv_threads": cv2.getNumThreads(),
             "num_queries": NUM_QUERIES,
             "postprocessor": "official PyTorch FP32 sigmoid/global top-k",
             "pytorch_autocast_fp16": args.backend is Backend.PT16,
