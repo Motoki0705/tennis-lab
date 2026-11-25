@@ -13,9 +13,10 @@
 
 | 場所 | 責務 |
 |---|---|
-| `configuration.py` / `configs/` | axial、single_object、学習・生成の厳密な設定検証 |
-| `generate_dataset/` | ACCAD/AMASSのSMPL-Hモーションによる1人の動作、カメラ投影、保存、サンプルGIF |
-| `data/` | multiview Dataset、augmentation、固定データとchunk生成のDataModule |
+| `configuration.py` / `configs/` | axial・単眼GVHMR、single_object、学習・生成の厳密な設定検証 |
+| `generate_dataset/` | ACCAD/AMASSのSMPL-Hモーションによる1人の動作、fixed/broadcast/mixedカメラ投影、保存、サンプルGIF |
+| `geometry/` | 単眼合成正方形bbox（`bbx_xys`）生成・摂動、CLIFF特徴、カメラ内外パラメータ特徴化、コート3D COCO17変換 |
+| `data/` | multiview / monocular Dataset、augmentation（校正誤差摂動を含む）、固定データとchunk生成のDataModule |
 | `models/` | axial本体、必要なhead等の部品、discriminator |
 | `model_io/` | バッチ・出力契約、モデルとadapterの構築、checkpoint検証 |
 | `training/` | 通常学習・GAN・損失・指標・runner |
