@@ -207,6 +207,17 @@ bash "$run/edgecrafter_run.sh" "$model" "$manifest_sha" "$engine" "$base_onnx_sh
 
 To run ECDet-L COCO with the diagnosed plan, use the `engine_directory` and `base_onnx.sha256` recorded for that model and start with the queue command. Separate ONNX conversion and plan build timings are unavailable for that diagnostic.
 
+All four ECDet jobs completed at `3acc97cbb78e6018a424e426bc76451d74933967`. Rescoring the 6,844 prediction rows for each model reproduced the saved results for all 26,276 eligible boxes. Each model's accuracy and both speed reports reference the same verified plan SHA-256. The eight speed cases reproduced their summaries from 2,400 timing samples and the fixed input order. [Results, plan checksums and raw reports](edgecrafter-trt16-fp32attn-results.json)
+
+| Model | Recall@0.50 PT16 / original TRT16 / FP32 attention (%) | Recall@0.75 PT16 / original TRT16 / FP32 attention (%) | FP32 attention batch 1 wall P50 / P95 (ms/image) | FP32 attention batch 2 wall P50 / P95 (ms/image) | Batch 2 images/s | NVML peak increase B1 / B2 (MiB) |
+|---|---:|---:|---:|---:|---:|---:|
+| ECDet-L COCO | 97.61 / 64.88 / 83.05 | 41.60 / 17.85 / 33.47 | 45.78 / 97.98 | 30.19 / 43.97 | 30.20 | 172 / 172 |
+| ECDet-X COCO | 97.58 / 70.29 / 78.25 | 39.79 / 21.22 / 27.16 | 32.97 / 36.94 | 29.84 / 33.11 | 32.99 | 210 / 210 |
+| ECDet-L O365 | 98.19 / 63.02 / 81.04 | 44.88 / 21.53 / 32.56 | 31.48 / 34.10 | 29.34 / 35.74 | 32.86 | 172 / 172 |
+| ECDet-X O365 | 97.97 / 65.88 / 45.46 | 46.62 / 23.87 / 16.01 | 32.11 / 34.74 | 30.07 / 31.77 | 33.01 | 210 / 210 |
+
+The FP32 attention plans left a batch 1 Recall@0.50 gap of 14.56–52.51 percentage points to saved PT16. Both L weights and X COCO improved over their original TRT16 plans. X O365 lost 20.43 points. The cause of the remaining loss is unresolved. ECDet-L COCO's batch 1 preprocessing P95 was 82.62 ms in this run. The other timing stages and per-block medians are in the result record. Batch 2 cohort accuracy is unmeasured. [Accuracy and timing details](edgecrafter-trt16-fp32attn-results.json)
+
 ## CPU integration check
 
 On the adapter revision `bf9cf828f6508c48da90e220743e06b330be47ff`, the detached local job `20261124T113947Z_a94715bdcac9_edgecrafter-assets-and-cpu-smoke` exited successfully. All six downloaded weights matched the official release byte sizes and digests. A two-image CPU batch used the original frames 0 and 2 from `video_000/clip_003`, `cam0`. ECPose used margin `0.10` for this contract check. Each model wrote `outputs/player-model-comparison/<model_id>/smoke-pt32.json` in the worker worktree. [CPU result paths and checksums](edgecrafter-cpu-smoke.json)

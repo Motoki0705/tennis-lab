@@ -1,0 +1,2605 @@
+{
+  "artifact_root": ".worktree-outputs",
+  "batch_order": {
+    "accuracy_image_batch_sizes_evaluated": [
+      1
+    ],
+    "diagnosis": {
+      "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt-diagnosis-v3.json",
+      "sha256": "edd95e47ce7058f4d9b49edeec6df31e0622b6d1d96167ac51a8d10f2744b874"
+    },
+    "matches": {
+      "candidate_rows": 160,
+      "matches_at_iou_0_50": 122,
+      "reference_rows": 158
+    },
+    "model_id": "ecdet-l-coco",
+    "plan_reused_for_accuracy_and_speed": true
+  },
+  "condition": "trt16-fp32attn",
+  "evaluation": {
+    "batch_size": 1,
+    "eligible_boxes": 26276,
+    "id": "meiji_4cam/multiview-player-evaluation-v1",
+    "images": 6844,
+    "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364",
+    "sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580"
+  },
+  "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+  "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+  "measurement_commit": "3acc97cbb78e6018a424e426bc76451d74933967",
+  "models": {
+    "ecdet-l-coco": {
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16-fp32attn/metrics.json",
+        "sha256": "d08d15d8a6bdf740608c3e6ad7d154f18bb4d75dba9af4d895918a6e0130ea49"
+      },
+      "accuracy_recheck": {
+        "metrics_sha256": "d08d15d8a6bdf740608c3e6ad7d154f18bb4d75dba9af4d895918a6e0130ea49",
+        "model": "ecdet-l-coco",
+        "predictions_sha256": "bf7d522a88ead74d8dcae629d764f6022693d2c9d980de1ce2dccfcfbfab8848",
+        "reader_commit": "edeea50b43ea990fcae8dd2b0e1173948d36aa6d",
+        "result": "full_score_equal",
+        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+      },
+      "accuracy_summary": {
+        "matched_iou": {
+          "count": 21821,
+          "mean": 0.7246136288638959,
+          "median": 0.7259572992224144,
+          "p95": 0.8751674047353496
+        },
+        "recall_50": 0.8304536459126198,
+        "recall_75": 0.3347160907291825,
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.6921525346323641,
+            "0.75": 0.2347008677119805
+          },
+          "0.5": {
+            "0.50": 0.6297001065611204,
+            "0.75": 0.2124372050540417
+          },
+          "0.75": {
+            "0.50": 0.3360100471913533,
+            "0.75": 0.1183970162886284
+          }
+        },
+        "small_recall_50": 0.9504126031507877,
+        "xyxy_error_px": {
+          "x_max": {
+            "absolute": {
+              "count": 21821,
+              "mean": 4.889579668370497,
+              "median": 4.2009153199905995,
+              "p95": 11.728961011954425
+            },
+            "signed": {
+              "count": 21821,
+              "mean": 4.1135579892557566,
+              "median": 3.922551904220427,
+              "p95": 11.447672641994927
+            }
+          },
+          "x_min": {
+            "absolute": {
+              "count": 21821,
+              "mean": 4.528274733436473,
+              "median": 3.484700375682337,
+              "p95": 12.782027759331413
+            },
+            "signed": {
+              "count": 21821,
+              "mean": -3.1110619283490237,
+              "median": -2.8577200580996305,
+              "p95": 4.399946939973461
+            }
+          },
+          "y_max": {
+            "absolute": {
+              "count": 21821,
+              "mean": 4.3321373421928,
+              "median": 3.1273127287649913,
+              "p95": 12.523858126008292
+            },
+            "signed": {
+              "count": 21821,
+              "mean": -0.23727477997557514,
+              "median": 0.5039034921487655,
+              "p95": 7.839655391239376
+            }
+          },
+          "y_min": {
+            "absolute": {
+              "count": 21821,
+              "mean": 3.153455306221679,
+              "median": 2.137945064849532,
+              "p95": 8.7602887185393
+            },
+            "signed": {
+              "count": 21821,
+              "mean": 0.1495386451077292,
+              "median": -0.3934232625307459,
+              "p95": 7.141458405242929
+            }
+          }
+        }
+      },
+      "batch_1_recall_50_delta_pp_vs_original_trt16": 18.16867103059826,
+      "batch_1_recall_50_delta_pp_vs_pt16": -14.560815953722027,
+      "checkout_commit": "3acc97cbb78e6018a424e426bc76451d74933967",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecdet-l-coco 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580 outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine fa8b643c82da715aee5df2dc556a19ecdf73b9729af1aba938607c564a484c2a && bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-l-coco /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 trt16-fp32attn outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine fa8b643c82da715aee5df2dc556a19ecdf73b9729af1aba938607c564a484c2a",
+      "condition": "trt16-fp32attn",
+      "conversion": [],
+      "disposition": "measured",
+      "engine_files": {
+        "engine.json": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine/engine.json",
+          "sha256": "0547cb98fe48f199afa439bb0e8d782e3774803d514e5a7d27f270ea1d69a13b"
+        },
+        "engine.plan": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine/engine.plan",
+          "sha256": "da7991d880b75f2da28882825865a79e190229be0e7287bf5240cf89fb5a0279"
+        },
+        "export.json": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine/export.json",
+          "sha256": "9d85bcf57798062b3a171d8ad3dc6f25dc55111f55011d8b24c1231c5bca7f15"
+        },
+        "model.onnx": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine/model.onnx",
+          "sha256": "60a6c044b4ad70495edb03b6c7dbce3495cb92b36316ad31a84da5ed126a04c5"
+        }
+      },
+      "engine_profiles": {
+        "pixels": {
+          "maximum": [
+            2,
+            3,
+            640,
+            640
+          ],
+          "minimum": [
+            1,
+            3,
+            640,
+            640
+          ],
+          "optimum": [
+            1,
+            3,
+            640,
+            640
+          ]
+        }
+      },
+      "job_id": "0-8204383228858026608_2026-11-25T14-26-11-141973391Z_1285078_i2487-ecdet-l-coco-trt16-fp32attn.job",
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16-fp32attn/predictions.jsonl",
+        "sha256": "bf7d522a88ead74d8dcae629d764f6022693d2c9d980de1ce2dccfcfbfab8848"
+      },
+      "queue_log": {
+        "path": ".training_queue/logs/0-8204383228858026608_2026-11-25T14-26-11-141973391Z_1285078_i2487-ecdet-l-coco-trt16-fp32attn.log",
+        "sha256": "a165ce42167542788672c5f1550f08a020c2992d819cd31fe86193207a33137c"
+      },
+      "references": {
+        "original_trt16": {
+          "metrics": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16-trace2/metrics.json",
+            "sha256": "d204bebd599028dbab3cdd0ba3bea9a54234a460c07349f809b23572770be98f"
+          },
+          "plan_sha256": "22ef7679387090d5bec8346f2b070ce389062f0a22d9c63e3fbf2d3ce8e6de21",
+          "quality": {
+            "matched_iou": {
+              "count": 17047,
+              "mean": 0.6881923187985467,
+              "median": 0.6857855522639231,
+              "p95": 0.8524686940290978
+            },
+            "recall_50": 0.6487669356066372,
+            "recall_75": 0.17852793423656568,
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.46795554878977014,
+                "0.75": 0.12323032425026641
+              },
+              "0.5": {
+                "0.50": 0.32249961942456995,
+                "0.75": 0.09236565687319227
+              },
+              "0.75": {
+                "0.50": 0.12003349063784442,
+                "0.75": 0.03760085248896331
+              }
+            },
+            "small_recall_50": 0.8695423855963991,
+            "xyxy_error_px": {
+              "x_max": {
+                "absolute": {
+                  "count": 17047,
+                  "mean": 4.917612844991053,
+                  "median": 4.0242039114950785,
+                  "p95": 12.600206365553856
+                },
+                "signed": {
+                  "count": 17047,
+                  "mean": 4.133276275798382,
+                  "median": 3.7562341885374053,
+                  "p95": 12.38700823657601
+                }
+              },
+              "x_min": {
+                "absolute": {
+                  "count": 17047,
+                  "mean": 4.165617380671141,
+                  "median": 3.1968818667203323,
+                  "p95": 11.621013856731357
+                },
+                "signed": {
+                  "count": 17047,
+                  "mean": -2.771359212004205,
+                  "median": -2.4218588675828414,
+                  "p95": 4.366267364257508
+                }
+              },
+              "y_max": {
+                "absolute": {
+                  "count": 17047,
+                  "mean": 5.933711979826267,
+                  "median": 3.5416702627327368,
+                  "p95": 19.300885549752735
+                },
+                "signed": {
+                  "count": 17047,
+                  "mean": -2.7512373599562565,
+                  "median": -0.7625558648107358,
+                  "p95": 7.33919200284639
+                }
+              },
+              "y_min": {
+                "absolute": {
+                  "count": 17047,
+                  "mean": 4.872345797019653,
+                  "median": 2.7204506204220706,
+                  "p95": 17.3099728670329
+                },
+                "signed": {
+                  "count": 17047,
+                  "mean": 1.9626282677915325,
+                  "median": 0.31796329068231444,
+                  "p95": 16.350080302140594
+                }
+              }
+            }
+          },
+          "suspected_issue": "TensorRT conversion, potentially FP16 decoder attention",
+          "timing_batch_1": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/speed-13e508cb7/trt16/speed-b1.json",
+            "sha256": "06e55fd5fae5d5f69ad03c3087448f2e78e0b594d5cb154232ae78b31146bee2"
+          }
+        },
+        "pt16": {
+          "metrics": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/pt16/metrics.scorer-0d4bf0990.json",
+            "sha256": "a3510fba5aab2f2233a244ece7320546fd2cec887a9c64ed86e0d0cc7db6c5d7"
+          },
+          "quality": {
+            "matched_iou": {
+              "count": 25647,
+              "mean": 0.7306751259127009,
+              "median": 0.731999631845392,
+              "p95": 0.8823597114474594
+            },
+            "recall_50": 0.9760618054498401,
+            "recall_75": 0.4159689450449079,
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.9639595067742427,
+                "0.75": 0.36618967879433706
+              },
+              "0.5": {
+                "0.50": 0.9496879281473588,
+                "0.75": 0.3638681686710306
+              },
+              "0.75": {
+                "0.50": 0.6620109605723854,
+                "0.75": 0.2798371137159385
+              }
+            },
+            "small_recall_50": 0.9636909227306827,
+            "xyxy_error_px": {
+              "x_max": {
+                "absolute": {
+                  "count": 25647,
+                  "mean": 5.7613709672030815,
+                  "median": 4.656108381724948,
+                  "p95": 15.780531424027764
+                },
+                "signed": {
+                  "count": 25647,
+                  "mean": 5.020095471010654,
+                  "median": 4.407421475436422,
+                  "p95": 15.600358512778627
+                }
+              },
+              "x_min": {
+                "absolute": {
+                  "count": 25647,
+                  "mean": 5.131437061174879,
+                  "median": 3.9420979579419964,
+                  "p95": 14.752039169729905
+                },
+                "signed": {
+                  "count": 25647,
+                  "mean": -3.966325507825358,
+                  "median": -3.4333229940922365,
+                  "p95": 3.873237478568542
+                }
+              },
+              "y_max": {
+                "absolute": {
+                  "count": 25647,
+                  "mean": 4.379875317372155,
+                  "median": 3.0690726962673693,
+                  "p95": 13.123134705908864
+                },
+                "signed": {
+                  "count": 25647,
+                  "mean": 0.4740837661271741,
+                  "median": 0.7076570522906422,
+                  "p95": 10.032605107735773
+                }
+              },
+              "y_min": {
+                "absolute": {
+                  "count": 25647,
+                  "mean": 3.0628270301030924,
+                  "median": 2.192099112869812,
+                  "p95": 8.521942341235874
+                },
+                "signed": {
+                  "count": 25647,
+                  "mean": -0.13306919115136417,
+                  "median": -0.37985543286990264,
+                  "p95": 6.568694415121658
+                }
+              }
+            }
+          },
+          "timing_batch_1": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+            "sha256": "a85694032912671862cacbf75b23694dd920e769af8996a221d8ee0aee358fe8"
+          }
+        }
+      },
+      "reproduction": {
+        "path": ".training_queue/repro/0-8204383228858026608_2026-11-25T14-26-11-141973391Z_1285078_i2487-ecdet-l-coco-trt16-fp32attn/repro.sh",
+        "sha256": "880ab96f8c5f1a41b227b1a49272e4fa28831f74ff7a9ac9e067fb5d49e3b5f6"
+      },
+      "reused_diagnostic_plan": true,
+      "speed_by_batch": {
+        "1": {
+          "batch_size": 1,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10095,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 599887872,
+          "nvml_peak_minus_before_load_bytes": 180355072,
+          "nvml_used_bytes": {
+            "after_cold_start": 599887872,
+            "after_load": 574722048,
+            "after_warmup": 599887872,
+            "before_load": 419532800,
+            "block_1": 599887872,
+            "block_2": 599887872,
+            "block_3": 599887872
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16-fp32attn/speed-13e508cb7-threads4-1/trt16/speed-b1.json",
+            "sha256": "a37cbbf33fa41217a87adacaae1d5eb292707f8a8a9a931c8d042b44e05b4f39"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 1368.776902,
+            "load": 2285.901418
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 2564.3758345120063,
+              "p50_ms": 0.3671485,
+              "p50_ms_per_item": 0.3671485,
+              "p95_ms": 0.5700157,
+              "p95_ms_per_item": 0.5700157,
+              "samples": 300,
+              "total_ms": 116.98753199999999
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 111.37553564908355,
+              "p50_ms": 7.6651855,
+              "p50_ms_per_item": 7.6651855,
+              "p95_ms": 16.00057695000001,
+              "p95_ms_per_item": 16.00057695000001,
+              "samples": 300,
+              "total_ms": 2693.5897389999986
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1003.2161437541856,
+              "p50_ms": 0.9545485,
+              "p50_ms_per_item": 0.9545485,
+              "p95_ms": 1.3795189000000005,
+              "p95_ms_per_item": 1.3795189000000005,
+              "samples": 300,
+              "total_ms": 299.0382499999999
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 112.39821616703918,
+              "p50_ms": 7.601664066314697,
+              "p50_ms_per_item": 7.601664066314697,
+              "p95_ms": 15.948755359649667,
+              "p95_ms_per_item": 15.948755359649667,
+              "samples": 300,
+              "total_ms": 2669.0815052986145
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 271.70989897815093,
+              "p50_ms": 3.2704969999999998,
+              "p50_ms_per_item": 3.2704969999999998,
+              "p95_ms": 6.604408550000001,
+              "p95_ms_per_item": 6.604408550000001,
+              "samples": 300,
+              "total_ms": 1104.1187719999998
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 27.73063310560287,
+              "p50_ms": 32.599306999999996,
+              "p50_ms_per_item": 32.599306999999996,
+              "p95_ms": 82.62397305,
+              "p95_ms_per_item": 82.62397305,
+              "samples": 300,
+              "total_ms": 10818.361011000003
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 19.853353349749767,
+              "p50_ms": 45.777245,
+              "p50_ms_per_item": 45.777245,
+              "p95_ms": 97.9778252,
+              "p95_ms_per_item": 97.9778252,
+              "samples": 300,
+              "total_ms": 15110.797391000006
+            }
+          },
+          "torch_peak_allocated_bytes": 5161472,
+          "torch_peak_reserved_bytes": 23068672,
+          "wall_p50_ms_per_image_by_block": [
+            39.821186999999995,
+            47.985691,
+            50.0576395
+          ]
+        },
+        "2": {
+          "batch_size": 2,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10374,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 599887872,
+          "nvml_peak_minus_before_load_bytes": 180355072,
+          "nvml_used_bytes": {
+            "after_cold_start": 599887872,
+            "after_load": 574722048,
+            "after_warmup": 599887872,
+            "before_load": 419532800,
+            "block_1": 599887872,
+            "block_2": 599887872,
+            "block_3": 599887872
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/trt16-fp32attn/speed-13e508cb7-threads4-1/trt16/speed-b2.json",
+            "sha256": "a2dca9c03dd608f0ca726efdbb7526a25cd61478cafbb2e1f2e50fe7e3e0b8d1"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 1517.202495,
+            "load": 2426.102181
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4220.849239369202,
+              "p50_ms": 0.423671,
+              "p50_ms_per_item": 0.2118355,
+              "p95_ms": 0.7728208000000001,
+              "p95_ms_per_item": 0.38641040000000004,
+              "samples": 300,
+              "total_ms": 142.15148799999994
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 179.47061577590475,
+              "p50_ms": 10.53426,
+              "p50_ms_per_item": 5.26713,
+              "p95_ms": 13.082765100000005,
+              "p95_ms_per_item": 6.5413825500000025,
+              "samples": 300,
+              "total_ms": 3343.1656619999985
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1457.5509210111225,
+              "p50_ms": 1.220119,
+              "p50_ms_per_item": 0.6100595,
+              "p95_ms": 2.1367264000000006,
+              "p95_ms_per_item": 1.0683632000000003,
+              "samples": 300,
+              "total_ms": 411.64942600000006
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 180.42953143289338,
+              "p50_ms": 10.482447624206543,
+              "p50_ms_per_item": 5.2412238121032715,
+              "p95_ms": 13.019459009170538,
+              "p95_ms_per_item": 6.509729504585269,
+              "samples": 300,
+              "total_ms": 3325.3979835510254
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 477.85720952163695,
+              "p50_ms": 3.4483615,
+              "p50_ms_per_item": 1.72418075,
+              "p95_ms": 8.101808250000003,
+              "p95_ms_per_item": 4.0509041250000015,
+              "samples": 300,
+              "total_ms": 1255.6052059999997
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 40.96021063064142,
+              "p50_ms": 44.654863000000006,
+              "p50_ms_per_item": 22.327431500000003,
+              "p95_ms": 65.27485585000001,
+              "p95_ms_per_item": 32.637427925000004,
+              "samples": 300,
+              "total_ms": 14648.362172999994
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 30.197770529101582,
+              "p50_ms": 60.3776995,
+              "p50_ms_per_item": 30.18884975,
+              "p95_ms": 87.93624895000002,
+              "p95_ms_per_item": 43.96812447500001,
+              "samples": 300,
+              "total_ms": 19869.016470000002
+            }
+          },
+          "torch_peak_allocated_bytes": 10320896,
+          "torch_peak_reserved_bytes": 23068672,
+          "wall_p50_ms_per_image_by_block": [
+            37.78913725,
+            29.802576000000002,
+            29.549673
+          ]
+        }
+      },
+      "weight_sha256": "60e48c51b33d70acf8e3a3faddbdb70b0876c64509b74cb623106cc7c31e85a1"
+    },
+    "ecdet-l-o365": {
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/metrics.json",
+        "sha256": "2dbe33f873134842ab9603b421289f9ecd96e062cdfc4846546b5259744d8f4d"
+      },
+      "accuracy_recheck": {
+        "metrics_sha256": "2dbe33f873134842ab9603b421289f9ecd96e062cdfc4846546b5259744d8f4d",
+        "model": "ecdet-l-o365",
+        "predictions_sha256": "67f9b68a01b573278b91a08d892b1523ed77cf7759292264abdd18cf30df7a65",
+        "reader_commit": "edeea50b43ea990fcae8dd2b0e1173948d36aa6d",
+        "result": "full_score_equal",
+        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+      },
+      "accuracy_summary": {
+        "matched_iou": {
+          "count": 21295,
+          "mean": 0.7249698468561685,
+          "median": 0.7259348795224216,
+          "p95": 0.8786497270679301
+        },
+        "recall_50": 0.8104353782919774,
+        "recall_75": 0.3255822804079769,
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.6367788095600548,
+            "0.75": 0.2248820216166844
+          },
+          "0.5": {
+            "0.50": 0.5951819150555641,
+            "0.75": 0.20969706195768
+          },
+          "0.75": {
+            "0.50": 0.38818693865124065,
+            "0.75": 0.14119348454863753
+          }
+        },
+        "small_recall_50": 0.9425356339084772,
+        "xyxy_error_px": {
+          "x_max": {
+            "absolute": {
+              "count": 21295,
+              "mean": 4.915244796551691,
+              "median": 4.091318022805922,
+              "p95": 11.763534204049504
+            },
+            "signed": {
+              "count": 21295,
+              "mean": 3.9636208524844427,
+              "median": 3.763252740707685,
+              "p95": 11.197386385438797
+            }
+          },
+          "x_min": {
+            "absolute": {
+              "count": 21295,
+              "mean": 4.315195897698975,
+              "median": 3.248569188825911,
+              "p95": 12.186146879133911
+            },
+            "signed": {
+              "count": 21295,
+              "mean": -2.82794391391473,
+              "median": -2.525889958256471,
+              "p95": 4.7247712942541575
+            }
+          },
+          "y_max": {
+            "absolute": {
+              "count": 21295,
+              "mean": 4.539032509718738,
+              "median": 3.103259742442617,
+              "p95": 13.174773838812644
+            },
+            "signed": {
+              "count": 21295,
+              "mean": 0.1907358695840673,
+              "median": 1.1741695044326548,
+              "p95": 8.476766154027704
+            }
+          },
+          "y_min": {
+            "absolute": {
+              "count": 21295,
+              "mean": 3.270064507222731,
+              "median": 2.1063182822139197,
+              "p95": 9.50241234662327
+            },
+            "signed": {
+              "count": 21295,
+              "mean": 0.22380904373218588,
+              "median": -0.545346717791972,
+              "p95": 7.862255680394637
+            }
+          }
+        }
+      },
+      "batch_1_recall_50_delta_pp_vs_original_trt16": 18.024052367179166,
+      "batch_1_recall_50_delta_pp_vs_pt16": -17.148728878063636,
+      "checkout_commit": "3acc97cbb78e6018a424e426bc76451d74933967",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecdet-l-o365 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580 outputs/player-model-comparison/ecdet-l-o365/trt16-fp32attn/engine c1b4aee5b46e8486ea71b7fd234ed24a126ebb3607d199f845d35a07db5b0a19 && bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-l-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 trt16-fp32attn outputs/player-model-comparison/ecdet-l-o365/trt16-fp32attn/engine c1b4aee5b46e8486ea71b7fd234ed24a126ebb3607d199f845d35a07db5b0a19",
+      "condition": "trt16-fp32attn",
+      "conversion": [
+        {
+          "failure": null,
+          "phase": "onnx_export",
+          "receipt": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/onnx-rewrite.json",
+            "sha256": "fb69207c4e376bfeb44bb24a369767985eb0513229d7fec316e2537e1aa0e9df"
+          },
+          "wall_ms": 15748.320126
+        },
+        {
+          "failure": null,
+          "phase": "engine_build",
+          "receipt": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/engine-build.json",
+            "sha256": "fc5badf45d42fdb3eb8c2abbfac339ca11e2a2646858d35ca638323fde46e78c"
+          },
+          "wall_ms": 113432.018992
+        }
+      ],
+      "disposition": "measured",
+      "engine_files": {
+        "engine.json": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/engine/engine.json",
+          "sha256": "49d5deddc267606ecf8b6e3b5281a766ba044d268635db2aa5a67829524023b7"
+        },
+        "engine.plan": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/engine/engine.plan",
+          "sha256": "3cbbf4f8d3f66967bd55b578b8bb28c9b3cb36167795ce22628fc5083f7300dc"
+        },
+        "export.json": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/engine/export.json",
+          "sha256": "ddf4c8c18a6193fab38e525d64345241cc540d95fdc22534aeb0839ef6c063b7"
+        },
+        "model.onnx": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/engine/model.onnx",
+          "sha256": "05d30688aca18836e0364fdf53956630ed8a129ef573d3a9b53bb7309f14d77a"
+        }
+      },
+      "engine_profiles": {
+        "pixels": {
+          "maximum": [
+            2,
+            3,
+            640,
+            640
+          ],
+          "minimum": [
+            1,
+            3,
+            640,
+            640
+          ],
+          "optimum": [
+            1,
+            3,
+            640,
+            640
+          ]
+        }
+      },
+      "job_id": "0-8204383228271215821_2026-11-25T14-26-11-728784178Z_1285356_i2487-ecdet-l-o365-trt16-fp32attn.job",
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/predictions.jsonl",
+        "sha256": "67f9b68a01b573278b91a08d892b1523ed77cf7759292264abdd18cf30df7a65"
+      },
+      "queue_log": {
+        "path": ".training_queue/logs/0-8204383228271215821_2026-11-25T14-26-11-728784178Z_1285356_i2487-ecdet-l-o365-trt16-fp32attn.log",
+        "sha256": "0ca9e609c1078c4234b0e77083644dbda020e1e1471a81571c0e8b4d6de2b626"
+      },
+      "references": {
+        "original_trt16": {
+          "metrics": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-trace2/metrics.json",
+            "sha256": "0c7109e8e57eb05c055446f37edd91e6db7e941157c1b12bce8f12de9ee03170"
+          },
+          "plan_sha256": "3079363e81757e38f527c6152c2fbe54c666759301c992a94f923a82ea0e72e1",
+          "quality": {
+            "matched_iou": {
+              "count": 16559,
+              "mean": 0.7061860179324718,
+              "median": 0.7086844871440222,
+              "p95": 0.866500633869076
+            },
+            "recall_50": 0.6301948546201858,
+            "recall_75": 0.2153295783224235,
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.3840386664636931,
+                "0.75": 0.13327751560359263
+              },
+              "0.5": {
+                "0.50": 0.3422514842441772,
+                "0.75": 0.12033795098188461
+              },
+              "0.75": {
+                "0.50": 0.1845410260313594,
+                "0.75": 0.062262140356218604
+              }
+            },
+            "small_recall_50": 0.7763690922730683,
+            "xyxy_error_px": {
+              "x_max": {
+                "absolute": {
+                  "count": 16559,
+                  "mean": 5.231854615019485,
+                  "median": 4.149924711382141,
+                  "p95": 13.084393061724105
+                },
+                "signed": {
+                  "count": 16559,
+                  "mean": 4.396233669681964,
+                  "median": 3.8611955677351943,
+                  "p95": 12.670133326090694
+                }
+              },
+              "x_min": {
+                "absolute": {
+                  "count": 16559,
+                  "mean": 4.562123106891108,
+                  "median": 3.373116784905278,
+                  "p95": 13.13960307911029
+                },
+                "signed": {
+                  "count": 16559,
+                  "mean": -3.1592738852670226,
+                  "median": -2.6708900149321835,
+                  "p95": 4.466452745897753
+                }
+              },
+              "y_max": {
+                "absolute": {
+                  "count": 16559,
+                  "mean": 5.43454466468339,
+                  "median": 3.3162129039569663,
+                  "p95": 18.365493498700253
+                },
+                "signed": {
+                  "count": 16559,
+                  "mean": -1.6658614342827347,
+                  "median": 0.121980001324971,
+                  "p95": 7.53726611918934
+                }
+              },
+              "y_min": {
+                "absolute": {
+                  "count": 16559,
+                  "mean": 3.3548956192683628,
+                  "median": 2.127153658644488,
+                  "p95": 10.42624039883583
+                },
+                "signed": {
+                  "count": 16559,
+                  "mean": 0.42692819301823787,
+                  "median": -0.4313192941323223,
+                  "p95": 8.765363383020889
+                }
+              }
+            }
+          },
+          "suspected_issue": "TensorRT conversion, potentially FP16 decoder attention",
+          "timing_batch_1": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/speed-13e508cb7/trt16/speed-b1.json",
+            "sha256": "874323bf090d9ad909036638630287f95c1f00a94a72013857d633654929c09a"
+          }
+        },
+        "pt16": {
+          "metrics": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/pt16/metrics.scorer-0d4bf0990.json",
+            "sha256": "a05e7b121de9dc8281f31ed1ba7786c1ab10b48ff6a26f77ecaf7a102b666fdc"
+          },
+          "quality": {
+            "matched_iou": {
+              "count": 25801,
+              "mean": 0.737280430028558,
+              "median": 0.7388559585373953,
+              "p95": 0.891043618253731
+            },
+            "recall_50": 0.9819226670726138,
+            "recall_75": 0.44877454711523823,
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.96780331861775,
+                "0.75": 0.39796772720353174
+              },
+              "0.5": {
+                "0.50": 0.9579464149794489,
+                "0.75": 0.3949992388491399
+              },
+              "0.75": {
+                "0.50": 0.7671639518952657,
+                "0.75": 0.33768457908357435
+              }
+            },
+            "small_recall_50": 0.9738184546136535,
+            "xyxy_error_px": {
+              "x_max": {
+                "absolute": {
+                  "count": 25801,
+                  "mean": 5.6292326238952075,
+                  "median": 4.491323512636768,
+                  "p95": 15.610910843396596
+                },
+                "signed": {
+                  "count": 25801,
+                  "mean": 4.874853018026751,
+                  "median": 4.219184156915958,
+                  "p95": 15.390370844781955
+                }
+              },
+              "x_min": {
+                "absolute": {
+                  "count": 25801,
+                  "mean": 4.718321100724717,
+                  "median": 3.563364168763542,
+                  "p95": 13.729669064397058
+                },
+                "signed": {
+                  "count": 25801,
+                  "mean": -3.4508317766399093,
+                  "median": -2.9780667454626837,
+                  "p95": 4.073231328504562
+                }
+              },
+              "y_max": {
+                "absolute": {
+                  "count": 25801,
+                  "mean": 4.359983044227193,
+                  "median": 3.1011003718176084,
+                  "p95": 12.787238162683707
+                },
+                "signed": {
+                  "count": 25801,
+                  "mean": 0.7297221106994778,
+                  "median": 1.2484298081380985,
+                  "p95": 9.645981873427331
+                }
+              },
+              "y_min": {
+                "absolute": {
+                  "count": 25801,
+                  "mean": 2.9798491539755023,
+                  "median": 2.141666838367655,
+                  "p95": 8.373612189104051
+                },
+                "signed": {
+                  "count": 25801,
+                  "mean": -0.20463740703753017,
+                  "median": -0.6011649170970941,
+                  "p95": 6.670928223585776
+                }
+              }
+            }
+          },
+          "timing_batch_1": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+            "sha256": "4630390dcbd196ec6a12da8155f8406896637149b102e574babb0fbfd5feb66a"
+          }
+        }
+      },
+      "reproduction": {
+        "path": ".training_queue/repro/0-8204383228271215821_2026-11-25T14-26-11-728784178Z_1285356_i2487-ecdet-l-o365-trt16-fp32attn/repro.sh",
+        "sha256": "4993f6174ad16ab48cae23cc48fccb0e8956cc748e874916f0045bc03303054f"
+      },
+      "reused_diagnostic_plan": false,
+      "speed_by_batch": {
+        "1": {
+          "batch_size": 1,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11142,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 599887872,
+          "nvml_peak_minus_before_load_bytes": 180355072,
+          "nvml_used_bytes": {
+            "after_cold_start": 599887872,
+            "after_load": 574722048,
+            "after_warmup": 599887872,
+            "before_load": 419532800,
+            "block_1": 599887872,
+            "block_2": 599887872,
+            "block_3": 599887872
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/speed-13e508cb7-threads4-1/trt16/speed-b1.json",
+            "sha256": "f798f9dc281dd9be099ab73c8ba88dddcf8b58b9a1096315fb7165a8f54990c3"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 1157.578597,
+            "load": 1992.972449
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3860.0683533183837,
+              "p50_ms": 0.2425585,
+              "p50_ms_per_item": 0.2425585,
+              "p95_ms": 0.3478677,
+              "p95_ms_per_item": 0.3478677,
+              "samples": 300,
+              "total_ms": 77.71883100000007
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 143.04923045369497,
+              "p50_ms": 6.7018830000000005,
+              "p50_ms_per_item": 6.7018830000000005,
+              "p95_ms": 8.8728297,
+              "p95_ms_per_item": 8.8728297,
+              "samples": 300,
+              "total_ms": 2097.180104
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1399.664131929355,
+              "p50_ms": 0.6997375,
+              "p50_ms_per_item": 0.6997375,
+              "p95_ms": 0.8503937500000001,
+              "p95_ms_per_item": 0.8503937500000001,
+              "samples": 300,
+              "total_ms": 214.33713500000002
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 143.91994192998925,
+              "p50_ms": 6.664399862289429,
+              "p50_ms_per_item": 6.664399862289429,
+              "p95_ms": 8.839398288726807,
+              "p95_ms_per_item": 8.839398288726807,
+              "samples": 300,
+              "total_ms": 2084.4922251701355
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 460.6371335678816,
+              "p50_ms": 1.9739865,
+              "p50_ms_per_item": 1.9739865,
+              "p95_ms": 3.1033266,
+              "p95_ms_per_item": 3.1033266,
+              "samples": 300,
+              "total_ms": 651.2718540000002
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 46.34211471651025,
+              "p50_ms": 21.497219,
+              "p50_ms_per_item": 21.497219,
+              "p95_ms": 22.0948975,
+              "p95_ms_per_item": 22.0948975,
+              "samples": 300,
+              "total_ms": 6473.593228000002
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 31.381063259135168,
+              "p50_ms": 31.482160999999998,
+              "p50_ms_per_item": 31.482160999999998,
+              "p95_ms": 34.0975751,
+              "p95_ms_per_item": 34.0975751,
+              "samples": 300,
+              "total_ms": 9559.905524000009
+            }
+          },
+          "torch_peak_allocated_bytes": 5161472,
+          "torch_peak_reserved_bytes": 23068672,
+          "wall_p50_ms_per_image_by_block": [
+            31.4871975,
+            31.445386499999998,
+            31.663099
+          ]
+        },
+        "2": {
+          "batch_size": 2,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10986,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 599887872,
+          "nvml_peak_minus_before_load_bytes": 180355072,
+          "nvml_used_bytes": {
+            "after_cold_start": 599887872,
+            "after_load": 574722048,
+            "after_warmup": 599887872,
+            "before_load": 419532800,
+            "block_1": 599887872,
+            "block_2": 599887872,
+            "block_3": 599887872
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/trt16-fp32attn/speed-13e508cb7-threads4-1/trt16/speed-b2.json",
+            "sha256": "9704d4e962a87a30ae9ad5b8eca922e54288d32c796a55bdd24771ac596302bd"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 1103.606804,
+            "load": 1970.162222
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 5107.940052738799,
+              "p50_ms": 0.3719325,
+              "p50_ms_per_item": 0.18596625,
+              "p95_ms": 0.534981,
+              "p95_ms_per_item": 0.2674905,
+              "samples": 300,
+              "total_ms": 117.46418200000004
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 192.4218711288627,
+              "p50_ms": 10.2964575,
+              "p50_ms_per_item": 5.14822875,
+              "p95_ms": 10.929260300000001,
+              "p95_ms_per_item": 5.4646301500000005,
+              "samples": 300,
+              "total_ms": 3118.148662000002
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1646.7755665076734,
+              "p50_ms": 1.1746455,
+              "p50_ms_per_item": 0.58732275,
+              "p95_ms": 1.42972265,
+              "p95_ms_per_item": 0.714861325,
+              "samples": 300,
+              "total_ms": 364.3483740000002
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 193.25362597442955,
+              "p50_ms": 10.244463920593262,
+              "p50_ms_per_item": 5.122231960296631,
+              "p95_ms": 10.871903944015504,
+              "p95_ms_per_item": 5.435951972007752,
+              "samples": 300,
+              "total_ms": 3104.7282915115356
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 627.6359914018138,
+              "p50_ms": 3.0119535,
+              "p50_ms_per_item": 1.50597675,
+              "p95_ms": 4.3119972,
+              "p95_ms_per_item": 2.1559986,
+              "samples": 300,
+              "total_ms": 955.9681219999999
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 43.971022831541575,
+              "p50_ms": 43.3675835,
+              "p50_ms_per_item": 21.68379175,
+              "p95_ms": 56.0359794,
+              "p95_ms_per_item": 28.0179897,
+              "samples": 300,
+              "total_ms": 13645.350082000006
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 32.86435364445989,
+              "p50_ms": 58.6885135,
+              "p50_ms_per_item": 29.34425675,
+              "p95_ms": 71.47573320000001,
+              "p95_ms_per_item": 35.737866600000004,
+              "samples": 300,
+              "total_ms": 18256.86293699998
+            }
+          },
+          "torch_peak_allocated_bytes": 10320896,
+          "torch_peak_reserved_bytes": 23068672,
+          "wall_p50_ms_per_image_by_block": [
+            31.6999745,
+            29.2151955,
+            29.137225
+          ]
+        }
+      },
+      "weight_sha256": "6259432a6184029e17cb008dcd3fa6ebf036c3e10cd56aa552a0d848ddcef19e"
+    },
+    "ecdet-x-coco": {
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/metrics.json",
+        "sha256": "894e78b531197784b2ebbedb9b75b404ee6c8b389b8431d504426e3c3af65dda"
+      },
+      "accuracy_recheck": {
+        "metrics_sha256": "894e78b531197784b2ebbedb9b75b404ee6c8b389b8431d504426e3c3af65dda",
+        "model": "ecdet-x-coco",
+        "predictions_sha256": "11386141ba4c2d82d7db8286e5f89619e6d6dd0a5e3e355a156b322ac921f7a8",
+        "reader_commit": "edeea50b43ea990fcae8dd2b0e1173948d36aa6d",
+        "result": "full_score_equal",
+        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+      },
+      "accuracy_summary": {
+        "matched_iou": {
+          "count": 20560,
+          "mean": 0.7115108783157551,
+          "median": 0.7101801655267062,
+          "p95": 0.8688658406262809
+        },
+        "recall_50": 0.7824630841832851,
+        "recall_75": 0.2716166844268534,
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.4956994976404323,
+            "0.75": 0.15634038666463693
+          },
+          "0.5": {
+            "0.50": 0.40828132135789313,
+            "0.75": 0.12798751712589435
+          },
+          "0.75": {
+            "0.50": 0.13643629167300958,
+            "0.75": 0.04627797229410869
+          }
+        },
+        "small_recall_50": 0.877794448612153,
+        "xyxy_error_px": {
+          "x_max": {
+            "absolute": {
+              "count": 20560,
+              "mean": 5.391329248061602,
+              "median": 4.617354499972691,
+              "p95": 13.055115364792062
+            },
+            "signed": {
+              "count": 20560,
+              "mean": 4.5282630207766905,
+              "median": 4.33461134112008,
+              "p95": 12.622504274018413
+            }
+          },
+          "x_min": {
+            "absolute": {
+              "count": 20560,
+              "mean": 4.916491228089182,
+              "median": 3.7330653941281753,
+              "p95": 13.99960921792749
+            },
+            "signed": {
+              "count": 20560,
+              "mean": -3.3082309308258386,
+              "median": -3.022191761079739,
+              "p95": 4.942933384880341
+            }
+          },
+          "y_max": {
+            "absolute": {
+              "count": 20560,
+              "mean": 4.660861824106926,
+              "median": 3.2070993612883285,
+              "p95": 13.14651958432552
+            },
+            "signed": {
+              "count": 20560,
+              "mean": 0.34168116476064797,
+              "median": 1.1214006386523465,
+              "p95": 8.886790921499742
+            }
+          },
+          "y_min": {
+            "absolute": {
+              "count": 20560,
+              "mean": 3.6411112130137675,
+              "median": 2.364520733004781,
+              "p95": 10.631679612539266
+            },
+            "signed": {
+              "count": 20560,
+              "mean": -0.051789784247350444,
+              "median": -0.4947643420096597,
+              "p95": 7.715011367156367
+            }
+          }
+        }
+      },
+      "batch_1_recall_50_delta_pp_vs_original_trt16": 7.954026488049937,
+      "batch_1_recall_50_delta_pp_vs_pt16": -19.329426092251477,
+      "checkout_commit": "3acc97cbb78e6018a424e426bc76451d74933967",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecdet-x-coco 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580 outputs/player-model-comparison/ecdet-x-coco/trt16-fp32attn/engine 899e62e3a6ae70b2db10e6fe6fbda3bdeef2cfe7260259dcf11445be7fe8c5ed && bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-x-coco /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 trt16-fp32attn outputs/player-model-comparison/ecdet-x-coco/trt16-fp32attn/engine 899e62e3a6ae70b2db10e6fe6fbda3bdeef2cfe7260259dcf11445be7fe8c5ed",
+      "condition": "trt16-fp32attn",
+      "conversion": [
+        {
+          "failure": null,
+          "phase": "onnx_export",
+          "receipt": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/onnx-rewrite.json",
+            "sha256": "1282786445587860f453bd82c9ebaf78cb837dad10a765cc521006882546118a"
+          },
+          "wall_ms": 22362.099431
+        },
+        {
+          "failure": null,
+          "phase": "engine_build",
+          "receipt": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/engine-build.json",
+            "sha256": "d1711f45d0f68d2b373b9bcd1e50214e7831367cb04f0c5e4426d6356b94b485"
+          },
+          "wall_ms": 147588.297625
+        }
+      ],
+      "disposition": "measured",
+      "engine_files": {
+        "engine.json": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/engine/engine.json",
+          "sha256": "f36ca077359dbf1e5af6236a8d29a291d94f8a6f93c7332bbccc4b445f541175"
+        },
+        "engine.plan": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/engine/engine.plan",
+          "sha256": "86d06f766a168cb4fa3076b0890a422eacbcedf4bb916052635437a42b3d06aa"
+        },
+        "export.json": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/engine/export.json",
+          "sha256": "19592ea34670b91c06619e45ecc273fce24e56a751f0cb7920c6a02605bbad15"
+        },
+        "model.onnx": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/engine/model.onnx",
+          "sha256": "887e4871deb2c39b6738c8438bd2f6490392336d69dfa3c5ed42d170019eda5a"
+        }
+      },
+      "engine_profiles": {
+        "pixels": {
+          "maximum": [
+            2,
+            3,
+            640,
+            640
+          ],
+          "minimum": [
+            1,
+            3,
+            640,
+            640
+          ],
+          "optimum": [
+            1,
+            3,
+            640,
+            640
+          ]
+        }
+      },
+      "job_id": "0-8204383228564005184_2026-11-25T14-26-11-435994815Z_1285215_i2487-ecdet-x-coco-trt16-fp32attn.job",
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/predictions.jsonl",
+        "sha256": "11386141ba4c2d82d7db8286e5f89619e6d6dd0a5e3e355a156b322ac921f7a8"
+      },
+      "queue_log": {
+        "path": ".training_queue/logs/0-8204383228564005184_2026-11-25T14-26-11-435994815Z_1285215_i2487-ecdet-x-coco-trt16-fp32attn.log",
+        "sha256": "6c528377818761d56279f38974220754acfb1abf0cbd086b4b18a5be940f528a"
+      },
+      "references": {
+        "original_trt16": {
+          "metrics": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-trace2/metrics.json",
+            "sha256": "d60bc4a5b5e289859b23fea6faffbba758f0fe1faac8408f5f62583d078984f3"
+          },
+          "plan_sha256": "109a76de71ed81fe4e8033d3ac05aeac99a81d83d6c1aa1e46ae97b8ea7c0b95",
+          "quality": {
+            "matched_iou": {
+              "count": 18470,
+              "mean": 0.6988335188738696,
+              "median": 0.698632104113404,
+              "p95": 0.8541516308734461
+            },
+            "recall_50": 0.7029228193027858,
+            "recall_75": 0.2122469173390166,
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.4399071395950677,
+                "0.75": 0.13114629319531132
+              },
+              "0.5": {
+                "0.50": 0.3588826305373725,
+                "0.75": 0.10751255898919165
+              },
+              "0.75": {
+                "0.50": 0.08581975947632821,
+                "0.75": 0.02804840919470239
+              }
+            },
+            "small_recall_50": 0.8633158289572394,
+            "xyxy_error_px": {
+              "x_max": {
+                "absolute": {
+                  "count": 18470,
+                  "mean": 5.13127841159386,
+                  "median": 4.444816104616109,
+                  "p95": 11.854839829218022
+                },
+                "signed": {
+                  "count": 18470,
+                  "mean": 4.1383949726149325,
+                  "median": 4.152055074406576,
+                  "p95": 11.199148849578322
+                }
+              },
+              "x_min": {
+                "absolute": {
+                  "count": 18470,
+                  "mean": 4.471663783975141,
+                  "median": 3.494620866946093,
+                  "p95": 12.140884824174254
+                },
+                "signed": {
+                  "count": 18470,
+                  "mean": -2.9181279365669615,
+                  "median": -2.7754510271473123,
+                  "p95": 4.9202546267935405
+                }
+              },
+              "y_max": {
+                "absolute": {
+                  "count": 18470,
+                  "mean": 6.424063902677772,
+                  "median": 3.4600828569243447,
+                  "p95": 23.50986008545646
+                },
+                "signed": {
+                  "count": 18470,
+                  "mean": -2.307718411593361,
+                  "median": 0.40017923787925724,
+                  "p95": 7.773437986159927
+                }
+              },
+              "y_min": {
+                "absolute": {
+                  "count": 18470,
+                  "mean": 3.584838427392991,
+                  "median": 2.348739984176575,
+                  "p95": 10.584815782121494
+                },
+                "signed": {
+                  "count": 18470,
+                  "mean": -0.30949044586067376,
+                  "median": -0.7172170234818509,
+                  "p95": 7.519564341638312
+                }
+              }
+            }
+          },
+          "suspected_issue": "TensorRT conversion, potentially FP16 decoder attention",
+          "timing_batch_1": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/speed-13e508cb7/trt16/speed-b1.json",
+            "sha256": "1ffc1293830086cbc77caf726cd1be68c9cdf55cebcb04080e647122317d0840"
+          }
+        },
+        "pt16": {
+          "metrics": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/pt16/metrics.scorer-0d4bf0990.json",
+            "sha256": "7a602a7605c0f32d95067d1ca5ba6cd205aeb74d4a7e5e420f07494e91f79807"
+          },
+          "quality": {
+            "matched_iou": {
+              "count": 25639,
+              "mean": 0.7270093442893515,
+              "median": 0.7267491503922839,
+              "p95": 0.8808766445227825
+            },
+            "recall_50": 0.9757573451057999,
+            "recall_75": 0.39792966966052673,
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.9607246156188156,
+                "0.75": 0.3594915512254529
+              },
+              "0.5": {
+                "0.50": 0.949954330948394,
+                "0.75": 0.35682752321510125
+              },
+              "0.75": {
+                "0.50": 0.6864058456386055,
+                "0.75": 0.2837189831024509
+              }
+            },
+            "small_recall_50": 0.9641410352588147,
+            "xyxy_error_px": {
+              "x_max": {
+                "absolute": {
+                  "count": 25639,
+                  "mean": 5.9736244355938215,
+                  "median": 4.871554036033672,
+                  "p95": 16.055324910554024
+                },
+                "signed": {
+                  "count": 25639,
+                  "mean": 5.306859554808132,
+                  "median": 4.665666231562227,
+                  "p95": 15.88695146981404
+                }
+              },
+              "x_min": {
+                "absolute": {
+                  "count": 25639,
+                  "mean": 4.989122948392332,
+                  "median": 3.86611217331415,
+                  "p95": 14.11734407399334
+                },
+                "signed": {
+                  "count": 25639,
+                  "mean": -3.767072297948769,
+                  "median": -3.290108345586191,
+                  "p95": 4.080066594964711
+                }
+              },
+              "y_max": {
+                "absolute": {
+                  "count": 25639,
+                  "mean": 4.302460829209162,
+                  "median": 3.1105079960978514,
+                  "p95": 12.505192246140936
+                },
+                "signed": {
+                  "count": 25639,
+                  "mean": 0.668589752056347,
+                  "median": 1.1220069223021483,
+                  "p95": 9.128268525234953
+                }
+              },
+              "y_min": {
+                "absolute": {
+                  "count": 25639,
+                  "mean": 3.1312011035893357,
+                  "median": 2.3217086574767336,
+                  "p95": 8.735421854482722
+                },
+                "signed": {
+                  "count": 25639,
+                  "mean": -0.21027037539833654,
+                  "median": -0.6151955828427731,
+                  "p95": 6.751944644067933
+                }
+              }
+            }
+          },
+          "timing_batch_1": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+            "sha256": "e565521b0a0456b03cf13a03ff9e56e28bb339b3cb91b2b1253f3f38df8b275f"
+          }
+        }
+      },
+      "reproduction": {
+        "path": ".training_queue/repro/0-8204383228564005184_2026-11-25T14-26-11-435994815Z_1285215_i2487-ecdet-x-coco-trt16-fp32attn/repro.sh",
+        "sha256": "9e86b6b1d06c194b662b03f23bd633c052d78b35eb5ad166e7ae0e6e2aa6f413"
+      },
+      "reused_diagnostic_plan": false,
+      "speed_by_batch": {
+        "1": {
+          "batch_size": 1,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11057,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 639733760,
+          "nvml_peak_minus_before_load_bytes": 220200960,
+          "nvml_used_bytes": {
+            "after_cold_start": 639733760,
+            "after_load": 616665088,
+            "after_warmup": 639733760,
+            "before_load": 419532800,
+            "block_1": 639733760,
+            "block_2": 639733760,
+            "block_3": 639733760
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/speed-13e508cb7-threads4-1/trt16/speed-b1.json",
+            "sha256": "87a477e9d15eb72059497a7ffc057c2226198cc4b4ba44f7624952736ce133a4"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 1170.148538,
+            "load": 2626.0094
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3851.4577478716365,
+              "p50_ms": 0.24583,
+              "p50_ms_per_item": 0.24583,
+              "p95_ms": 0.3540838,
+              "p95_ms_per_item": 0.3540838,
+              "samples": 300,
+              "total_ms": 77.892585
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 124.3307163568686,
+              "p50_ms": 7.7263965,
+              "p50_ms_per_item": 7.7263965,
+              "p95_ms": 10.062836650000001,
+              "p95_ms_per_item": 10.062836650000001,
+              "samples": 300,
+              "total_ms": 2412.9194200000006
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1350.1526226026122,
+              "p50_ms": 0.729177,
+              "p50_ms_per_item": 0.729177,
+              "p95_ms": 0.9080677500000001,
+              "p95_ms_per_item": 0.9080677500000001,
+              "samples": 300,
+              "total_ms": 222.19710199999992
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 125.01416135808941,
+              "p50_ms": 7.679343938827515,
+              "p50_ms_per_item": 7.679343938827515,
+              "p95_ms": 9.966016340255738,
+              "p95_ms_per_item": 9.966016340255738,
+              "samples": 300,
+              "total_ms": 2399.728132724762
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 435.2754407972362,
+              "p50_ms": 2.0872995000000003,
+              "p50_ms_per_item": 2.0872995000000003,
+              "p95_ms": 3.24281225,
+              "p95_ms_per_item": 3.24281225,
+              "samples": 300,
+              "total_ms": 689.2187610000001
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 45.709401310399,
+              "p50_ms": 21.604870499999997,
+              "p50_ms_per_item": 21.604870499999997,
+              "p95_ms": 23.78496665,
+              "p95_ms_per_item": 23.78496665,
+              "samples": 300,
+              "total_ms": 6563.2012540000005
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 29.958921381555655,
+              "p50_ms": 32.973236,
+              "p50_ms_per_item": 32.973236,
+              "p95_ms": 36.94226,
+              "p95_ms_per_item": 36.94226,
+              "samples": 300,
+              "total_ms": 10013.711647999997
+            }
+          },
+          "torch_peak_allocated_bytes": 5161472,
+          "torch_peak_reserved_bytes": 23068672,
+          "wall_p50_ms_per_image_by_block": [
+            32.845522,
+            32.673156,
+            33.5125515
+          ]
+        },
+        "2": {
+          "batch_size": 2,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10934,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 639733760,
+          "nvml_peak_minus_before_load_bytes": 220200960,
+          "nvml_used_bytes": {
+            "after_cold_start": 639733760,
+            "after_load": 616665088,
+            "after_warmup": 639733760,
+            "before_load": 419532800,
+            "block_1": 639733760,
+            "block_2": 639733760,
+            "block_3": 639733760
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/trt16-fp32attn/speed-13e508cb7-threads4-1/trt16/speed-b2.json",
+            "sha256": "39151b3cc31b3a6660f681a2dcbf188fde3c36c814c3f4a89de5d6968b60a5c5"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 1154.75834,
+            "load": 2613.329469
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 5170.952196718741,
+              "p50_ms": 0.368201,
+              "p50_ms_per_item": 0.1841005,
+              "p95_ms": 0.5381912000000001,
+              "p95_ms_per_item": 0.26909560000000005,
+              "samples": 300,
+              "total_ms": 116.03278800000001
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 167.4846435682075,
+              "p50_ms": 11.821720500000001,
+              "p50_ms_per_item": 5.910860250000001,
+              "p95_ms": 12.2564169,
+              "p95_ms_per_item": 6.12820845,
+              "samples": 300,
+              "total_ms": 3582.417989000002
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1642.9046386434952,
+              "p50_ms": 1.2220360000000001,
+              "p50_ms_per_item": 0.6110180000000001,
+              "p95_ms": 1.38458875,
+              "p95_ms_per_item": 0.692294375,
+              "samples": 300,
+              "total_ms": 365.2068329999998
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 168.14888290957632,
+              "p50_ms": 11.782480239868164,
+              "p50_ms_per_item": 5.891240119934082,
+              "p95_ms": 12.213841915130615,
+              "p95_ms_per_item": 6.106920957565308,
+              "samples": 300,
+              "total_ms": 3568.266345977783
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 610.7242450671945,
+              "p50_ms": 3.072602,
+              "p50_ms_per_item": 1.536301,
+              "p95_ms": 4.188072800000001,
+              "p95_ms_per_item": 2.0940364000000007,
+              "samples": 300,
+              "total_ms": 982.4401190000004
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 45.84700665417738,
+              "p50_ms": 42.956877500000004,
+              "p50_ms_per_item": 21.478438750000002,
+              "p95_ms": 47.44692785,
+              "p95_ms_per_item": 23.723463925,
+              "samples": 300,
+              "total_ms": 13087.004884000004
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 32.989520750569284,
+              "p50_ms": 59.6835645,
+              "p50_ms_per_item": 29.84178225,
+              "p95_ms": 66.22890360000001,
+              "p95_ms_per_item": 33.114451800000005,
+              "samples": 300,
+              "total_ms": 18187.593707000004
+            }
+          },
+          "torch_peak_allocated_bytes": 10320896,
+          "torch_peak_reserved_bytes": 23068672,
+          "wall_p50_ms_per_image_by_block": [
+            29.706592999999998,
+            29.78952175,
+            30.07405775
+          ]
+        }
+      },
+      "weight_sha256": "c87394be021b573fd8e25969b85a8670127120c9d0209ac7807fbadae1a5cec6"
+    },
+    "ecdet-x-o365": {
+      "accuracy": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/metrics.json",
+        "sha256": "6bc8f8099607310fffaa2d2883bc38f9746948bf7cec1178023f7c024b2a03b8"
+      },
+      "accuracy_recheck": {
+        "metrics_sha256": "6bc8f8099607310fffaa2d2883bc38f9746948bf7cec1178023f7c024b2a03b8",
+        "model": "ecdet-x-o365",
+        "predictions_sha256": "4ad017fcb97c0e8019f294720fae1e0d2b94b3e4451fc17790976066e617458e",
+        "reader_commit": "edeea50b43ea990fcae8dd2b0e1173948d36aa6d",
+        "result": "full_score_equal",
+        "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364"
+      },
+      "accuracy_summary": {
+        "matched_iou": {
+          "count": 11944,
+          "mean": 0.7096358427850982,
+          "median": 0.7083902047963353,
+          "p95": 0.8718058553358999
+        },
+        "recall_50": 0.4545592936520018,
+        "recall_75": 0.16007002587912925,
+        "recall_by_min_score": {
+          "0.25": {
+            "0.50": 0.3182371746080073,
+            "0.75": 0.10880651545136245
+          },
+          "0.5": {
+            "0.50": 0.2754604962703608,
+            "0.75": 0.09373572842137312
+          },
+          "0.75": {
+            "0.50": 0.1575962855838027,
+            "0.75": 0.05685796924950525
+          }
+        },
+        "small_recall_50": 0.6729932483120781,
+        "xyxy_error_px": {
+          "x_max": {
+            "absolute": {
+              "count": 11944,
+              "mean": 4.940663436866977,
+              "median": 4.008757401729724,
+              "p95": 11.886262700788063
+            },
+            "signed": {
+              "count": 11944,
+              "mean": 4.371119779329485,
+              "median": 3.8314131627690813,
+              "p95": 11.646487960287132
+            }
+          },
+          "x_min": {
+            "absolute": {
+              "count": 11944,
+              "mean": 4.251152149685367,
+              "median": 3.2242102226971383,
+              "p95": 11.45511692032893
+            },
+            "signed": {
+              "count": 11944,
+              "mean": -2.908563893393141,
+              "median": -2.535700170584448,
+              "p95": 4.39870001299621
+            }
+          },
+          "y_max": {
+            "absolute": {
+              "count": 11944,
+              "mean": 4.325578896876111,
+              "median": 2.9726743013893895,
+              "p95": 11.887255684531267
+            },
+            "signed": {
+              "count": 11944,
+              "mean": 1.0318354559083585,
+              "median": 1.7263436831368608,
+              "p95": 8.60986372802153
+            }
+          },
+          "y_min": {
+            "absolute": {
+              "count": 11944,
+              "mean": 3.2358862601363314,
+              "median": 1.945070209320221,
+              "p95": 9.64370967023627
+            },
+            "signed": {
+              "count": 11944,
+              "mean": -0.10129394093826927,
+              "median": -0.44572149769683733,
+              "p95": 7.485604167011292
+            }
+          }
+        }
+      },
+      "batch_1_recall_50_delta_pp_vs_original_trt16": -20.425483330796162,
+      "batch_1_recall_50_delta_pp_vs_pt16": -52.51179783833155,
+      "checkout_commit": "3acc97cbb78e6018a424e426bc76451d74933967",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_run.sh ecdet-x-o365 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580 outputs/player-model-comparison/ecdet-x-o365/trt16-fp32attn/engine fca8a60ab0d2733ea01236f7bcdabc66517843475028d5f84ea2c9fba4d64cdf && bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-x-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 trt16-fp32attn outputs/player-model-comparison/ecdet-x-o365/trt16-fp32attn/engine fca8a60ab0d2733ea01236f7bcdabc66517843475028d5f84ea2c9fba4d64cdf",
+      "condition": "trt16-fp32attn",
+      "conversion": [
+        {
+          "failure": null,
+          "phase": "onnx_export",
+          "receipt": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/onnx-rewrite.json",
+            "sha256": "d9876f236a3a3cc1d68eedacbf68e53d92da93f3eac3316dd04385e376d56fea"
+          },
+          "wall_ms": 21439.741576
+        },
+        {
+          "failure": null,
+          "phase": "engine_build",
+          "receipt": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/engine-build.json",
+            "sha256": "c26fe84d21a2ead037a83c0d9aa80349daaa1b6cef75409e6a1d9c2f80aba9db"
+          },
+          "wall_ms": 112499.612131
+        }
+      ],
+      "disposition": "measured",
+      "engine_files": {
+        "engine.json": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/engine/engine.json",
+          "sha256": "28e7e4955cc4251d652090a7a2f2e890479027d8952d73b272e8555fae6140c1"
+        },
+        "engine.plan": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/engine/engine.plan",
+          "sha256": "ef0212b1f7b11aa06dd182cc69ec98f9b43743eb098e8a7ebdc4de8cab7db290"
+        },
+        "export.json": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/engine/export.json",
+          "sha256": "6593ae72fd5a9835fe053740565d158d8ecede06fdef9563a613e9b2ac01896c"
+        },
+        "model.onnx": {
+          "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/engine/model.onnx",
+          "sha256": "b6993447d6422dea253fd5030a809f45b994951b38d75d6bd6eb3732b2c15f8f"
+        }
+      },
+      "engine_profiles": {
+        "pixels": {
+          "maximum": [
+            2,
+            3,
+            640,
+            640
+          ],
+          "minimum": [
+            1,
+            3,
+            640,
+            640
+          ],
+          "optimum": [
+            1,
+            3,
+            640,
+            640
+          ]
+        }
+      },
+      "job_id": "0-8204383227982667381_2026-11-25T14-26-12-017332618Z_1285434_i2487-ecdet-x-o365-trt16-fp32attn.job",
+      "predictions": {
+        "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/predictions.jsonl",
+        "sha256": "4ad017fcb97c0e8019f294720fae1e0d2b94b3e4451fc17790976066e617458e"
+      },
+      "queue_log": {
+        "path": ".training_queue/logs/0-8204383227982667381_2026-11-25T14-26-12-017332618Z_1285434_i2487-ecdet-x-o365-trt16-fp32attn.log",
+        "sha256": "4dff0ab53e58feafc3cdc90d21429a3964904a81134b65b87829cfa02cea1f36"
+      },
+      "references": {
+        "original_trt16": {
+          "metrics": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-trace2/metrics.json",
+            "sha256": "86620b9203de44fbe91c99f058d2b5398982af00ca92705e822250ae2fe6c2df"
+          },
+          "plan_sha256": "b4986ec8b18cb5a869a07b9548bdd992cde0efd59a506a933a3af3b8abdbaf1b",
+          "quality": {
+            "matched_iou": {
+              "count": 17311,
+              "mean": 0.7147692396457321,
+              "median": 0.7137141225083116,
+              "p95": 0.876460925653359
+            },
+            "recall_50": 0.6588141269599634,
+            "recall_75": 0.23873496727051302,
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.43792814735880653,
+                "0.75": 0.15367635865428528
+              },
+              "0.5": {
+                "0.50": 0.36835895874562335,
+                "0.75": 0.1278733444968793
+              },
+              "0.75": {
+                "0.50": 0.19474044755670575,
+                "0.75": 0.070977317704369
+              }
+            },
+            "small_recall_50": 0.891747936984246,
+            "xyxy_error_px": {
+              "x_max": {
+                "absolute": {
+                  "count": 17311,
+                  "mean": 4.627381911461497,
+                  "median": 3.849537909025912,
+                  "p95": 11.015409940276697
+                },
+                "signed": {
+                  "count": 17311,
+                  "mean": 3.9277604068895937,
+                  "median": 3.602836777518064,
+                  "p95": 10.80126661423327
+                }
+              },
+              "x_min": {
+                "absolute": {
+                  "count": 17311,
+                  "mean": 4.242511917789318,
+                  "median": 3.1893757521070256,
+                  "p95": 12.05503892689751
+                },
+                "signed": {
+                  "count": 17311,
+                  "mean": -2.8945726528130553,
+                  "median": -2.5419589217056,
+                  "p95": 4.300428697273162
+                }
+              },
+              "y_max": {
+                "absolute": {
+                  "count": 17311,
+                  "mean": 4.612120529291946,
+                  "median": 3.0020079539551716,
+                  "p95": 13.029633615849264
+                },
+                "signed": {
+                  "count": 17311,
+                  "mean": -0.3263834998616806,
+                  "median": 0.9117664846417028,
+                  "p95": 7.87373198964832
+                }
+              },
+              "y_min": {
+                "absolute": {
+                  "count": 17311,
+                  "mean": 3.1907556757191995,
+                  "median": 2.0949928967537517,
+                  "p95": 9.370113206576946
+                },
+                "signed": {
+                  "count": 17311,
+                  "mean": 0.0694153007768613,
+                  "median": -0.2322062185042455,
+                  "p95": 7.274274612716482
+                }
+              }
+            }
+          },
+          "suspected_issue": "TensorRT conversion, potentially FP16 decoder attention",
+          "timing_batch_1": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/speed-13e508cb7/trt16/speed-b1.json",
+            "sha256": "1cc908af5e484988535b850912b2605ee990671fa19aed3dac1cecfceb042dc8"
+          }
+        },
+        "pt16": {
+          "metrics": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/pt16/metrics.scorer-0d4bf0990.json",
+            "sha256": "8f63c774eb8059e379276ec501785b86ad3543869f175697ee6a8b32e229a16a"
+          },
+          "quality": {
+            "matched_iou": {
+              "count": 25742,
+              "mean": 0.741939963592026,
+              "median": 0.7436481761309104,
+              "p95": 0.8971334862651633
+            },
+            "recall_50": 0.9796772720353174,
+            "recall_75": 0.4662429593545441,
+            "recall_by_min_score": {
+              "0.25": {
+                "0.50": 0.969439792966966,
+                "0.75": 0.40249657482112955
+              },
+              "0.5": {
+                "0.50": 0.9604201552747754,
+                "0.75": 0.4001750646978231
+              },
+              "0.75": {
+                "0.50": 0.7889709240371442,
+                "0.75": 0.3494063023291216
+              }
+            },
+            "small_recall_50": 0.9705926481620405,
+            "xyxy_error_px": {
+              "x_max": {
+                "absolute": {
+                  "count": 25742,
+                  "mean": 5.474257987383271,
+                  "median": 4.321058284846458,
+                  "p95": 15.1467072941237
+                },
+                "signed": {
+                  "count": 25742,
+                  "mean": 4.75341783847931,
+                  "median": 4.048417610200943,
+                  "p95": 14.889612114329314
+                }
+              },
+              "x_min": {
+                "absolute": {
+                  "count": 25742,
+                  "mean": 4.66940794560317,
+                  "median": 3.4725220729831108,
+                  "p95": 13.553008845094846
+                },
+                "signed": {
+                  "count": 25742,
+                  "mean": -3.3806578753268086,
+                  "median": -2.8749705458276367,
+                  "p95": 4.110510324284829
+                }
+              },
+              "y_max": {
+                "absolute": {
+                  "count": 25742,
+                  "mean": 4.066298251789781,
+                  "median": 2.979709788861669,
+                  "p95": 11.416362218467864
+                },
+                "signed": {
+                  "count": 25742,
+                  "mean": 0.9959206209123255,
+                  "median": 1.2368964183733624,
+                  "p95": 9.224217647566615
+                }
+              },
+              "y_min": {
+                "absolute": {
+                  "count": 25742,
+                  "mean": 3.121657023634342,
+                  "median": 2.213736607703055,
+                  "p95": 9.0445160831216
+                },
+                "signed": {
+                  "count": 25742,
+                  "mean": 0.49501667842781905,
+                  "median": -0.08357456474655578,
+                  "p95": 8.289804866536764
+                }
+              }
+            }
+          },
+          "timing_batch_1": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+            "sha256": "4a7839a8791976e79d7569b34658a9625afe4faacc87835baa740c78d38d6871"
+          }
+        }
+      },
+      "reproduction": {
+        "path": ".training_queue/repro/0-8204383227982667381_2026-11-25T14-26-12-017332618Z_1285434_i2487-ecdet-x-o365-trt16-fp32attn/repro.sh",
+        "sha256": "95ae85eb602493e5b00da717881c42bf3d9adbc06502d3d158040536c28cf310"
+      },
+      "reused_diagnostic_plan": false,
+      "speed_by_batch": {
+        "1": {
+          "batch_size": 1,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11393,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 639733760,
+          "nvml_peak_minus_before_load_bytes": 220200960,
+          "nvml_used_bytes": {
+            "after_cold_start": 639733760,
+            "after_load": 616665088,
+            "after_warmup": 639733760,
+            "before_load": 419532800,
+            "block_1": 639733760,
+            "block_2": 639733760,
+            "block_3": 639733760
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/speed-13e508cb7-threads4-1/trt16/speed-b1.json",
+            "sha256": "35f95798890a841677512e1c08c51be274b4863129a0a3b46c850600f2e6b78c"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 1115.334605,
+            "load": 2610.294825
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3995.0376305911227,
+              "p50_ms": 0.2375645,
+              "p50_ms_per_item": 0.2375645,
+              "p95_ms": 0.3228124,
+              "p95_ms_per_item": 0.3228124,
+              "samples": 300,
+              "total_ms": 75.09315999999998
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 128.7888140255778,
+              "p50_ms": 7.4634735,
+              "p50_ms_per_item": 7.4634735,
+              "p95_ms": 9.869611500000003,
+              "p95_ms_per_item": 9.869611500000003,
+              "samples": 300,
+              "total_ms": 2329.3948490000007
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1463.0379125890054,
+              "p50_ms": 0.6727000000000001,
+              "p50_ms_per_item": 0.6727000000000001,
+              "p95_ms": 0.8108862,
+              "p95_ms_per_item": 0.8108862,
+              "samples": 300,
+              "total_ms": 205.052786
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 129.48103600167826,
+              "p50_ms": 7.427792072296143,
+              "p50_ms_per_item": 7.427792072296143,
+              "p95_ms": 9.817168140411379,
+              "p95_ms_per_item": 9.817168140411379,
+              "samples": 300,
+              "total_ms": 2316.9416098594666
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 467.45149643416727,
+              "p50_ms": 1.9426679999999998,
+              "p50_ms_per_item": 1.9426679999999998,
+              "p95_ms": 3.0644417500000003,
+              "p95_ms_per_item": 3.0644417500000003,
+              "samples": 300,
+              "total_ms": 641.7778149999997
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 46.4827233857381,
+              "p50_ms": 21.454353,
+              "p50_ms_per_item": 21.454353,
+              "p95_ms": 21.8752347,
+              "p95_ms_per_item": 21.8752347,
+              "samples": 300,
+              "total_ms": 6454.010827000005
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 30.767984545940422,
+              "p50_ms": 32.110276999999996,
+              "p50_ms_per_item": 32.110276999999996,
+              "p95_ms": 34.7403041,
+              "p95_ms_per_item": 34.7403041,
+              "samples": 300,
+              "total_ms": 9750.394912999996
+            }
+          },
+          "torch_peak_allocated_bytes": 5161472,
+          "torch_peak_reserved_bytes": 23068672,
+          "wall_p50_ms_per_image_by_block": [
+            31.873511,
+            32.494641,
+            32.156938
+          ]
+        },
+        "2": {
+          "batch_size": 2,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11689,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 639733760,
+          "nvml_peak_minus_before_load_bytes": 220200960,
+          "nvml_used_bytes": {
+            "after_cold_start": 639733760,
+            "after_load": 616665088,
+            "after_warmup": 639733760,
+            "before_load": 419532800,
+            "block_1": 639733760,
+            "block_2": 639733760,
+            "block_3": 639733760
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/trt16-fp32attn/speed-13e508cb7-threads4-1/trt16/speed-b2.json",
+            "sha256": "777f8389e718683af76266cf6fd53e3bafa3f3399a8e83c5ad5e6edd8ea5478e"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 1210.736089,
+            "load": 2672.212443
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 5417.718708631484,
+              "p50_ms": 0.35622,
+              "p50_ms_per_item": 0.17811,
+              "p95_ms": 0.4765151500000001,
+              "p95_ms_per_item": 0.23825757500000005,
+              "samples": 300,
+              "total_ms": 110.74772100000001
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 168.37287894138905,
+              "p50_ms": 11.824925,
+              "p50_ms_per_item": 5.9124625,
+              "p95_ms": 12.31489535,
+              "p95_ms_per_item": 6.157447675,
+              "samples": 300,
+              "total_ms": 3563.5192779999993
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1676.0462310759578,
+              "p50_ms": 1.187373,
+              "p50_ms_per_item": 0.5936865,
+              "p95_ms": 1.3532999000000001,
+              "p95_ms_per_item": 0.6766499500000001,
+              "samples": 300,
+              "total_ms": 357.9853519999999
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 169.02917639130462,
+              "p50_ms": 11.779376029968262,
+              "p50_ms_per_item": 5.889688014984131,
+              "p95_ms": 12.26547064781189,
+              "p95_ms_per_item": 6.132735323905945,
+              "samples": 300,
+              "total_ms": 3549.683035850525
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 644.059905639148,
+              "p50_ms": 3.008496,
+              "p50_ms_per_item": 1.504248,
+              "p95_ms": 3.894908950000001,
+              "p95_ms_per_item": 1.9474544750000005,
+              "samples": 300,
+              "total_ms": 931.5903610000003
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 45.59841903021955,
+              "p50_ms": 43.4146035,
+              "p50_ms_per_item": 21.70730175,
+              "p95_ms": 46.7657541,
+              "p95_ms_per_item": 23.38287705,
+              "samples": 300,
+              "total_ms": 13158.350941999995
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 33.010873901527575,
+              "p50_ms": 60.1370665,
+              "p50_ms_per_item": 30.06853325,
+              "p95_ms": 63.540920750000005,
+              "p95_ms_per_item": 31.770460375000003,
+              "samples": 300,
+              "total_ms": 18175.829025000003
+            }
+          },
+          "torch_peak_allocated_bytes": 10320896,
+          "torch_peak_reserved_bytes": 23068672,
+          "wall_p50_ms_per_image_by_block": [
+            30.216632500000003,
+            29.98482775,
+            30.017233750000003
+          ]
+        }
+      },
+      "weight_sha256": "be9c77cd4def8aadd0cc679944ba57412f363de2d44f7c6b900289e61316314c"
+    },
+    "ecpose-l-o365": {
+      "disposition": "not_applicable",
+      "reason": "AttentionRewriteUnavailable: ecpose-l-o365 has 0 of the diagnosed decoder self_attn layout with four Softmax nodes. Found ECPose attention branches ['across_attn', 'within_attn']."
+    },
+    "ecpose-x-o365": {
+      "disposition": "not_applicable",
+      "reason": "AttentionRewriteUnavailable: ecpose-x-o365 has 0 of the diagnosed decoder self_attn layout with four Softmax nodes. Found ECPose attention branches ['across_attn', 'within_attn']."
+    }
+  },
+  "references": {
+    "original_speed": {
+      "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-speed.json",
+      "sha256": "dbad59a352b09c543616eb1283debd5aabbacbc5288f9b792ac3a23f585c3dc4"
+    },
+    "original_trt16_accuracy": {
+      "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-accuracy.json",
+      "sha256": "e021948180a74be003be641ac5931325048189743f5492a3ac3260a7221b0bc7"
+    },
+    "preflight": {
+      "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt16-fp32attn-preflight.json",
+      "sha256": "2337f109191374993a9ade7be951d04134c117efda56efff97e8de3df180d395"
+    },
+    "pt16": {
+      "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-pt16-speed-matched.json",
+      "sha256": "1a7bff723f31b52d103b29087c8c7fdb953f19ea368265dd85dcb0ce6d17c76a"
+    }
+  },
+  "schema_version": 1,
+  "speed": {
+    "case_count": 8,
+    "fixed_images": 96,
+    "image_batch_sizes": [
+      1,
+      2
+    ],
+    "opencv_threads": 1,
+    "pytorch_host_threads": 4,
+    "timed_batches_per_case": 300
+  },
+  "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+}
