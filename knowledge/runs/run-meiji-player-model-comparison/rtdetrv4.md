@@ -84,9 +84,47 @@ bash knowledge/runs/run-meiji-player-model-comparison/rtdetrv4_run.sh \
   rtdetrv4-l "$SHARED_PERSON_SPEED_INPUTS" "$SPEED_SHA256" "$COHORT_SHA256" "$NEW_OUTPUT_ROOT"
 ```
 
+## PT16 speed with matched host threads
+
+The #2496 DINO and #2487 joint DINO–ViTPose speed receipts for both batch sizes report four PyTorch host threads. Their pinned runners set OpenCV to one thread and both queue invocations used `OMP_NUM_THREADS=4`, `MKL_NUM_THREADS=2` and `OPENBLAS_NUM_THREADS=2`. The RT-DETRv4 PT16 rerun uses the same settings and records both thread counts. The original timing receipts report two PyTorch threads and leave the OpenCV count unspecified. [DINO receipts](../run-person-model-speed-low-precision/cases.json) · [Joint timing receipts](https://github.com/Motoki0705/tennis-lab/blob/edeea50b43ea990fcae8dd2b0e1173948d36aa6d/knowledge/runs/run-meiji-player-model-comparison/joint-speed/cases.json)
+
+Submit the PT16 timing loop for each model through the shared GPU queue with a fresh `output`. Each batch size uses its own process on the synchronized main harness, with the fixed BGR input and batch order, 30 warm-ups and 300 timed iterations. Parity is recorded as `PT32未計測`. The recorded output path for this rerun is `$RTDETRV4_RESULTS/<model>/speed-threads4-1/pt16/`.
+
+```bash
+model=rtdetrv4-l
+size=L
+output="$RTDETRV4_RESULTS/$model/speed-threads4-1/pt16"
+mkdir -p -- "$(dirname "$output")"
+mkdir -- "$output" || exit
+realpath "$output" > "$TENNIS_REPRO_DIR/output_dir.txt" || exit
+export PYTHONPATH=".:$assets/python-deps:knowledge/runs/run-person-model-speed-baseline"
+export OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2
+status=0
+for batch in 1 2; do
+  .venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/rtdetrv4.py \
+    --model-id "$model" --upstream "$assets/RT-DETRv4" --weights "$assets/RTv4-$size-hgnet.pth" \
+    speed --device cuda:0 --backend pt16 --batch-size "$batch" \
+    --inputs "$SHARED_PERSON_SPEED_INPUTS" --inputs-sha256 "$SPEED_SHA256" \
+    --parity-not-evaluated-reason 'PT32計測はスコープ外（ユーザー判断 2026-11-25）' \
+    --output "$output" || status=1
+done
+exit "$status"
+```
+
+Both rerun jobs executed at `a70a7fa24c23b3a68d108cfc1e483767b6d56e55` with an empty worktree patch. All four reports completed on the DINO baselines' RTX 5060 Ti with the same driver, CUDA and PyTorch versions. Each report's 300 timed batches, all stage and GPU summaries, and sampled NVML peak were verified. The two job logs are in the retained SHA-256 inventory.
+
+| Model | Image batch | Wall P50 / P95 (ms/image) | GPU P50 / P95 (ms/image) | Images/s | NVML peak increase (MiB) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| L | 1 | 53.67 / 60.03 | 29.98 / 35.99 | 18.32 | 338 |
+| L | 2 | 38.55 / 42.08 | 15.59 / 18.45 | 25.67 | 468 |
+| X | 1 | 58.16 / 73.34 | 34.14 / 46.78 | 16.45 | 570 |
+| X | 2 | 44.80 / 62.33 | 20.54 / 34.33 | 21.15 | 696 |
+
+Use the matched PT16 `conditions[].speed` reports for the comparison. The NVML column is the sampled peak increase from the pre-load reading. The initial two-thread reports are under `initial_speed` for each PT16 condition. [Raw report pins, queue IDs and metrics](rtdetrv4-results.json)
+
 ## Fixed-cohort results
 
-The four prediction sets each cover 6,844 images and 26,276 eligible SMPL-derived boxes. Re-scoring the saved JSONL with the merged evaluator reproduces each saved report. Recall@0.50 and @0.75 use all person rows in the official global top 300. Precision and AP remain unavailable with the partial player reference. The PT16 Recall@0.50 at a person score of at least 0.25 is 96.67% for L and 96.65% for X.
+The four prediction sets each cover 6,844 images and 26,276 eligible SMPL-derived boxes. Re-scoring the saved JSONL with the merged evaluator reproduces each saved report. Recall@0.50 and @0.75 use all person rows in the official global top 300. Precision and AP remain unavailable with the partial player reference. The PT16 Recall@0.50 at a person score of at least 0.25 is 96.67% for L and 96.65% for X. The timing columns contain the initial two-thread measurements.
 
 | Model | Backend | Recall@0.50 | Recall@0.75 | Stage P50 ms/image B1 | Stage P50 ms/image B2 | Comparison status |
 | --- | --- | ---: | ---: | ---: | ---: | --- |
@@ -97,7 +135,9 @@ The four prediction sets each cover 6,844 images and 26,276 eligible SMPL-derive
 
 The [condition receipts](rtdetrv4-results.json) contain both queue IDs, raw report and prediction SHA-256 values, plans, conversion times, P50/P95 and throughput, and sampled NVML and allocator memory. The two suites ran at `88ec50e5f777cbecb1dfecf54f8c6353a60612f6` with an empty working-tree patch. The measured harness, input loader and timing protocol are byte-identical to main merge `59faa32a28d2f54e6492abdba2429846fa0397e3`. All 300 timed batch ID sequences and timing summaries in the eight speed reports were verified against the pinned schedule and raw samples. The `RTDETRV4_RESULTS` root is this worktree's `outputs/player-model-comparison/` on the run machine.
 
-Both TRT16 plans execute. Against the fixed cohort, they match 0 and 8 of the 26,276 reference boxes at IoU 0.50 for L and X, respectively. That is a drop of about 98 percentage points from PT16. The speeds of these plans are retained as experimental evidence. Both conditions are excluded from the accuracy–speed trade-off plot.
+Each `log` path in the receipts resolves under `$RTDETRV4_RESULTS/queue-logs/` via the `model_results` root. Verify the retained copies with `sha256sum --check SHA256SUMS` from that directory. Queue reproduction and completion records resolve under `$TRAINING_QUEUE_DIR`.
+
+Both TRT16 plans execute. Against the fixed cohort, they match 0 and 8 of the 26,276 reference boxes at IoU 0.50 for L and X, respectively. That is a drop of about 98 percentage points from PT16. The speeds of these plans are retained as experimental evidence. The measured plans have a conversion issue with an undetermined cause. Both conditions are excluded from the Pareto calculation.
 
 ## Same-input TensorRT diagnosis
 
@@ -129,10 +169,43 @@ PYTHONPATH=".:$assets/python-deps:knowledge/runs/run-person-model-speed-baseline
   --output "$NEW_DIAGNOSTIC_OUTPUT"
 ```
 
+## FP32 decoder attention probe
+
+The `trt16-fp32attn` condition tests whether widening decoder self-attention scores improves the measured TensorRT output. Each L/X ONNX graph has six decoder self-attention scopes at `/model/decoder/decoder/layers.{0..5}/self_attn`. Each score `MatMul_3` feeds its `Softmax` directly. Cast the two score operands to FP32 and restore the probabilities to FP16 before the value `MatMul_4`. The plan keeps the base graph's binding types, checkpoint, external weight bytes, optimization profile and 1 GiB workspace limit. The related ECDet-L COCO experiment motivated this intervention. [EdgeCrafter probe and results](https://github.com/Motoki0705/tennis-lab/blob/e9a12d172279a35b5885bbdd37e651772978aac8/knowledge/runs/run-meiji-player-model-comparison/EDGECRAFTER.md)
+
+The CPU export check verified the six FP32 regions and 18 added casts per graph, exact equality of the other nodes and initializers, and the same external weight SHA-256. The rewritten `model.onnx` SHA-256 was `b09b97bd3a7ab216eee35cff6e8aeef3cb67c9b9b925183344d06550101932df` for L and `9654953535a2707ab09db965c16d5b60b4235dd3e6ecf024b34a5038597da954` for X.
+
+The probe verifies the archived PT16 and input SHA-256 values and regenerates the inputs from the fixed speed manifest. It uses the four images from the earlier diagnosis. For both batch sizes, it runs the original plan and the new plan in manifest order and with the two slots of each pair swapped. It restores source image order before comparing with the saved PT16 heads for that batch size. The recorded metrics are raw head differences by query index, one-to-one decoded box matches at IoU 0.50, and subset recall against the 16 pseudo-GT boxes. The receipt includes plan hashes, the case order and raw output hashes. Plan rebuilding can change tactic selection, so a measured improvement would show the effect of this plan variant.
+
+The first L and X jobs, run at `0ed2bb1d7289ace7758c023bb01397acbfff22c4`, both exported ONNX and built the candidate plans. Each completed the four original-plan cases. Both jobs exited with code 1 in output validation on the first candidate case, batch 1 in manifest order, with `Non-finite RT-DETRv4 deployment output`. The first probe exited before writing its raw arrays, so the failing head and frame and the other candidate cases remain unmeasured in that attempt. The [v1 receipts](rtdetrv4-results.json) retain the logs, build receipts and verified inventory of both candidate plans.
+
+To complete the four-case diagnosis with the same plan bytes, add `--candidate-engine-dir "$V1_ENGINE_DIR" --candidate-plan-sha256 "$V1_PLAN_SHA256"` to the command below. The probe checks that explicit digest and the input profile before reuse. The replay captures raw heads before box decoding and saves them for both valid and invalid cases. It records NaN and Inf counts per frame and continues to the next case after an invalid output. Infeasible cases leave recall undefined.
+
+```bash
+PYTHONPATH=".:$assets/python-deps:knowledge/runs/run-person-model-speed-baseline" \
+  OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
+  .venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/rtdetrv4_fp32attn.py \
+  --model-id rtdetrv4-l --upstream "$assets/RT-DETRv4" --weights "$assets/RTv4-L-hgnet.pth" \
+  --engine-dir "$RTDETRV4_RESULTS/rtdetrv4-l/trt16/trace-b2/engine" \
+  --archive "$RTDETRV4_RESULTS/diagnostics/same-input-v1/rtdetrv4-l" \
+  --speed-inputs "$SHARED_PERSON_SPEED_INPUTS" --speed-sha256 "$SPEED_SHA256" \
+  --benchmark "$bench/multiview-player-evaluation-v1" --manifest-sha256 "$COHORT_SHA256" \
+  --output "$NEW_PROBE_OUTPUT"
+```
+
+Submit the probe through the shared GPU queue with an exclusive reservation and a fresh output directory for each variant. A substantial improvement on the four images is the basis for running the fixed 6,844-image accuracy cohort and the shared batch 1 and 2 speed benchmark.
+
+The replay at `0b07efeaff245c5f782df70e5005f7b6cd5b35c5` reused both checked v1 plans and retained all 16 cases across the two models and two plan variants. In every `trt16-fp32attn` case, each of the four images had NaN in all 24,000 logits and all 1,200 box coordinates before postprocessing. The NaN counts held at batch 1 and 2 and in both input orders. Both jobs wrote the case reports and raw arrays, then exited with code 1 for the infeasible candidate cases.
+
+The saved raw arrays reproduced the non-finite counts. Re-scoring the saved decoded boxes from the original plans reproduced their zero matches against the 16 pseudo-GT boxes in each case. At score ≥0.25 and IoU ≥0.50, the original plans also matched zero of 40 (L) and 33 (X) archived PT16 boxes in each case. Both `trt16-fp32attn` plans have a conversion issue with an undetermined cause and are infeasible for comparison. Their full-cohort accuracy and shared speed remain unmeasured. Locating the first operation that produced NaN is deferred until RT-DETRv4 is reconsidered for adoption. [Replay job IDs, plan hashes and raw output inventory](rtdetrv4-results.json)
+
 ## Test design
 
 - The CPU unit fixtures check source width/height order and input channel scaling on unequal native image sizes. A stage-level fixture with two images and hand-computed pixel boxes checks alignment and the declared forward backend.
 - A two-image fixture checks that COCO person rows retain their score order and valid clipped coordinates, including a score below the demo threshold. The fixture also checks an empty result. A separate malformed output catches non-finite boxes becoming finite through clipping.
 - A fixture saved in the release's old format reproduces the original load failure and verifies that the EMA state is selected. The encoder test checks that the same cached tensors enter nonpersistent buffers and move with `.to()`.
 - The command tests check that accuracy and speed require an explicit parity status and reject PT32. A stubbed queue suite checks both FP16 backends, TensorRT conversion, and refusal to reuse a run directory. The diagnostic fixture checks that the same prepared images and native boxes align in both batch sizes. The shared harness tests cover the explicit opt-out and its default required-parity behavior.
+- For the FP32 attention probe, a small typed ONNX fixture checks the six intended cast boundaries and preserves the surrounding graph. Missing or shared score nodes must fail. An asymmetric four-image fixture checks that reversing the slots within each pair aligns saved and observed heads by image. Both fixtures run on CPU. Check the six regions and external weight bytes on both real exports before submitting the GPU probe.
+- The failure regression extends the four-image capture with NaN and Inf in separate raw heads. It checks that capture reaches the later frames, preserves their frame order, reports the non-finite counts and stops that case before decoding. A CPU test of plan reuse verifies that a different SHA-256 is rejected and that an existing matching plan bypasses export and build.
+- For the host-thread rerun, a CPU fixture starts with mismatched thread settings and calls the speed entry point with a stubbed input bundle and timer. It verifies the PyTorch and OpenCV settings before input loading and in the measurement receipt. Reuse the shared harness tests for input order, synchronized timing and explicit parity status.
 - Reuse `test_exact_backend_selection_never_loads_another_backend` for the shared benchmark's backend routing, `test_one_detection_cannot_match_two_players_and_an_unlabelled_box_has_no_fp` for partial-label scoring, and `test_pose_rows_keep_both_people_and_zero_detection_frames` for JSONL rows. The fixtures run on CPU with generated data. Measure with `pytest --durations=0 --durations-min=0.01` and qualify the upstream adapter separately with the actual L/X checkpoints.

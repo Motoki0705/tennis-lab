@@ -27,6 +27,7 @@ from rtdetrv4 import (
 from src.tennis_scene.evaluation.player_pose.bundle import load_reference_frames
 from src.tennis_scene.evaluation.player_pose.scoring import (
     FrameKey,
+    Predictions,
     ReferenceFrame,
     score_players,
 )
@@ -59,6 +60,37 @@ def _onnx_cpu(onnx_path: Path) -> tuple[str, Callable[[torch.Tensor], ModelOutpu
     return str(ort.__version__), forward
 
 
+def decode_rows(
+    decoder: Detector, raw: ModelOutputs, sizes: torch.Tensor
+) -> list[Predictions]:
+    logits, boxes = raw
+    decoded = decoder.decode((logits.to(sizes.device), boxes.to(sizes.device)), sizes)
+    labels, xyxy, scores = (tensor.cpu().numpy() for tensor in decoded)
+    return person_predictions(labels, xyxy, scores, sizes.cpu().numpy())
+
+
+def capture_batches(
+    forward: Callable[[torch.Tensor], ModelOutputs],
+    decoder: Detector,
+    pixels: torch.Tensor,
+    sizes: torch.Tensor,
+    batch_size: int,
+) -> tuple[dict[str, np.ndarray], list[Predictions]]:
+    logits, boxes, detections = [], [], []
+    for start in range(0, len(pixels), batch_size):
+        rows = slice(start, start + batch_size)
+        raw_logits, raw_boxes = forward(pixels[rows])
+        logits.append(raw_logits.cpu().numpy())
+        boxes.append(raw_boxes.cpu().numpy())
+        # The deployed postprocessor and pixel scale are shared by all three paths.
+        detections.extend(decode_rows(decoder, (raw_logits, raw_boxes), sizes[rows]))
+    arrays = {
+        "pred_logits": np.concatenate(logits),
+        "pred_boxes": np.concatenate(boxes),
+    }
+    return arrays, detections
+
+
 def _compare_batches(
     forward: Callable[[torch.Tensor], ModelOutputs],
     decoder: Detector,
@@ -68,25 +100,8 @@ def _compare_batches(
     references: dict[FrameKey, ReferenceFrame],
     batch_size: int,
 ) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
-    logits, boxes, detections = [], [], []
-    for start in range(0, len(keys), batch_size):
-        rows = slice(start, start + batch_size)
-        raw_logits, raw_boxes = forward(pixels[rows])
-        logits.append(raw_logits.cpu().numpy())
-        boxes.append(raw_boxes.cpu().numpy())
-        # The deployed postprocessor and pixel scale are shared by all three paths.
-        decoded = decoder.decode(
-            (raw_logits.to(pixels.device), raw_boxes.to(pixels.device)), sizes[rows]
-        )
-        labels, xyxy, scores = (tensor.cpu().numpy() for tensor in decoded)
-        detections.extend(
-            person_predictions(labels, xyxy, scores, sizes[rows].cpu().numpy())
-        )
+    arrays, detections = capture_batches(forward, decoder, pixels, sizes, batch_size)
     score = score_players(references, dict(zip(keys, detections, strict=True)))
-    arrays = {
-        "pred_logits": np.concatenate(logits),
-        "pred_boxes": np.concatenate(boxes),
-    }
     return {
         "status": "ok",
         "raw": {
