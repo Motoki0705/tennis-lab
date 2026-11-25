@@ -29,8 +29,25 @@ Each successful condition writes `receipt.json`, `scores.json` and checksum-pinn
 
 Use the [#2496 harness](../../../src/utils/inference_benchmark.md) and its published fixed speed input for candidate latency and memory. The ViTPose-H speed rows use the [#2496 baseline](https://github.com/Motoki0705/tennis-lab/issues/2496). This accuracy runner has no latency measurements.
 
+## Replay retained accuracy
+
+`replay_accuracy.py` verifies each completed queue receipt against the frozen cohort, original file hashes, BBoxes and person addresses. It re-scores the saved COCO17 rows with the current common scorer and records which metric sections changed, the two Recall values, and coordinate and raw-score differences from the same model's PT32 outputs. The PT32 comparison reports observed differences for the accuracy cohort. The shared timing harness uses its own fixed input and parity policy.
+
+```bash
+run=knowledge/runs/run-meiji-topdown-pose-comparison
+media=data/tennis_multiview/processed/meiji_4cam/benchmarks
+queue_root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.training_queue"
+PYTHONPATH="$PWD:$PWD/$run" OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  .venv/bin/python -B "$run/replay_accuracy.py" --queue "$queue_root" \
+  --bundle "$media/multiview-player-evaluation-v1" \
+  --bundle-sha256 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580 \
+  --output outputs/pose-comparison/vitpose-replay --retain "${VITPOSE_ACCURACY_JOBS[@]}"
+```
+
+Supply the six complete `.job` IDs in `VITPOSE_ACCURACY_JOBS`. `--retain` preserves the original receipt, predictions, scores and log in the queue's retained `repro/<job>/predictions/`. The replay writes its own report directory and keeps the prior scores available for comparison.
+
 ## Adapter and tests
 
 The adapter contract binds one explicit backend, input order and COCO17 axis. Each adapter declares its forward calls with `stages.measure_forward(backend, operation, name="pose")` and may return person-aligned supplementary outputs. Renderer and analysis code can use row addresses to join with the frozen source. [Input and output contract](https://github.com/Motoki0705/tennis-lab/issues/2490#issuecomment-7129915413) · [Forward method](https://github.com/Motoki0705/tennis-lab/issues/2490#issuecomment-7131482779)
 
-The focused CPU tests use unequal boxes, nonconsecutive frames, a partially empty cohort and a short final batch to expose reordering, skipped rows, mismatched backends and confidence-induced false misses. The tests reuse the shared scorer's reference dataclasses and run beside its [hand-calculated coverage case](../../../tests/unit/tennis_scene/evaluation/player_pose/test_scoring.py). The existing [ViTPose frame sequence and UDP test](../../../tests/unit/submodules/models/vitpose/test_pose2d.py) covers shared production crop and decode; the new tests target the evaluation boundary. The focused cases use tiny arrays and an injected frame stream, with no external weights, video or GPU.
+The focused CPU tests use unequal boxes, nonconsecutive frames, a partially empty cohort and a short final batch to expose reordering, skipped rows, mismatched backends and confidence-induced false misses. Replay tests reject a reordered player column and recover a retained copy after the temporary source is removed. The tests reuse the shared scorer's reference dataclasses and the production ViTPose frame sequence. The focused cases use tiny arrays and an injected frame stream, with no external weights, video or GPU. [Coverage test](../../../tests/unit/tennis_scene/evaluation/player_pose/test_scoring.py) · [ViTPose decoding test](../../../tests/unit/submodules/models/vitpose/test_pose2d.py)

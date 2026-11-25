@@ -17,6 +17,7 @@ from src.tennis_scene.evaluation.player_pose.bundle import MANIFEST_SCHEMA
 from src.tennis_scene.evaluation.player_pose.scoring import FrameKey, ReferenceFrame
 from src.utils.checksum import dual_sha256
 from src.utils.inference_benchmark import Backend, ConditionUnavailable, Status
+from src.utils.io import write_json_atomic
 from src.utils.schema.player import COCO_KP_NAMES
 from src.utils.video import FramePacket
 
@@ -230,3 +231,77 @@ def test_accuracy_stages_reject_a_forward_declared_with_another_backend(
     with pytest.raises(ConditionUnavailable) as error:
         stages.measure_forward(Backend.PT16, unexpected)
     assert error.value.status is Status.BACKEND_MISMATCH
+
+
+def test_replay_checks_fixed_rows_and_can_use_retained_queue_results(
+    run_modules: tuple[ModuleType, ...], tmp_path: Path
+) -> None:
+    evaluate, fixed_inputs, contract = run_modules
+    replay = import_module("replay_accuracy")
+    key = FrameKey("video/clip", "cam2", 4)
+    refs = {
+        key: ReferenceFrame(
+            np.array([21, 7]),
+            np.array([[1.0, 2.0, 4.0, 6.0], [8.0, 3.0, 9.0, 12.0]]),
+            np.ones((2, 17, 2)),
+            np.ones((2, 17), bool),
+        ),
+    }
+    keys = fixed_inputs.row_keys(refs)
+    columns = replay.row_columns(refs, keys)
+    points: NDArray[np.float32] = np.full((2, 17, 3), np.nan, np.float32)
+    points[1, 9] = (3.0, 4.0, 0.25)
+    poses = contract.PoseBatch(points)
+    source, queue = tmp_path / "inference", tmp_path / "queue"
+    source.mkdir()
+    stem = "pose-accuracy"
+    repro = queue / "repro" / stem
+    repro.mkdir(parents=True)
+    (repro / "output_dir.txt").write_text(str(source) + "\n")
+    (repro / "repro.sh").write_text("echo replay\n")
+    write_json_atomic(repro / "run.json", {"run_id": stem, "commit": "a" * 40})
+    log = queue / "logs" / f"{stem}.log"
+    log.parent.mkdir()
+    log.write_text("completed\n")
+    artifact = evaluate.save_predictions(source, refs, keys, poses)
+    write_json_atomic(source / "scores.json", {"original": True})
+    write_json_atomic(
+        source / "receipt.json",
+        {
+            "commit": "a" * 40,
+            "status": "ok",
+            "bundle_id": "cohort",
+            "bundle_sha256": "b" * 64,
+            "model": "vitpose-h",
+            "backend": "PT32",
+            "rows": 2,
+            "batch_size": 1,
+            "joint_order": COCO_KP_NAMES,
+            "weights": {},
+            "engines": {},
+            "environment": {},
+            "predictions": artifact,
+            "scores": {
+                "path": "scores.json",
+                "sha256": dual_sha256(source / "scores.json"),
+            },
+        },
+    )
+    arguments = (queue, f"{stem}.job", ("cohort", "b" * 64))
+    wrong = {**columns, "player_id": np.array([7, 21])}
+    with pytest.raises(ValueError, match="player_id differs"):
+        replay.read_condition(*arguments, wrong, retain=True)
+    assert not (repro / "predictions").exists()
+
+    case, retained, previous, record = replay.read_condition(
+        *arguments, columns, retain=True
+    )
+    assert case == ("vitpose-h", Backend.PT32)
+    assert previous == {"original": True}
+    assert record["prediction_sha256"] == artifact["sha256"]
+    np.testing.assert_array_equal(retained.keypoints_xyc, points)
+    (source / artifact["path"]).unlink()
+    log.unlink()
+    _, copied, _, copied_record = replay.read_condition(*arguments, columns)
+    np.testing.assert_array_equal(copied.keypoints_xyc, points)
+    assert copied_record["log"]["sha256"] == record["log"]["sha256"]
