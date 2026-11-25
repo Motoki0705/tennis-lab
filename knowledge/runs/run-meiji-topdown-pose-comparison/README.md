@@ -8,7 +8,7 @@ The [accuracy table](accuracy.csv) contains 15 primary conditions for ViTPose-H,
 
 ## Accuracy command
 
-From the checkout root, use the published manifest digest. Run CUDA commands through the shared training queue with the `all` reservation.
+From the checkout root, use the published manifest digest. Run CUDA commands through the shared training queue with the `all` reservation. For any new accuracy runs, use PT16 or TRT16 under the November 25 scope decision. The saved PT32 accuracy and backend differences remain available for reading and CPU replay. [Scope decision](https://github.com/Motoki0705/tennis-lab/issues/2492)
 
 ```bash
 run=knowledge/runs/run-meiji-topdown-pose-comparison
@@ -17,10 +17,10 @@ PYTHONPATH="$PWD:$PWD/$run" .venv/bin/python -B "$run/evaluate.py" \
   --bundle "$media/multiview-player-evaluation-v1" \
   --bundle-sha256 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580 \
   --media-root "$media/multiview-v1" \
-  --model vitpose-h --backend PT32 --device cuda:0 --batch-size 8 \
+  --model vitpose-h --backend PT16 --device cuda:0 --batch-size 8 \
   --checkpoint ckpt/vitpose/vitpose-h-multi-coco.pth \
   --checkpoint-sha256 50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc \
-  --output outputs/pose-comparison/vitpose-h-pt32
+  --output outputs/pose-comparison/vitpose-h-pt16
 ```
 
 For FP16 autocast, select `PT16`. For `TRT16`, pass `--engine` with a validated scene engine directory for the selected flip setting and batch range. Select `vitpose-h-no-flip` for the supplemental single-view forward. The ViTPose-H accuracy adapter uses the same square padding factor 1.2, half-resolution image crop, 256×192 model input, flip restoration and UDP decoding as the scene model. PyTorch FP16 uses production autocast, with FP32 heatmap transfer and UDP decoding. The two flip inputs share one forward.
@@ -29,7 +29,11 @@ The current checkpoint was distributed for GVHMR as `vitpose-h-multi-coco.pth`. 
 
 Each successful condition writes `receipt.json`, `scores.json` and checksum-pinned `predictions.npz`. The last file holds one row per `(clip_id, camera_id, source_frame, player_id)`, input bbox, native-pixel COCO17 `keypoints_xyc` and optional `extra__NAME` arrays aligned with that axis. `scores.json` uses the shared `score_players` on the input boxes. For distinct boxes the exact IoU 1.0 matches recover the known input association. The fixed-denominator pose metrics include missing output joints. `finite_pairs` uses the same OKS and PCK definitions on eligible finite pairs. Every finite raw confidence is eligible, including zero and negative values. A joint with any nonfinite field is missing. Box matches and their placeholder scores only support association.
 
-Use the [#2496 harness](../../../src/utils/inference_benchmark.md) and its published fixed speed input for candidate latency and memory. The ViTPose-H speed rows use the [#2496 baseline](https://github.com/Motoki0705/tennis-lab/issues/2496). This accuracy runner has no latency measurements.
+## Speed and memory
+
+For ViTPose-H, reuse the synchronized PT16/TRT16 results with and without flip at batch 1/4/8. The baseline records include raw timings, the input order digest, and hashes of the weights and engines. [Published speed and memory](../run-person-model-speed-low-precision/README.md)
+
+Use the common harness and pinned crop schedule for new candidate runs. Pass `parity_not_evaluated_reason="PT32計測はスコープ外（ユーザー判断 2026-11-25）"` and record the comparison label `PT32未計測`. Keep the original provisional PT32 measurements as historical data. [Harness and opt-out contract](../../../src/utils/inference_benchmark.md) · [Published dataset and timing protocol](../run-person-model-speed-baseline/README.md#固定入力と初回の成果物)
 
 ## Replay retained accuracy
 
@@ -66,7 +70,7 @@ PYTHONPATH="$PWD:$PWD/$run" OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THR
   --output outputs/pose-comparison/difficulty-v1.json "${accuracy_jobs[@]}"
 ```
 
-The script verifies the original output digest and checks the all-row counts, PCK and mean OKS against the shared score for each condition. The full report is stored with the artifacts in the [knowledge node](../../nodes/tennis_scene/000086-run-meiji-topdown-pose-comparison.md). [PT32 results by group and joint](difficulty_pt32.csv)
+The script verifies the original output digest and checks the all-row counts, PCK and mean OKS against the shared score for each condition. The full report is stored with the artifacts in the [knowledge node](../../nodes/tennis_scene/000091-run-meiji-topdown-pose-comparison.md). [PT32 results by group and joint](difficulty_pt32.csv)
 
 The added CPU tests use known 3D wrist displacement, gaps and irregular source timestamps, then use asymmetric 2D residuals and a missing joint to verify temporal alignment and the PCK denominator. They reuse the fixed COCO17 definitions and row addresses. The fixtures use a few rows in memory and require no media, GPU or checkpoint.
 
@@ -93,7 +97,7 @@ PYTHONPATH="$PWD:$PWD/$run" .venv/bin/python -B "$run/render_overlays.py" \
   --output outputs/pose-comparison/representatives-v1 "${pt32_jobs[@]}"
 ```
 
-This writes the 24 source frames selected by the fixed bundle. The manifest lists the source addresses and PNG hashes. Use the same five PT32 jobs with `--clip video_000/clip_003 --camera cam2` for the first clip video or with `--clip video_000/clip_004 --camera cam1 --frame 386 --player 4` for the fast-motion example. The variable-spacing video for `clip_004/cam2` uses the ViTPose-H and PMPose-H PT32 jobs. [Representative manifest](representatives.json) · [Playback and artifact hashes](../../nodes/tennis_scene/000086-run-meiji-topdown-pose-comparison.md)
+This writes the 24 source frames selected by the fixed bundle. The manifest lists the source addresses and PNG hashes. Use the same five PT32 jobs with `--clip video_000/clip_003 --camera cam2` for the first clip video or with `--clip video_000/clip_004 --camera cam1 --frame 386 --player 4` for the fast-motion example. The variable-spacing video for `clip_004/cam2` uses the ViTPose-H and PMPose-H PT32 jobs. [Representative manifest](representatives.json) · [Playback and artifact hashes](../../nodes/tennis_scene/000091-run-meiji-topdown-pose-comparison.md)
 
 ## Adapter and tests
 

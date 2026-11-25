@@ -2,7 +2,7 @@
 id: run-meiji-topdown-pose-comparison
 type: run
 task: tennis_scene
-sequence: 86
+sequence: 91
 recorded_at: '2026-11-25'
 title: Meiji 4camの固定疑似BBoxでトップダウンCOCO17を比較
 issue: 2490
@@ -16,12 +16,17 @@ config:
   accuracy_scorer_commit: 0d4bf0990f82ae0b8ebf2afe08d3209e583d2364
   speed_input: meiji_4cam/person-model-speed-v1
   speed_manifest_sha256: 64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62
+  speed_timing_protocol_sha256: 39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2
+  speed_harness_merge_commit: 59faa32a28d2f54e6492abdba2429846fa0397e3
+  vitpose_speed_measurement_commit: 13e508cb78c46663fbe58ad8be03bcf9c96816a6
+  speed_parity: not_evaluated
 metrics:
   images: 6844
   eligible_person_boxes: 26276
   eligible_joints: 437714
   completed_primary_accuracy_conditions: 15
   completed_supplemental_accuracy_conditions: 3
+  vitpose_reused_speed_cases: 12
   excluded_sapiens2_conditions: 6
   downstream_pose_tracks_per_condition: 96
   downstream_nonfinite_conditions: 1
@@ -52,6 +57,8 @@ artifacts:
   run_dir: knowledge/runs/run-meiji-topdown-pose-comparison
   table: knowledge/runs/run-meiji-topdown-pose-comparison/accuracy.csv
   vitpose_accuracy: knowledge/runs/run-meiji-topdown-pose-comparison/vitpose_accuracy.json
+  vitpose_speed_cases: knowledge/runs/run-person-model-speed-low-precision/cases.csv
+  vitpose_speed_records: knowledge/runs/run-person-model-speed-low-precision/cases.json
   rtmpose_accuracy: knowledge/runs/run-meiji-topdown-pose-comparison/rtmpose_accuracy.json
   pmpose_accuracy: knowledge/runs/run-meiji-topdown-pose-comparison/pmpose_accuracy.json
   sapiens2_conversion: knowledge/runs/run-meiji-topdown-pose-comparison/sapiens2_conversion.json
@@ -82,6 +89,7 @@ artifacts:
 parents:
 - run-meiji-multiview-player-evaluation
 - run-person-model-speed-baseline
+- run-person-model-speed-low-precision
 relations: []
 papers: []
 tags: []
@@ -117,4 +125,8 @@ ViTPose-HのflipありでPT32に対する座標差はPT16がP95 0.0088 px、TRT1
 
 5B PT32のCUDAロードでは、重み20,480,794,652 bytes、PyTorch allocated peak 20,540,379,648 bytes、CUDA報告のデバイス容量17,074,749,440 bytesを記録した。常駐VRAMとforwardは未計測。両サイズのONNXは検証済みで、初回TRT buildはRMSNormの `ReduceMean` に渡されたaxesがinitializerであることを求めるTensorRTの制約で停止した。公式重み、COCO17への名前付き対応、変換receiptを保存した。 [モデル・利用条件・変換の記録](../../runs/run-meiji-topdown-pose-comparison/sapiens2.md#conversion-and-accuracy-evidence)
 
-主比較15条件とViTPose-H flipなしの補助3条件の精度採点は完了した。#2496 の速度基準は384人物crop、batch 1/4/8、30 warm-up、300反復の暫定値。#2497 の修正版と親の再投入指示を受けて、残るモデルの速度・VRAM・共通parityを照合し、Pareto比較と採用候補をまとめる。 [現行モデルの暫定速度基準](000085-run-person-model-speed-baseline.md)
+主比較15条件とViTPose-H flipなしの補助3条件の精度採点は完了した。2026-11-25のユーザー判断により、新規の速度計測はPT16・TRT16を対象とし、共通harnessに明示の未判定理由を渡す。表のparity欄は「PT32未計測」とする。既存のPT32精度と数値差、旧harnessのPT32暫定速度は履歴に残す。今後のPareto比較はバッチ終端を同期する共通harnessによる速度を使う。 [ユーザー判断](https://github.com/Motoki0705/tennis-lab/issues/2492) · [初回の暫定値とparity](000085-run-person-model-speed-baseline.md)
+
+ViTPose-Hの速度基準は、#2497で同期込み再計測済みのflipあり・なし×PT16・TRT16×batch 1/4/8の12条件を採用した。計測commit `13e508cb78c46663fbe58ad8be03bcf9c96816a6` とmainのマージcommit `59faa32a28d2f54e6492abdba2429846fa0397e3` で共通harnessと計測コードが一致する。固定cropの各反復のID順、元レポートのSHA-256、計時の成功とparity未判定を照合した。B=1の主比較（flipあり）のwall P50はPT16 22.17 ms、TRT16 12.64 ms、NVMLのデバイス使用量のサンプル最大値は4,388 MiB、1,752 MiBだった。 [再計測の基準値](000086-run-person-model-speed-low-precision.md) · [全条件と元レポートのSHA-256](../../runs/run-person-model-speed-low-precision/cases.json)
+
+RTMPose-M/XとPMPose-L/Hは各担当の速度・VRAM結果が揃い次第、同じ疑似GTの精度と照合してPareto比較と採用候補をまとめる。
