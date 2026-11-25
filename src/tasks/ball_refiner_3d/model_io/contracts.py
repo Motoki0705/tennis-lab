@@ -41,7 +41,7 @@ class RefinerOutput(NamedTuple):
 
     @property
     def event_probability(self) -> Tensor:
-        return self.event_logits.softmax(dim=-1)[..., 1]
+        return self.event_logits.sigmoid()
 
 
 class PhysicsPrediction(NamedTuple):
@@ -61,6 +61,8 @@ class PhysicsPrediction(NamedTuple):
 
 
 class RefinerPrediction(NamedTuple):
+    """Trajectory (B,T,3) and independent probabilities (B,T,3) in EVENT_CLASSES order."""
+
     coordinates: Tensor
     event_probability: Tensor
     physics: PhysicsPrediction | None = None

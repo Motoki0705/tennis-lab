@@ -22,6 +22,8 @@ from src.tasks.ball_refiner_3d.inference.files import predict_file
 from src.tasks.ball_refiner_3d.model_io.checkpoint import load_checkpoint
 from src.tasks.ball_refiner_3d.training.runner import run_training
 from src.utils.paths import PROJECT_ROOT
+from src.utils.physics.ball.record import EVENT_KINDS
+from src.utils.schema.court import net_height_at_x
 
 CONFIGS = str(PROJECT_ROOT / "src/tasks/ball_refiner_3d/configs")
 
@@ -66,6 +68,51 @@ def test_reprojection_reuses_identical_3d_events_and_splits(shared, tmp_path):
         np.testing.assert_array_equal(before.time, after.time)
         assert after.visible.all()
         assert not np.array_equal(before.uv, after.uv)
+
+
+def test_net_preset_saves_both_physical_outcomes_and_reproduces_coordinates(tmp_path):
+    torch.set_num_threads(1)
+    with initialize_config_dir(version_base=None, config_dir=CONFIGS):
+        cfg = compose(
+            config_name="generate_dataset",
+            overrides=[
+                f"paths.data_root={tmp_path}",
+                "generation=net_contacts",
+                "generation.train_rallies=2",
+                "generation.val_rallies=1",
+                "generation.test_rallies=1",
+                "generation.workers=1",
+                "generation.net_contact_fraction=1",
+            ],
+        )
+    dataset = SharedDataset(generate_dataset(cfg))
+    manifest = dataset.manifest
+    assert manifest["event_counts"]["net"] == 4
+    assert manifest["net_contact_counts"] == {"crossed": 3, "dropped": 1}
+    assert manifest["events_by_split"]["train"]["net_contact_counts"] == {
+        "crossed": 1,
+        "dropped": 1,
+    }
+    for rally, row in zip(dataset.rallies, manifest["records"], strict=True):
+        record = rally.physics
+        shots = np.flatnonzero(record.event_kind == EVENT_KINDS.index("shot"))
+        (net,) = np.flatnonzero(record.event_kind == EVENT_KINDS.index("net"))
+        shot = shots[shots < net][-1]
+        bounces = np.flatnonzero(record.event_kind == EVENT_KINDS.index("bounce"))
+        bounce = bounces[bounces > net][0]
+        side = np.sign(record.event_position[shot, 1])
+        x, y, z = record.event_position[net]
+        assert abs(y) <= 0.030001
+        assert rally.events[record.event_frames()[net]] & 4
+        assert record.integrate_segments(rally.xyz).tobytes() == rally.xyz.tobytes()
+        if row["net_contact"] == "crossed":
+            assert net_height_at_x(float(x)) - 0.03 < z <= net_height_at_x(float(x))
+            assert side * record.event_position[bounce, 1] < 0
+            assert np.any(shots > bounce)
+        else:
+            assert row["net_contact"] == "dropped" and row["end_reason"] == "net_fault"
+            assert side * record.event_position[bounce, 1] > 0
+            assert not np.any(shots > net)
 
 
 PHYSICS_OVERRIDES = [
@@ -197,8 +244,7 @@ def test_shared_training_roundtrip(
     )
     assert last["step"] == 4
     assert {
-        int(state["step"])
-        for state in last["optimizer_states"][0]["state"].values()
+        int(state["step"]) for state in last["optimizer_states"][0]["state"].values()
     } == {4}
     assert any((output / "logs/version_0").glob("events.out.tfevents.*"))
     if gan:
@@ -277,6 +323,7 @@ def test_shared_training_roundtrip(
         np.testing.assert_array_equal(
             saved["event_probability"], repeated["event_probability"]
         )
+        assert saved["event_classes"].tolist() == ["shot", "bounce", "net"]
     final_model, _ = load_checkpoint(
         output / "logs/version_0/checkpoints/last.ckpt", torch.device("cpu")
     )
@@ -341,7 +388,8 @@ def test_shared_training_roundtrip(
     with np.load(destination) as predicted:
         assert predicted["coordinates"].shape == coordinates.shape
         assert np.isfinite(predicted["coordinates"]).all()
-        assert predicted["event_probability"].shape == missing.shape
+        assert predicted["event_probability"].shape == (*missing.shape, 3)
+        assert predicted["event_classes"].tolist() == ["shot", "bounce", "net"]
         assert (
             (predicted["event_probability"] >= 0)
             & (predicted["event_probability"] <= 1)
@@ -349,7 +397,7 @@ def test_shared_training_roundtrip(
         np.testing.assert_array_equal(predicted["input_missing"], missing)
         assert ("integrated_coordinates" in predicted.files) == physics
         if physics:
-            assert str(predicted["schema"]) == "ball_refiner_3d.physics_prediction.v1"
+            assert str(predicted["schema"]) == "ball_refiner_3d.physics_prediction.v2"
             assert predicted["integrated_coordinates"].shape == coordinates.shape
             assert np.isfinite(predicted["integrated_coordinates"]).all()
             segment = predicted["segment"][0]

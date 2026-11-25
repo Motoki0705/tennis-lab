@@ -15,7 +15,11 @@ REPRODUCTION_TOLERANCE_M = 1e-6
 
 
 def build_physics_record(
-    result: RallyResult, physics: PhysicsConfig, frames: int | None = None
+    result: RallyResult,
+    physics: PhysicsConfig,
+    frames: int | None = None,
+    *,
+    verify_bits: bool = False,
 ) -> BallPhysicsRecord:
     """Record of the rally's first ``frames`` output frames, verified.
 
@@ -56,5 +60,13 @@ def build_physics_record(
         event_spin_before=stack("spin_before").astype(np.float32),
         event_spin_after=stack("spin_after").astype(np.float32),
     )
-    record.verify(result.trajectory[:frames].numpy(), REPRODUCTION_TOLERANCE_M)
+    positions = result.trajectory[:frames].numpy()
+    if verify_bits:
+        reproduced = record.integrate_segments(positions)
+        if reproduced.tobytes() != positions.tobytes():
+            raise ValueError(
+                "Physics record did not reproduce the float32 trajectory bit for bit"
+            )
+    else:
+        record.verify(positions, REPRODUCTION_TOLERANCE_M)
     return record

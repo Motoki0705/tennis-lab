@@ -12,10 +12,11 @@ from src.tasks.ball_refiner_3d.configuration.generation import (
     CameraSampling,
     GenerationConfig,
 )
+from src.tasks.blcs.generate_dataset.simulation.net_contact import NetContact
 from src.tasks.blcs.generate_dataset.simulation.rally_simulator import RallyResult
 from src.utils.geometry.triangulation import PinholeCamera
 from src.utils.io import write_json_atomic
-from src.utils.physics.ball.record import BallPhysicsRecord
+from src.utils.physics.ball.record import EVENT_KINDS, BallPhysicsRecord
 
 
 def write_rally(
@@ -29,6 +30,7 @@ def write_rally(
     xyz: np.ndarray,
     cameras: tuple[PinholeCamera, ...],
     attempts: int,
+    net_contact: NetContact | None,
 ) -> dict[str, Any]:
     name = f"rally_{index:06d}"
     seed = generation.seed + index
@@ -78,6 +80,14 @@ def write_rally(
         "surface": record.surface,
         "segments": len(record.segments),
         "event_frames": int(np.count_nonzero(record.event_mask())),
+        "event_counts": dict(
+            zip(
+                EVENT_KINDS,
+                np.bincount(record.event_kind, minlength=len(EVENT_KINDS)).tolist(),
+                strict=True,
+            )
+        ),
+        "net_contact": None if net_contact is None else net_contact.value,
         "end_reason": result.end_reason.value,
         "visible_fraction": float(np.mean(visible)),
         "shot_metadata_fps": result.fps_out,

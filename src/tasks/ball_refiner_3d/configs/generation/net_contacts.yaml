@@ -1,0 +1,5 @@
+defaults:
+- default
+- _self_
+dataset: ball_refiner/single_object_net_v1
+net_contact_fraction: 0.5
