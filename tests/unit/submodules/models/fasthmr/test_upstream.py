@@ -9,7 +9,7 @@ from typing import Any, Self
 import pytest
 import torch
 
-from src.submodules.models.fasthmr import upstream
+import src.submodules.models.fasthmr.upstream as upstream
 from src.submodules.models.fasthmr.assets import FastHMRConfig
 from src.submodules.models.fasthmr.inference import FastHMR
 
