@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "4634e5065b4a44609525f783c2eeecee",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=merge.progression; artifact=progression state; content_sha256=58d359dddc1e13aab926dc1f34148bd8c88039a7bc8be42060e82e767709ab35; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "ea42f2d9928f4a3ea2d781db6de3e1ac",
+      "repeat": null,
+      "status": "partial",
+      "summary": "Automatic progression: parent_wait; checkout_interrupted: checkout HEAD changed during wait (24ce25de11ca74af06e2029d1684d7f0084a2bc7 -> 98a9da710e5e043e48a84dfb495487c5113bf651); restart the command",
+      "verifies": []
+    },
+    "id": "bc6b8f5a4ff145a79c783c18ddb2aee6",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "c771cf62b5654ece925f5aea042b9253",
+      "delegation": null,
+      "issue": null,
+      "parent": 2475,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "0da7a5bc3fdd4dbcac4706b765bbdb80"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-25T00:30:50.390263+00:00"
+      },
+      "recorded_at": "2026-11-25T00:30:50.390284+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
