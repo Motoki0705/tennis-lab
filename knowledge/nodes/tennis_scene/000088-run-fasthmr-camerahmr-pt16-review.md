@@ -21,6 +21,8 @@ metrics:
   source_frame_rows: 1711
   person_frame_requests: 6617
   output_archives: 12
+  comparison_videos: 24
+  source_ticks_per_product: 3414
 summary_impact: none
 repro:
   commit: 97cabfef23bdab3e1097af32a2cdd96cf754b9dd
@@ -29,6 +31,8 @@ repro:
   command: sha256sum -c outputs/fasthmr-setup/review-pt16/source.sha256 && bash outputs/fasthmr-setup/review-pt16/run.sh
 artifacts:
   run_dir: knowledge/runs/run-fasthmr-camerahmr-pt16-review
+  render_manifest: knowledge/runs/run-fasthmr-camerahmr-pt16-review/render-manifest.json
+  review_index: .worktree-outputs/parent-2492-issue-2491-primary/tennis_scene/evaluate/fasthmr-qualitative/pt16-20261125/index.html
   log: .training_queue/logs/0-8204421172867557512_2026-11-25T03-53-47-132442487Z_31336_i2491-fasthmr-pt16-visual-6clips.log
 parents: [run-fasthmr-camerahmr-smoke]
 relations: []
@@ -42,4 +46,6 @@ tags: [fasthmr, body_recovery]
 
 6 clip、1,711サンプル時刻、6,617人・フレームの復元リクエストを両方式のNPZで照合した。12ファイルのSHA-256と、推定フレーム、選手、選択カメラ、カメラ幾何、有効性を検証した。配置済みの描画可能件数はGVHMR 6,597、FastHMR 6,604。件数は各方式の表示可用性を示す。品質は同期動画の目視確認で判断する。PT32と比較するparity判定は対象外。 [実行記録](../../runs/run-fasthmr-camerahmr-pt16-review/run.json)
 
-元映像・配置前・配置後、COCO17の再投影と共通コート視点を [描画スクリプト](../../runs/run-fasthmr-camerahmr-pt16-review/render_review.py) で生成する。clip_003の2サンプルを使う試作で4種のH.264動画を確認した。clip_004・clip_028にある1フレーム間隔も、保存されたsource frame差を使って元映像の時刻に対応させる。全6 clipの動画出力と目視所見は後続。目視所見による採用判断までは標準pipelineの判断を維持する。
+CPUジョブ `20261125T070233Z_387170703f99_fasthmr-render-review-6clips` が全6 clipの同期動画を生成した（終了値0、2,126.741秒）。各clipで元映像と配置前の選択ビュー、配置後の4カメラへのメッシュ・COCO17再投影、配置前後の3Dを確認できる。推論ビューは `SRC`、欠測は各パネルに表示する。clip_004・clip_028で1フレームになる推論間隔は、60000/1001 fpsの元時刻に合わせて保持した。 [描画スクリプト](../../runs/run-fasthmr-camerahmr-pt16-review/render_review.py)
+
+24本すべてのSHA-256、H.264の寸法、パケットの表示時刻、HTMLのリンクを照合した。各表示系列は合計3,414のsource tickで、1,711の固定推論時刻を含む。メディアは主checkoutの `.worktree-outputs/parent-2492-issue-2491-primary/tennis_scene/evaluate/fasthmr-qualitative/pt16-20261125/` の `index.html` から閲覧できる。目視所見と採否は人間の確認待ち。 [動画と入力のSHA-256](../../runs/run-fasthmr-camerahmr-pt16-review/render-manifest.json) [動画照合](../../runs/run-fasthmr-camerahmr-pt16-review/verify_videos.py)
