@@ -19,7 +19,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass, field
+from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Any, Protocol
 
@@ -54,7 +54,10 @@ from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
 from src.tennis_scene.pipeline.components.court_kp import CourtKPResult
-from src.tennis_scene.pipeline.components.identity import IDENTITIES_PORT
+from src.tennis_scene.pipeline.components.identity import (
+    IDENTITIES_PORT,
+    PlayerIdentitiesOutput,
+)
 from src.tennis_scene.pipeline.components.player_reconstruction import (
     PlayerSkeleton,
     ReconstructedPlayers,
@@ -82,7 +85,7 @@ from src.tennis_scene.pipeline.observation_types import (
     group_observations,
 )
 from src.tennis_scene.schema import SceneResult
-from src.utils.configuration import PathResolver
+from src.utils.configuration import PathResolver, PathRole
 from src.utils.geometry.skeleton import (
     compute_bone_lengths,
     compute_joint_angles,
@@ -144,7 +147,7 @@ class MonocularPLCSConfig:
             raise ValueError("height_range_m must be finite with min < max.")
 
     def cache_identity(self) -> dict[str, Any]:
-        """Return deterministic settings identity for component store caching."""
+        """Return deterministic settings identity covering every effective option."""
         return {
             "joint_confidence": self.joint_confidence,
             "reprojection_px": self.reprojection_px,
@@ -152,14 +155,7 @@ class MonocularPLCSConfig:
             "use_multiview_reprojection_refine": self.use_multiview_reprojection_refine,
             "height_range_m": list(self.height_range_m),
             "max_abs_xy_m": self.max_abs_xy_m,
-            "htd_num_steps": self.htd_config.num_steps,
-            "htd_vel_weight": self.htd_config.vel_weight,
-            "htd_acc_weight": self.htd_config.acc_weight,
-            "htd_reproj_weight": self.htd_config.reproj_weight,
-            "htd_bone_var_weight": self.htd_config.bone_var_weight,
-            "htd_bone_sym_weight": self.htd_config.bone_sym_weight,
-            "htd_contact_weight": self.htd_config.contact_weight,
-            "htd_ground_penetration_weight": self.htd_config.ground_penetration_weight,
+            "htd_config": asdict(self.htd_config),
         }
 
 
@@ -195,14 +191,27 @@ def _validate_calibrated_cameras(
     for cam in cam_tuple:
         if not isinstance(cam, PinholeCamera):
             raise TypeError(f"Expected PinholeCamera, got {type(cam).__name__}.")
+        K = cam.intrinsic
         if (
-            not np.isfinite(cam.intrinsic).all()
+            K.shape != (3, 3)
+            or not np.isfinite(K).all()
             or not np.isfinite(cam.rotation).all()
             or not np.isfinite(cam.translation).all()
-            or cam.intrinsic[0, 0] <= 0.0
-            or cam.intrinsic[1, 1] <= 0.0
+            or K[0, 0] <= 0.0
+            or K[1, 1] <= 0.0
         ):
             raise ValueError(f"Camera {cam.camera_id!r} has invalid calibration.")
+        if (
+            abs(float(K[0, 1])) > 1e-6
+            or abs(float(K[1, 0])) > 1e-6
+            or abs(float(K[2, 0])) > 1e-6
+            or abs(float(K[2, 1])) > 1e-6
+            or abs(float(K[2, 2]) - 1.0) > 1e-6
+        ):
+            raise ValueError(
+                f"Camera {cam.camera_id!r} intrinsic K must be canonical zero-skew "
+                f"4-parameter pinhole [[fx, 0, cx], [0, fy, cy], [0, 0, 1]], got {K.tolist()}."
+            )
         if not np.allclose(cam.rotation.T @ cam.rotation, np.eye(3), atol=1e-4) or not np.isclose(
             float(np.linalg.det(cam.rotation)), 1.0, atol=1e-4
         ):
@@ -400,6 +409,9 @@ def reconstruct_players_monocular_plcs(
 
         refine_views: list[HTDRefineCameraView] = []
         view_scores: list[tuple[int, float, int]] = []
+        valid_view_obs: list[
+            tuple[int, NDArray[np.float32], NDArray[np.float32], NDArray[np.bool_]]
+        ] = []
 
         for v, kp2d_px, kp_conf, bbx_xys, frame_obs in view_obs_data:
             cam = calibrated[v]
@@ -413,7 +425,6 @@ def reconstruct_players_monocular_plcs(
             C_t = torch.from_numpy(C_np)
             kp2d_t = torch.from_numpy(kp2d_px)
             conf_t = torch.from_numpy(kp_conf)
-            obs_t = torch.from_numpy(frame_obs)
 
             pred = predictor.predict_monocular_sequence(
                 kp2d_px=kp2d_px,
@@ -468,17 +479,27 @@ def reconstruct_players_monocular_plcs(
             fused_kp_sum += safe_world_kp * frame_w[:, None, None]
             weight_sum += frame_w
 
+            # Stage A supervises pred_vel[t] only on same-view consecutive pairs (t, t+1)
+            # and pred_acc[t] only on same-view triples (t-1, t, t+1). Never fuse
+            # unsupervised segment endpoints across view switches.
+            vel_win_v = np.zeros((frames,), dtype=np.bool_)
+            if frames >= 2:
+                vel_win_v[:-1] = valid_v[:-1] & valid_v[1:]
+            acc_win_v = np.zeros((frames,), dtype=np.bool_)
+            if frames >= 3:
+                acc_win_v[1:-1] = valid_v[:-2] & valid_v[1:-1] & valid_v[2:]
+
             if pred.pred_vel_3d_mps is not None:
                 vel_raw = np.asarray(pred.pred_vel_3d_mps, dtype=np.float64)
                 vel_np_v = vel_raw[0] if vel_raw.ndim == 4 and vel_raw.shape[0] == 1 else vel_raw
-                vel_ok = valid_v & np.isfinite(vel_np_v).all(axis=(1, 2))
+                vel_ok = vel_win_v & np.isfinite(vel_np_v).all(axis=(1, 2))
                 vel_w = np.where(vel_ok, frame_w, 0.0)
                 fused_vel_sum += np.where(vel_ok[:, None, None], vel_np_v, 0.0) * vel_w[:, None, None]
                 vel_weight_sum += vel_w
             if pred.pred_acc_3d_mps2 is not None:
                 acc_raw = np.asarray(pred.pred_acc_3d_mps2, dtype=np.float64)
                 acc_np_v = acc_raw[0] if acc_raw.ndim == 4 and acc_raw.shape[0] == 1 else acc_raw
-                acc_ok = valid_v & np.isfinite(acc_np_v).all(axis=(1, 2))
+                acc_ok = acc_win_v & np.isfinite(acc_np_v).all(axis=(1, 2))
                 acc_w = np.where(acc_ok, frame_w, 0.0)
                 fused_acc_sum += np.where(acc_ok[:, None, None], acc_np_v, 0.0) * acc_w[:, None, None]
                 acc_weight_sum += acc_w
@@ -490,24 +511,26 @@ def reconstruct_players_monocular_plcs(
                 fused_contact_sum += np.where(cnt_ok[:, None], cnt_np_v, 0.0) * cnt_w[:, None]
                 contact_weight_sum += cnt_w
 
-            refine_views.append(
-                HTDRefineCameraView(
-                    R_w2c=R_t,
-                    C_w=C_t,
-                    fx=fx,
-                    fy=fy,
-                    cx0=cx0,
-                    cy0=cy0,
-                    image_w=float(width),
-                    image_h=float(height),
-                    kp2d_px=kp2d_t,
-                    kp_conf=conf_t,
-                    frame_observed=obs_t,
+            valid_view_obs.append((v, kp2d_px, kp_conf, valid_v))
+            if bool(valid_v.any()):
+                refine_views.append(
+                    HTDRefineCameraView(
+                        R_w2c=R_t,
+                        C_w=C_t,
+                        fx=fx,
+                        fy=fy,
+                        cx0=cx0,
+                        cy0=cy0,
+                        image_w=float(width),
+                        image_h=float(height),
+                        kp2d_px=kp2d_t,
+                        kp_conf=conf_t,
+                        frame_observed=torch.from_numpy(valid_v),
+                    )
                 )
-            )
-            obs_count = int(frame_obs.sum())
-            mean_c = float(obs_conf[frame_obs].mean()) if obs_count > 0 else 0.0
-            view_scores.append((obs_count, mean_c, -v))
+                valid_count = int(valid_v.sum())
+                mean_c = float(obs_conf[valid_v].mean()) if valid_count > 0 else 0.0
+                view_scores.append((valid_count, mean_c, -v))
 
         any_valid = any_obs & (weight_sum > 0.0)
         safe_w = np.where(any_valid, np.maximum(weight_sum, 1e-6), 1.0)
@@ -517,23 +540,29 @@ def reconstruct_players_monocular_plcs(
             0.0,
         ).astype(np.float32)
 
+        vel_supported = vel_weight_sum > 0.0
         pred_vel_t: Tensor | None = None
-        if bool((vel_weight_sum > 0.0).any()):
+        vel_valid_mask_t: Tensor | None = None
+        if bool(vel_supported.any()):
             vel_np = np.where(
-                (vel_weight_sum > 0.0)[:, None, None],
+                vel_supported[:, None, None],
                 fused_vel_sum / np.maximum(vel_weight_sum, 1e-6)[:, None, None],
                 0.0,
             ).astype(np.float32)
             pred_vel_t = torch.from_numpy(vel_np)
+            vel_valid_mask_t = torch.from_numpy(vel_supported)
 
+        acc_supported = acc_weight_sum > 0.0
         pred_acc_t: Tensor | None = None
-        if bool((acc_weight_sum > 0.0).any()):
+        acc_valid_mask_t: Tensor | None = None
+        if bool(acc_supported.any()):
             acc_np = np.where(
-                (acc_weight_sum > 0.0)[:, None, None],
+                acc_supported[:, None, None],
                 fused_acc_sum / np.maximum(acc_weight_sum, 1e-6)[:, None, None],
                 0.0,
             ).astype(np.float32)
             pred_acc_t = torch.from_numpy(acc_np)
+            acc_valid_mask_t = torch.from_numpy(acc_supported)
 
         pred_contact_t: Tensor | None = None
         if bool((contact_weight_sum > 0.0).any()):
@@ -544,8 +573,10 @@ def reconstruct_players_monocular_plcs(
             ).astype(np.float32)
             pred_contact_t = torch.from_numpy(contact_np)
 
-        if refiner is not None:
-            if config.use_multiview_reprojection_refine or len(refine_views) == 1:
+        if refiner is not None and bool(any_valid.any()):
+            if not refine_views:
+                selected_refine_views: list[HTDRefineCameraView] = []
+            elif config.use_multiview_reprojection_refine or len(refine_views) == 1:
                 selected_refine_views = refine_views
             else:
                 best_idx = max(range(len(view_scores)), key=lambda i: view_scores[i])
@@ -558,6 +589,8 @@ def reconstruct_players_monocular_plcs(
                 views=selected_refine_views,
                 fps=float(fps),
                 valid_frame_mask=torch.from_numpy(any_valid),
+                vel_valid_mask=vel_valid_mask_t,
+                acc_valid_mask=acc_valid_mask_t,
             )
             world_kp = refined.world_kp_3d.detach().cpu().numpy().astype(np.float32)
 
@@ -578,7 +611,7 @@ def reconstruct_players_monocular_plcs(
                 check_fn(valid_kp_t).require_valid("MonocularPLCS 3D skeleton")
 
         for t in range(frames):
-            if not bool(any_obs[t]):
+            if not bool(any_valid[t]):
                 out_reasons[p, t, :] = int(PointRejection.INSUFFICIENT_VIEWS)
                 continue
             if not bool(frame_ok[t]):
@@ -588,12 +621,12 @@ def reconstruct_players_monocular_plcs(
             out_valid[p, t, :] = True
             out_reasons[p, t, :] = int(PointRejection.VALID)
 
-        # Compute per-view reprojection residuals & inliers against observed 2D joints.
-        for v, kp2d_px, kp_conf, _bbx_xys, frame_obs in view_obs_data:
+        # Compute per-view reprojection residuals & inliers strictly on views with valid predictions.
+        for v, kp2d_px, kp_conf, valid_v in valid_view_obs:
             cam = calibrated[v]
             proj_uv, in_front = cam.project(out_pos[p])
             err = np.linalg.norm(proj_uv - kp2d_px.astype(np.float64), axis=-1)
-            obs_joint = frame_obs[:, None] & (kp_conf >= config.joint_confidence) & out_valid[p]
+            obs_joint = valid_v[:, None] & (kp_conf >= config.joint_confidence) & out_valid[p]
             good_proj = obs_joint & in_front & np.isfinite(err)
             out_reproj[p, v] = np.where(good_proj, err, 0.0).astype(np.float32)
             out_inliers[p, v] = good_proj & (err <= reproj_thresh)
@@ -831,24 +864,34 @@ class MonocularPLCSReconstructionModule(
             **self.config.cache_identity(),
         }
 
+    def _resolved_checkpoint(self) -> Path:
+        assert self.config.checkpoint is not None
+        assert self.path_resolver is not None
+        candidate = Path(self.config.checkpoint)
+        resolved = (
+            self.path_resolver.validate(PathRole.CHECKPOINT, candidate)
+            if candidate.is_absolute()
+            else self.path_resolver.resolve(PathRole.CHECKPOINT, candidate)
+        )
+        return Path(resolved)
+
     def model_specs(self) -> dict[str, ModelSpec[Any]]:
         if not self.enabled or self._injected_predictor is not None:
             return {}
-        assert self.config.checkpoint is not None
         assert self.path_resolver is not None
-        checkpoint = self.config.checkpoint
+        resolved_checkpoint = self._resolved_checkpoint()
         device = self.config.device
         resolver = self.path_resolver
         return {
             "plcs_monocular": ModelSpec(
                 "plcs_monocular_gvhmr",
-                {"checkpoint": checkpoint},
+                {"checkpoint": resolved_checkpoint},
                 "plcs_monocular_gvhmr",
                 device,
                 "float32",
                 self.config.cache_identity(),
                 lambda: PLCSPredictor.load_from_checkpoint(
-                    checkpoint,
+                    resolved_checkpoint,
                     resolver=resolver,
                     device=device,
                 ),
@@ -925,6 +968,185 @@ class SkeletonOnlyPlacementModule:
         )
 
 
+@dataclass(frozen=True)
+class SingleViewCameraAlignmentInput:
+    """Single-camera calibration input for declarative monocular alignment."""
+
+    calibration: CourtCalibrationOutput
+
+
+@dataclass(frozen=True)
+class SingleViewCameraAlignmentInputAssembler:
+    """Assemble ``SingleViewCameraAlignmentInput`` from ``court_calibration``."""
+
+    version: int = 1
+
+    def assemble(
+        self, context: AssemblyContext, artifacts: Mapping[str, Any]
+    ) -> SingleViewCameraAlignmentInput:
+        del context
+        return SingleViewCameraAlignmentInput(calibration=artifacts["calibration"])
+
+
+class SingleViewCameraAlignmentModule:
+    """Declarative ``camera_alignment`` override for calibrated single-camera clips."""
+
+    def __init__(self, camera_id: str) -> None:
+        self.camera_id = camera_id
+        self.io = ComponentIO(
+            "camera_alignment",
+            SingleViewCameraAlignmentInput,
+            CameraAlignmentOutput,
+            {"calibration": InputPort("local_court_calibration")},
+            "aligned_cameras",
+        )
+
+    def cache_identity(self) -> dict[str, Any]:
+        return {
+            "method": "single_view_local_court_alignment",
+            "camera_id": self.camera_id,
+        }
+
+    def process(self, inputs: SingleViewCameraAlignmentInput) -> CameraAlignmentOutput:
+        geometry, _ = build_single_view_geometry(
+            inputs.calibration.calibration, self.camera_id
+        )
+        return CameraAlignmentOutput(geometry=geometry)
+
+
+@dataclass(frozen=True)
+class SingleViewIdentityInput:
+    """Single-camera calibration + pose observations for declarative 1-view IDs."""
+
+    calibration: CourtCalibrationOutput
+    raw: ObjectObservations
+
+
+@dataclass(frozen=True)
+class SingleViewIdentityInputAssembler:
+    """Assemble ``SingleViewIdentityInput`` from ``court_calibration`` + ``pose_*``."""
+
+    camera_id: str
+    version: int = 1
+
+    def assemble(
+        self, context: AssemblyContext, artifacts: Mapping[str, Any]
+    ) -> SingleViewIdentityInput:
+        calibration: CourtCalibrationOutput = artifacts["calibration"]
+        by_id = {v.camera.camera_id: v for v in calibration.calibration.views}
+        if self.camera_id not in by_id:
+            reason = calibration.calibration.excluded.get(
+                self.camera_id, "not_calibrated"
+            )
+            raise ReconstructionUnavailable(
+                "monocular_plcs_uncalibrated_camera",
+                f"Camera {self.camera_id!r} has no accepted court calibration ({reason}).",
+            )
+        active = (by_id[self.camera_id].source_index,)
+        raw = gather_people(context.source, artifacts).select_views(active)
+        return SingleViewIdentityInput(calibration=calibration, raw=raw)
+
+
+class SingleViewIdentityModule:
+    """Declarative ``player_association`` override assigning local tracks on observed frames only."""
+
+    def __init__(
+        self,
+        camera_id: str,
+        *,
+        visibility_threshold: float = 0.15,
+    ) -> None:
+        self.camera_id = camera_id
+        self.visibility_threshold = float(visibility_threshold)
+        self.io = ComponentIO(
+            "player_association",
+            SingleViewIdentityInput,
+            PlayerIdentitiesOutput,
+            {
+                "calibration": InputPort("local_court_calibration"),
+                f"pose_{camera_id}": InputPort("person_poses", 2),
+            },
+            IDENTITIES_PORT.schema,
+            IDENTITIES_PORT.version,
+        )
+
+    def cache_identity(self) -> dict[str, Any]:
+        return {
+            "method": "single_view_local_track_identities",
+            "camera_id": self.camera_id,
+            "visibility_threshold": self.visibility_threshold,
+        }
+
+    def process(self, inputs: SingleViewIdentityInput) -> PlayerIdentitiesOutput:
+        raw = inputs.raw
+        if raw.camera_ids != (self.camera_id,):
+            raise ValueError(
+                f"SingleViewIdentityModule expected camera {self.camera_id!r}, got {raw.camera_ids!r}."
+            )
+        views, frames, dets = raw.observed.shape
+        player_ids = np.full((views, dets, frames), -1, dtype=np.int64)
+        vis_any = raw.visibility(self.visibility_threshold).any(axis=-1)
+        for d in range(dets):
+            track_id = int(raw.local_track_ids[0, d])
+            if track_id < 0:
+                continue
+            active = raw.observed[0, :, d] & vis_any[0, :, d]
+            player_ids[0, d, active] = track_id
+        return PlayerIdentitiesOutput(
+            camera_ids=raw.camera_ids,
+            local_track_ids=raw.local_track_ids.copy(),
+            player_ids=player_ids,
+            diagnostics={
+                "method": "single_view_local_track_identities",
+                "camera_id": self.camera_id,
+                "observed_only": True,
+            },
+        )
+
+
+def monocular_plcs_overrides(
+    camera_ids: tuple[str, ...],
+    config: MonocularPLCSConfig,
+    *,
+    path_resolver: PathResolver | None = None,
+    predictor: MonocularPLCSSequencePredictor | None = None,
+    single_view_camera_id: str | None = None,
+    visibility_threshold: float = 0.15,
+) -> dict[str, Any]:
+    """Build explicit ``standard_definition(..., overrides=...)`` mapping for monocular PLCS.
+
+    - Multi-view mode (``single_view_camera_id is None``): replaces
+      ``player_triangulation`` with :class:`MonocularPLCSReconstructionModule` and
+      ``body_placement`` with :class:`SkeletonOnlyPlacementModule`.
+    - Single-view mode (``single_view_camera_id`` specified): additionally replaces
+      ``player_association`` and ``camera_alignment`` with their single-camera
+      local-court counterparts so 1-camera clips execute cleanly through the
+      declarative runner without multi-view alignment or HMR2/SMPL-X assets.
+    """
+    overrides: dict[str, Any] = {
+        "player_triangulation": MonocularPLCSReconstructionModule(
+            camera_ids,
+            config,
+            path_resolver=path_resolver,
+            predictor=predictor,
+        ),
+        "body_placement": SkeletonOnlyPlacementModule(),
+    }
+    if single_view_camera_id is not None:
+        if single_view_camera_id not in camera_ids:
+            raise ValueError(
+                f"single_view_camera_id {single_view_camera_id!r} not in {camera_ids!r}."
+            )
+        overrides["player_association"] = SingleViewIdentityModule(
+            single_view_camera_id,
+            visibility_threshold=visibility_threshold,
+        )
+        overrides["camera_alignment"] = SingleViewCameraAlignmentModule(
+            single_view_camera_id
+        )
+    return overrides
+
+
 __all__ = [
     "MonocularPLCSConfig",
     "MonocularPLCSInputAssembler",
@@ -932,11 +1154,18 @@ __all__ = [
     "MonocularPLCSReconstructionModule",
     "MonocularPLCSResult",
     "MonocularPLCSSequencePredictor",
+    "SingleViewCameraAlignmentInput",
+    "SingleViewCameraAlignmentInputAssembler",
+    "SingleViewCameraAlignmentModule",
+    "SingleViewIdentityInput",
+    "SingleViewIdentityInputAssembler",
+    "SingleViewIdentityModule",
     "SkeletonOnlyPlacementInput",
     "SkeletonOnlyPlacementInputAssembler",
     "SkeletonOnlyPlacementModule",
     "build_single_view_geometry",
     "derive_players_from_skeleton",
+    "monocular_plcs_overrides",
     "reconstruct_players_monocular_plcs",
     "reconstruct_single_view_monocular_scene",
 ]
