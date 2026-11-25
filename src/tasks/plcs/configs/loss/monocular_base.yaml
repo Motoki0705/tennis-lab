@@ -1,0 +1,22 @@
+defaults:
+  - _base
+  - _self_
+
+position_weight: 1.0
+position_smooth_l1_beta: 0.25
+rotation_weight: 1.0
+angle_weight: 0.5
+canonical_pose_weight: 1.0
+canonical_pose_smooth_l1_beta: 0.1
+reprojection_weight: 0.5
+reprojection_smooth_l1_beta: 0.01
+joint_angle_weight: 0.2
+torsion_angle_weight: 0.1
+torso_twist_weight: 0.1
+bone_length_weight: 0.5
+world_kp_3d_weight: 2.0
+pva_velocity_weight: 0.0
+pva_acceleration_weight: 0.0
+kinematic_velocity_consistency_weight: 0.2
+kinematic_acceleration_consistency_weight: 0.05
+static_contact_weight: 0.0

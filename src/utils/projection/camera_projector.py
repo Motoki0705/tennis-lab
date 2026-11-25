@@ -120,7 +120,8 @@ def camera_from_mapping(params: dict[str, Any]) -> Camera:
 
 FIXED_LAYOUT = "fixed"
 BROADCAST_LAYOUT = "broadcast"
-SUPPORTED_LAYOUTS = (FIXED_LAYOUT, BROADCAST_LAYOUT)
+MIXED_LAYOUT = "mixed"
+SUPPORTED_LAYOUTS = (FIXED_LAYOUT, BROADCAST_LAYOUT, MIXED_LAYOUT)
 
 
 @dataclass
@@ -407,19 +408,29 @@ class CameraProjector:
         f_new = cam.f * (width_frac / span_norm)
         return Camera(C=cam.C, R=cam.R, f=f_new, cx=cam.cx, cy=cam.cy, w=cam.w, h=cam.h)
 
+    def mixed_cameras(self) -> list[Camera]:
+        """Build the combined fixed + broadcast camera rig for monocular sim-to-real training."""
+        return self.fixed_cameras() + self.broadcast_cameras()
+
     def cameras(self) -> list[Camera]:
         """Return the camera rig for the configured ``layout``.
 
-        Dispatches to :meth:`fixed_cameras` or :meth:`broadcast_cameras`.
-        Raises on an unknown layout rather than silently falling back.
+        Dispatches to :meth:`fixed_cameras`, :meth:`broadcast_cameras`, or
+        :meth:`mixed_cameras`. Raises on an unknown layout rather than silently
+        falling back.
         """
         layout = self.config.layout
-        if self.config.fixed_camera_indices is not None and layout != FIXED_LAYOUT:
+        if self.config.fixed_camera_indices is not None and layout not in (
+            FIXED_LAYOUT,
+            MIXED_LAYOUT,
+        ):
             raise ValueError("fixed_camera_indices requires the fixed camera layout.")
         if layout == FIXED_LAYOUT:
             return self.fixed_cameras()
         if layout == BROADCAST_LAYOUT:
             return self.broadcast_cameras()
+        if layout == MIXED_LAYOUT:
+            return self.mixed_cameras()
         raise ValueError(
             f"Unknown camera layout {layout!r}. "
             f"Supported layouts: {list(SUPPORTED_LAYOUTS)}."

@@ -1,0 +1,85 @@
+{
+  "record": {
+    "data": {
+      "action_id": "bdaa65562fe74d9398d1c85a82e199e4",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.merge-continue; artifact=saved parent verification; content_sha256=0f23e47ec3039099836f92acf1dd7619e7eff5af520c6f53e131502dc7c1ffc6; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.record-result; artifact=registry task verification and child issue evidence; content_sha256=0f23e47ec3039099836f92acf1dd7619e7eff5af520c6f53e131502dc7c1ffc6; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "parent_verification",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.record-result: PRs=[2477]; major「Herdrの異常応答で診断の分類と秘匿が崩れる」を採用し、作成ワーカーが修正した（HEAD cd5537969f7ae332e186030ac5e9b32d037d0f2f）。",
+      "verifies": [
+        "f7ad708369d04211b687c5d0b4d158b0"
+      ]
+    },
+    "id": "2bedaa31329843078648030275c9d020",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "abfac839bdb14324a9d3ab69f0f55ce4",
+      "delegation": null,
+      "issue": null,
+      "parent": 2474,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-24T08:18:23.487009+00:00"
+      },
+      "recorded_at": "2026-11-24T08:18:23.487023+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
