@@ -1,6 +1,7 @@
 """CPU fixtures for the RT-DETRv4 comparison adapter's image and box contracts."""
 
 import json
+import subprocess
 import sys
 from importlib import import_module
 from pathlib import Path
@@ -12,6 +13,8 @@ import torch
 from numpy.typing import NDArray
 from torch import nn
 from torchvision.ops import box_convert
+
+from src.tennis_scene.evaluation.player_pose.scoring import FrameKey, ReferenceFrame
 
 RUN = (
     Path(__file__).resolve().parents[5]
@@ -147,69 +150,186 @@ def test_detector_wires_native_sizes_to_postprocessing_and_declares_forward(adap
     assert calls == ["preprocess", "h2d", "PT32", "postprocess", "d2h", "postprocess"]
 
 
-def test_parity_matches_reordered_boxes_and_counts_threshold_drop(adapter):
-    reference = adapter.Predictions(
-        np.array([[0.0, 0.0, 10.0, 10.0], [30.0, 30.0, 40.0, 40.0]]),
-        np.array([0.8, 0.9]),
+@pytest.mark.parametrize(
+    ("mode", "inputs"),
+    [
+        (
+            "accuracy",
+            ["--benchmark", "cohort", "--manifest-sha256", "pin", "--source", "media"],
+        ),
+        (
+            "speed",
+            ["--inputs", "frames", "--inputs-sha256", "pin", "--batch-size", "2"],
+        ),
+    ],
+)
+def test_measurement_rejects_pt32_and_requires_explicit_parity_status(
+    adapter, mode, inputs, capsys
+):
+    parser = adapter._parser()
+    args = [
+        "--model-id",
+        "rtdetrv4-l",
+        "--upstream",
+        "checkout",
+        "--weights",
+        "model.pth",
+        mode,
+        "--output",
+        "result",
+        "--device",
+        "cuda:0",
+        *inputs,
+    ]
+    parity = ["--parity-not-evaluated-reason", "PT32未計測"]
+
+    valid = parser.parse_args([*args, "--backend", "pt16", *parity])
+    assert valid.backend is adapter.Backend.PT16
+    assert valid.parity_not_evaluated_reason == "PT32未計測"
+
+    with pytest.raises(SystemExit):
+        parser.parse_args([*args, "--backend", "pt32", *parity])
+    assert "invalid choice" in capsys.readouterr().err
+    with pytest.raises(SystemExit):
+        parser.parse_args([*args, "--backend", "trt16"])
+    assert "--parity-not-evaluated-reason" in capsys.readouterr().err
+
+
+def test_queue_suite_runs_only_pt16_and_trt16(tmp_path, monkeypatch):
+    interpreter = tmp_path / ".venv/bin/python"
+    interpreter.parent.mkdir(parents=True)
+    interpreter.write_text(
+        f"#!{sys.executable}\n"
+        "import json, sys\n"
+        "from pathlib import Path\n"
+        "args = sys.argv[1:]\n"
+        "with Path('invocations.jsonl').open('a') as handle:\n"
+        "    handle.write(json.dumps(args) + '\\n')\n"
+        "if 'export' in args or 'build' in args:\n"
+        "    engine = Path(args[args.index('--engine-dir') + 1])\n"
+        "    engine.mkdir(parents=True, exist_ok=True)\n"
+        "    (engine / ('export.json' if 'export' in args else 'engine.json')).touch()\n"
     )
-    reordered = adapter.Predictions(reference.boxes_xyxy[::-1], np.array([0.89, 0.8]))
-    below_cutoff = adapter.Predictions(reordered.boxes_xyxy, np.array([0.24, 0.8]))
+    interpreter.chmod(0o700)
+    repro = tmp_path / "repro"
+    repro.mkdir()
+    monkeypatch.setenv("TENNIS_RUN_ID", "test-queue-job")
+    monkeypatch.setenv("TENNIS_REPRO_DIR", str(repro))
 
-    parity = adapter.detection_parity([(reference, reordered)])
-    assert parity.passed
-    assert parity.metrics["matched"] == 2
-    assert parity.metrics["matched_iou"]["p05"] == 1.0
-    assert parity.metrics["score_abs_error"]["p95"] == pytest.approx(0.0095)
+    subprocess.run(
+        [
+            "bash",
+            str(RUN / "rtdetrv4_run.sh"),
+            "rtdetrv4-l",
+            "speed",
+            "speed-pin",
+            "eval-pin",
+        ],
+        cwd=tmp_path,
+        check=True,
+    )
 
-    mismatch = adapter.detection_parity([(reference, below_cutoff)])
-    assert not mismatch.passed
-    assert mismatch.metrics["missing"] == 1
-    assert mismatch.metrics["extra"] == 0
+    invocations = [
+        json.loads(line)
+        for line in (tmp_path / "invocations.jsonl").read_text().splitlines()
+    ]
+    assert [args[9] for args in invocations] == [
+        "accuracy",
+        "speed",
+        "speed",
+        "export",
+        "build",
+        "accuracy",
+        "speed",
+        "speed",
+    ]
+    measures = [args for args in invocations if "--backend" in args]
+    assert [args[args.index("--backend") + 1] for args in measures] == ["pt16"] * 3 + [
+        "trt16"
+    ] * 3
+    assert all("--pt32-dir" not in args for args in invocations)
+    assert all(
+        args[args.index("--parity-not-evaluated-reason") + 1] == "PT32未計測"
+        for args in measures
+    )
 
 
-def test_speed_reference_pins_bytes_and_order(adapter, tmp_path):
-    input_ids = ("frame-2", "frame-1")
-    path = tmp_path / "speed-b1-predictions.json"
-    path.write_text(
-        json.dumps(
+def test_accuracy_receipt_records_unmeasured_parity(adapter, tmp_path, monkeypatch):
+    key = FrameKey("clip", "cam0", 6)
+    boxes = np.array([[1.0, 2.0, 3.0, 6.0]])
+    manifest = {
+        "benchmark_id": "toy",
+        "source_benchmark": {"manifest_sha256": "source"},
+        "clips": [
             {
-                "input_ids": input_ids,
-                "rows": {
-                    "frame-1": {"boxes_xyxy": [], "scores": []},
-                    "frame-2": {"boxes_xyxy": [[2, 7, 11, 19]], "scores": [0.75]},
-                },
+                "clip_id": key.clip_id,
+                "width": 4,
+                "height": 7,
+                "source_videos": [{"camera_id": key.camera_id}],
+                "evaluation_frames": [key.source_frame],
             }
+        ],
+    }
+    references = {
+        key: ReferenceFrame(
+            np.array([2]),
+            boxes,
+            np.zeros((1, 17, 2)),
+            np.zeros((1, 17), dtype=bool),
         )
+    }
+    monkeypatch.setattr(adapter, "load_manifest", lambda *_args, **_kwargs: manifest)
+    monkeypatch.setattr(adapter, "pinned_file", lambda *_args: tmp_path / "video")
+    monkeypatch.setattr(
+        adapter, "load_reference_frames", lambda *_args, **_kwargs: references
     )
-    digest = adapter.dual_sha256(path)
-    case = adapter.BenchmarkCase(
-        "rtdetrv4-l", adapter.Backend.PT16, 2, "image", "1" * 64
+    monkeypatch.setattr(
+        adapter,
+        "load_detector",
+        lambda *_args: lambda _rows: [adapter.Predictions(boxes, np.array([0.9]))],
     )
-    weight_digest = "f" * 64
-    (tmp_path / "speed-b1.json").write_text(
-        json.dumps(
-            {
-                "status": "ok",
-                "case": {
-                    "name": case.name,
-                    "backend": "PT32",
-                    "batch_size": 1,
-                    "input_manifest_sha256": "1" * 64,
-                },
-                "parity": {"metrics": {"predictions_sha256": digest}},
-                "weights": {"model": {"sha256": weight_digest}},
-            }
-        )
+    monkeypatch.setattr(
+        adapter.torch.cuda, "get_device_name", lambda _device: "fixture"
+    )
+    monkeypatch.setenv("TENNIS_RUN_ID", "fixture-job")
+
+    class Reader:
+        def __init__(self, _path):
+            pass
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_exc):
+            pass
+
+        def read(self, frame):
+            assert frame == key.source_frame
+            return np.zeros((7, 4, 3), np.uint8)
+
+    monkeypatch.setattr(adapter, "RandomAccessVideoReader", Reader)
+    args = SimpleNamespace(
+        model_id="rtdetrv4-l",
+        backend=adapter.Backend.PT16,
+        engine_dir=None,
+        benchmark=tmp_path,
+        source=tmp_path,
+        manifest_sha256="a" * 64,
+        output=tmp_path,
+        parity_not_evaluated_reason="PT32未計測",
     )
 
-    rows, reference_digest = adapter._speed_reference(
-        tmp_path, case, input_ids, weight_digest
+    adapter._accuracy(
+        args,
+        adapter.Assets(args.model_id, tmp_path, tmp_path / "weight"),
+        torch.device("cuda:0"),
     )
 
-    assert reference_digest == digest
-    np.testing.assert_array_equal(rows["frame-2"].boxes_xyxy, [[2, 7, 11, 19]])
-    with pytest.raises(adapter.ConditionUnavailable, match="PT32 input IDs differ"):
-        adapter._speed_reference(tmp_path, case, input_ids[::-1], weight_digest)
-    path.write_text("{}")
-    with pytest.raises(adapter.ConditionUnavailable, match="SHA-256 differs"):
-        adapter._speed_reference(tmp_path, case, input_ids, weight_digest)
+    receipt = json.loads((tmp_path / "accuracy.json").read_text())
+    assert receipt["condition"]["backend"] == "pt16"
+    assert receipt["score"]["overall"]["detection"]["recall_by_iou"] == {
+        "0.50": 1.0,
+        "0.75": 1.0,
+    }
+    assert receipt["parity_status"] == "not_evaluated"
+    assert receipt["parity_not_evaluated_reason"] == "PT32未計測"

@@ -17,6 +17,7 @@ esac
 inputs=$2
 speed_sha=$3
 cohort_sha=$4
+parity_reason='PT32未計測'
 benchmark=data/tennis_multiview/processed/meiji_4cam/benchmarks
 baseline=knowledge/runs/run-person-model-speed-baseline
 root=outputs/player-model-comparison
@@ -52,7 +53,7 @@ accuracy() {
     record "${runner[@]}" accuracy --device cuda:0 --backend "$backend" \
         --source "$benchmark/multiview-v1" --benchmark "$benchmark/multiview-player-evaluation-v1" \
         --manifest-sha256 "$cohort_sha" --output "$results/$backend" \
-        --pt32-dir "$results/pt32" "$@"
+        --parity-not-evaluated-reason "$parity_reason" "$@"
 }
 
 speed() {
@@ -61,14 +62,12 @@ speed() {
     for batch in 1 2; do
         record "${runner[@]}" speed --device cuda:0 --backend "$backend" --batch-size "$batch" \
             --inputs "$inputs" --inputs-sha256 "$speed_sha" --output "$results/$backend" \
-            --pt32-dir "$results/pt32" "$@"
+            --parity-not-evaluated-reason "$parity_reason" "$@"
     done
 }
 
-for backend in pt32 pt16; do
-    accuracy "$backend"
-    speed "$backend"
-done
+accuracy pt16
+speed pt16
 
 if [[ ! -f "$engine/export.json" ]]; then
     record "${runner[@]}" export --engine-dir "$engine" --receipt "$trt/onnx-export.json"
