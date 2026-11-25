@@ -3,12 +3,17 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
+from pathlib import Path
 
 import pytest
 
-from tests.e2e.agents_ops.test_parent_session import ParentEnv, run_git
+from tests.e2e.agents_ops.test_issue_supplement import (
+    controller_seed as controller_seed,
+)
+from tests.e2e.agents_ops.test_parent_session import OPS, ParentEnv, run_git
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.support.agents_ops.directory_seed import DirectorySeed
 
@@ -37,10 +42,7 @@ print(json.dumps({'adopted': adopted, 'graph_at_return': graph_at_return}))
 """
 
 
-def test_seed_restore_waits_for_git_maintenance(
-    parent_env: ParentEnv, tmp_path_factory: pytest.TempPathFactory
-) -> None:
-    p = parent_env
+def _assert_git_maintenance_finished(repo: Path, env: dict[str, str]) -> None:
     # Force real useful maintenance, independent of repository size or host policy.
     for key, value in (
         ("maintenance.auto", "true"),
@@ -48,16 +50,17 @@ def test_seed_restore_waits_for_git_maintenance(
         ("maintenance.commit-graph.enabled", "true"),
         ("maintenance.commit-graph.auto", "-1"),
     ):
-        run_git(p.repo, "config", key, value)
-    host_config = p.root / "host-git-config"
+        run_git(repo, "config", key, value)
+    host_config = repo.parent / "host-git-config"
     host_config.write_text(
         "[maintenance]\n\tautoDetach = true\n[gc]\n\tautoDetach = true\n"
     )
-    trace = p.root / "git-trace.jsonl"
+    trace = repo.parent / "git-trace.jsonl"
     result = subprocess.run(
-        [sys.executable, "-c", OBSERVE_GIT, str(p.repo), str(trace)],
+        [sys.executable, "-c", OBSERVE_GIT, str(repo), str(trace)],
         env={
-            **p.env,
+            **env,
+            "PYTHONPATH": str(OPS),
             "GIT_CONFIG_GLOBAL": str(host_config),
             "GIT_CONFIG_NOSYSTEM": "1",
         },
@@ -72,7 +75,14 @@ def test_seed_restore_waits_for_git_maintenance(
     events = [json.loads(line) for line in trace.read_text().splitlines()]
     assert any(e.get("name") == "maintenance" for e in events)
     assert not any(e.get("label") == "detach" for e in events)
-    assert not (p.repo / ".git/objects/maintenance.lock").exists()
+    assert not (repo / ".git/objects/maintenance.lock").exists()
+
+
+def test_seed_restore_waits_for_git_maintenance(
+    parent_env: ParentEnv, tmp_path_factory: pytest.TempPathFactory
+) -> None:
+    p = parent_env
+    _assert_git_maintenance_finished(p.repo, p.env)
 
     cache = tmp_path_factory.mktemp("maintenance-seed")
     original = cache / "source"
@@ -82,3 +92,19 @@ def test_seed_restore_waits_for_git_maintenance(
     seed.restore(p.root)
     assert (p.root / "replacement").read_text() == "ready\n"
     assert not p.repo.exists()
+
+
+def test_controller_seed_waits_for_git_maintenance(
+    controller_seed: DirectorySeed, tmp_path: Path
+) -> None:
+    repo = tmp_path / "repo"
+    controller_seed.restore(repo)
+    _assert_git_maintenance_finished(repo, dict(os.environ))
+    # Older Git only detaches garbage collection. Check both repo-local settings.
+    for key in ("maintenance.autoDetach", "gc.autoDetach"):
+        detaches = run_git(repo, "config", "--local", "--default=true", "--get", key)
+        assert detaches == "false", key
+
+    seed = DirectorySeed.capture(repo, tmp_path / "snapshot")
+    graph = seed.snapshot / ".git/objects/info/commit-graphs/commit-graph-chain"
+    assert graph.is_file()

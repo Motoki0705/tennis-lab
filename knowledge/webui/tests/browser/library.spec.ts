@@ -1,17 +1,19 @@
 import { test, expect } from "@playwright/test";
-import { readdirSync } from "node:fs";
+import matter from "gray-matter";
+import { readFileSync, readdirSync } from "node:fs";
 import { join } from "node:path";
 import { fileURLToPath } from "node:url";
 
 const nodeRoot = fileURLToPath(new URL("../../../nodes/", import.meta.url));
 const pageSize = 30;
-const nodeCount = (task: string) =>
-  readdirSync(join(nodeRoot, task)).filter((name) =>
-    /^\d{6}-(run|group)-.+\.md$/.test(name),
-  ).length;
-const totalNodes = readdirSync(nodeRoot, { withFileTypes: true })
+const nodeFiles = (task: string) =>
+  readdirSync(join(nodeRoot, task))
+    .filter((name) => /^\d{6}-(run|group)-.+\.md$/.test(name))
+    .map((name) => join(nodeRoot, task, name));
+const allNodeFiles = readdirSync(nodeRoot, { withFileTypes: true })
   .filter((entry) => entry.isDirectory())
-  .reduce((total, entry) => total + nodeCount(entry.name), 0);
+  .flatMap((entry) => nodeFiles(entry.name));
+const totalNodes = allNodeFiles.length;
 
 test("browse, compare, follow research, and open the primary paper source", async ({
   page,
@@ -72,7 +74,7 @@ test("browse, compare, follow research, and open the primary paper source", asyn
 });
 
 test("filters, pagination, graph and mobile layout", async ({ page }) => {
-  const syntheticNodes = nodeCount("synthetic_data_generation");
+  const syntheticNodes = nodeFiles("synthetic_data_generation").length;
   expect(totalNodes).toBeGreaterThan(pageSize);
   await page.goto("/");
   await expect(page.locator(".experiment-row")).toHaveCount(pageSize);
@@ -110,22 +112,64 @@ test("filters, pagination, graph and mobile layout", async ({ page }) => {
 test("selected paper and experiment paper filter survive reload independently", async ({
   page,
 }) => {
-  await page.goto("/?paper=paper-2024-gvhmr");
-  await expect(page.locator(".paper-detail")).toBeVisible();
+  const filterPaper = "paper-2024-gvhmr";
+  const filterPaperTitle =
+    "World-Grounded Human Motion Recovery via Gravity-View Coordinates";
+  const otherPaper = "paper-2023-wasb";
+  const otherPaperTitle =
+    "Widely Applicable Strong Baseline for Sports Ball Detection and Tracking";
+  const matchingIds = allNodeFiles
+    .map((file) => matter(readFileSync(file, "utf8")).data)
+    .filter(({ papers }) => Array.isArray(papers) && papers.includes(filterPaper))
+    .map(({ id }) => String(id));
+  expect(matchingIds.length).toBeGreaterThan(0);
+  expect(matchingIds.length).toBeLessThan(totalNodes);
+
+  const timeline = page.locator(".timeline");
+  const rowIds = timeline.locator(".experiment-row .row-id");
+  const paperHeading = page.locator(".paper-detail > h2");
+
+  async function expectFilteredExperiments() {
+    await expect(
+      timeline.getByText(`${matchingIds.length} 件のノード`, { exact: true }),
+    ).toBeVisible();
+    await expect(rowIds).toHaveCount(Math.min(matchingIds.length, pageSize));
+    const visibleIds = await rowIds.allTextContents();
+    expect(new Set(visibleIds).size).toBe(visibleIds.length);
+    for (const id of visibleIds) expect(matchingIds).toContain(id);
+  }
+
+  await page.goto(`/?paper=${filterPaper}`);
+  await expect(paperHeading).toHaveText(filterPaperTitle);
   await page.reload();
+  await expect(paperHeading).toHaveText(filterPaperTitle);
   await page.getByRole("button", { name: "実験一覧", exact: true }).click();
-  await expect(page.locator(".experiment-row")).toHaveCount(30);
-  expect(new URL(page.url()).searchParams.has("paperFilter")).toBeFalsy();
-  await page.goto("/?view=timeline&paperFilter=paper-2024-gvhmr");
-  await expect(page.locator(".experiment-row")).toHaveCount(3);
+  await expect(
+    timeline.getByText(`${totalNodes} 件のノード`, { exact: true }),
+  ).toBeVisible();
+  await expect(rowIds).toHaveCount(Math.min(totalNodes, pageSize));
+  await expect(page).toHaveURL((url) => !url.searchParams.has("paperFilter"));
+
+  await page.goto(`/?view=timeline&paperFilter=${filterPaper}`);
+  await expectFilteredExperiments();
   await page.getByRole("button", { name: "Papers", exact: true }).click();
-  await page.locator(".paper-card").first().click();
+  await page
+    .locator(".paper-card")
+    .filter({
+      has: page.getByRole("heading", { name: otherPaperTitle, exact: true }),
+    })
+    .click();
+  await expect(page).toHaveURL(
+    (url) =>
+      url.searchParams.get("paper") === otherPaper &&
+      url.searchParams.get("paperFilter") === filterPaper,
+  );
   await page.reload();
-  await expect(page.locator(".paper-detail")).toBeVisible();
+  await expect(paperHeading).toHaveText(otherPaperTitle);
   await page.getByRole("button", { name: "実験一覧", exact: true }).click();
-  await expect(page.locator(".experiment-row")).toHaveCount(3);
-  expect(new URL(page.url()).searchParams.get("paperFilter")).toBe(
-    "paper-2024-gvhmr",
+  await expectFilteredExperiments();
+  await expect(page).toHaveURL(
+    (url) => url.searchParams.get("paperFilter") === filterPaper,
   );
 });
 
