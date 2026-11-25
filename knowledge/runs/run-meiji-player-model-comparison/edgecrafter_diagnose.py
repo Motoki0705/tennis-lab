@@ -41,7 +41,13 @@ FRAMES = (
 BATCHES = {
     f"pair{pair}_{name}": tuple(offset + index for index in order)
     for pair, offset in ((1, 0), (2, 2))
-    for name, order in (("a", (0,)), ("b", (1,)), ("ab", (0, 1)), ("ba", (1, 0)))
+    for name, order in (
+        ("a", (0,)),
+        ("b", (1,)),
+        ("ab", (0, 1)),
+        ("ba", (1, 0)),
+        ("ab_repeat", (0, 1)),
+    )
 }
 
 FloatArray: TypeAlias = NDArray[np.floating]
@@ -86,21 +92,12 @@ def compare_images(first: Capture, second: Capture) -> dict[str, object]:
     result: dict[str, object] = {}
     for frame in common:
         i, j = first.frames.index(frame), second.frames.index(frame)
-        heads = {}
-        for name in HEADS:
-            left, right = first.heads[name][i], second.heads[name][j]
-            if left.shape != right.shape:
-                raise ValueError(f"Raw head shape differs for {frame}/{name}")
-            valid = np.isfinite(left) & np.isfinite(right)
-            delta = np.abs(left[valid].astype(np.float64) - right[valid])
-            heads[name] = {
-                "finite_pairs": int(valid.sum()),
-                "finite_mask_difference": int(
-                    (np.isfinite(left) != np.isfinite(right)).sum()
-                ),
-                "abs_diff_p95": float(np.percentile(delta, 95)) if delta.size else None,
-                "abs_diff_max": float(delta.max()) if delta.size else None,
-            }
+        heads = {
+            name: tensor_difference(
+                first.heads[name][i], second.heads[name][j], label=f"{frame}/{name}"
+            )
+            for name in HEADS
+        }
         result[frame] = {
             "reference_slot": i,
             "candidate_slot": j,
@@ -108,6 +105,22 @@ def compare_images(first: Capture, second: Capture) -> dict[str, object]:
             "decoded": box_matches(first.boxes[i], second.boxes[j]),
         }
     return result
+
+
+def tensor_difference(
+    left: NDArray[Any], right: NDArray[Any], *, label: str
+) -> dict[str, int | float | None]:
+    if left.shape != right.shape:
+        raise ValueError(f"Raw head shape differs for {label}")
+    left_finite, right_finite = np.isfinite(left), np.isfinite(right)
+    valid = left_finite & right_finite
+    delta = np.abs(left[valid].astype(np.float64) - right[valid])
+    return {
+        "finite_pairs": int(valid.sum()),
+        "finite_mask_difference": int((left_finite != right_finite).sum()),
+        "abs_diff_p95": float(np.percentile(delta, 95)) if delta.size else None,
+        "abs_diff_max": float(delta.max()) if delta.size else None,
+    }
 
 
 def capture(
@@ -222,7 +235,12 @@ def diagnose_cuda(
                     captures[backend, f"pair{pair}_{second}"],
                 )
                 for pair in (1, 2)
-                for first, second in (("ab", "ba"), ("a", "ab"), ("b", "ab"))
+                for first, second in (
+                    ("ab", "ba"),
+                    ("a", "ab"),
+                    ("b", "ab"),
+                    ("ab", "ab_repeat"),
+                )
             }
             for backend in ("pt16", "trt16")
         },
@@ -311,6 +329,8 @@ def main() -> None:
     parser.add_argument("--model", choices=RELEASES, action="append")
     parser.add_argument("--onnx-cpu", action="store_true")
     args = parser.parse_args()
+    if not args.onnx_cpu and len(args.model or ()) != 1:
+        parser.error("CUDA diagnostics require one --model per process")
     fixed = InputSet(args.inputs)
     pixels, sizes = preprocess_images(tuple(fixed.frame(frame) for frame in FRAMES))
     args.output.mkdir(parents=True, exist_ok=True)
@@ -342,27 +362,13 @@ def main() -> None:
         device = torch.device("cuda:0")
         torch.backends.cuda.matmul.fp32_precision = "ieee"
         torch.backends.cudnn.conv.fp32_precision = "ieee"
-        failed = False
+        model = args.model[0]
         with torch.no_grad(), torch.cuda.stream(torch.cuda.Stream(device=device)):
-            pixels, sizes = pixels.to(device), sizes.to(device)
-            for model in args.model or RELEASES:
-                try:
-                    report["models"][model] = diagnose_cuda(
-                        model, pixels, sizes, device, args.output
-                    )
-                    print(f"{model} produced all batch diagnostics", flush=True)
-                except (OSError, RuntimeError, ValueError) as error:
-                    report["models"][model] = {
-                        "failure": f"{type(error).__name__}: {error}"
-                    }
-                    print(
-                        f"{model} diagnostic failed. {type(error).__name__}: {error}",
-                        flush=True,
-                    )
-                    failed = True
-                write_json_atomic(args.output / "cuda.json", report)
-        if failed:
-            raise SystemExit(1)
+            report["models"][model] = diagnose_cuda(
+                model, pixels.to(device), sizes.to(device), device, args.output
+            )
+        write_json_atomic(args.output / "cuda.json", report)
+        print(f"{model} produced all batch diagnostics", flush=True)
 
 
 if __name__ == "__main__":

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import runpy
+import sys
 from pathlib import Path
 from typing import Any
 
@@ -83,3 +84,63 @@ def test_comparison_rejects_a_raw_head_with_different_shape(
 
     with pytest.raises(ValueError, match="Raw head shape differs for same/logits"):
         script["compare_images"](first, second)
+
+
+def test_cuda_cli_requires_a_single_model_before_loading_inputs(
+    script: dict[str, Any],
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "edgecrafter_diagnose.py",
+            "--inputs",
+            "missing",
+            "--output",
+            "unused",
+            "--model",
+            "ecdet-x-coco",
+            "--model",
+            "ecdet-l-o365",
+        ],
+    )
+    with pytest.raises(SystemExit) as result:
+        script["main"]()
+    assert result.value.code == 2
+    assert "require one --model per process" in capsys.readouterr().err
+
+
+def test_probe_graph_keeps_the_original_head_and_exposes_a_typed_intermediate(
+    script: dict[str, Any],
+) -> None:
+    onnx = pytest.importorskip("onnx")
+    helper = onnx.helper
+    path = Path(script["__file__"]).with_name("edgecrafter_trt_probe.py")
+    probe = runpy.run_path(str(path))
+    graph = helper.make_graph(
+        [
+            helper.make_node("Identity", ["pixels"], ["feature"], name="backbone"),
+            helper.make_node("Relu", ["feature"], ["logits"], name="head"),
+        ],
+        "fixture",
+        [
+            helper.make_tensor_value_info(
+                "pixels", onnx.TensorProto.FLOAT16, ["batch", 3]
+            )
+        ],
+        [
+            helper.make_tensor_value_info(
+                "logits", onnx.TensorProto.FLOAT16, ["batch", 3]
+            )
+        ],
+    )
+    model = helper.make_model(graph)
+    augmented, names = probe["add_probe_outputs"](model, ("backbone",))
+    assert names == ("feature",)
+    assert [value.name for value in model.graph.output] == ["logits"]
+    assert [value.name for value in augmented.graph.output] == ["logits", "feature"]
+    feature = augmented.graph.output[-1].type.tensor_type
+    assert feature.elem_type == onnx.TensorProto.FLOAT16
+    assert [dim.dim_param or dim.dim_value for dim in feature.shape.dim] == ["batch", 3]

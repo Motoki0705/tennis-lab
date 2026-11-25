@@ -79,6 +79,8 @@ bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh \
 
 `fixed_speed_inputs` is the published baseline input directory. Receipts are written to `outputs/player-model-comparison/<model>/speed-13e508cb7/<backend>/speed-b<batch>.json`. See the baseline documentation for the input location and schedule. [Baseline inputs and protocol](../run-person-model-speed-baseline/README.md#固定入力と初回の成果物)
 
+All 24 speed cases completed at checkout `3bb026d5de12dbe980bc17e3d0a97c751b58fd4b`. Each case's 300 samples, image order and summary were checked against the common harness. PT16 ECDet stage wall P50 at batch 1 ranged from 52.52 to 64.87 ms/image. The original TRT16 ECDet plans measured 32.79 to 35.41 ms/image. TRT16 timings and accuracy refer to the same plan digests and remain provisional while the conversion issue is investigated. [Speed and VRAM receipts](edgecrafter-speed.json)
+
 ## Rescoring stored predictions
 
 `edgecrafter_rescore.py` verifies the original prediction file against its digest, scores all cohort frames using the checked-out common scorer, and writes the revised result beside the original metrics. It records which aggregates changed and preserves the hash of the first result. The script uses the shared `prediction_rows.py` from the primary comparison branch. On a worker branch without that file, extract its pinned version before running the same command.
@@ -105,7 +107,7 @@ The original ECDet-L COCO TensorRT plan ran all 6,844 images at batch 1 on the R
 
 ## Diagnosis of the batch-2-traced plans
 
-The diagnosis uses four published #2496 inputs. It selects one image per clip in descending order of the total person detections at score ≥0.25 across ECDet-L COCO, ECPose-L and ECPose-X PT16. The diagnostic records both single-image inputs and both image orders for each pair. It passes one contiguous preprocessed tensor per case to the PT16 forward and the TensorRT runner, then records each raw head's shape, dtype, finite range and NaN/Inf counts. The report compares outputs by source image ID and checks context strides against the PyTorch buffers. Decoded boxes use the same top-k and score settings as accuracy, with no NMS.
+The diagnosis uses four published #2496 inputs. It selects one image per clip in descending order of the total person detections at score ≥0.25 across ECDet-L COCO, ECPose-L and ECPose-X PT16. The diagnostic records both single-image inputs and both image orders for each pair. It passes one contiguous preprocessed tensor per case to the PT16 forward and the TensorRT runner, then records each raw head's shape, dtype, finite range and NaN/Inf counts. The report compares outputs by source image ID and checks context strides against the PyTorch buffers. Decoded boxes use the accuracy run's top-k and score settings, with no NMS.
 
 ```bash
 diagnose=knowledge/runs/run-meiji-player-model-comparison/edgecrafter_diagnose.py
@@ -116,13 +118,27 @@ PYTHONPATH=".:$baseline" OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREAD
   .venv/bin/python -B "$diagnose" --inputs "$fixed_speed_inputs" \
   --output outputs/player-model-comparison/trt16-diagnosis-v1 --onnx-cpu
 
-# Submit this command through the training queue with resource all.
+# Submit one model per process through the training queue with resource all.
 PYTHONPATH=".:$baseline" OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
   .venv/bin/python -B "$diagnose" --inputs "$fixed_speed_inputs" \
-  --output outputs/player-model-comparison/trt16-diagnosis-v1
+  --model ecdet-l-o365 --output outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-o365
 ```
 
 On `clip_028/cam3` frame 513, ONNX Runtime CPU reproduced all 68 archived PT16 ECDet-L boxes and all 60 archived PT16 ECPose-X boxes at IoU ≥0.50. The same ONNX files yielded 30 and 11 matching boxes through their archived TRT16 plans. The gap on this image points to the TensorRT path. The differing compiler operation or runtime behavior remains under investigation. [ONNX CPU comparison](edgecrafter-trt-onnx-cpu.json)
+
+The first CUDA diagnostic produced raw results for five weights. The upstream YAML loader shares its mutable default dictionary across calls. After loading ECDet-X, the same process tried to construct ECDet-L O365's MLP with width 2304 for a checkpoint with width 1536. The revised command uses one model per process and repeats the original batch order after the swapped execution. The prior speed and accuracy cases already used separate processes.
+
+Every captured binding stride matched its PyTorch buffer and the sampled output heads were finite. All five PT16 variants reproduced their raw outputs when the two batch slots were swapped and aligned back to image IDs. All five original TRT16 plans changed their decoded box sets. ONNX Runtime CPU also changed raw query order when the slots were swapped for ECDet-L COCO and ECPose-X. For ECDet-L COCO, small observed differences grew from an encoder score P95 of 0.0078 to a final logit P95 of 1.305 after TopK changed selected indices. The CPU interpreter still matched all 154 decoded boxes at IoU ≥0.50, with matched IoU P05 above 0.997 for each image. The TRT16 plans' much larger decoded disagreement remains unexplained. [CUDA and CPU batch-order evidence](edgecrafter-trt-cuda-diagnosis.json)
+
+The next probe exposes the ECDet-L COCO backbone, encoder and TopK intermediates in a separate plan. It compares their values to ONNX Runtime CPU and checks the instrumented final heads against the archived original plan, since observing an intermediate can change TensorRT's fusion decisions. [TensorRT engine and debug tools](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/inference-library/engine-tools.html)
+
+```bash
+# Submit through the training queue with resource all.
+PYTHONPATH=".:$baseline" OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
+  .venv/bin/python -B knowledge/runs/run-meiji-player-model-comparison/edgecrafter_trt_probe.py \
+  --inputs "$fixed_speed_inputs" --archive outputs/player-model-comparison/trt16-diagnosis-v1 \
+  --output outputs/player-model-comparison/trt16-diagnosis-v2/ecdet-l-coco-probe
+```
 
 ## CPU integration check
 
