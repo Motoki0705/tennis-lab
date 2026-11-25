@@ -155,6 +155,10 @@ PYTHONPATH=".:$assets/python-deps:knowledge/runs/run-person-model-speed-baseline
 
 Submit the probe through the shared GPU queue with an exclusive reservation and a fresh output directory for each variant. A substantial improvement on the four images is the basis for running the fixed 6,844-image accuracy cohort and the shared batch 1 and 2 speed benchmark.
 
+The replay at `0b07efeaff245c5f782df70e5005f7b6cd5b35c5` reused both checked v1 plans and retained all 16 cases across the two models and two plan variants. In every `trt16-fp32attn` case, each of the four images had NaN in all 24,000 logits and all 1,200 box coordinates before postprocessing. The NaN counts held at batch 1 and 2 and in both input orders. Both jobs wrote the case reports and raw arrays, then exited with code 1 for the infeasible candidate cases.
+
+The saved raw arrays reproduced the non-finite counts. Re-scoring the saved decoded boxes from the original plans reproduced their zero matches against the 16 pseudo-GT boxes in each case. At score ≥0.25 and IoU ≥0.50, the original plans also matched zero of 40 (L) and 33 (X) archived PT16 boxes in each case. The `trt16-fp32attn` plans yielded no scoreable boxes. The operation that first produced NaN remains undetermined. Both candidate conditions are infeasible for comparison. Their full-cohort accuracy and shared speed remain unmeasured. [Replay job IDs, plan hashes and raw output inventory](rtdetrv4-results.json)
+
 ## Test design
 
 - The CPU unit fixtures check source width/height order and input channel scaling on unequal native image sizes. A stage-level fixture with two images and hand-computed pixel boxes checks alignment and the declared forward backend.
