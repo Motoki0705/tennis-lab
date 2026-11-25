@@ -977,9 +977,43 @@ class PLCSTrainingConfig:
         )
         from src.tasks.plcs.training.losses import PLCSLossConfig
 
-        PLCSLossConfig.from_dict(
+        loss_cfg = PLCSLossConfig.from_dict(
             dict(require_config_mapping(root, "loss", path="configuration"))
         )
+        if model.name == "plcs_monocular_gvhmr":
+            if loss_cfg.world_kp_3d_weight <= 0.0:
+                raise SemanticConfigurationError(
+                    "plcs_monocular_gvhmr requires loss.world_kp_3d_weight > 0 "
+                    "(select loss=monocular_base or loss=monocular_htd)."
+                )
+            if model.boolean("enable_pva_heads"):
+                if (
+                    loss_cfg.pva_velocity_weight <= 0.0
+                    or loss_cfg.pva_acceleration_weight <= 0.0
+                ):
+                    raise SemanticConfigurationError(
+                        "plcs_monocular_gvhmr with enable_pva_heads=true requires "
+                        "positive loss.pva_velocity_weight and "
+                        "loss.pva_acceleration_weight (select loss=monocular_htd)."
+                    )
+                if (
+                    model.boolean("predict_static_contact")
+                    and loss_cfg.static_contact_weight <= 0.0
+                ):
+                    raise SemanticConfigurationError(
+                        "plcs_monocular_gvhmr with predict_static_contact=true "
+                        "requires loss.static_contact_weight > 0 (select loss=monocular_htd)."
+                    )
+            else:
+                if (
+                    loss_cfg.pva_velocity_weight > 0.0
+                    or loss_cfg.pva_acceleration_weight > 0.0
+                    or loss_cfg.static_contact_weight > 0.0
+                ):
+                    raise SemanticConfigurationError(
+                        "PVA/static-contact loss weights require "
+                        "model.enable_pva_heads=true (select model=monocular_gvhmr_htd)."
+                    )
         metrics_fields = {
             "position_threshold_m",
             "angle_threshold_deg",

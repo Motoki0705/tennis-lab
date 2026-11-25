@@ -49,10 +49,12 @@ class PLCSInferenceConfig:
             raise ValueError(
                 "PLCS inference requires positive court count and nonnegative camera index"
             )
-        if mode not in {"frame", "sequence", "multiview_sequence"}:
+        if mode not in {"frame", "sequence", "multiview_sequence", "monocular_sequence"}:
             raise ValueError(f"Invalid PLCS input mode {mode!r}")
         if (model.input_profile == "multiview") != (mode == "multiview_sequence"):
             raise ValueError("PLCS checkpoint model/data input profiles disagree")
+        if (model.input_profile == "monocular") != (mode == "monocular_sequence"):
+            raise ValueError("PLCS checkpoint model/data monocular profiles disagree")
         return cls(
             model,
             PLCSInferenceData(count, camera, MappingProxyType({"mode": mode})),

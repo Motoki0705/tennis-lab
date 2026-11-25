@@ -1,9 +1,13 @@
 # PLCS
 
-2D観測とコートkeypointから、コート座標系のプレーヤーを推定します。
-対応するデータは `data/plcs/single_object`、推定モデルは
-`models/plcs_multiview_axial_model.py` の `PLCSMultiViewAxialModel` です。
-1対象を複数カメラから観測し、3D位置・yawと任意のcanonical 3D poseを出力します。
+2D観測とコートkeypointまたは校正済みカメラパラメータから、コート座標系のプレーヤーを推定します。
+対応するデータは `data/plcs/single_object`、推定モデルは多視点の
+`models/plcs_multiview_axial_model.py`（`PLCSMultiViewAxialModel`）および
+単眼 GVHMR型 Early Fusion + HTD-Refine の
+`models/plcs_monocular_gvhmr_model.py`（`PLCSMonocularGVHMRModel`）です。
+多視点モデルは複数カメラの2D観測から3D位置・yaw・canonical 3D poseを推定し、
+単眼モデルは校正済みカメラ内外パラメータ・2D COCO17・合成 `bbx_xys`（HMR2特徴量なし）から
+物理コート座標の3D COCO17骨格および PVA-Heads（速度・加速度・静的接地）を推定します。
 
 座標・CourtKP metadataは[共有契約](../base/generate_dataset/README.md)、
 正規化は[src/utils/README.md](../../utils/README.md)、配置は[タスク出力規約](../OUTPUTS.md)を参照してください。
@@ -17,10 +21,10 @@
 | `generate_dataset/` | ACCAD/AMASSのSMPL-Hモーションによる1人の動作、fixed/broadcast/mixedカメラ投影、保存、サンプルGIF |
 | `geometry/` | 単眼合成正方形bbox（`bbx_xys`）生成・摂動、CLIFF特徴、カメラ内外パラメータ特徴化、コート3D COCO17変換 |
 | `data/` | multiview / monocular Dataset、augmentation（校正誤差摂動を含む）、固定データとchunk生成のDataModule |
-| `models/` | axial本体、必要なhead等の部品、discriminator |
+| `models/` | axial本体、単眼GVHMR型Early Fusion + PVA-Heads本体、必要なhead等の部品、discriminator |
 | `model_io/` | バッチ・出力契約、モデルとadapterの構築、checkpoint検証 |
-| `training/` | 通常学習・GAN・損失・指標・runner |
-| `inference/` | axial checkpointの厳密な復元と推論 |
+| `training/` | 通常学習・GAN・損失（単眼/PVA高次時間動態含む）・指標・runner |
+| `inference/` | axial・単眼GVHMR checkpointの厳密な復元・推論、HTD-Refine Stage B 軌道最適化（`PLCSHTDRefiner`） |
 | `visualization/` | single_objectの閲覧とGT・推論比較 |
 | `scripts/` | 生成・学習・解析・可視化の公開入口 |
 
@@ -85,12 +89,21 @@ splitの独立性を元動作単位で確保したい場合、生成時に`run.s
 を経由します。queueへ渡す学習コマンドは次のとおりです。
 
 ```bash
+# 多視点 axial（既定）
 .venv/bin/python -m src.tasks.plcs.scripts.train
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_chunked
 .venv/bin/python -m src.tasks.plcs.scripts.train --config-name train_chunked_gan
+
+# 単眼 GVHMR型 Early Fusion（Baseline / HTD-Refine Stage A PVA-Heads）
+.venv/bin/python -m src.tasks.plcs.scripts.train \
+  model=monocular_gvhmr_base data=monocular_sequence loss=monocular_base
+.venv/bin/python -m src.tasks.plcs.scripts.train \
+  model=monocular_gvhmr_htd data=monocular_sequence loss=monocular_htd
 ```
 
-固定データとchunk生成の両方が同じaxial・single_object契約を使います。
+固定データとchunk生成の両方が `single_object` / `physical_v1` 契約を使います。
+単眼モデルではモデル構成と損失の組合わせを学習開始前に厳密検証し、`monocular_gvhmr_htd` に対して
+PVA損失が有効でない設定（例: 既定の `loss=canonical`）はエラーとして拒否します。
 chunk生成はtrainだけを更新し、val/testは固定splitから読みます。
 `training=gan_small` / `gan_base` / `gan_large`でdiscriminatorを選択できます。
 checkpointの座標契約・設定・state dictの不一致はエラーになります。
@@ -153,7 +166,9 @@ checkpoint・dataset split・seed・augmentation条件をexportと一緒に記�
 
 起動方法は[Web UIガイド](visualization/README.md)を参照してください。
 データセット閲覧はcheckpointなしで保存入力と合成教師を確認します。
-推論UIはcheckpointからaxialを復元し、single_objectシーンの教師と予測を比較します。
+推論UI・`PLCSPredictor.predict_scene()` は保存シーンの `camera.params` と checkpoint から
+axial および単眼 GVHMR モデルを復元して推論でき、単眼系列推論の公開入口として
+`PLCSPredictor.predict_monocular_sequence(..., htd_refiner=PLCSHTDRefiner(...))` を提供します。
 
 `generate_dataset/sampling/`はACCADを読み、`motion/`はCOCO-17変換とコートへの配置を所有します。
 SMPL-HとCOCO-17 regressorは明示した外部assetを使用します。GVHMRモーション抽出・混合は廃止しました。
