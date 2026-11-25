@@ -13,6 +13,7 @@ import pytest
 
 from src.tennis_scene.evaluation.player_pose.scoring import Predictions
 from src.utils.checksum import dual_sha256
+from src.utils.inference_parity import compare_detections
 from src.utils.io import write_json_atomic
 
 
@@ -27,7 +28,7 @@ def script(monkeypatch: pytest.MonkeyPatch) -> dict[str, Any]:
     return runpy.run_path(str(directory / "edgecrafter_parity.py"))
 
 
-def test_parity_matches_reordered_people_and_reports_a_missing_row(
+def test_parity_adapter_preserves_low_score_rows_and_matches_reordered_people(
     script: dict[str, Any],
 ) -> None:
     reference = Predictions(
@@ -35,23 +36,24 @@ def test_parity_matches_reordered_people_and_reports_a_missing_row(
         np.array([0.8, 0.6, 0.24]),
     )
     candidate = Predictions(
-        np.array([[70, 40, 119, 90], [10, 20, 30, 60]], dtype=float),
-        np.array([0.62, 0.79]),
+        np.array([[70, 40, 119, 90], [10, 20, 30, 60], [70, 70, 90, 90]], dtype=float),
+        np.array([0.608, 0.796, 0.24]),
     )
-    compare = script["prediction_parity"]
+    adapt = script["detection_output"]
+    expected = {"frame0": adapt(reference)}
 
-    parity = compare([(reference, candidate)], has_pose=False)
+    parity = compare_detections(expected, {"frame0": adapt(candidate)})
     assert parity.passed
-    assert parity.metrics["matched_iou_p05"] == pytest.approx(0.981)
-    assert parity.metrics["abs_score_error"]["p95"] == pytest.approx(0.0195)
+    assert parity.metrics["iou_p05"] == pytest.approx(0.982)
+    assert parity.metrics["score_abs_p95"] == pytest.approx(0.0076)
 
-    incomplete = Predictions(candidate.boxes_xyxy[:1], candidate.scores[:1])
-    parity = compare([(reference, incomplete)], has_pose=False)
+    incomplete = Predictions(candidate.boxes_xyxy[:2], candidate.scores[:2])
+    parity = compare_detections(expected, {"frame0": adapt(incomplete)})
     assert not parity.passed
-    assert parity.metrics["matched_fraction_both_directions"] == 0.5
+    assert parity.metrics["missing_ratio"] == 1 / 3
 
 
-@pytest.mark.parametrize("displacement,missing", [(9.0, False), (0.0, True)])
+@pytest.mark.parametrize("displacement,missing", [(1.5, False), (0.0, True)])
 def test_parity_checks_pose_displacement_and_joint_availability(
     script: dict[str, Any],
     displacement: float,
@@ -64,20 +66,17 @@ def test_parity_checks_pose_displacement_and_joint_availability(
     candidate[..., 0] += displacement
     if missing:
         candidate[0, 9] = 0.0
-    parity = script["prediction_parity"](
-        [
-            (
-                Predictions(boxes, confidence, joints),
-                Predictions(boxes, confidence, candidate),
-            )
-        ],
-        has_pose=True,
+    adapt = script["detection_output"]
+    parity = compare_detections(
+        {"frame0": adapt(Predictions(boxes, confidence, joints))},
+        {"frame0": adapt(Predictions(boxes, confidence, candidate))},
+        with_pose=True,
     )
     assert not parity.passed
-    assert parity.metrics["joint_error_px"]["p95"] == displacement
-    assert parity.metrics["joint_availability_agreement"] == (
-        16 / 17 if missing else 1.0
-    )
+    if missing:
+        assert parity.metrics["invalid"] is True
+    else:
+        assert parity.metrics["pose_xy_px_p95"] == displacement
 
 
 def test_file_comparison_rejects_different_source_frames(
@@ -122,3 +121,20 @@ def test_file_comparison_rejects_different_source_frames(
         )
     with pytest.raises(ValueError, match="misaligned"):
         script["compare_files"](tmp_path / "pt32", tmp_path / "pt16")
+
+
+def test_file_comparison_respects_explicit_parity_opt_out(
+    script: dict[str, Any], tmp_path: Path
+) -> None:
+    reference = tmp_path / "pt32"
+    candidate = tmp_path / "pt16"
+    reference.mkdir()
+    candidate.mkdir()
+    write_json_atomic(reference / "metrics.json", {})
+    write_json_atomic(
+        candidate / "metrics.json",
+        {"parity": {"status": "not_measured", "reason": "PT32未計測"}},
+    )
+
+    with pytest.raises(ValueError, match="PT32未計測"):
+        script["compare_files"](reference, candidate)

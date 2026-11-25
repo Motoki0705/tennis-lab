@@ -7,7 +7,7 @@ import json
 import subprocess
 from collections.abc import Callable, Generator
 from concurrent.futures import ThreadPoolExecutor
-from contextlib import closing
+from contextlib import closing, nullcontext
 from functools import partial
 from pathlib import Path
 from tempfile import NamedTemporaryFile, TemporaryDirectory
@@ -57,6 +57,9 @@ ASSETS = Path("outputs/player-model-comparison/assets")
 SOURCE = Path("data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v1")
 COHORT = SOURCE.with_name("multiview-player-evaluation-v1")
 BACKENDS = {backend.value.lower(): backend for backend in Backend}
+MEASURED_BACKENDS = ("pt16", "trt16")
+PARITY_NOT_MEASURED = "not_measured"
+PARITY_NOT_MEASURED_REASON = "PT32未計測"
 SCORE_THRESHOLD = 0.0  # Keep all positive-scoring person rows from the official top-k.
 
 Frames = tuple[NDArray[np.uint8], ...]
@@ -291,13 +294,18 @@ def _record(key: FrameKey, prediction: Predictions) -> dict[str, object]:
 
 
 def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
+    if args.backend not in MEASURED_BACKENDS or args.parity != PARITY_NOT_MEASURED:
+        raise ValueError(
+            "Select PT16 or TRT16 and explicitly set parity to not_measured"
+        )
+    parity = {"status": args.parity, "reason": PARITY_NOT_MEASURED_REASON}
     manifest = _cohort(args)
     release = RELEASES[args.model]
     validate_decode_policy(release, SCORE_THRESHOLD, args.pose_box_margin)
     backend = BACKENDS[args.backend]
     device = torch.device(args.device)
-    if device.type != "cuda" and not smoke:
-        raise ValueError("Full evaluation requires CUDA; use smoke for CPU validation")
+    if device.type != "cuda":
+        raise ValueError("PT16 and TRT16 evaluation require CUDA")
     if args.batch_size < 1:
         raise ValueError("Batch size must be positive")
     torch.backends.cuda.matmul.fp32_precision = "ieee"
@@ -332,6 +340,7 @@ def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
                     "source_commit": SOURCE_COMMIT,
                     "image_batch_size": args.batch_size,
                     "pose_bbox_joint_margin": args.pose_box_margin,
+                    "parity": parity,
                     "rows": rows,
                 },
             )
@@ -396,11 +405,23 @@ def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
             "predictions_sha256": dual_sha256(raw_path),
             "weight_sha256": release.sha256,
             "source_commit": SOURCE_COMMIT,
+            "scorer_commit": subprocess.check_output(
+                [
+                    "git",
+                    "log",
+                    "-1",
+                    "--format=%H",
+                    "--",
+                    "src/tennis_scene/evaluation/player_pose/scoring.py",
+                ],
+                text=True,
+            ).strip(),
             "input_size_hw": IMAGE_SIZE,
             "image_batch_size": args.batch_size,
             "execution": {
                 "device": str(device),
                 "gpu": torch.cuda.get_device_name(device),
+                "cuda_stream": "non-default",
                 "torch_version": str(torch.__version__),
                 "torch_cuda_version": torch.version.cuda,
                 "fp32_matmul_and_cudnn_conv": "ieee",
@@ -409,6 +430,7 @@ def evaluate(args: argparse.Namespace, *, smoke: bool = False) -> None:
             },
             "person_confidence_exclusive": SCORE_THRESHOLD,
             "pose_bbox_joint_margin": args.pose_box_margin,
+            "parity": parity,
             "engine_sha256": None
             if args.engine is None
             else dual_sha256(args.engine / PLAN_FILE),
@@ -431,7 +453,8 @@ def main() -> None:
     for name in ("smoke", "evaluate"):
         command = commands.add_parser(name)
         command.add_argument("--model", choices=RELEASES, required=True)
-        command.add_argument("--backend", choices=BACKENDS, required=True)
+        command.add_argument("--backend", choices=MEASURED_BACKENDS, required=True)
+        command.add_argument("--parity", choices=(PARITY_NOT_MEASURED,), required=True)
         command.add_argument("--assets", type=Path, default=ASSETS)
         command.add_argument("--source", type=Path, default=SOURCE)
         command.add_argument("--cohort", type=Path, default=COHORT)
@@ -439,7 +462,7 @@ def main() -> None:
         command.add_argument("--batch-size", default=1, type=int)
         command.add_argument("--pose-box-margin", type=float)
         command.add_argument("--engine", type=Path)
-        command.add_argument("--device", default="cpu" if name == "smoke" else "cuda:0")
+        command.add_argument("--device", default="cuda:0")
         command.add_argument(
             "--output",
             type=Path,
@@ -450,7 +473,13 @@ def main() -> None:
     if args.command == "assets":
         fetch_assets(args.assets, args.model or list(RELEASES))
     else:
-        with torch.no_grad():
+        device = torch.device(args.device)
+        stream = (
+            torch.cuda.stream(torch.cuda.Stream(device=device))
+            if device.type == "cuda"
+            else nullcontext()
+        )
+        with stream, torch.no_grad():
             evaluate(args, smoke=args.command == "smoke")
 
 
