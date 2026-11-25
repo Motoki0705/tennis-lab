@@ -79,7 +79,20 @@ bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh \
 
 `fixed_speed_inputs` is the published baseline input directory. The runner writes receipts to `outputs/player-model-comparison/<model>/speed-13e508cb7-threads4-1/<backend>/speed-b<batch>.json`. The first measurements are stored under `speed-13e508cb7`. [Baseline inputs and protocol](../run-person-model-speed-baseline/README.md#固定入力と初回の成果物)
 
-All 24 speed cases completed at checkout `3bb026d5de12dbe980bc17e3d0a97c751b58fd4b`. Each case's 300 samples, image order and summary were checked against the common harness. PT16 ECDet stage wall P50 at batch 1 ranged from 52.52 to 64.87 ms/image. The original TRT16 ECDet plans measured 32.79 to 35.41 ms/image. TRT16 timings and accuracy refer to the same plan digests and remain provisional while the conversion issue is investigated. All 24 cases recorded two PyTorch host threads. The DINO baseline sets four, so a matched stage wall comparison requires a rerun with the same host thread count. [Speed and VRAM receipts](edgecrafter-speed.json), [Baseline runner](../run-person-model-speed-baseline/run.py)
+The first 24 speed cases used two PyTorch host threads at checkout `3bb026d5de12dbe980bc17e3d0a97c751b58fd4b`. The original TRT16 timings identify the plan SHA-256 used for scoring and remain provisional. [Initial speed and VRAM receipts](edgecrafter-speed.json)
+
+The PT16 rerun at `60af57ee662aa7d307cd1f49ae069b45aaa65446` completed all 12 cases with the same host thread settings, RTX 5060 Ti, GPU power limit, image order and timing protocol as the PT16 baselines. The 3,600 timing samples reproduced the recorded summaries. NVML peak increase is relative to device usage before loading the model. The batch 2 numbers describe timing and VRAM. Cohort accuracy uses batch 1. [Matched PT16 measurements, raw report hashes and accuracy references](edgecrafter-pt16-speed-matched.json)
+
+| PT16 model | Batch 1 wall P50 / P95 (ms/image) | Batch 2 wall P50 / P95 (ms/image) | Batch 2 images/s | NVML peak increase B1 / B2 (MiB) |
+|---|---:|---:|---:|---:|
+| ECDet-L COCO | 53.61 / 62.97 | 39.23 / 42.59 | 25.18 | 324 / 372 |
+| ECDet-X COCO | 52.45 / 59.56 | 39.89 / 43.47 | 24.70 | 432 / 532 |
+| ECDet-L O365 | 52.91 / 63.14 | 39.19 / 42.22 | 25.28 | 324 / 372 |
+| ECDet-X O365 | 50.75 / 55.68 | 41.19 / 46.33 | 23.87 | 432 / 532 |
+| ECPose-L O365 | 56.89 / 66.94 | 41.86 / 45.13 | 23.69 | 362 / 458 |
+| ECPose-X O365 | 56.06 / 65.74 | 42.86 / 50.79 | 22.76 | 472 / 592 |
+
+ECDet-X O365 recorded the lowest batch 1 wall P50 among the four ECDet weights. Its 50.75 ms/image compares with 165.69 for DINO. Its pseudo-reference Recall@0.50 was 97.97% versus DINO's 96.69%, and Recall@0.75 was 46.62% versus 46.99%. The ECPose variants measured 56.06–56.89 ms/image versus 266.30 for DINO plus ViTPose-H. Their coverage-inclusive OKS was 0.259–0.291 versus 0.763. [Synchronized PT16 comparison](edgecrafter-pt16-speed-matched.json)
 
 ## Rescoring stored predictions
 
