@@ -23,7 +23,11 @@ from src.tennis_scene.evaluation.player_pose.bundle import (
     load_reference_frames,
     pinned_file,
 )
-from src.tennis_scene.evaluation.player_pose.scoring import describe
+from src.tennis_scene.evaluation.player_pose.scoring import (
+    FrameKey,
+    ReferenceFrame,
+    describe,
+)
 from src.utils.checksum import dual_sha256
 from src.utils.inference_benchmark import Backend
 from src.utils.io import write_json_atomic
@@ -40,6 +44,20 @@ def _json(path: Path) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise ValueError(f"Expected a JSON object at {path}")
     return value
+
+
+def fixed_prediction_rows(
+    references: Mapping[FrameKey, ReferenceFrame], keys: tuple[RowKey, ...]
+) -> dict[str, NDArray[np.generic]]:
+    return {
+        "clip_id": np.array([row.frame.clip_id for row in keys]),
+        "camera_id": np.array([row.frame.camera_id for row in keys]),
+        "source_frame": np.array([row.frame.source_frame for row in keys]),
+        "player_id": np.array([row.player_id for row in keys]),
+        "bbox_xyxy": np.concatenate(
+            [references[key].boxes_xyxy for key in sorted(references)]
+        ).astype(np.float32),
+    }
 
 
 def validate_predictions(
@@ -224,15 +242,7 @@ def main() -> None:
     cohort = (manifest["benchmark_id"], args.bundle_sha256)
     references = load_reference_frames(args.bundle, expected_sha256=args.bundle_sha256)
     keys = row_keys(references)
-    expected_rows = {
-        "clip_id": np.array([row.frame.clip_id for row in keys]),
-        "camera_id": np.array([row.frame.camera_id for row in keys]),
-        "source_frame": np.array([row.frame.source_frame for row in keys]),
-        "player_id": np.array([row.player_id for row in keys]),
-        "bbox_xyxy": np.concatenate(
-            [references[key].boxes_xyxy for key in sorted(references)]
-        ).astype(np.float32),
-    }
+    expected_rows = fixed_prediction_rows(references, keys)
     cases = {}
     for job in args.jobs:
         key, poses, scores, record = _read_case(

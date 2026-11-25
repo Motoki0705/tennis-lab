@@ -18,6 +18,7 @@ from pmpose import (
     _verify_joint_schema,
     make_adapter,
 )
+from pmpose_diagnostics import pck_auc
 from pmpose_results import validate_predictions
 from pose_contract import PoseInput
 
@@ -230,3 +231,9 @@ def test_saved_outputs_verify_fixed_rows_and_confidence(broken):
         arrays["extra__expected_oks"][1, 4] = 0.75
     with pytest.raises(AssertionError):
         validate_predictions(arrays, expected)
+
+
+def test_diagnostic_pck_auc_counts_ties_as_half():
+    scores = np.array([0.9, 0.4, 0.4, 0.1])
+    hits = np.array([True, True, False, False])
+    assert pck_auc(scores, hits) == 0.875
