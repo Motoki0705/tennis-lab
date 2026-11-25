@@ -1,5 +1,19 @@
 # Sapiens2 fixed-box pose evaluation
 
+On 2026-11-25 the user excluded Sapiens2-1B and Sapiens2-5B from the
+comparison because of GPU time constraints. [Decision in #2492](https://github.com/Motoki0705/tennis-lab/issues/2492)
+
+| Model | Backend | Comparison status | Accuracy | Speed |
+|---|---|---|---|---|
+| Sapiens2-1B | PT32 | Excluded by user (GPU time) | | |
+| Sapiens2-1B | PT16 | Excluded by user (GPU time) | | |
+| Sapiens2-1B | TRT16 | Excluded by user (GPU time) | | |
+| Sapiens2-5B | PT32 | Excluded by user (GPU time) | | |
+| Sapiens2-5B | PT16 | Excluded by user (GPU time) | | |
+| Sapiens2-5B | TRT16 | Excluded by user (GPU time) | | |
+
+## Checkpoints and license
+
 Use the two Meta checkpoint revisions in [sapiens2.py](sapiens2.py). The
 expected SHA-256 values come from Hugging Face's LFS metadata. The adapter checks
 the local file size and digest before loading. [Official pose releases](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/docs/POSE.md)
@@ -57,14 +71,13 @@ PT32 holds the model on CUDA in FP32 and uses the common IEEE precision
 settings. All three backends set the official backbone's `pos_embed_rope_dtype`
 to `fp32`. This also fixes the positional coordinate and rotation arithmetic
 for the half-precision conditions. PT16 uses explicit FP16 casts for the
-other model tensors and for the input. TRT16 uses a strongly typed engine
+other model tensors and for the input. TRT16 targets a strongly typed engine
 with FP16 inputs and outputs. FP32 heatmap averaging, CPU UDP decoding and the
-two test views are shared across backends. The build retains TensorRT's
-detailed layer inspector metadata and adapter inference disables NVTX.
-The adapter's load time includes
-source and checkpoint verification. [Official RoPE configuration](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/sapiens/backbones/sapiens2.py#L520-L577)
+two test views are shared across backends. The build configuration requests
+detailed TensorRT layer information. The adapter's load time includes source
+and checkpoint verification. [Official RoPE configuration](https://github.com/facebookresearch/sapiens2/blob/7e5bae88456ac418ff0e58e74106c9fe192055d4/sapiens/backbones/sapiens2.py#L520-L577)
 
-## Reproduction
+## Commands for the recorded attempts
 
 Use the pinned source and official checkpoint names. The source package
 declares Python 3.12 or newer. Create an isolated environment for the upstream
@@ -95,11 +108,10 @@ uv pip freeze --python "$assets/runtime/bin/python" > "$assets/runtime-freeze.tx
   --revision ada1f29aa1fd454ca28665c700923a0101b6b24f --local-dir "$assets/weights"
 ```
 
-For TRT16, export on the CPU using the local job runner. Build the engine in a
-separate process with the shared training queue's exclusive reservation. Both
-phases emit a conversion receipt for the shared harness. Set the build profile
-and workspace to the recorded values for the condition. The commands below
-show a batch 1 build.
+The TRT16 attempts exported ONNX on the CPU and invoked TensorRT through
+the shared training queue with an exclusive GPU reservation. Both stages
+wrote conversion receipts. The commands show the batch 1 profile used for
+each model.
 
 ```bash
 size=1b
@@ -114,11 +126,9 @@ engine="$assets/trt-$size-fp32-rope-b1"
   --directory "$engine" --receipt "$assets/build-$size-fp32-rope-b1.json"
 ```
 
-For accuracy, use the common evaluator with the published #2495 manifest
-digest. The example selects PT32 at batch 1. Set `--backend PT16` for half
-precision, or `--backend TRT16 --engine "$engine"` for the built profile.
-Run each CUDA condition through the shared training queue and retain
-`receipt.json`, `scores.json`, and `predictions.npz` from the output path.
+The 1B PT32 accuracy attempt used the common evaluator at batch 1 with the
+published #2495 manifest. The queue recorded the command at commit
+`4046e29167dedc5aaa4e3606efb717bc4bbebac4`.
 
 ```bash
 "$py" "$run/evaluate.py" \
@@ -130,13 +140,7 @@ Run each CUDA condition through the shared training queue and retain
   --output "${TENNIS_REPRO_DIR:?}/predictions/sapiens2-$size-pt32"
 ```
 
-Use the published #2496 speed manifest and the [shared harness](../../../src/utils/inference_benchmark.md)
-for latency, memory, and comparison against the same weight's PT32 output by
-row ID. If 5B PT32 fails on the local GPU, 5B PT16 and TRT16 can still be scored
-against the pseudo-reference. Retain their timing samples with the harness's
-parity status and the reason the PT32 reference is unavailable.
-
-## Conversion and accuracy evidence
+## Run evidence
 
 The isolated runtime preflight passed with Python 3.12.3, PyTorch
 2.13.0+cu130 (CUDA 13.0), TensorRT 10.14.1.48.post1 and ONNX Script 0.7.2.
@@ -145,14 +149,27 @@ bindings. Graph inspection found only FP32, FP16 and INT64 cast targets.
 The 1B export took 138.81 s and the 5B export took 686.88 s.
 [Conversion receipts and SHA-256 values](sapiens2_conversion.json)
 
-| Model | PT32 | PT16 | TRT16 |
-|---|---|---|---|
-| Sapiens2-1B | Fixed-cohort accuracy running at observation | Accuracy job cancelled | Initial build stopped during parsing. Accuracy job cancelled |
-| Sapiens2-5B | CUDA weight load completed. Forward and accuracy pending | Accuracy job cancelled | Initial build stopped during parsing. Accuracy job cancelled |
+The 5B PT32 CUDA load completed in **297.37 s**, including source and
+checkpoint verification. The RTX 5060 Ti reported **17,074,749,440 bytes**
+(17.07 GB) of device memory. PyTorch reported a peak of **20,540,379,648
+bytes allocated** (20.54 GB) and **20,948,451,328 bytes reserved**. The FP32
+weight tensors alone occupy 20,480,794,652 bytes (19.07 GiB). The parent
+attributed the excess allocation to WSL shared host memory. The attempt
+ended at model loading. [Load receipt and log digest](sapiens2_attempts.json)
 
-Both TensorRT builds stopped at the first RMSNorm's `ReduceMean` node because TensorRT required the axes input to be an initializer. These attempts produced no engine or parity result. The queue record contains the build job IDs, exit values and terminal log digests. [Queue observations](sapiens2_attempts.json)
+TensorRT 10.14.1.48.post1 rejected both ONNX graphs at `node_mean`
+(`ReduceMean`, node 90). The parser required the axes input to be an
+initializer. Both build jobs exited with code 1 during parsing.
+[Build records and terminal log digests](sapiens2_attempts.json)
 
-The 5B PT32 probe completed CUDA weight loading on the RTX 5060 Ti. The FP32 weights alone contain 20,480,794,652 bytes (19.07 GiB), 3,406,045,212 bytes more than CUDA's reported device capacity of 17,074,749,440 bytes. PyTorch reported a peak of 20,540,379,648 bytes allocated and 20,948,451,328 bytes reserved during loading. The resident VRAM and forward memory are unverified. [Load receipt and log digest](sapiens2_attempts.json)
+The parent observed the 1B PT32 job starting around 04:27 JST and reaching
+clip_013 cam2 after about eight hours, around 34% of the 26,276-person
+cohort. Based on the source video read position, the parent estimated about
+3.2 s per person and about 23 hours for the full cohort. This observation came
+from the accuracy job, which used 1024 × 768 input, two flip-test forwards
+and IEEE FP32. The job was cancelled during inference with exit code 143,
+leaving its output directory empty. The four PT16 and TRT16 accuracy jobs
+were cancelled before execution. [Queue records and parent observation](sapiens2_attempts.json)
 
 The CPU tests exercise the named source joints and left/right reflection
 using asymmetric predictions, the crop inverse and short batch ordering,

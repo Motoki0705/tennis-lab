@@ -1,25 +1,57 @@
 {
-  "observed_at": "2026-11-25T10:00:49+09:00",
+  "observed_at": "2026-11-25T12:42:56+09:00",
   "attempts": {
     "1b-pt32-accuracy": {
       "job_id": "0-8204471621916598843_2026-11-24T13-52-58-083401156Z_2244865_i2490-sapiens2-1b-pt32-accuracy.job",
-      "queue_state": "running"
+      "queue_state": "cancelled",
+      "finished_at": "2026-11-25T12:36:06+09:00",
+      "execution_state": "cancelled_during_inference",
+      "execution_commit": "4046e29167dedc5aaa4e3606efb717bc4bbebac4",
+      "exit_code": 143,
+      "log": {
+        "path": "logs/0-8204471621916598843_2026-11-24T13-52-58-083401156Z_2244865_i2490-sapiens2-1b-pt32-accuracy.log",
+        "sha256": "9185842fb368f8c9d2498d3dec43b4ad14bf311da44e54caaf64fa18ccf51c04"
+      },
+      "output": {
+        "path": "repro/0-8204471621916598843_2026-11-24T13-52-58-083401156Z_2244865_i2490-sapiens2-1b-pt32-accuracy/predictions/sapiens2-1b-pt32",
+        "files": 0
+      },
+      "parent_observation": {
+        "source": "https://github.com/Motoki0705/tennis-lab/issues/2492",
+        "started_at_jst_approx": "2026-11-25T04:27+09:00",
+        "elapsed_hours_approx": 8,
+        "eligible_person_crops": 26276,
+        "progress_fraction_approx": 0.34,
+        "clip_id": "video_000/clip_013",
+        "camera_id": "cam2",
+        "progress_basis": "source video read position",
+        "seconds_per_person_approx": 3.2,
+        "full_cohort_hours_approx": 23
+      }
     },
     "1b-pt16-accuracy": {
       "job_id": "0-8204471621549248572_2026-11-24T13-52-58-450751427Z_2244938_i2490-sapiens2-1b-pt16-accuracy.job",
-      "queue_state": "cancelled"
+      "queue_state": "cancelled",
+      "finished_at": "2026-11-25T09:00:19+09:00",
+      "execution_state": "cancelled_before_execution"
     },
     "5b-pt16-accuracy": {
       "job_id": "0-8204471620844531150_2026-11-24T13-52-59-155468849Z_2245094_i2490-sapiens2-5b-pt16-accuracy.job",
-      "queue_state": "cancelled"
+      "queue_state": "cancelled",
+      "finished_at": "2026-11-25T09:00:18+09:00",
+      "execution_state": "cancelled_before_execution"
     },
     "1b-trt16-accuracy": {
       "job_id": "0-8204471621204743151_2026-11-24T13-52-58-795256848Z_2245021_i2490-sapiens2-1b-trt16-accuracy.job",
-      "queue_state": "cancelled"
+      "queue_state": "cancelled",
+      "finished_at": "2026-11-25T09:00:19+09:00",
+      "execution_state": "cancelled_before_execution"
     },
     "5b-trt16-accuracy": {
       "job_id": "0-8204471620490639477_2026-11-24T13-52-59-509360522Z_2245173_i2490-sapiens2-5b-trt16-accuracy.job",
-      "queue_state": "cancelled"
+      "queue_state": "cancelled",
+      "finished_at": "2026-11-25T09:00:18+09:00",
+      "execution_state": "cancelled_before_execution"
     },
     "1b-trt16-build": {
       "job_id": "0-8204471622635744867_2026-11-24T13-52-57-364255132Z_2244702_i2490-sapiens2-1b-trt16-build.job",
@@ -32,7 +64,10 @@
       "error_node": "node_mean",
       "operator": "ReduceMean",
       "error": "UNSUPPORTED_NODE: Assertion failed: inputAxes.is_weights(): Axis input must be an initializer!",
-      "exit_code": 1
+      "exit_code": 1,
+      "finished_at": "2026-11-25T04:26:03+09:00",
+      "tensorrt_version": "10.14.1.48.post1",
+      "error_node_index": 90
     },
     "5b-trt16-build": {
       "job_id": "0-8204471622271571929_2026-11-24T13-52-57-728428070Z_2244782_i2490-sapiens2-5b-trt16-build.job",
@@ -45,7 +80,10 @@
       "error_node": "node_mean",
       "operator": "ReduceMean",
       "error": "UNSUPPORTED_NODE: Assertion failed: inputAxes.is_weights(): Axis input must be an initializer!",
-      "exit_code": 1
+      "exit_code": 1,
+      "finished_at": "2026-11-25T04:27:03+09:00",
+      "tensorrt_version": "10.14.1.48.post1",
+      "error_node_index": 90
     },
     "5b-pt32-load": {
       "job_id": "0-8204471623025302028_2026-11-24T13-52-56-974697971Z_2244618_i2490-sapiens2-5b-pt32-load.job",
@@ -83,7 +121,65 @@
         "torch_peak_reserved_bytes": 20948451328,
         "total_cuda_bytes": 17074749440,
         "weight_tensor_bytes": 20480794652
-      }
+      },
+      "finished_at": "2026-11-25T04:25:33+09:00"
     }
+  },
+  "comparison": {
+    "decided_at": "2026-11-25",
+    "decided_by": "user",
+    "status": "excluded",
+    "reason": "gpu_time_constraint",
+    "source": "https://github.com/Motoki0705/tennis-lab/issues/2492",
+    "conditions": [
+      {
+        "model": "sapiens2-1b",
+        "backend": "PT32",
+        "status": "excluded",
+        "accuracy": null,
+        "speed": null,
+        "peak_vram_bytes": null
+      },
+      {
+        "model": "sapiens2-1b",
+        "backend": "PT16",
+        "status": "excluded",
+        "accuracy": null,
+        "speed": null,
+        "peak_vram_bytes": null
+      },
+      {
+        "model": "sapiens2-1b",
+        "backend": "TRT16",
+        "status": "excluded",
+        "accuracy": null,
+        "speed": null,
+        "peak_vram_bytes": null
+      },
+      {
+        "model": "sapiens2-5b",
+        "backend": "PT32",
+        "status": "excluded",
+        "accuracy": null,
+        "speed": null,
+        "peak_vram_bytes": null
+      },
+      {
+        "model": "sapiens2-5b",
+        "backend": "PT16",
+        "status": "excluded",
+        "accuracy": null,
+        "speed": null,
+        "peak_vram_bytes": null
+      },
+      {
+        "model": "sapiens2-5b",
+        "backend": "TRT16",
+        "status": "excluded",
+        "accuracy": null,
+        "speed": null,
+        "peak_vram_bytes": null
+      }
+    ]
   }
 }
