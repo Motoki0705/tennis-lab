@@ -18,11 +18,11 @@ Roboflow identifies both releases as COCO detection checkpoints. The paper repor
 
 Decode source video frames as BGR uint8, convert to RGB, resize directly to 704 × 704 with antialias-free bilinear interpolation in float32, and use ImageNet normalization. The upstream postprocessor selects the highest 300 query/class pairs by sigmoid score and restores and clips xyxy in the native image. The adapter retains positive-area boxes in sparse COCO category 1 with score ≥0.25. The cutoff is the lowest configured scorer cutoff. The output includes all detected persons above that cutoff and has no pose. [Pinned upstream postprocessor](https://github.com/roboflow/rf-detr/blob/f29e2a8bbb7cdcb8920bf74a335062f88a35046d/src/rfdetr/models/postprocess.py)
 
-PT32 uses eager CUDA PyTorch with TF32 disabled. PT16 uses CUDA FP16 autocast over the same eager model with FP32 weights. The PyTorch autocast policy keeps eligible numerically sensitive operations such as layer normalization and softmax in FP32. Both use FP32 preprocessing and decoding. TRT16 uses the pinned vendor ONNX exporter (opset 17) and the vendor's FP16 ONNX cast with FP32 I/O, through the shared typed TensorRT builder and runtime. The plan fixes batch size and input resolution. [PyTorch autocast policy](https://docs.pytorch.org/docs/stable/amp.html#cuda-op-specific-behavior) · [Pinned vendor FP16 conversion](https://github.com/roboflow/rf-detr/blob/f29e2a8bbb7cdcb8920bf74a335062f88a35046d/src/rfdetr/export/_tensorrt/exporter.py)
+The recorded PT32 accuracy run used eager CUDA PyTorch with TF32 disabled. PT16 uses CUDA FP16 autocast over the same eager model with FP32 weights. The PyTorch autocast policy keeps eligible numerically sensitive operations such as layer normalization and softmax in FP32. Preprocessing and decoding use FP32. TRT16 uses the pinned vendor ONNX exporter (opset 17) and the vendor's FP16 ONNX cast with FP32 I/O, through the shared typed TensorRT builder and runtime. The plan fixes batch size and input resolution. [PyTorch autocast policy](https://docs.pytorch.org/docs/stable/amp.html#cuda-op-specific-behavior) · [Pinned vendor FP16 conversion](https://github.com/roboflow/rf-detr/blob/f29e2a8bbb7cdcb8920bf74a335062f88a35046d/src/rfdetr/export/_tensorrt/exporter.py)
 
 `benchmark_adapter()` supplies the per-batch callable for the [shared speed harness](../../../src/utils/inference_benchmark.md). It measures RGB conversion, resize and normalization as preprocessing, tensor copies as H2D, the declared backend as forward, and upstream sigmoid, top-k and coordinate projection as postprocessing. D2H covers result transfer and conversion to the person-only prediction contract. Use the #2496 speed manifest and its published order when measuring.
 
-Each accuracy invocation writes the primary worker's JSONL with one row for each source frame/camera pair. The accuracy receipt records the manifest and prediction hashes, runtime and engine, and the full shared pseudo-GT score. PT16 and TRT16 also compare separately to the checksummed PT32 predictions. The parity calculation matches boxes by one-to-one IoU ≥0.50. The pass criteria are ≥98% matched on each side, matched IoU P05 ≥0.90 and absolute score delta P95 ≤0.05. It reports counts, pixel and score errors even if the gate fails. Empty frames are retained.
+Each accuracy invocation writes the primary worker's JSONL with one row for each source frame/camera pair, including empty frames. The receipt records the manifest and prediction hashes, runtime and engine, and shared pseudo-GT score. The completed accuracy run includes PT32 and the original parity measurements. Its exact commands, source commit and artifact hashes are recorded with its results. The 2026-11-25 decision limits new `evaluate` and `speed` invocations to PT16 and TRT16 and requires `--parity not_measured`. New accuracy output goes to `rfdetr-l/accuracy/<backend>/`. This speed campaign uses the saved accuracy scores. [User decision](https://github.com/Motoki0705/tennis-lab/issues/2492) · [Run findings](../../nodes/player_detection/000009-run-meiji-rfdetr-large-accuracy.md) · [Artifact inventory and metrics](../run-meiji-rfdetr-large-accuracy/results.json)
 
 ## Reproduction
 
@@ -37,53 +37,33 @@ uv pip install --target "$tooling/python" --no-deps \
   defusedxml==0.7.1 onnxconverter-common==1.16.0
 curl -fL https://repo.roboflow.com/rfdetr/rf-detr-large-2026.pth \
   -o "$tooling/rf-detr-large-2026.pth"
-export OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 HF_HUB_OFFLINE=1
+export OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 HF_HUB_OFFLINE=1
 export PYTHONPATH="$tooling/python:."
-rf=(.venv/bin/python -B knowledge/runs/run-meiji-player-model-comparison/rfdetr.py
-    --weights "$tooling/rf-detr-large-2026.pth" --output-root "$out")
-"${rf[@]}" export
 ```
-
-Run the GPU commands below through the shared training queue, starting with PT32. Keep the same output root so the other backends can read its checked predictions. The queue stores the commands and measured Git HEAD in its reproduction bundles.
-
-```bash
-benchmarks=data/tennis_multiview/processed/meiji_4cam/benchmarks
-common=(--source "$benchmarks/multiview-v1"
-        --evaluation-bundle "$benchmarks/multiview-player-evaluation-v1"
-        --manifest-sha256 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580)
-"${rf[@]}" evaluate --backend pt32 "${common[@]}"
-"${rf[@]}" evaluate --backend pt16 "${common[@]}"
-"${rf[@]}" build
-"${rf[@]}" evaluate --backend trt16 "${common[@]}"
-```
-
-The accuracy artifacts live under `rfdetr-l/<backend>/`. The checked ONNX, engine and conversion receipts live under `rfdetr-l/trt16/batch-1/`. Use a fresh output root to reproduce a conversion from scratch.
-
-The completed L accuracy run records all three backends, including the TensorRT plan, output hashes and exact queue commands. [Run findings](../../nodes/player_detection/000009-run-meiji-rfdetr-large-accuracy.md) · [Artifact inventory and metrics](../run-meiji-rfdetr-large-accuracy/results.json)
 
 ## Fixed speed comparison
 
-On 2026-11-25 JST, all six queued RF-DETR-L speed jobs (PT32, PT16 and TRT16, each at batch 1 and 2) were cancelled before execution. The queue records the cancellation times. The reason is unknown. Speed, peak VRAM and speed parity remain unmeasured, so the comparison with DINO awaits a run with the synchronized timing and shared parity protocol requested in #2497. [Cancellation receipts](rfdetr-speed-cancellations.json) · [Shared harness review](https://github.com/Motoki0705/tennis-lab/pull/2497#issuecomment-7138771687)
+The six jobs submitted with the earlier timing program were cancelled before execution on 2026-11-25 JST. The current protocol comes from #2497, merged as `59faa32a28d2f54e6492abdba2429846fa0397e3`. It uses the same 96 BGR images, batch 1 and 2, a dedicated CUDA stream, 30 warmups and three blocks of 100 synchronized timed batches. The loader verifies the fixed assets and batch-specific timing order. Reports label parity as `PT32未計測` in the comparison and record the reason in `parity_not_evaluated_reason`. [Cancellation receipts](rfdetr-speed-cancellations.json) · [Fixed inputs](../run-person-model-speed-baseline/inputs/manifest.json) · [Timing protocol](../run-person-model-speed-baseline/timing-protocol.json) · [DINO speed results](../run-person-model-speed-low-precision/cases.csv)
 
-### Queued configuration
-
-The cancelled jobs targeted #2496's 96 native BGR images in manifest order at baseline commit `14ca88f8a5616087435b411f79d2b63214d887e2`. The CLI checks the manifest, frame index and image hashes. The planned timing used a fresh process for each case, a non-default CUDA stream, 30 warmups and three blocks of 100 timed batches. It used the RF-DETR-L PT32 batch-1 reference and the DINO parity criteria from that revision. The pseudo-GT recall run has its own recorded output comparison. [Fixed inputs](../run-person-model-speed-baseline/inputs/manifest.json) · [Parity criteria at the queued revision](https://github.com/Motoki0705/tennis-lab/blob/14ca88f8a5616087435b411f79d2b63214d887e2/knowledge/runs/run-person-model-speed-baseline/parity.py)
-
-The speed commands for that revision specified the reproduction environment above with `OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2`. They were configured to reuse the batch-1 TensorRT plan and build a batch-2 plan from the same checkpoint. The queue order started with PT32 batch 1.
+Use a fresh `speed_out`. Submit each speed condition to the shared training queue with the complete GPU reservation. Reuse the validated batch-1 plan and run export, build and speed as separate processes for batch 2. The batch-2 speed process requires a successful build.
 
 ```bash
 checkout_root=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 speed_inputs="$checkout_root/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs"
-"${rf[@]}" export --batch-size 2
-"${rf[@]}" build --batch-size 2
-for mode in pt32 pt16 trt16; do
-  for batch in 1 2; do
-    "${rf[@]}" speed --backend "$mode" --batch-size "$batch" --speed-inputs "$speed_inputs"
-  done
+speed_out=outputs/player-model-comparison/speed-synchronized-v1
+rf=(.venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/rfdetr.py
+    --weights "$tooling/rf-detr-large-2026.pth" --output-root "$speed_out")
+common=(--speed-inputs "$speed_inputs" --parity not_measured)
+for batch in 1 2; do
+  "${rf[@]}" speed --backend pt16 --batch-size "$batch" "${common[@]}"
 done
+"${rf[@]}" speed --backend trt16 --batch-size 1 "${common[@]}" \
+  --engine-dir "$out/rfdetr-l/trt16/batch-1/engine"
+"${rf[@]}" export --batch-size 2 && "${rf[@]}" build --batch-size 2 &&
+  "${rf[@]}" speed --backend trt16 --batch-size 2 "${common[@]}"
 ```
 
-Reports at `rfdetr-l/<backend>/speed-b<batch>.json` include the case status, timings, VRAM and parity. The corresponding `speed-b<batch>-predictions.json` records the ordered image IDs and decoded outputs for parity. The harness includes the available export and engine-build receipts for TRT16.
+Reports at `rfdetr-l/<backend>/speed-b<batch>/report.json` include case status, timings, VRAM, per-batch input IDs, and the measured Git HEAD and harness merge. Preflight failures have a `speed-failure.json` in the condition directory. Export and build receipts are under `rfdetr-l/trt16/batch-<batch>/` in the corresponding asset root.
 
 ## CPU preflight
 
