@@ -111,6 +111,17 @@ done
 exit "$status"
 ```
 
+Both rerun jobs executed at `a70a7fa24c23b3a68d108cfc1e483767b6d56e55` with an empty worktree patch. All four reports completed on the DINO baselines' RTX 5060 Ti with the same driver, CUDA and PyTorch versions. Each report's 300 timed batches, all stage and GPU summaries, and sampled NVML peak were verified. The two job logs are in the retained SHA-256 inventory.
+
+| Model | Image batch | Wall P50 / P95 (ms/image) | GPU P50 / P95 (ms/image) | Images/s | NVML peak increase (MiB) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| L | 1 | 53.67 / 60.03 | 29.98 / 35.99 | 18.32 | 338 |
+| L | 2 | 38.55 / 42.08 | 15.59 / 18.45 | 25.67 | 468 |
+| X | 1 | 58.16 / 73.34 | 34.14 / 46.78 | 16.45 | 570 |
+| X | 2 | 44.80 / 62.33 | 20.54 / 34.33 | 21.15 | 696 |
+
+Use the matched PT16 `conditions[].speed` reports for the comparison. The NVML column is the sampled peak increase from the pre-load reading. The initial two-thread reports are under `initial_speed` for each PT16 condition. [Raw report pins, queue IDs and metrics](rtdetrv4-results.json)
+
 ## Fixed-cohort results
 
 The four prediction sets each cover 6,844 images and 26,276 eligible SMPL-derived boxes. Re-scoring the saved JSONL with the merged evaluator reproduces each saved report. Recall@0.50 and @0.75 use all person rows in the official global top 300. Precision and AP remain unavailable with the partial player reference. The PT16 Recall@0.50 at a person score of at least 0.25 is 96.67% for L and 96.65% for X. The timing columns contain the initial two-thread measurements.
