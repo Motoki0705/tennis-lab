@@ -7,7 +7,7 @@
 
 ## モデルの接続
 
-workloadの1件を画像、人物crop、人物系列などから決める。入力manifestで各行のID・SHA-256と順序を固定し、同一モデル内の3 backendには同じ入力と前後処理、TTAを与える。候補の入力解像度や重み、内部batch、dtype、想定するFP32演算、TensorRT profileは `BenchmarkCase.settings` に記録する。
+workloadの1件を画像、人物crop、人物系列などから決める。入力manifestで各行のID・SHA-256と順序を固定し、同一モデルの各backendに同じ入力と前後処理、TTAを与える。候補の入力解像度や重み、内部batch、dtype、想定するFP32演算、TensorRT profileは `BenchmarkCase.settings` に記録する。
 
 Meiji 4camの候補比較では `PinnedBenchmarkInputs` で公開済みmanifestと計時protocolの期待SHA-256を渡す。`schedule(index, batch_size)` は計時用ID順を検証して、完全batchのID列と `BenchmarkProtocol` を返す。`frames` は全画面画像と検出＋姿勢の比較、`crops` は人物cropでの比較、`body_sequences` は身体の系列比較に使う。各レコードの実データには `verified_asset(row)` を使う。入力パス、SHA-256、採用したbatchは[現行モデル速度基準](../../knowledge/runs/run-person-model-speed-baseline/README.md)にある。
 
@@ -17,6 +17,7 @@ Meiji 4camの候補比較では `PinnedBenchmarkInputs` で公開済みmanifest�
 from pathlib import Path
 
 import numpy as np
+import torch
 
 from src.utils.inference_benchmark import (
     Backend, Batch, BenchmarkAdapter, BenchmarkCase, Stage, benchmark,
@@ -28,13 +29,18 @@ device = "cuda:0"
 checkpoint = Path("weights.pth")
 
 
-def load_pt32():
+def load_pt16():
     model = load_eager_model(checkpoint).float().eval().to(device)
 
     def infer(rows, stages):
         inputs = stages.stage(Stage.PREPROCESS, lambda: preprocess(rows))
         inputs = stages.stage(Stage.H2D, lambda: inputs.to(device))
-        outputs = stages.measure_forward(Backend.PT32, lambda: model(inputs))
+
+        def predict():
+            with torch.autocast("cuda", dtype=torch.float16):
+                return model(inputs)
+
+        outputs = stages.measure_forward(Backend.PT16, predict)
         decoded = stages.stage(Stage.POSTPROCESS, lambda: decode(outputs))
         return stages.stage(Stage.D2H, lambda: decoded.cpu())
 
@@ -51,17 +57,17 @@ frames = {row["id"]: np.load(pinned.verified_asset(row), allow_pickle=False)
           for row in pinned.rows("frames")}
 batches = [Batch(ids, tuple(frames[key] for key in ids)) for ids in schedule.batch_ids]
 schedule.require_batches([batch.ids for batch in batches])
-case = BenchmarkCase("detector", Backend.PT32, size, "image", pinned.manifest_sha256, {
+case = BenchmarkCase("detector", Backend.PT16, size, "image", pinned.manifest_sha256, {
     "timing_protocol_sha256": pinned.timing_sha256,
     "timed_input_ids_sha256": schedule.timed_ids_sha256,
 })
 report = benchmark(
     case, batches,
-    {Backend.PT32: BenchmarkAdapter(Backend.PT32, load_pt32, {"model": checkpoint})},
+    {Backend.PT16: BenchmarkAdapter(Backend.PT16, load_pt16, {"model": checkpoint})},
     protocol=schedule.protocol, device=device, dedicated_stream=True,
-    check_parity=collect_pt32,
+    parity_not_evaluated_reason="未判定（PT32計測はスコープ外、ユーザー判断 2026-11-25）",
 )
-write_json_atomic(fresh_output / "detector-pt32-b1.json", report.to_dict())
+write_json_atomic(fresh_output / "detector-pt16-b1.json", report.to_dict())
 ```
 
 - PT16はモデル指定のFP16 castかautocastをforwardに適用する。TRT16は検証済みのFP16 planを使い、`BenchmarkAdapter.engines` にplanのpathを渡す。既存のTensorRT資産を使う際は `EngineBundle` と `TensorRTRunner` で重み・profile・環境を照合する。詳細NVTXを無効にし、エンジンの演算精度と補助処理のbackendも記録する。[TensorRT資産の契約](../tennis_scene/pipeline/README.md#tensorrt-fp16)
@@ -69,7 +75,9 @@ write_json_atomic(fresh_output / "detector-pt32-b1.json", report.to_dict())
 
 ## 出力のparity
 
-`check_parity` は全固定batchを一度ずつ流した `(Batch, output)` を受ける。例の `collect_pt32` で対象モデル自身のPT32 batch 1出力を入力IDごとに保存する。PT16・TRT16とPT32の別batchでは、同じコード版、重み、モデル設定、固定入力で得た参照を使い、同じ入力IDの出力を共通の `compare_*` 関数へ渡す。参照を読み込めない場合は `ConditionUnavailable(Status.PARITY_UNAVAILABLE, ...)` を返却理由に使う。計測の再実行には新規出力を使う。
+Meiji 4camの新規条件は `parity_not_evaluated_reason` に上記の文言を渡す。`parity_status="not_evaluated"` と理由をJSONに記録し、計時が完了すれば `status="ok"` で速度を返す。検出・姿勢の比較図には、疑似GTで測った精度と速度を載せる。新規のFastHMR条件は速度の参考値として記録する。
+
+parityを要求する計測では、`check_parity` が全固定batchを一度ずつ流した `(Batch, output)` を受ける。参照は同じモデル、コード版、重み、設定、固定入力で得たPT32出力を使う。必須の参照が欠けた場合は `ConditionUnavailable(Status.PARITY_UNAVAILABLE, ...)` で理由を記録し、`parity_failed` として扱う。未判定の理由とcallbackの同時指定はエラーになる。共通の `compare_*` 関数は、保存済み予測の再集計にも使える。計測の再実行には新規出力を使う。
 
 | 比較 | `src.utils.inference_parity` の入口 | 渡す出力 |
 |---|---|---|
@@ -85,7 +93,7 @@ write_json_atomic(fresh_output / "detector-pt32-b1.json", report.to_dict())
 - CUDAのPyTorch FP32 matmulとcuDNN精度を `ieee` に設定し、forwardを `no_grad` で実行する。1条件を新しいqueueプロセスで測ると、CUDA context、allocator、engine context、初回カーネル初期化を条件ごとに揃えられる。ONNX exportとengine buildには個別プロセスで `measure_conversion()` を使い、receiptを `conversion=` で渡せる。既存engineなら、変換の記録は空配列になる。loadと最初の実入力1回（cold start）は個別に `setup_wall_ms` に記録する。[共有training queue](../../.agents/skills/training-queue/SKILL.md)
 - `preprocess`、`h2d`、`forward`、`postprocess`、`d2h` は直列に呼び、各操作の完了をCUDA同期してホスト時刻を取る。`stage_wall` とcold startはadapterの戻り後のデバイス同期までを含む。`model_gpu` はforwardごとのCUDA event区間の合計。現行基準と同じ専用streamは `dedicated_stream=True` で使用できる。forward用の補助streamがある場合はevent終端までにjoinする。転送を対応するstageに置き、TTAのforward内処理は条件間で揃える。
 - P50/P95は線形補間の標本分位点。batch単位とitem単位を保存する。`items_per_second` は対象の総item数を同期済みの実測時間の総和で割る。各batchのID、stage名、ブロック番号を生サンプルに残す。
-- torchのallocator peakはロード直前からparity完了までのallocated / reserved bytes。NVMLはCUDA初期化後のload直前、load後、cold start後、warm-up後、各ブロック後、parity後にデバイス使用量を取得する。最大値はサンプル時点でのデバイス全体の使用量で、ホストの他プロセスの消費も含む。load直前からの差分と、GPU・driver・CUDA・PyTorch・TensorRT・clock・電力を併記する。取得できないclockや電力項目には理由が入る。
+- torchのallocator peakはロード直前から最後に実行したステージまでのallocated / reserved bytes。NVMLはCUDA初期化後のload直前、load後、cold start後、warm-up後、各ブロック後と、parityを実行した場合はその直後にデバイス使用量を取得する。最大値はサンプル時点でのデバイス全体の使用量で、ホストの他プロセスの消費も含む。load直前からの差分と、GPU・driver・CUDA・PyTorch・TensorRT・clock・電力を併記する。取得できないclockや電力項目には理由が入る。
 - 結果は `ok`、`parity_failed`、`infeasible` の3状態。`parity_failed` は完了した計時の `summary` と生サンプルを保持し、parity指標と不成立理由を記録する。`infeasible` は `summary=null` と、失敗までに完了した反復の生サンプルを保存する。`failure.status`・`phase`・`message` にOOM、変換失敗、非対応op、context生成失敗などの理由が入る。モデル固有の理由は `ConditionUnavailable` で渡せる。指定backendと登録またはforwardが不一致なら実行前に拒否する。
 
 [先行ベンチマークの手順](../../knowledge/runs/run-i2297-clipreid-tensorrt/PROTOCOL.md)・[バッチ掃引の実測](../../knowledge/runs/run-i2336-vision-batch-sweep/README.md)

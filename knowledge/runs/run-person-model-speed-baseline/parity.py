@@ -14,22 +14,6 @@ from src.utils.inference_parity import (
 )
 
 
-def serialize(workload, value, body_model=None, *, frame_ids=None):
-    if workload == "dino":
-        return {"boxes": value.boxes_xyxy.tolist(), "scores": value.scores.tolist()}
-    if workload == "dino-vitpose":
-        detection, poses = value
-        return {**serialize("dino", detection), "poses": poses.tolist()}
-    if workload == "body":
-        return {
-            "params": {k: array.tolist() for k, array in value["params"].items()},
-            "features": value["features"].tolist(),
-            "joints": body_model.joints(value["params"]).tolist(),
-            "frame_ids": frame_ids,
-        }
-    return value.tolist()
-
-
 def _empty_array(value, empty_shape):
     if isinstance(value, list) and not value:
         return np.empty(empty_shape)

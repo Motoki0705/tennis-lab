@@ -4,7 +4,7 @@ type: run
 task: tennis_scene
 sequence: 85
 recorded_at: '2026-11-25'
-title: Meiji 4camの現行人物モデルPT32・PT16・TRT16速度基準
+title: Meiji 4camの現行人物モデルの初回速度計測
 issue: 2496
 provider: codex
 date: '2026-11-24'
@@ -69,33 +69,35 @@ tags: []
 
 ## 考察 / Findings
 
-DINO、ViTPose-Hのflipあり・なし、DINO＋ViTPose-H、HMR2特徴＋GVHMRで、39条件それぞれの300反復を取得した。PT32を参照に24条件がparityを通過し、15条件は許容差を超えた。OOM・変換失敗・子プロセスの異常終了は0件だった。queue 4ジョブは完了し、39件の子プロセス終了値をすべて0と確認した。実行可否は個々の `status` を参照する。 [全batchの速度・VRAM・判定](../../runs/run-person-model-speed-baseline/cases.csv) · [条件別記録](../../runs/run-person-model-speed-baseline/cases.json)
+このノードは初回の実測記録。PT32の速度は修正前の計時プログラムによる暫定値で、初回のparityとともに保存する。2026-11-25のユーザー判断に基づき、再計測はPT16・TRT16を対象に、バッチ終端の同期を含めて速度を測り、parityを未判定として扱う。[現行の手順](../../runs/run-person-model-speed-baseline/README.md)
+
+DINO、ViTPose-Hのflipあり・なし、DINO＋ViTPose-H、HMR2特徴＋GVHMRで、39条件それぞれの300反復を取得した。PT32を参照に24条件がparityを通過し、15条件は許容差を超えた。OOM・変換失敗・子プロセスの異常終了は0件だった。queue 4ジョブは完了し、39件の子プロセス終了値をすべて0と確認した。 [全batchの速度・VRAM・判定](../../runs/run-person-model-speed-baseline/cases.csv) · [条件別記録](../../runs/run-person-model-speed-baseline/cases.json)
 
 固定入力 `meiji_4cam/person-model-speed-v1` に全画面96枚、PT32 DINOの検出と実観測から作った人物crop 384件、`body_view_selection` から固定した16サンプルの身体24系列を保存した。manifestと4 indexのSHA-256、および参照先728ファイルの内容を照合した。ViTPoseのbatch 1の計時は固定順の先頭300 cropで、6 clip中5 clipをカバーする。batch 4/8の計時と全ViTPose条件のparityは6 clipの384 cropを使う。候補と比較するときはbatchごとの入力順・反復数も揃える。 [固定入力manifest](../../runs/run-person-model-speed-baseline/inputs/manifest.json) · [各条件の計時対象](../../runs/run-person-model-speed-baseline/cases.json)
 
 ### Batch 1の結果
 
-GPUはモデルforwardのCUDA event区間、wallは同期済みの前後処理と転送を含むstage。throughputの単位はDINOおよび2段で画像、ViTPoseで人物crop、HMR2＋GVHMRでperson-frame。VRAMはtorchのallocated・reserved peakとNVMLのデバイス全体のサンプル最大値で、単位はMiB。実行不能行のVRAMは試行中の観測値。 [計測と記録方式](../../runs/run-person-model-speed-baseline/README.md)
+GPUはモデルforwardのCUDA event区間、wallは前後処理と転送を含むstage。throughputの単位はDINOおよび2段で画像、ViTPoseで人物crop、HMR2＋GVHMRでperson-frame。VRAMはtorchのallocated・reserved peakとNVMLのデバイス全体のサンプル最大値で、単位はMiB。初回表のparity不成立行では、計時の生値を個別CSVに保存している。 [計測と記録方式](../../runs/run-person-model-speed-baseline/README.md)
 
 | モデル | 条件 | parity | GPU P50 / P95 ms | wall P50 / P95 ms | items/s | torch A / R / NVML MiB |
 |---|---|---|---:|---:|---:|---:|
 | DINO | PT32 | 通過 | 268.09 / 276.36 | 289.97 / 308.11 | 3.42 | 1780 / 2142 / 2709 |
 | DINO | PT16 | 通過 | 147.80 / 160.64 | 167.68 / 180.48 | 5.90 | 2102 / 2366 / 2806 |
-| DINO | TRT16 | 実行不能 | — | — | — | 12 / 14 / 1384 |
+| DINO | TRT16 | 不成立 | — | — | — | 12 / 14 / 1384 |
 | ViTPose-H flipあり | PT32 | 通過 | 53.05 / 53.80 | 57.48 / 58.61 | 17.37 | 2550 / 2622 / 3060 |
 | ViTPose-H flipあり | PT16 | 通過 | 20.44 / 29.68 | 24.50 / 34.73 | 38.81 | 3764 / 3950 / 4388 |
 | ViTPose-H flipあり | TRT16 | 通過 | 9.33 / 9.66 | 12.89 / 14.00 | 76.27 | 2 / 2 / 1752 |
 | ViTPose-H flipなし | PT32 | 通過 | 31.06 / 32.21 | 35.45 / 37.36 | 27.96 | 2539 / 2606 / 3044 |
-| ViTPose-H flipなし | PT16 | 実行不能 | — | — | — | 3755 / 3944 / 4382 |
-| ViTPose-H flipなし | TRT16 | 実行不能 | — | — | — | 1 / 2 / 1694 |
+| ViTPose-H flipなし | PT16 | 不成立 | — | — | — | 3755 / 3944 / 4382 |
+| ViTPose-H flipなし | TRT16 | 不成立 | — | — | — | 1 / 2 / 1694 |
 | DINO＋ViTPose-H | PT32 | 通過 | 561.54 / 852.77 | 590.33 / 890.03 | 1.54 | 4276 / 4690 / 5130 |
-| DINO＋ViTPose-H | PT16 | 実行不能 | — | — | — | 5811 / 6442 / 6884 |
-| DINO＋ViTPose-H | TRT16 | 実行不能 | — | — | — | 14 / 36 / 2692 |
+| DINO＋ViTPose-H | PT16 | 不成立 | — | — | — | 5811 / 6442 / 6884 |
+| DINO＋ViTPose-H | TRT16 | 不成立 | — | — | — | 14 / 36 / 2692 |
 | HMR2特徴＋GVHMR | PT32 | 通過 | 403.92 / 407.99 | 767.84 / 814.05 | 20.77 | 3013 / 3230 / 3670 |
 | HMR2特徴＋GVHMR | PT16 | 通過 | 141.09 / 146.82 | 509.66 / 555.17 | 31.12 | 4338 / 4484 / 4926 |
-| HMR2特徴＋GVHMR | TRT16 | 実行不能 | — | — | — | 50 / 54 / 1994 |
+| HMR2特徴＋GVHMR | TRT16 | 不成立 | — | — | — | 50 / 54 / 1994 |
 
-### 出力差による実行不能
+### 初回のparity不成立
 
 - DINO TRT16のB=1はIoU P05が0.92980、score差P95が0.01335で、許容範囲（IoU 0.98以上、score差0.01以下）を外れた。DINO＋ViTPose-HのTRT16も同じ検出差を含み、PT16の2段合計はposeの最大差がB=1で30.64 px、B=2で39.43 pxに達した。2段合計では検出ごとに実際にcropを作るため、入力boxの変化を含めた出力差になる。 [条件別parity](../../runs/run-person-model-speed-baseline/cases.json)
 - ViTPose-HのflipなしB=1はPT16・TRT16とも座標差P95が0.04 px未満だった。最大差はそれぞれ12.64 px・20.55 pxで、5 pxの基準を超えた。flipありの3 backendは全batchで適合した。 [条件別parity](../../runs/run-person-model-speed-baseline/cases.json)
