@@ -1,0 +1,2615 @@
+{
+  "conditions": [
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 1,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "pmpose-l",
+        "settings": {
+          "autocast": false,
+          "checkpoint_sha256": "931b2f14486c199feee57714d6ab7e162fb904495050efa4d2142306395dc250",
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "excluded_tail_ids": [],
+          "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+          "flip_test": true,
+          "forward_dtype": "float16",
+          "forwards_per_batch": 2,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            256,
+            192
+          ],
+          "license": "GPL-3.0",
+          "mask": "bbox_rectangle",
+          "normalize_fuse_decode_dtype": "float32",
+          "opencv_threads": 1,
+          "source_commit": "49a070a6f8396147323b1c4959474077dbe2ce8e",
+          "sparsemax_dtype": "float32",
+          "timed_input_ids_sha256": "adc0121c98e2538e0b91d05039083fc7f811ae9723e289a1772ac9a5c3b00837",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "weights_revision": "cfc89052cf16655a52889f1f4e1b866e74a6c19c"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 300,
+      "engines": {},
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 11181,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "forward_medians_ms": {
+        "flipped": {
+          "gpu": 20.240367889404297,
+          "wall": 20.2975195
+        },
+        "original": {
+          "gpu": 22.859871864318848,
+          "wall": 22.9143725
+        }
+      },
+      "job_id": "0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync.job",
+      "nvml_device_peak_sampled_bytes": 1398902784,
+      "nvml_peak_minus_before_load_bytes": 979369984,
+      "nvml_used_bytes": {
+        "after_cold_start": 1398902784,
+        "after_load": 1298239488,
+        "after_warmup": 1398902784,
+        "before_load": 419532800,
+        "block_1": 1398902784,
+        "block_2": 1398902784,
+        "block_3": 1398902784
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "report": {
+        "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-l/PT16-b1/report.json",
+        "sha256": "a3e7a49e3d4078a5e92497c3555142636a9432175257ffd9df46ab9905e42b98"
+      },
+      "sample_count": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 4611.646589,
+        "load": 19045.669789
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 300,
+          "items_per_second": 1977.9690249655089,
+          "p50_ms": 0.4924495,
+          "p50_ms_per_item": 0.4924495,
+          "p95_ms": 0.7526058000000001,
+          "p95_ms_per_item": 0.7526058000000001,
+          "samples": 300,
+          "total_ms": 151.67072700000006
+        },
+        "forward": {
+          "items": 300,
+          "items_per_second": 20.585857910685426,
+          "p50_ms": 43.4663195,
+          "p50_ms_per_item": 43.4663195,
+          "p95_ms": 91.5414641,
+          "p95_ms_per_item": 91.5414641,
+          "samples": 300,
+          "total_ms": 14573.111370999995
+        },
+        "h2d": {
+          "items": 300,
+          "items_per_second": 3032.046395727112,
+          "p50_ms": 0.314384,
+          "p50_ms_per_item": 0.314384,
+          "p95_ms": 0.4479716,
+          "p95_ms_per_item": 0.4479716,
+          "samples": 300,
+          "total_ms": 98.94307699999996
+        },
+        "model_gpu": {
+          "items": 300,
+          "items_per_second": 20.634730182543187,
+          "p50_ms": 43.373167991638184,
+          "p50_ms_per_item": 43.373167991638184,
+          "p95_ms": 91.2709776878357,
+          "p95_ms_per_item": 91.2709776878357,
+          "samples": 300,
+          "total_ms": 14538.595724105835
+        },
+        "postprocess": {
+          "items": 300,
+          "items_per_second": 268.0990886403121,
+          "p50_ms": 3.5821265,
+          "p50_ms_per_item": 3.5821265,
+          "p95_ms": 4.9473934,
+          "p95_ms_per_item": 4.9473934,
+          "samples": 300,
+          "total_ms": 1118.989257
+        },
+        "preprocess": {
+          "items": 300,
+          "items_per_second": 54.51964326118207,
+          "p50_ms": 16.561458000000002,
+          "p50_ms_per_item": 16.561458000000002,
+          "p95_ms": 34.314599,
+          "p95_ms_per_item": 34.314599,
+          "samples": 300,
+          "total_ms": 5502.603870000003
+        },
+        "stage_wall": {
+          "items": 300,
+          "items_per_second": 13.932296139175596,
+          "p50_ms": 65.682555,
+          "p50_ms_per_item": 65.682555,
+          "p95_ms": 115.16460110000001,
+          "p95_ms_per_item": 115.16460110000001,
+          "samples": 300,
+          "total_ms": 21532.703368000017
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 901165568,
+      "torch_peak_reserved_bytes": 937426944,
+      "weights": {
+        "checkpoint": {
+          "bytes": 1704836116,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/PMPose-l-1.0.0.pth",
+          "sha256": "931b2f14486c199feee57714d6ab7e162fb904495050efa4d2142306395dc250"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 4,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "pmpose-l",
+        "settings": {
+          "autocast": false,
+          "checkpoint_sha256": "931b2f14486c199feee57714d6ab7e162fb904495050efa4d2142306395dc250",
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "excluded_tail_ids": [],
+          "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+          "flip_test": true,
+          "forward_dtype": "float16",
+          "forwards_per_batch": 2,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            256,
+            192
+          ],
+          "license": "GPL-3.0",
+          "mask": "bbox_rectangle",
+          "normalize_fuse_decode_dtype": "float32",
+          "opencv_threads": 1,
+          "source_commit": "49a070a6f8396147323b1c4959474077dbe2ce8e",
+          "sparsemax_dtype": "float32",
+          "timed_input_ids_sha256": "5ff2702172638e5bc361a24ec7dce8f270d174a354a1eeefd9ba8b1a942156e9",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "weights_revision": "cfc89052cf16655a52889f1f4e1b866e74a6c19c"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {},
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 11305,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "forward_medians_ms": {
+        "flipped": {
+          "gpu": 19.856528282165527,
+          "wall": 19.902181
+        },
+        "original": {
+          "gpu": 20.41107177734375,
+          "wall": 20.451197
+        }
+      },
+      "job_id": "0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync.job",
+      "nvml_device_peak_sampled_bytes": 1396805632,
+      "nvml_peak_minus_before_load_bytes": 977272832,
+      "nvml_used_bytes": {
+        "after_cold_start": 1396805632,
+        "after_load": 1298239488,
+        "after_warmup": 1396805632,
+        "before_load": 419532800,
+        "block_1": 1396805632,
+        "block_2": 1396805632,
+        "block_3": 1396805632
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "report": {
+        "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-l/PT16-b4/report.json",
+        "sha256": "9aa27b8e9a1897c49a5a5e306e0864093af33628e70c5978fe154fd0c1adf66b"
+      },
+      "sample_count": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 2257.923141,
+        "load": 15361.209277
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 1200,
+          "items_per_second": 8850.21730712948,
+          "p50_ms": 0.43354400000000004,
+          "p50_ms_per_item": 0.10838600000000001,
+          "p95_ms": 0.62310985,
+          "p95_ms_per_item": 0.1557774625,
+          "samples": 300,
+          "total_ms": 135.58989100000002
+        },
+        "forward": {
+          "items": 1200,
+          "items_per_second": 97.49755988347617,
+          "p50_ms": 40.455736,
+          "p50_ms_per_item": 10.113934,
+          "p95_ms": 44.8606786,
+          "p95_ms_per_item": 11.21516965,
+          "samples": 300,
+          "total_ms": 12308.000338
+        },
+        "h2d": {
+          "items": 1200,
+          "items_per_second": 10354.36458081818,
+          "p50_ms": 0.380894,
+          "p50_ms_per_item": 0.0952235,
+          "p95_ms": 0.43692485000000003,
+          "p95_ms_per_item": 0.10923121250000001,
+          "samples": 300,
+          "total_ms": 115.89315699999996
+        },
+        "model_gpu": {
+          "items": 1200,
+          "items_per_second": 97.71731388928369,
+          "p50_ms": 40.36503982543945,
+          "p50_ms_per_item": 10.091259956359863,
+          "p95_ms": 44.76822280883789,
+          "p95_ms_per_item": 11.192055702209473,
+          "samples": 300,
+          "total_ms": 12280.321186065674
+        },
+        "postprocess": {
+          "items": 1200,
+          "items_per_second": 554.2030906487603,
+          "p50_ms": 7.038238,
+          "p50_ms_per_item": 1.7595595,
+          "p95_ms": 8.38578365,
+          "p95_ms_per_item": 2.0964459125,
+          "samples": 300,
+          "total_ms": 2165.271216000001
+        },
+        "preprocess": {
+          "items": 1200,
+          "items_per_second": 68.18025807030614,
+          "p50_ms": 57.8327025,
+          "p50_ms_per_item": 14.458175625,
+          "p95_ms": 63.8141611,
+          "p95_ms_per_item": 15.953540275,
+          "samples": 300,
+          "total_ms": 17600.402726000004
+        },
+        "stage_wall": {
+          "items": 1200,
+          "items_per_second": 37.02934372115488,
+          "p50_ms": 107.1892925,
+          "p50_ms_per_item": 26.797323125,
+          "p95_ms": 114.48478015,
+          "p95_ms_per_item": 28.6211950375,
+          "samples": 300,
+          "total_ms": 32406.731511
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 906644992,
+      "torch_peak_reserved_bytes": 935329792,
+      "weights": {
+        "checkpoint": {
+          "bytes": 1704836116,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/PMPose-l-1.0.0.pth",
+          "sha256": "931b2f14486c199feee57714d6ab7e162fb904495050efa4d2142306395dc250"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 8,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "pmpose-l",
+        "settings": {
+          "autocast": false,
+          "checkpoint_sha256": "931b2f14486c199feee57714d6ab7e162fb904495050efa4d2142306395dc250",
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "excluded_tail_ids": [],
+          "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+          "flip_test": true,
+          "forward_dtype": "float16",
+          "forwards_per_batch": 2,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            256,
+            192
+          ],
+          "license": "GPL-3.0",
+          "mask": "bbox_rectangle",
+          "normalize_fuse_decode_dtype": "float32",
+          "opencv_threads": 1,
+          "source_commit": "49a070a6f8396147323b1c4959474077dbe2ce8e",
+          "sparsemax_dtype": "float32",
+          "timed_input_ids_sha256": "a19b4a48919ac34307dd7dc4d958d6c171be82b78296d060ab86847ca69941b7",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "weights_revision": "cfc89052cf16655a52889f1f4e1b866e74a6c19c"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {},
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9756,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "forward_medians_ms": {
+        "flipped": {
+          "gpu": 34.12004852294922,
+          "wall": 34.168094499999995
+        },
+        "original": {
+          "gpu": 34.699087142944336,
+          "wall": 34.7383665
+        }
+      },
+      "job_id": "0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync.job",
+      "nvml_device_peak_sampled_bytes": 1409388544,
+      "nvml_peak_minus_before_load_bytes": 989855744,
+      "nvml_used_bytes": {
+        "after_cold_start": 1409388544,
+        "after_load": 1298239488,
+        "after_warmup": 1409388544,
+        "before_load": 419532800,
+        "block_1": 1409388544,
+        "block_2": 1409388544,
+        "block_3": 1409388544
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "report": {
+        "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-l/PT16-b8/report.json",
+        "sha256": "11c3497cfeca45ff37377119f413533be454d3e94d7a7749beda3e04dbe65e45"
+      },
+      "sample_count": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 1977.340851,
+        "load": 14275.25307
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 2400,
+          "items_per_second": 16451.54512020643,
+          "p50_ms": 0.45856549999999996,
+          "p50_ms_per_item": 0.057320687499999995,
+          "p95_ms": 0.6725229000000003,
+          "p95_ms_per_item": 0.08406536250000003,
+          "samples": 300,
+          "total_ms": 145.88295400000007
+        },
+        "forward": {
+          "items": 2400,
+          "items_per_second": 115.57738903997493,
+          "p50_ms": 68.9455155,
+          "p50_ms_per_item": 8.6181894375,
+          "p95_ms": 70.75966015,
+          "p95_ms_per_item": 8.84495751875,
+          "samples": 300,
+          "total_ms": 20765.307297000007
+        },
+        "h2d": {
+          "items": 2400,
+          "items_per_second": 14603.421810517144,
+          "p50_ms": 0.5451295,
+          "p50_ms_per_item": 0.0681411875,
+          "p95_ms": 0.65042555,
+          "p95_ms_per_item": 0.08130319375,
+          "samples": 300,
+          "total_ms": 164.34504400000003
+        },
+        "model_gpu": {
+          "items": 2400,
+          "items_per_second": 115.72718523999238,
+          "p50_ms": 68.84911918640137,
+          "p50_ms_per_item": 8.606139898300171,
+          "p95_ms": 70.68661403656006,
+          "p95_ms_per_item": 8.835826754570007,
+          "samples": 300,
+          "total_ms": 20738.428874969482
+        },
+        "postprocess": {
+          "items": 2400,
+          "items_per_second": 612.318431623285,
+          "p50_ms": 12.7314905,
+          "p50_ms_per_item": 1.5914363125,
+          "p95_ms": 15.022356700000007,
+          "p95_ms_per_item": 1.8777945875000008,
+          "samples": 300,
+          "total_ms": 3919.5292450000024
+        },
+        "preprocess": {
+          "items": 2400,
+          "items_per_second": 67.46233066398332,
+          "p50_ms": 116.417462,
+          "p50_ms_per_item": 14.55218275,
+          "p95_ms": 135.45695915000002,
+          "p95_ms_per_item": 16.932119893750002,
+          "samples": 300,
+          "total_ms": 35575.40891900001
+        },
+        "stage_wall": {
+          "items": 2400,
+          "items_per_second": 39.559055334536694,
+          "p50_ms": 199.6971195,
+          "p50_ms_per_item": 24.9621399375,
+          "p95_ms": 219.75551529999998,
+          "p95_ms_per_item": 27.469439412499998,
+          "samples": 300,
+          "total_ms": 60668.78947699999
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 921667584,
+      "torch_peak_reserved_bytes": 947912704,
+      "weights": {
+        "checkpoint": {
+          "bytes": 1704836116,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/PMPose-l-1.0.0.pth",
+          "sha256": "931b2f14486c199feee57714d6ab7e162fb904495050efa4d2142306395dc250"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 1,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "pmpose-l",
+        "settings": {
+          "autocast": false,
+          "checkpoint_sha256": "931b2f14486c199feee57714d6ab7e162fb904495050efa4d2142306395dc250",
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "excluded_tail_ids": [],
+          "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+          "flip_test": true,
+          "forward_dtype": "float16",
+          "forwards_per_batch": 2,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            256,
+            192
+          ],
+          "license": "GPL-3.0",
+          "mask": "bbox_rectangle",
+          "normalize_fuse_decode_dtype": "float32",
+          "opencv_threads": 1,
+          "source_commit": "49a070a6f8396147323b1c4959474077dbe2ce8e",
+          "sparsemax_dtype": "float32",
+          "timed_input_ids_sha256": "adc0121c98e2538e0b91d05039083fc7f811ae9723e289a1772ac9a5c3b00837",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "weights_revision": "cfc89052cf16655a52889f1f4e1b866e74a6c19c"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 300,
+      "engines": {
+        "plan": {
+          "bytes": 851025676,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/pmpose-l-engine/engine.plan",
+          "sha256": "d69595cb4356c946fa423e23318c09007922cdb8f868d29d06a03f930e3f5833"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 10094,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "forward_medians_ms": {
+        "flipped": {
+          "gpu": 4.819471836090088,
+          "wall": 4.8666815
+        },
+        "original": {
+          "gpu": 4.906239986419678,
+          "wall": 4.9770575
+        }
+      },
+      "job_id": "0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync.job",
+      "nvml_device_peak_sampled_bytes": 1354862592,
+      "nvml_peak_minus_before_load_bytes": 935329792,
+      "nvml_used_bytes": {
+        "after_cold_start": 1354862592,
+        "after_load": 1352765440,
+        "after_warmup": 1354862592,
+        "before_load": 419532800,
+        "block_1": 1354862592,
+        "block_2": 1354862592,
+        "block_3": 1354862592
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "report": {
+        "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-l/TRT16-b1/report.json",
+        "sha256": "84c2e54d4ccf869bd66ebfd2d8bbfaccc726b77e7eeba5c9e9afaf58a06cf443"
+      },
+      "sample_count": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 471.30861,
+        "load": 25627.918217
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 300,
+          "items_per_second": 2150.306387839208,
+          "p50_ms": 0.4340765,
+          "p50_ms_per_item": 0.4340765,
+          "p95_ms": 0.7703663000000002,
+          "p95_ms_per_item": 0.7703663000000002,
+          "samples": 300,
+          "total_ms": 139.51500200000004
+        },
+        "forward": {
+          "items": 300,
+          "items_per_second": 91.3810620210529,
+          "p50_ms": 9.880759000000001,
+          "p50_ms_per_item": 9.880759000000001,
+          "p95_ms": 13.9914651,
+          "p95_ms_per_item": 13.9914651,
+          "samples": 300,
+          "total_ms": 3282.9559360000026
+        },
+        "h2d": {
+          "items": 300,
+          "items_per_second": 3093.0727233979505,
+          "p50_ms": 0.2992585,
+          "p50_ms_per_item": 0.2992585,
+          "p95_ms": 0.48405785000000023,
+          "p95_ms_per_item": 0.48405785000000023,
+          "samples": 300,
+          "total_ms": 96.99093
+        },
+        "model_gpu": {
+          "items": 300,
+          "items_per_second": 92.397216888071,
+          "p50_ms": 9.767391920089722,
+          "p50_ms_per_item": 9.767391920089722,
+          "p95_ms": 13.737273669242859,
+          "p95_ms_per_item": 13.737273669242859,
+          "samples": 300,
+          "total_ms": 3246.8510427474976
+        },
+        "postprocess": {
+          "items": 300,
+          "items_per_second": 276.77346476992733,
+          "p50_ms": 3.277818,
+          "p50_ms_per_item": 3.277818,
+          "p95_ms": 6.032215050000004,
+          "p95_ms_per_item": 6.032215050000004,
+          "samples": 300,
+          "total_ms": 1083.9189379999998
+        },
+        "preprocess": {
+          "items": 300,
+          "items_per_second": 50.38269432522954,
+          "p50_ms": 16.0627105,
+          "p50_ms_per_item": 16.0627105,
+          "p95_ms": 28.43633645000001,
+          "p95_ms_per_item": 28.43633645000001,
+          "samples": 300,
+          "total_ms": 5954.425502999998
+        },
+        "stage_wall": {
+          "items": 300,
+          "items_per_second": 28.15385335343617,
+          "p50_ms": 30.9759435,
+          "p50_ms_per_item": 30.9759435,
+          "p95_ms": 50.31448900000001,
+          "p95_ms_per_item": 50.31448900000001,
+          "samples": 300,
+          "total_ms": 10655.734979999997
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 2007040,
+      "torch_peak_reserved_bytes": 2097152,
+      "weights": {
+        "checkpoint": {
+          "bytes": 1704836116,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/PMPose-l-1.0.0.pth",
+          "sha256": "931b2f14486c199feee57714d6ab7e162fb904495050efa4d2142306395dc250"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 4,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "pmpose-l",
+        "settings": {
+          "autocast": false,
+          "checkpoint_sha256": "931b2f14486c199feee57714d6ab7e162fb904495050efa4d2142306395dc250",
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "excluded_tail_ids": [],
+          "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+          "flip_test": true,
+          "forward_dtype": "float16",
+          "forwards_per_batch": 2,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            256,
+            192
+          ],
+          "license": "GPL-3.0",
+          "mask": "bbox_rectangle",
+          "normalize_fuse_decode_dtype": "float32",
+          "opencv_threads": 1,
+          "source_commit": "49a070a6f8396147323b1c4959474077dbe2ce8e",
+          "sparsemax_dtype": "float32",
+          "timed_input_ids_sha256": "5ff2702172638e5bc361a24ec7dce8f270d174a354a1eeefd9ba8b1a942156e9",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "weights_revision": "cfc89052cf16655a52889f1f4e1b866e74a6c19c"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {
+        "plan": {
+          "bytes": 851025676,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/pmpose-l-engine/engine.plan",
+          "sha256": "d69595cb4356c946fa423e23318c09007922cdb8f868d29d06a03f930e3f5833"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 10378,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "forward_medians_ms": {
+        "flipped": {
+          "gpu": 10.264416217803955,
+          "wall": 10.320637000000001
+        },
+        "original": {
+          "gpu": 10.320096015930176,
+          "wall": 10.373331
+        }
+      },
+      "job_id": "0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync.job",
+      "nvml_device_peak_sampled_bytes": 1375834112,
+      "nvml_peak_minus_before_load_bytes": 956301312,
+      "nvml_used_bytes": {
+        "after_cold_start": 1375834112,
+        "after_load": 1352765440,
+        "after_warmup": 1375834112,
+        "before_load": 419532800,
+        "block_1": 1375834112,
+        "block_2": 1375834112,
+        "block_3": 1375834112
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "report": {
+        "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-l/TRT16-b4/report.json",
+        "sha256": "24b360fe9bfdf2b46703226522204c4c08dce870f1007e8407371bd9680bf31f"
+      },
+      "sample_count": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 609.517102,
+        "load": 20916.911361
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 1200,
+          "items_per_second": 8867.788740983939,
+          "p50_ms": 0.4334385,
+          "p50_ms_per_item": 0.108359625,
+          "p95_ms": 0.60837005,
+          "p95_ms_per_item": 0.1520925125,
+          "samples": 300,
+          "total_ms": 135.32122100000007
+        },
+        "forward": {
+          "items": 1200,
+          "items_per_second": 192.51728751377135,
+          "p50_ms": 20.705665500000002,
+          "p50_ms_per_item": 5.1764163750000005,
+          "p95_ms": 21.078045850000002,
+          "p95_ms_per_item": 5.269511462500001,
+          "samples": 300,
+          "total_ms": 6233.206459000002
+        },
+        "h2d": {
+          "items": 1200,
+          "items_per_second": 9960.093887829025,
+          "p50_ms": 0.3939685,
+          "p50_ms_per_item": 0.098492125,
+          "p95_ms": 0.48080595000000004,
+          "p95_ms_per_item": 0.12020148750000001,
+          "samples": 300,
+          "total_ms": 120.480792
+        },
+        "model_gpu": {
+          "items": 1200,
+          "items_per_second": 193.54862184384302,
+          "p50_ms": 20.59883165359497,
+          "p50_ms_per_item": 5.149707913398743,
+          "p95_ms": 20.977429628372192,
+          "p95_ms_per_item": 5.244357407093048,
+          "samples": 300,
+          "total_ms": 6199.992480278015
+        },
+        "postprocess": {
+          "items": 1200,
+          "items_per_second": 593.7569532031705,
+          "p50_ms": 6.502302,
+          "p50_ms_per_item": 1.6255755,
+          "p95_ms": 8.32095185,
+          "p95_ms_per_item": 2.0802379625,
+          "samples": 300,
+          "total_ms": 2021.0289639999999
+        },
+        "preprocess": {
+          "items": 1200,
+          "items_per_second": 64.85130245238996,
+          "p50_ms": 60.6549395,
+          "p50_ms_per_item": 15.163734875,
+          "p95_ms": 71.10873825,
+          "p95_ms_per_item": 17.7771845625,
+          "samples": 300,
+          "total_ms": 18503.868921999987
+        },
+        "stage_wall": {
+          "items": 1200,
+          "items_per_second": 44.27126612242886,
+          "p50_ms": 89.1020755,
+          "p50_ms_per_item": 22.275518875,
+          "p95_ms": 100.50815955,
+          "p95_ms_per_item": 25.1270398875,
+          "samples": 300,
+          "total_ms": 27105.617369999993
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 8015872,
+      "torch_peak_reserved_bytes": 23068672,
+      "weights": {
+        "checkpoint": {
+          "bytes": 1704836116,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/PMPose-l-1.0.0.pth",
+          "sha256": "931b2f14486c199feee57714d6ab7e162fb904495050efa4d2142306395dc250"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 8,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "pmpose-l",
+        "settings": {
+          "autocast": false,
+          "checkpoint_sha256": "931b2f14486c199feee57714d6ab7e162fb904495050efa4d2142306395dc250",
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "excluded_tail_ids": [],
+          "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+          "flip_test": true,
+          "forward_dtype": "float16",
+          "forwards_per_batch": 2,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            256,
+            192
+          ],
+          "license": "GPL-3.0",
+          "mask": "bbox_rectangle",
+          "normalize_fuse_decode_dtype": "float32",
+          "opencv_threads": 1,
+          "source_commit": "49a070a6f8396147323b1c4959474077dbe2ce8e",
+          "sparsemax_dtype": "float32",
+          "timed_input_ids_sha256": "a19b4a48919ac34307dd7dc4d958d6c171be82b78296d060ab86847ca69941b7",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "weights_revision": "cfc89052cf16655a52889f1f4e1b866e74a6c19c"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {
+        "plan": {
+          "bytes": 851025676,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/pmpose-l-engine/engine.plan",
+          "sha256": "d69595cb4356c946fa423e23318c09007922cdb8f868d29d06a03f930e3f5833"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 10438,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "forward_medians_ms": {
+        "flipped": {
+          "gpu": 19.212960243225098,
+          "wall": 19.2781005
+        },
+        "original": {
+          "gpu": 19.240592002868652,
+          "wall": 19.305368
+        }
+      },
+      "job_id": "0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync.job",
+      "nvml_device_peak_sampled_bytes": 1375834112,
+      "nvml_peak_minus_before_load_bytes": 956301312,
+      "nvml_used_bytes": {
+        "after_cold_start": 1375834112,
+        "after_load": 1352765440,
+        "after_warmup": 1375834112,
+        "before_load": 419532800,
+        "block_1": 1375834112,
+        "block_2": 1375834112,
+        "block_3": 1375834112
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "report": {
+        "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-l/TRT16-b8/report.json",
+        "sha256": "827447c7c0ab0b9f018862f67e315e03fb5e9f788e3fcc7955022fb5f8483e4f"
+      },
+      "sample_count": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 869.212392,
+        "load": 21309.889711
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 2400,
+          "items_per_second": 13284.97499108993,
+          "p50_ms": 0.565323,
+          "p50_ms_per_item": 0.070665375,
+          "p95_ms": 0.8440030000000001,
+          "p95_ms_per_item": 0.10550037500000001,
+          "samples": 300,
+          "total_ms": 180.65521400000006
+        },
+        "forward": {
+          "items": 2400,
+          "items_per_second": 208.59019611723758,
+          "p50_ms": 38.597142,
+          "p50_ms_per_item": 4.82464275,
+          "p95_ms": 39.0267302,
+          "p95_ms_per_item": 4.878341275,
+          "samples": 300,
+          "total_ms": 11505.814006000004
+        },
+        "h2d": {
+          "items": 2400,
+          "items_per_second": 14059.830389704757,
+          "p50_ms": 0.5631135,
+          "p50_ms_per_item": 0.0703891875,
+          "p95_ms": 0.7042621,
+          "p95_ms_per_item": 0.0880327625,
+          "samples": 300,
+          "total_ms": 170.69907199999997
+        },
+        "model_gpu": {
+          "items": 2400,
+          "items_per_second": 209.33202644775514,
+          "p50_ms": 38.466848373413086,
+          "p50_ms_per_item": 4.808356046676636,
+          "p95_ms": 38.87258539199829,
+          "p95_ms_per_item": 4.8590731739997866,
+          "samples": 300,
+          "total_ms": 11465.039730072021
+        },
+        "postprocess": {
+          "items": 2400,
+          "items_per_second": 655.7518143320708,
+          "p50_ms": 11.638005,
+          "p50_ms_per_item": 1.454750625,
+          "p95_ms": 15.920861550000001,
+          "p95_ms_per_item": 1.9901076937500002,
+          "samples": 300,
+          "total_ms": 3659.9212499999994
+        },
+        "preprocess": {
+          "items": 2400,
+          "items_per_second": 64.40211351967712,
+          "p50_ms": 122.3740075,
+          "p50_ms_per_item": 15.2967509375,
+          "p95_ms": 142.38543695,
+          "p95_ms_per_item": 17.79817961875,
+          "samples": 300,
+          "total_ms": 37265.85773100001
+        },
+        "stage_wall": {
+          "items": 2400,
+          "items_per_second": 45.37220930720391,
+          "p50_ms": 174.2108035,
+          "p50_ms_per_item": 21.7763504375,
+          "p95_ms": 197.69468890000002,
+          "p95_ms_per_item": 24.711836112500002,
+          "samples": 300,
+          "total_ms": 52895.815228
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 16027648,
+      "torch_peak_reserved_bytes": 23068672,
+      "weights": {
+        "checkpoint": {
+          "bytes": 1704836116,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/PMPose-l-1.0.0.pth",
+          "sha256": "931b2f14486c199feee57714d6ab7e162fb904495050efa4d2142306395dc250"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 1,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "pmpose-h",
+        "settings": {
+          "autocast": false,
+          "checkpoint_sha256": "ca3e5577839e5ce22390d1d6409241f61526346c80086d3ee1990b503dd93635",
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "excluded_tail_ids": [],
+          "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+          "flip_test": true,
+          "forward_dtype": "float16",
+          "forwards_per_batch": 2,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            256,
+            192
+          ],
+          "license": "GPL-3.0",
+          "mask": "bbox_rectangle",
+          "normalize_fuse_decode_dtype": "float32",
+          "opencv_threads": 1,
+          "source_commit": "49a070a6f8396147323b1c4959474077dbe2ce8e",
+          "sparsemax_dtype": "float32",
+          "timed_input_ids_sha256": "adc0121c98e2538e0b91d05039083fc7f811ae9723e289a1772ac9a5c3b00837",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "weights_revision": "cfc89052cf16655a52889f1f4e1b866e74a6c19c"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 300,
+      "engines": {},
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 10551,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "forward_medians_ms": {
+        "flipped": {
+          "gpu": 19.504255294799805,
+          "wall": 19.555909999999997
+        },
+        "original": {
+          "gpu": 21.261216163635254,
+          "wall": 21.307288
+        }
+      },
+      "job_id": "0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync.job",
+      "nvml_device_peak_sampled_bytes": 2313261056,
+      "nvml_peak_minus_before_load_bytes": 1893728256,
+      "nvml_used_bytes": {
+        "after_cold_start": 2313261056,
+        "after_load": 2189529088,
+        "after_warmup": 2313261056,
+        "before_load": 419532800,
+        "block_1": 2313261056,
+        "block_2": 2313261056,
+        "block_3": 2313261056
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "report": {
+        "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-h/PT16-b1/report.json",
+        "sha256": "c515c349d556dbb8294b2a6f8699cadee55a61681f02704b26dccf87d9f3859c"
+      },
+      "sample_count": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 2470.833413,
+        "load": 46139.297092
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 300,
+          "items_per_second": 2270.1706821773605,
+          "p50_ms": 0.41982200000000003,
+          "p50_ms_per_item": 0.41982200000000003,
+          "p95_ms": 0.65180945,
+          "p95_ms_per_item": 0.65180945,
+          "samples": 300,
+          "total_ms": 132.14865400000002
+        },
+        "forward": {
+          "items": 300,
+          "items_per_second": 22.56807621655735,
+          "p50_ms": 41.009825,
+          "p50_ms_per_item": 41.009825,
+          "p95_ms": 71.73331605,
+          "p95_ms_per_item": 71.73331605,
+          "samples": 300,
+          "total_ms": 13293.113560999995
+        },
+        "h2d": {
+          "items": 300,
+          "items_per_second": 3448.0673530764975,
+          "p50_ms": 0.280194,
+          "p50_ms_per_item": 0.280194,
+          "p95_ms": 0.37483475000000005,
+          "p95_ms_per_item": 0.37483475000000005,
+          "samples": 300,
+          "total_ms": 87.00526100000005
+        },
+        "model_gpu": {
+          "items": 300,
+          "items_per_second": 22.620062306840993,
+          "p50_ms": 40.912960052490234,
+          "p50_ms_per_item": 40.912960052490234,
+          "p95_ms": 71.61479415893555,
+          "p95_ms_per_item": 71.61479415893555,
+          "samples": 300,
+          "total_ms": 13262.562937736511
+        },
+        "postprocess": {
+          "items": 300,
+          "items_per_second": 294.4856123169299,
+          "p50_ms": 3.1348920000000002,
+          "p50_ms_per_item": 3.1348920000000002,
+          "p95_ms": 4.75232,
+          "p95_ms_per_item": 4.75232,
+          "samples": 300,
+          "total_ms": 1018.7254909999997
+        },
+        "preprocess": {
+          "items": 300,
+          "items_per_second": 62.89923699858317,
+          "p50_ms": 15.145085,
+          "p50_ms_per_item": 15.145085,
+          "p95_ms": 21.181019900000003,
+          "p95_ms_per_item": 21.181019900000003,
+          "samples": 300,
+          "total_ms": 4769.533213999998
+        },
+        "stage_wall": {
+          "items": 300,
+          "items_per_second": 15.475353072226966,
+          "p50_ms": 60.975615000000005,
+          "p50_ms_per_item": 60.975615000000005,
+          "p95_ms": 93.19598325000001,
+          "p95_ms_per_item": 93.19598325000001,
+          "samples": 300,
+          "total_ms": 19385.66432699999
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 1696065536,
+      "torch_peak_reserved_bytes": 1851785216,
+      "weights": {
+        "checkpoint": {
+          "bytes": 3259992404,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/PMPose-h-1.0.0.pth",
+          "sha256": "ca3e5577839e5ce22390d1d6409241f61526346c80086d3ee1990b503dd93635"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 4,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "pmpose-h",
+        "settings": {
+          "autocast": false,
+          "checkpoint_sha256": "ca3e5577839e5ce22390d1d6409241f61526346c80086d3ee1990b503dd93635",
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "excluded_tail_ids": [],
+          "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+          "flip_test": true,
+          "forward_dtype": "float16",
+          "forwards_per_batch": 2,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            256,
+            192
+          ],
+          "license": "GPL-3.0",
+          "mask": "bbox_rectangle",
+          "normalize_fuse_decode_dtype": "float32",
+          "opencv_threads": 1,
+          "source_commit": "49a070a6f8396147323b1c4959474077dbe2ce8e",
+          "sparsemax_dtype": "float32",
+          "timed_input_ids_sha256": "5ff2702172638e5bc361a24ec7dce8f270d174a354a1eeefd9ba8b1a942156e9",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "weights_revision": "cfc89052cf16655a52889f1f4e1b866e74a6c19c"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {},
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 10747,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "forward_medians_ms": {
+        "flipped": {
+          "gpu": 34.663217544555664,
+          "wall": 34.718184
+        },
+        "original": {
+          "gpu": 35.80438423156738,
+          "wall": 35.854898000000006
+        }
+      },
+      "job_id": "0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync.job",
+      "nvml_device_peak_sampled_bytes": 2319552512,
+      "nvml_peak_minus_before_load_bytes": 1900019712,
+      "nvml_used_bytes": {
+        "after_cold_start": 2319552512,
+        "after_load": 2189529088,
+        "after_warmup": 2319552512,
+        "before_load": 419532800,
+        "block_1": 2319552512,
+        "block_2": 2319552512,
+        "block_3": 2319552512
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "report": {
+        "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-h/PT16-b4/report.json",
+        "sha256": "5790764b6bb656f515e937e3137faf6a3df684d47f987ebf2a285f90084f9001"
+      },
+      "sample_count": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 2662.798201,
+        "load": 35730.92276
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 1200,
+          "items_per_second": 7381.156506542669,
+          "p50_ms": 0.5043625,
+          "p50_ms_per_item": 0.126090625,
+          "p95_ms": 0.8452213500000001,
+          "p95_ms_per_item": 0.21130533750000002,
+          "samples": 300,
+          "total_ms": 162.57614899999993
+        },
+        "forward": {
+          "items": 1200,
+          "items_per_second": 54.445520720221204,
+          "p50_ms": 70.83988599999999,
+          "p50_ms_per_item": 17.709971499999998,
+          "p95_ms": 88.57382115,
+          "p95_ms_per_item": 22.1434552875,
+          "samples": 300,
+          "total_ms": 22040.38062500001
+        },
+        "h2d": {
+          "items": 1200,
+          "items_per_second": 9032.319445439673,
+          "p50_ms": 0.42069,
+          "p50_ms_per_item": 0.1051725,
+          "p95_ms": 0.5511897,
+          "p95_ms_per_item": 0.137797425,
+          "samples": 300,
+          "total_ms": 132.85623999999999
+        },
+        "model_gpu": {
+          "items": 1200,
+          "items_per_second": 54.529209890541225,
+          "p50_ms": 70.74982261657715,
+          "p50_ms_per_item": 17.687455654144287,
+          "p95_ms": 88.44844512939454,
+          "p95_ms_per_item": 22.112111282348636,
+          "samples": 300,
+          "total_ms": 22006.55396270752
+        },
+        "postprocess": {
+          "items": 1200,
+          "items_per_second": 472.07392190436735,
+          "p50_ms": 7.8379025,
+          "p50_ms_per_item": 1.959475625,
+          "p95_ms": 11.41913205,
+          "p95_ms_per_item": 2.8547830125,
+          "samples": 300,
+          "total_ms": 2541.974772
+        },
+        "preprocess": {
+          "items": 1200,
+          "items_per_second": 59.33778789283621,
+          "p50_ms": 63.969512,
+          "p50_ms_per_item": 15.992378,
+          "p95_ms": 87.0474234,
+          "p95_ms_per_item": 21.76185585,
+          "samples": 300,
+          "total_ms": 20223.200806999997
+        },
+        "stage_wall": {
+          "items": 1200,
+          "items_per_second": 26.543940057869357,
+          "p50_ms": 145.4263745,
+          "p50_ms_per_item": 36.356593625,
+          "p95_ms": 180.6223683,
+          "p95_ms_per_item": 45.155592075,
+          "samples": 300,
+          "total_ms": 45208.058690000005
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 1702118400,
+      "torch_peak_reserved_bytes": 1858076672,
+      "weights": {
+        "checkpoint": {
+          "bytes": 3259992404,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/PMPose-h-1.0.0.pth",
+          "sha256": "ca3e5577839e5ce22390d1d6409241f61526346c80086d3ee1990b503dd93635"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 8,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "pmpose-h",
+        "settings": {
+          "autocast": false,
+          "checkpoint_sha256": "ca3e5577839e5ce22390d1d6409241f61526346c80086d3ee1990b503dd93635",
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "excluded_tail_ids": [],
+          "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+          "flip_test": true,
+          "forward_dtype": "float16",
+          "forwards_per_batch": 2,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            256,
+            192
+          ],
+          "license": "GPL-3.0",
+          "mask": "bbox_rectangle",
+          "normalize_fuse_decode_dtype": "float32",
+          "opencv_threads": 1,
+          "source_commit": "49a070a6f8396147323b1c4959474077dbe2ce8e",
+          "sparsemax_dtype": "float32",
+          "timed_input_ids_sha256": "a19b4a48919ac34307dd7dc4d958d6c171be82b78296d060ab86847ca69941b7",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "weights_revision": "cfc89052cf16655a52889f1f4e1b866e74a6c19c"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {},
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9651,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "forward_medians_ms": {
+        "flipped": {
+          "gpu": 62.76199913024902,
+          "wall": 62.812641
+        },
+        "original": {
+          "gpu": 63.23723220825195,
+          "wall": 63.2920265
+        }
+      },
+      "job_id": "0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync.job",
+      "nvml_device_peak_sampled_bytes": 2384564224,
+      "nvml_peak_minus_before_load_bytes": 1965031424,
+      "nvml_used_bytes": {
+        "after_cold_start": 2384564224,
+        "after_load": 2189529088,
+        "after_warmup": 2384564224,
+        "before_load": 419532800,
+        "block_1": 2384564224,
+        "block_2": 2384564224,
+        "block_3": 2384564224
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "report": {
+        "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-h/PT16-b8/report.json",
+        "sha256": "63751b9d6f6cef3d7be39e0f1ec7218ed0f5bdd9204e042a7364fddf9f469307"
+      },
+      "sample_count": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 2702.863276,
+        "load": 27990.462587
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 2400,
+          "items_per_second": 14578.73744962812,
+          "p50_ms": 0.516846,
+          "p50_ms_per_item": 0.06460575,
+          "p95_ms": 0.7495843000000001,
+          "p95_ms_per_item": 0.09369803750000001,
+          "samples": 300,
+          "total_ms": 164.62330899999986
+        },
+        "forward": {
+          "items": 2400,
+          "items_per_second": 63.340447259779445,
+          "p50_ms": 126.1433815,
+          "p50_ms_per_item": 15.7679226875,
+          "p95_ms": 127.35328464999999,
+          "p95_ms_per_item": 15.919160581249999,
+          "samples": 300,
+          "total_ms": 37890.48078799999
+        },
+        "h2d": {
+          "items": 2400,
+          "items_per_second": 14503.632223178987,
+          "p50_ms": 0.547013,
+          "p50_ms_per_item": 0.068376625,
+          "p95_ms": 0.6529289,
+          "p95_ms_per_item": 0.0816161125,
+          "samples": 300,
+          "total_ms": 165.47579000000005
+        },
+        "model_gpu": {
+          "items": 2400,
+          "items_per_second": 63.38960049977668,
+          "p50_ms": 126.04011344909668,
+          "p50_ms_per_item": 15.755014181137085,
+          "p95_ms": 127.27265071868896,
+          "p95_ms_per_item": 15.90908133983612,
+          "samples": 300,
+          "total_ms": 37861.09994506836
+        },
+        "postprocess": {
+          "items": 2400,
+          "items_per_second": 602.4002940918232,
+          "p50_ms": 12.8566495,
+          "p50_ms_per_item": 1.6070811875,
+          "p95_ms": 16.79430635,
+          "p95_ms_per_item": 2.09928829375,
+          "samples": 300,
+          "total_ms": 3984.061800000002
+        },
+        "preprocess": {
+          "items": 2400,
+          "items_per_second": 67.43579590929656,
+          "p50_ms": 116.1346075,
+          "p50_ms_per_item": 14.5168259375,
+          "p95_ms": 135.29047909999997,
+          "p95_ms_per_item": 16.911309887499996,
+          "samples": 300,
+          "total_ms": 35589.407193000014
+        },
+        "stage_wall": {
+          "items": 2400,
+          "items_per_second": 30.80840949100766,
+          "p50_ms": 257.12751349999996,
+          "p50_ms_per_item": 32.140939187499995,
+          "p95_ms": 277.40452435000003,
+          "p95_ms_per_item": 34.675565543750004,
+          "samples": 300,
+          "total_ms": 77900.80824199998
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 1715781120,
+      "torch_peak_reserved_bytes": 1923088384,
+      "weights": {
+        "checkpoint": {
+          "bytes": 3259992404,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/PMPose-h-1.0.0.pth",
+          "sha256": "ca3e5577839e5ce22390d1d6409241f61526346c80086d3ee1990b503dd93635"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 1,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "pmpose-h",
+        "settings": {
+          "autocast": false,
+          "checkpoint_sha256": "ca3e5577839e5ce22390d1d6409241f61526346c80086d3ee1990b503dd93635",
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "excluded_tail_ids": [],
+          "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+          "flip_test": true,
+          "forward_dtype": "float16",
+          "forwards_per_batch": 2,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            256,
+            192
+          ],
+          "license": "GPL-3.0",
+          "mask": "bbox_rectangle",
+          "normalize_fuse_decode_dtype": "float32",
+          "opencv_threads": 1,
+          "source_commit": "49a070a6f8396147323b1c4959474077dbe2ce8e",
+          "sparsemax_dtype": "float32",
+          "timed_input_ids_sha256": "adc0121c98e2538e0b91d05039083fc7f811ae9723e289a1772ac9a5c3b00837",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "weights_revision": "cfc89052cf16655a52889f1f4e1b866e74a6c19c"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 300,
+      "engines": {
+        "plan": {
+          "bytes": 1644663364,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/pmpose-h-engine/engine.plan",
+          "sha256": "8f1ffc6584ad4757396bd0404c39b6743abdd42763c7db493e82f130030f6dbe"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9561,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "forward_medians_ms": {
+        "flipped": {
+          "gpu": 10.950815677642822,
+          "wall": 11.0106135
+        },
+        "original": {
+          "gpu": 11.045519828796387,
+          "wall": 11.094845500000002
+        }
+      },
+      "job_id": "0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync.job",
+      "nvml_device_peak_sampled_bytes": 2143391744,
+      "nvml_peak_minus_before_load_bytes": 1723858944,
+      "nvml_used_bytes": {
+        "after_cold_start": 2143391744,
+        "after_load": 2141294592,
+        "after_warmup": 2143391744,
+        "before_load": 419532800,
+        "block_1": 2143391744,
+        "block_2": 2143391744,
+        "block_3": 2143391744
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "report": {
+        "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-h/TRT16-b1/report.json",
+        "sha256": "f2a27feff1e0c10e9be29d92e89afcae39301c4cec47edbf870bca88a8b24921"
+      },
+      "sample_count": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 480.554517,
+        "load": 54488.940452
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 300,
+          "items_per_second": 2433.6429330047226,
+          "p50_ms": 0.372854,
+          "p50_ms_per_item": 0.372854,
+          "p95_ms": 0.6453894,
+          "p95_ms_per_item": 0.6453894,
+          "samples": 300,
+          "total_ms": 123.27198699999998
+        },
+        "forward": {
+          "items": 300,
+          "items_per_second": 44.80972677163201,
+          "p50_ms": 22.1294775,
+          "p50_ms_per_item": 22.1294775,
+          "p95_ms": 23.1066008,
+          "p95_ms_per_item": 23.1066008,
+          "samples": 300,
+          "total_ms": 6694.974989
+        },
+        "h2d": {
+          "items": 300,
+          "items_per_second": 3450.3147204572256,
+          "p50_ms": 0.28062549999999997,
+          "p50_ms_per_item": 0.28062549999999997,
+          "p95_ms": 0.36993455000000003,
+          "p95_ms_per_item": 0.36993455000000003,
+          "samples": 300,
+          "total_ms": 86.94859000000002
+        },
+        "model_gpu": {
+          "items": 300,
+          "items_per_second": 45.02295617046086,
+          "p50_ms": 22.019615650177002,
+          "p50_ms_per_item": 22.019615650177002,
+          "p95_ms": 23.00207085609436,
+          "p95_ms_per_item": 23.00207085609436,
+          "samples": 300,
+          "total_ms": 6663.267486572266
+        },
+        "postprocess": {
+          "items": 300,
+          "items_per_second": 320.7827962492639,
+          "p50_ms": 2.8485035,
+          "p50_ms_per_item": 2.8485035,
+          "p95_ms": 4.76838325,
+          "p95_ms_per_item": 4.76838325,
+          "samples": 300,
+          "total_ms": 935.2122479999997
+        },
+        "preprocess": {
+          "items": 300,
+          "items_per_second": 57.65052344658481,
+          "p50_ms": 15.227819499999999,
+          "p50_ms_per_item": 15.227819499999999,
+          "p95_ms": 22.3736244,
+          "p95_ms_per_item": 22.3736244,
+          "samples": 300,
+          "total_ms": 5203.768883000001
+        },
+        "stage_wall": {
+          "items": 300,
+          "items_per_second": 22.848984483175737,
+          "p50_ms": 41.2494905,
+          "p50_ms_per_item": 41.2494905,
+          "p95_ms": 49.8367336,
+          "p95_ms_per_item": 49.8367336,
+          "samples": 300,
+          "total_ms": 13129.686363999997
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 2007040,
+      "torch_peak_reserved_bytes": 2097152,
+      "weights": {
+        "checkpoint": {
+          "bytes": 3259992404,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/PMPose-h-1.0.0.pth",
+          "sha256": "ca3e5577839e5ce22390d1d6409241f61526346c80086d3ee1990b503dd93635"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 4,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "pmpose-h",
+        "settings": {
+          "autocast": false,
+          "checkpoint_sha256": "ca3e5577839e5ce22390d1d6409241f61526346c80086d3ee1990b503dd93635",
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "excluded_tail_ids": [],
+          "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+          "flip_test": true,
+          "forward_dtype": "float16",
+          "forwards_per_batch": 2,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            256,
+            192
+          ],
+          "license": "GPL-3.0",
+          "mask": "bbox_rectangle",
+          "normalize_fuse_decode_dtype": "float32",
+          "opencv_threads": 1,
+          "source_commit": "49a070a6f8396147323b1c4959474077dbe2ce8e",
+          "sparsemax_dtype": "float32",
+          "timed_input_ids_sha256": "5ff2702172638e5bc361a24ec7dce8f270d174a354a1eeefd9ba8b1a942156e9",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "weights_revision": "cfc89052cf16655a52889f1f4e1b866e74a6c19c"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {
+        "plan": {
+          "bytes": 1644663364,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/pmpose-h-engine/engine.plan",
+          "sha256": "8f1ffc6584ad4757396bd0404c39b6743abdd42763c7db493e82f130030f6dbe"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9506,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "forward_medians_ms": {
+        "flipped": {
+          "gpu": 17.167920112609863,
+          "wall": 17.229796
+        },
+        "original": {
+          "gpu": 17.21820831298828,
+          "wall": 17.2849335
+        }
+      },
+      "job_id": "0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync.job",
+      "nvml_device_peak_sampled_bytes": 2164363264,
+      "nvml_peak_minus_before_load_bytes": 1744830464,
+      "nvml_used_bytes": {
+        "after_cold_start": 2164363264,
+        "after_load": 2141294592,
+        "after_warmup": 2164363264,
+        "before_load": 419532800,
+        "block_1": 2164363264,
+        "block_2": 2164363264,
+        "block_3": 2164363264
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "report": {
+        "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-h/TRT16-b4/report.json",
+        "sha256": "04315d5da3bdeea529daabd6c506b04c8ab16fb3c6a4a1d5b49ecc75e750ae7a"
+      },
+      "sample_count": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 506.568806,
+        "load": 42127.292322
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 1200,
+          "items_per_second": 7212.322454859157,
+          "p50_ms": 0.5136149999999999,
+          "p50_ms_per_item": 0.12840374999999998,
+          "p95_ms": 0.8165114500000004,
+          "p95_ms_per_item": 0.2041278625000001,
+          "samples": 300,
+          "total_ms": 166.38191199999997
+        },
+        "forward": {
+          "items": 1200,
+          "items_per_second": 115.62282612255345,
+          "p50_ms": 34.5309605,
+          "p50_ms_per_item": 8.632740125,
+          "p95_ms": 35.18969305,
+          "p95_ms_per_item": 8.7974232625,
+          "samples": 300,
+          "total_ms": 10378.573506999994
+        },
+        "h2d": {
+          "items": 1200,
+          "items_per_second": 9147.587961719357,
+          "p50_ms": 0.401648,
+          "p50_ms_per_item": 0.100412,
+          "p95_ms": 0.5098821,
+          "p95_ms_per_item": 0.127470525,
+          "samples": 300,
+          "total_ms": 131.182122
+        },
+        "model_gpu": {
+          "items": 1200,
+          "items_per_second": 116.05662656226365,
+          "p50_ms": 34.40617561340332,
+          "p50_ms_per_item": 8.60154390335083,
+          "p95_ms": 34.996351623535155,
+          "p95_ms_per_item": 8.749087905883789,
+          "samples": 300,
+          "total_ms": 10339.78011894226
+        },
+        "postprocess": {
+          "items": 1200,
+          "items_per_second": 533.4323618507167,
+          "p50_ms": 6.943771,
+          "p50_ms_per_item": 1.73594275,
+          "p95_ms": 10.287022650000003,
+          "p95_ms_per_item": 2.5717556625000006,
+          "samples": 300,
+          "total_ms": 2249.5823010000004
+        },
+        "preprocess": {
+          "items": 1200,
+          "items_per_second": 61.007310143336824,
+          "p50_ms": 63.312183,
+          "p50_ms_per_item": 15.82804575,
+          "p95_ms": 81.51880055000001,
+          "p95_ms_per_item": 20.379700137500002,
+          "samples": 300,
+          "total_ms": 19669.77395300001
+        },
+        "stage_wall": {
+          "items": 1200,
+          "items_per_second": 36.69625263759344,
+          "p50_ms": 106.6416165,
+          "p50_ms_per_item": 26.660404125,
+          "p95_ms": 125.9298411,
+          "p95_ms_per_item": 31.482460275,
+          "samples": 300,
+          "total_ms": 32700.886704999986
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 8015872,
+      "torch_peak_reserved_bytes": 23068672,
+      "weights": {
+        "checkpoint": {
+          "bytes": 3259992404,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/PMPose-h-1.0.0.pth",
+          "sha256": "ca3e5577839e5ce22390d1d6409241f61526346c80086d3ee1990b503dd93635"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 8,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "pmpose-h",
+        "settings": {
+          "autocast": false,
+          "checkpoint_sha256": "ca3e5577839e5ce22390d1d6409241f61526346c80086d3ee1990b503dd93635",
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "excluded_tail_ids": [],
+          "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+          "flip_test": true,
+          "forward_dtype": "float16",
+          "forwards_per_batch": 2,
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            256,
+            192
+          ],
+          "license": "GPL-3.0",
+          "mask": "bbox_rectangle",
+          "normalize_fuse_decode_dtype": "float32",
+          "opencv_threads": 1,
+          "source_commit": "49a070a6f8396147323b1c4959474077dbe2ce8e",
+          "sparsemax_dtype": "float32",
+          "timed_input_ids_sha256": "a19b4a48919ac34307dd7dc4d958d6c171be82b78296d060ab86847ca69941b7",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+          "weights_revision": "cfc89052cf16655a52889f1f4e1b866e74a6c19c"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {
+        "plan": {
+          "bytes": 1644663364,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/pmpose-h-engine/engine.plan",
+          "sha256": "8f1ffc6584ad4757396bd0404c39b6743abdd42763c7db493e82f130030f6dbe"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9933,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "forward_medians_ms": {
+        "flipped": {
+          "gpu": 32.35353660583496,
+          "wall": 32.4326225
+        },
+        "original": {
+          "gpu": 32.81278419494629,
+          "wall": 32.8827575
+        }
+      },
+      "job_id": "0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync.job",
+      "nvml_device_peak_sampled_bytes": 2164363264,
+      "nvml_peak_minus_before_load_bytes": 1744830464,
+      "nvml_used_bytes": {
+        "after_cold_start": 2164363264,
+        "after_load": 2141294592,
+        "after_warmup": 2164363264,
+        "before_load": 419532800,
+        "block_1": 2164363264,
+        "block_2": 2164363264,
+        "block_3": 2164363264
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "report": {
+        "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-h/TRT16-b8/report.json",
+        "sha256": "ae56ac8e74e2ce77ffd60e5e4febbd01b2ecd5d6c0a2401a486b3b2653b06590"
+      },
+      "sample_count": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 663.54204,
+        "load": 42872.300618
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 2400,
+          "items_per_second": 12974.34685110711,
+          "p50_ms": 0.5825685,
+          "p50_ms_per_item": 0.0728210625,
+          "p95_ms": 0.8373888,
+          "p95_ms_per_item": 0.1046736,
+          "samples": 300,
+          "total_ms": 184.98040999999984
+        },
+        "forward": {
+          "items": 2400,
+          "items_per_second": 122.46645526133312,
+          "p50_ms": 65.319778,
+          "p50_ms_per_item": 8.16497225,
+          "p95_ms": 65.66008695,
+          "p95_ms_per_item": 8.20751086875,
+          "samples": 300,
+          "total_ms": 19597.203126999975
+        },
+        "h2d": {
+          "items": 2400,
+          "items_per_second": 14393.611884747754,
+          "p50_ms": 0.548736,
+          "p50_ms_per_item": 0.068592,
+          "p95_ms": 0.6853387,
+          "p95_ms_per_item": 0.0856673375,
+          "samples": 300,
+          "total_ms": 166.74063600000005
+        },
+        "model_gpu": {
+          "items": 2400,
+          "items_per_second": 122.74520220186248,
+          "p50_ms": 65.17588806152344,
+          "p50_ms_per_item": 8.14698600769043,
+          "p95_ms": 65.51750526428222,
+          "p95_ms_per_item": 8.189688158035278,
+          "samples": 300,
+          "total_ms": 19552.699062347412
+        },
+        "postprocess": {
+          "items": 2400,
+          "items_per_second": 654.3170067815736,
+          "p50_ms": 11.596963,
+          "p50_ms_per_item": 1.449620375,
+          "p95_ms": 16.202299,
+          "p95_ms_per_item": 2.025287375,
+          "samples": 300,
+          "total_ms": 3667.946844000001
+        },
+        "preprocess": {
+          "items": 2400,
+          "items_per_second": 63.6011016346178,
+          "p50_ms": 120.842084,
+          "p50_ms_per_item": 15.1052605,
+          "p95_ms": 150.17077035,
+          "p95_ms_per_item": 18.77134629375,
+          "samples": 300,
+          "total_ms": 37735.19543400001
+        },
+        "stage_wall": {
+          "items": 2400,
+          "items_per_second": 39.045187063464056,
+          "p50_ms": 200.30811549999999,
+          "p50_ms_per_item": 25.038514437499998,
+          "p95_ms": 229.485758,
+          "p95_ms_per_item": 28.68571975,
+          "samples": 300,
+          "total_ms": 61467.242968999984
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 16027648,
+      "torch_peak_reserved_bytes": 23068672,
+      "weights": {
+        "checkpoint": {
+          "bytes": 3259992404,
+          "path": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/PMPose-h-1.0.0.pth",
+          "sha256": "ca3e5577839e5ce22390d1d6409241f61526346c80086d3ee1990b503dd93635"
+        }
+      }
+    }
+  ],
+  "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+  "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+  "input_id": "meiji_4cam/person-model-speed-v1",
+  "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+  "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+  "queue_jobs": [
+    {
+      "capture": {
+        "path": ".training_queue/repro/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync/run.json",
+        "sha256": "524addeae787e55a7d7b3b09581eb566ed51d702a834e55c5a7e0bfd9018a65d"
+      },
+      "captured_at": "2026-11-25T21:07:12+09:00",
+      "command": {
+        "path": ".training_queue/repro/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync/repro.sh",
+        "sha256": "88df69cdca5e4ed43b133aefad7932c5f30b08a90bc9ae6931270020256ac342"
+      },
+      "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+      "id": "0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync.job",
+      "job_file": {
+        "path": ".training_queue/done/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync.job",
+        "sha256": "1cd2570b341d1928097e385023cf5eece876229785fcb0bc689f6563c6cab83c"
+      },
+      "log": {
+        "path": ".training_queue/logs/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync.log",
+        "sha256": "4b41392e79b9212c937b8667a24fc24e26b1c907531572c46ffe57c528d26ed9"
+      },
+      "measurements": {
+        "path": "measurements/pmpose-l-pt16.csv",
+        "sha256": "7d7774a5a0ef1c3beffa2c1bb4073348dc9c8c83bf14d09cd541b80047a66b6a"
+      },
+      "output_dir": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-l",
+      "resource": "all",
+      "state": "done",
+      "worktree_clean_at_start": true
+    },
+    {
+      "capture": {
+        "path": ".training_queue/repro/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync/run.json",
+        "sha256": "ce3054113125ffe6532a57d6f529acdc4d59494218ab61dba4215947f8868e4d"
+      },
+      "captured_at": "2026-11-25T21:11:39+09:00",
+      "command": {
+        "path": ".training_queue/repro/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync/repro.sh",
+        "sha256": "0893088adc5e6f965de579da005fcfdf5f097b80c65b7d50f2f3a0aabe4cc160"
+      },
+      "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+      "id": "0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync.job",
+      "job_file": {
+        "path": ".training_queue/done/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync.job",
+        "sha256": "627be5f1b8f2d2c9d26214173e2ac7e8b96048bd85600a40a6d6df1b202ddf57"
+      },
+      "log": {
+        "path": ".training_queue/logs/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync.log",
+        "sha256": "53856123405c13114c91bae243ecf64cad64314eed6e3de23c172177aa3061af"
+      },
+      "measurements": {
+        "path": "measurements/pmpose-l-trt16.csv",
+        "sha256": "7a6015fc9b4faaa4d4ab7ad541f259f81966638cba260c35efe0ea3a17af6a5e"
+      },
+      "output_dir": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-l",
+      "resource": "all",
+      "state": "done",
+      "worktree_clean_at_start": true
+    },
+    {
+      "capture": {
+        "path": ".training_queue/repro/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync/run.json",
+        "sha256": "0bbaae96deb297f4e723aa4c8ece3e82affd4e9cf5f60b14300d1038a0991015"
+      },
+      "captured_at": "2026-11-25T21:15:45+09:00",
+      "command": {
+        "path": ".training_queue/repro/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync/repro.sh",
+        "sha256": "797198feb3a014229c2479b2e876b0b3d944f6a01859261f5c81c3c007b9e688"
+      },
+      "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+      "id": "0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync.job",
+      "job_file": {
+        "path": ".training_queue/done/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync.job",
+        "sha256": "3bcbb662f8b14167c588b7af7b2a3fa43138f8e0c33a115729a20a834030d047"
+      },
+      "log": {
+        "path": ".training_queue/logs/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync.log",
+        "sha256": "c779c16118387123db4196ef8e2e96755035336358cbab7842adbdd5206ceadc"
+      },
+      "measurements": {
+        "path": "measurements/pmpose-h-pt16.csv",
+        "sha256": "17e8b722d844158f711a08da570e3b35eab7478e6b8471e604499eae729f5007"
+      },
+      "output_dir": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-h",
+      "resource": "all",
+      "state": "done",
+      "worktree_clean_at_start": true
+    },
+    {
+      "capture": {
+        "path": ".training_queue/repro/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync/run.json",
+        "sha256": "30a8c21af3f906b231c18538fcdc8656dfaed2672aab681f5ead507cde5d946d"
+      },
+      "captured_at": "2026-11-25T21:21:56+09:00",
+      "command": {
+        "path": ".training_queue/repro/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync/repro.sh",
+        "sha256": "03ec13bdc3d69709cb5bcaf9c2af62070f80a48f8e88f8c877a4d34dffbc5b3b"
+      },
+      "execution_commit": "206aa346f555a60292a61b5284830f00e14a68cd",
+      "id": "0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync.job",
+      "job_file": {
+        "path": ".training_queue/done/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync.job",
+        "sha256": "d190bc4f75493c3803258c21550846377e3669e8b46689ec7ea16e59b21cf5e9"
+      },
+      "log": {
+        "path": ".training_queue/logs/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync.log",
+        "sha256": "229b93523d6fe366b92752b4e9af5212fbc09badb19bf7d48b0171af0a9f8698"
+      },
+      "measurements": {
+        "path": "measurements/pmpose-h-trt16.csv",
+        "sha256": "4bda29e93db0679e0cdb750e15e06cf1dd0af517e983758da7b29d4bd647a5ea"
+      },
+      "output_dir": ".worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/pmpose-h",
+      "resource": "all",
+      "state": "done",
+      "worktree_clean_at_start": true
+    }
+  ],
+  "schema_version": 1,
+  "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+  "total_timing_samples": 3600,
+  "vitpose_speed_baseline": {
+    "measurement_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+    "path": "knowledge/runs/run-person-model-speed-low-precision/cases.json",
+    "sha256": "8476a42829d0e96d4ed859dd17aff10f63cb1a3cfd0a111ea9afb3df99fa0a2f"
+  }
+}

@@ -34,7 +34,7 @@ OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python -B "$run/pmpose_tools.py" e
   --directory "$assets/$model-engine" --receipt "$assets/$model-export.json"
 ```
 
-For the GPU commands use the shared training queue’s exclusive reservation. To build the TRT16 engine, pass the output directory from `export` to `pmpose_tools.py build`. Set `--opt-batch`, `--max-batch` and `--workspace-mib` for the chosen speed and accuracy workloads. Use `pmpose_tools.py inspect --batch N` to record TensorRT layer metadata on the same GPU. Use the engine directory as `--engine` for accuracy and speed. All forwards use the same input shape per model and two TTA branches. PT16 and TRT16 use FP16 weights and inputs with the stock Sparsemax projection in FP32. Flip restoration and DARK UDP use FP32 outputs. The model records an explicit failure when a required engine or upstream asset is unavailable.
+For the GPU commands use the shared training queue’s exclusive reservation. To build the TRT16 engine, pass the output directory from `export` to `pmpose_tools.py build`. Set `--opt-batch`, `--max-batch` and `--workspace-mib` for the chosen speed and accuracy workloads. Use `pmpose_tools.py inspect --batch N` to record TensorRT layer metadata on the same GPU. Pass the engine directory as `--engine` for accuracy. The speed runner looks up `<model>-engine` under `--assets`. All forwards use the same input shape per model and two TTA branches. PT16 and TRT16 use FP16 weights and inputs with the stock Sparsemax projection in FP32. Flip restoration and DARK UDP use FP32 outputs. The model records an explicit failure when a required engine or upstream asset is unavailable.
 
 Use the [common accuracy runner](README.md#accuracy-command) with `--model pmpose-l` or `pmpose-h`, the matching checkpoint and SHA-256 from `pmpose_assets.py`, and `--source-root "$source_root"`. The historical accuracy records include both the scores against the pinned #2495 bundle and coordinate differences from that model’s PT32 predictions.
 
@@ -58,6 +58,29 @@ PYTHONPATH="$PWD:$PWD/$run:$PWD/$baseline:$PWD/$assets/dependencies" \
 ```
 
 Each `report.json` records the execution and harness commits, input pins, model artifacts, environment, synchronized timing samples and memory. `infeasible` reports carry the failure phase and message. The speed reports set `parity_not_evaluated_reason` to `PT32計測はスコープ外（ユーザー判断 2026-11-25）` under the November 25 scope. Use the saved pseudo-GT scores for accuracy and retain the earlier PT32 scores and numerical comparisons as historical results.
+
+## Synchronized speed results
+
+All 12 conditions completed on the RTX 5060 Ti at `206aa346f555a60292a61b5284830f00e14a68cd` with the harness from `59faa32a28d2f54e6492abdba2429846fa0397e3`. The GPU, driver, CUDA, PyTorch, TensorRT and power limit matched the synchronized ViTPose-H runs. The speed report checkpoint and engine fingerprints match the accuracy runs. At batch 1 the fixed schedule measures the first 300 crop rows across five clips. At batch 4 and 8 the schedule cycles through all 384 crop rows across six clips. [Speed record](pmpose_speed.json) · [ViTPose-H baseline](../run-person-model-speed-low-precision/README.md)
+
+| Model | Backend | Batch | GPU P50 / P95 (ms/person) | Wall P50 / P95 (ms/person) | Persons/s | Sampled device peak (MiB) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: |
+| PMPose-L | PT16 | 1 | 43.37 / 91.27 | 65.68 / 115.16 | 13.93 | 1334.1 |
+| PMPose-L | PT16 | 4 | 10.09 / 11.19 | 26.80 / 28.62 | 37.03 | 1332.1 |
+| PMPose-L | PT16 | 8 | 8.61 / 8.84 | 24.96 / 27.47 | 39.56 | 1344.1 |
+| PMPose-L | TRT16 | 1 | 9.77 / 13.74 | 30.98 / 50.31 | 28.15 | 1292.1 |
+| PMPose-L | TRT16 | 4 | 5.15 / 5.24 | 22.28 / 25.13 | 44.27 | 1312.1 |
+| PMPose-L | TRT16 | 8 | 4.81 / 4.86 | 21.78 / 24.71 | 45.37 | 1312.1 |
+| PMPose-H | PT16 | 1 | 40.91 / 71.61 | 60.98 / 93.20 | 15.48 | 2206.1 |
+| PMPose-H | PT16 | 4 | 17.69 / 22.11 | 36.36 / 45.16 | 26.54 | 2212.1 |
+| PMPose-H | PT16 | 8 | 15.76 / 15.91 | 32.14 / 34.68 | 30.81 | 2274.1 |
+| PMPose-H | TRT16 | 1 | 22.02 / 23.00 | 41.25 / 49.84 | 22.85 | 2044.1 |
+| PMPose-H | TRT16 | 4 | 8.60 / 8.75 | 26.66 / 31.48 | 36.70 | 2064.1 |
+| PMPose-H | TRT16 | 8 | 8.15 / 8.19 | 25.04 / 28.69 | 39.05 | 2064.1 |
+
+At batch 1, L TRT16 spent 9.77 ms/person at GPU P50 across the two forwards and 30.98 ms/person at synchronized wall P50. ViTPose-H with flip TRT16 measured 9.28 and 12.64 ms/person. L TRT16 preprocessing measured 16.06 ms/person at P50. Batch 8 gave the highest measured throughput for both models. NVML samples the full device. The speed record also includes the delta from before load, the PyTorch allocator peaks and the load and cold-start times. [PMPose reports and hashes](pmpose_speed.json) · [ViTPose-H measurements](../run-person-model-speed-low-precision/cases.csv)
+
+The baseline verifier checked all 3,600 repetitions against the published batch order and recomputed the report summaries. Each sample included the original and flipped forwards. The CSVs retain the per-repetition timings. The full reports remain under `.worktree-outputs/parent-2492-issue-2490-pmpose/pmpose/speed-pt16-trt16-sync/`, relative to the main checkout. The speed record lists each report and its SHA-256, the four queue IDs, and the pinned log and command paths. [L PT16](measurements/pmpose-l-pt16.csv) · [L TRT16](measurements/pmpose-l-trt16.csv) · [H PT16](measurements/pmpose-h-pt16.csv) · [H TRT16](measurements/pmpose-h-trt16.csv)
 
 ## CPU preflight
 

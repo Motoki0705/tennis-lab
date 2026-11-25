@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/plcs/i2520_m1_mono_gvhmr_htd_e100_s42/logs/version_0/checkpoints
