@@ -14,12 +14,13 @@ MMPose code is Apache-2.0. The official zoo supplies both checkpoints by public 
 - Verify the six accuracy receipts against the published row order and fixed boxes before pairing outputs. Use an asymmetric CPU fixture with a 3–4–5 pixel displacement and missing joints to check that the backend comparison measures Euclidean distance and counts missing predictions separately. Check the shared benchmark's two declared forwards in an actual timing case.
 - Exercise the common `measure_forward` API with a CPU fixture that has two unequal crop columns. The two model calls must receive the original and then the flipped crop, with both calls registered under the chosen backend. The real-image smoke test continues to verify the official forward and decoder.
 - Re-score all six saved conditions with the merged #2495 scorer. Compare the complete metric payloads with the original files and report the pose metrics and fixed-box recall. A small CPU fixture checks that a pose change is detected even if recall and the top-level sections stay the same.
+- Exercise the speed CLI on CPU with a tiny crop fixture and an injected benchmark. Check that PT32 is rejected at argument parsing and that PT16 and TRT16 pass the scheduled crop order, the dedicated stream and the explicit unmeasured-parity reason to the harness. Reuse `test_explicit_parity_opt_out_records_speed_without_extra_inference` for the real harness call count and `test_pinned_schedule_rejects_reordered_loaded_batches` for input integrity. Check the real published inputs separately by loading them on CPU.
 
 ## Inference and export settings
 
 The adapter uses MMPose's `GetBBoxCenterScale` with padding 1.25 and `TopdownAffine` with width:height 3:4, bilinear interpolation and zero borders. It converts the crop from BGR to RGB and normalizes in FP32 with mean `[123.675, 116.28, 103.53]` and standard deviation `[58.395, 57.12, 57.375]` on the 0–255 scale. It applies the official horizontal flip test in every backend. Each batch executes two forwards. After swapping the flipped view's Halpe left/right channels and reversing the x bins, it averages the logits in FP32. The CPU SimCC decoder divides peak indices by 2, takes the smaller x/y peak as the raw score and restores coordinates using the crop center and scale. It maps the decoder's missing-coordinate sentinel to NaN and retains finite raw scores.
 
-PT32 uses explicit FP32, with TF32 disabled by the CUDA evaluation and benchmark runners. PT16 uses explicit FP16 weights and inputs with autocast disabled. The strongly typed TRT16 graph has FP16 parameters, inputs and SimCC outputs. Flip fusion and decoding use the same code outside all three model graphs. Engine inspector output records the realized layer formats when CUDA runs. The TensorRT context disables NVTX markers during inference. [Engine inspector](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/inference-library/engine-tools.html)
+The historical PT32 accuracy runs used explicit FP32 with TF32 disabled. PT16 uses explicit FP16 weights and inputs with autocast disabled. The strongly typed TRT16 graph has FP16 parameters, inputs and SimCC outputs. Flip fusion and decoding use the same code outside all three model graphs. Engine inspector output records the realized layer formats when CUDA runs. The TensorRT context disables NVTX markers during inference. [Engine inspector](https://docs.nvidia.com/deeplearning/tensorrt/10.x.x/inference-library/engine-tools.html)
 
 The experiment uses the MMPose revision that includes OpenMMLab's CSPNeXt port and precedes the EDPose import. It explicitly selects MMPose's CSPNeXt in the official configs and loads each checkpoint state dict strictly. Local `mmcv-lite` suffices for this path. The older `xtcocotools` wheel was compiled for NumPy 1, so the setup builds it against the repo's NumPy 2 in a worktree-specific package overlay. [CSPNeXt port](https://github.com/open-mmlab/mmpose/pull/2620) · [MMPose source](https://github.com/open-mmlab/mmpose/tree/7bea17cdf362cdd731fc5e79b982e4b79be5cca9)
 
@@ -63,7 +64,7 @@ OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=2 \
   --receipt "$artifact/engines/$model-export.json"
 ```
 
-Use the published #2495 accuracy bundle and digest. The commands below reproduce the CPU smoke and, inside an exclusive training queue allocation, the TRT16 measurements of pose accuracy. The evaluation command selects PT32 or PT16 through `--backend`. The `--engine` argument belongs to TRT16. The build targets batches 1–16 with an optimum of 8 and uses the current scene TensorRT builder's 1536 MiB workspace setting. The #2496 speed measurement and PT32 parity use the published speed inputs when available.
+Use the published #2495 accuracy bundle and digest. The CPU smoke command records how the earlier FP32 input and decode verification ran. Reproduce the TRT16 accuracy measurement inside an exclusive training queue allocation. For a PT16 reproduction, select `--backend PT16` and omit `--engine`. The build targets batches 1–16 with an optimum of 8 and uses the scene TensorRT builder's 1536 MiB workspace setting.
 
 ```bash
 media=data/tennis_multiview/processed/meiji_4cam/benchmarks
@@ -144,18 +145,16 @@ PYTHONPATH="$PWD/$run:$PWD" .venv/bin/python -B "$run/rtmpose_accuracy.py" \
 
 ## Speed on the #2496 workload
 
-Use the published #2496 speed bundle and digest. This workload supplies predecoded native frames and fixed DINO crop rows. RTMPose reads the raw `xyxy` field before applying its official aspect ratio and padding. The baseline uses the same rows with ViTPose's crop transform. The common batch sizes are 1, 4 and 8. Batch 16 exercises the RTMPose engine's profile maximum when the published cohort fills complete batches. The #2496 default settings use a non-default CUDA stream, 30 warm-up iterations and three blocks of 100 samples. [Speed baseline](https://github.com/Motoki0705/tennis-lab/pull/2497)
+The shared #2496 input `meiji_4cam/person-model-speed-v1` supplies predecoded native BGR frames and 384 fixed DINO crops on 96 frames. RTMPose reads the native `xyxy` before applying its official aspect ratio and padding. The harness merged in `59faa32a28d2f54e6492abdba2429846fa0397e3` verifies the manifest and timing protocol SHA-256 and the timed crop IDs. The shared sweep uses batches 1, 4 and 8, a dedicated CUDA stream, 30 warm-up iterations and three blocks of 100 timed iterations ending after CUDA synchronization. The loader supplies 384 full-batch crop rows at each size. The timed loop consumes the first 300 rows at batch 1 and cycles the full crop pool at batches 4 and 8. Flip testing makes two model forwards per batch. [Shared protocol](../run-person-model-speed-baseline/timing-protocol.json) · [Baseline measurements](../run-person-model-speed-low-precision/README.md)
 
-The prepared bundle `meiji_4cam/person-model-speed-v1` has SHA-256 `64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62`. It contains 384 ordered crops on 96 frames, with no tail rows. The #2496 prepare job ran on `0ee6f8dde06c078b6ab40324f5416b68a9eaefc0`. The benchmark uses that revision's input reader and pose parity code. Batches 1, 4, 8 and 16 each cover the full crop set.
+The 2026-11-25 scope uses PT16 and TRT16 with `parity_not_evaluated_reason` set to `PT32計測はスコープ外（ユーザー判断 2026-11-25）`. The comparison uses the previously recorded pseudo-GT accuracy and reports the parity label `PT32未計測` for these speed runs.
 
-On 2026-11-25, the parent cancelled both queued speed sweeps before execution while #2497 was being revised. The terminal queue records show `cancelled`. Both jobs have no log, repro directory or measurement files. The recorded accuracy runs remain available. Future speed measurements use the revised shared input reader, timing and parity. [#2497 review](https://github.com/Motoki0705/tennis-lab/pull/2497#issuecomment-7138771687)
+On 2026-11-25, the parent cancelled the two original speed sweeps before execution while #2497 was being revised. Both queue entries ended as `cancelled` with no log, repro directory or measurements. [#2497 review](https://github.com/Motoki0705/tennis-lab/pull/2497#issuecomment-7138771687)
 
 - M job `0-8204471182921321101_2026-11-24T14-00-17-078678898Z_2310221_i2490-rtmpose-m-speed-sweep.job`
 - X job `0-8204471182614046695_2026-11-24T14-00-17-385953304Z_2310299_i2490-rtmpose-x-speed-sweep.job`
 
-After integrating the latest scoring and speed baseline changes, the focused suite passed 90 tests in 10.93 seconds, including the FP32 scene cache tests, measured original and flipped crop calls, and the new re-scoring comparison test. A fixture using #2496's `InputSet` read the original `xyxy` values in frozen order and rejected a changed PT32 reference file.
-
-Run each case in its own process in the exclusive training queue. Start each checkpoint with its PT32 batch 1 reference, then use the same manifest and output root for its other results. The shared pose check uses limits of 1 px at P95, 5 px maximum and 0.02 at P95 for the change in same-model raw scores. It also requires identical crop IDs. Use `--engine "$engine"` for TRT16.
+Run each case in its own process in the exclusive training queue. Use batches 1, 4 and 8 for each model and backend and supply a fresh output root. Each condition writes a `report.json` that carries the source HEAD, harness merge commit, input pins, artifact hashes, timing and status. Add `--engine "$engine"` for TRT16.
 
 ```bash
 speed=knowledge/runs/run-person-model-speed-baseline
@@ -164,7 +163,7 @@ speed_inputs="$(cat "$queue_dir/repro/$prep_job/output_dir.txt")/inputs"
 speed_sha256=64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62
 PYTHONPATH="$PWD/$speed:$PYTHONPATH" OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=2 MKL_NUM_THREADS=2 \
   .venv/bin/python -B "$run/rtmpose_speed.py" --inputs "$speed_inputs" \
-  --input-sha256 "$speed_sha256" --model "$model" --backend PT32 --batch 1 \
+  --input-sha256 "$speed_sha256" --model "$model" --backend PT16 --batch 1 \
   --checkpoint "$weight" --source-root "$source_root" --device cuda:0 \
-  --output outputs/rtmpose/speed-v1
+  --output "$TENNIS_REPRO_DIR/measurements"
 ```
