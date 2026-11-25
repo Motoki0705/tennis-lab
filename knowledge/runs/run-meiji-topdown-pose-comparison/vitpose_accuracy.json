@@ -1,0 +1,880 @@
+{
+  "bundle_id": "meiji_4cam/multiview-player-evaluation-v1",
+  "bundle_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+  "conditions": {
+    "vitpose-h": {
+      "PT16": {
+        "batch_size": 8,
+        "command_sha256": "70b3f2299de5cd45dd7ab878ea7f9c54b5a2601a5a476691b8421e9b8aff9775",
+        "engines": {},
+        "environment": {
+          "cuda": "13.0",
+          "cuda_device": "cuda:0",
+          "fp32_precision": {
+            "cudnn": "ieee",
+            "cudnn_conv": "ieee",
+            "matmul": "ieee"
+          },
+          "gpu": "NVIDIA GeForce RTX 5060 Ti",
+          "gpu_total_bytes": 17074749440,
+          "opencv": "5.0.0",
+          "torch": "2.13.0+cu130"
+        },
+        "execution_commit": "33ae11e6ff421a61d85aac139fa7a0fbfab1da39",
+        "job_id": "0-8204474787053735650_2026-11-24T13-00-12-946264349Z_1826653_i2490-vitpose-h-pt16-accuracy.job",
+        "log": {
+          "path": "repro/0-8204474787053735650_2026-11-24T13-00-12-946264349Z_1826653_i2490-vitpose-h-pt16-accuracy/predictions/queue.log",
+          "sha256": "a8d84393a483e135e6efdc9b6fa31df9d65ce6b4f1e15c2e3058eccd54b6cc38"
+        },
+        "metrics": {
+          "box_recall": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "finite_pairs": {
+            "eligible_joints": 437714,
+            "oks": {
+              "count": 25811,
+              "mean": 0.77777688217896,
+              "median": 0.7962556015266092,
+              "p95": 0.9442201993193284
+            },
+            "pck": {
+              "0.1": 0.7947860932024107,
+              "0.2": 0.9635721041593369
+            },
+            "pixel_error_px": {
+              "count": 437714,
+              "mean": 4.520578231436172,
+              "median": 3.3851661644797915,
+              "p95": 11.938427293268559
+            },
+            "pose_references": 25811,
+            "pose_references_with_prediction": 25811,
+            "predicted_joints": 437714,
+            "valid_joint_fraction": 1.0
+          },
+          "fixed": {
+            "eligible_joints": 437714,
+            "oks": {
+              "count": 25811,
+              "mean": 0.77777688217896,
+              "median": 0.7962556015266092,
+              "p95": 0.9442201993193284
+            },
+            "pck": {
+              "0.1": 0.7947860932024107,
+              "0.2": 0.9635721041593369
+            },
+            "pixel_error_px": {
+              "count": 437714,
+              "mean": 4.520578231436172,
+              "median": 3.3851661644797915,
+              "p95": 11.938427293268559
+            },
+            "pose_references": 25811,
+            "pose_references_with_prediction": 25811,
+            "predicted_joints": 437714,
+            "valid_joint_fraction": 1.0
+          }
+        },
+        "original_output": "repro/0-8204474787053735650_2026-11-24T13-00-12-946264349Z_1826653_i2490-vitpose-h-pt16-accuracy/predictions",
+        "original_score_sha256": "cf2cbd4e741beabc581bc4b3050107dc559f4800aaf72fdc79ce179f56b4ccc9",
+        "prediction_sha256": "f287c6346a783c558cf7bdec75d3b1549bfb70d8ee5949727f6bbf619c07b172",
+        "queue_run_sha256": "6f4f534fe1473fc6ae2b9d2939105e25a9bcac6de71d6ce95e4ff7ef6dfd8308",
+        "receipt_sha256": "c474c94e2ad9044fbd9356a32d007d8948c9e1c395f11e605768e9d6951898ff",
+        "rescore_diff": {
+          "changed_metric_sections": [],
+          "changed_policy_fields": [
+            "candidate_order_for_iou_ties"
+          ],
+          "matched_at_iou_0_50_after": 26276,
+          "matched_at_iou_0_50_before": 26276,
+          "recall_by_iou_after": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "recall_by_iou_before": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "reference_boxes": 26276
+        },
+        "score": {
+          "path": "vitpose-h-pt16.json",
+          "sha256": "d42a72808a64e4f3c6337d1cae4f633dc04a4e8326b4dcb8c15ff1d6b6a2f1fe"
+        },
+        "vs_pt32": {
+          "joints": 446692,
+          "missing_in_both": 0,
+          "missing_in_candidate_only": 0,
+          "missing_in_reference_only": 0,
+          "paired_joints": 446692,
+          "score_abs_p95": 0.0007381439208984375,
+          "worst": {
+            "camera_id": "cam2",
+            "clip_id": "video_000/clip_013",
+            "joint": "left_ankle",
+            "player_id": 2,
+            "row_index": 9045,
+            "source_frame": 112
+          },
+          "xy_above_1px": 59,
+          "xy_above_5px": 43,
+          "xy_px": {
+            "max": 61.50062200506997,
+            "mean": 0.004671224536673481,
+            "p50": 0.0016251863959587827,
+            "p95": 0.008802615418613255,
+            "p99": 0.02119547720469801
+          }
+        },
+        "weights": {
+          "checkpoint": {
+            "bytes": 2549075546,
+            "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+          }
+        }
+      },
+      "PT32": {
+        "batch_size": 8,
+        "command_sha256": "a935e0425aaab9bd852c7acf6063d58dc0e872300f68ddba3dff5fc0f233619f",
+        "engines": {},
+        "environment": {
+          "cuda": "13.0",
+          "cuda_device": "cuda:0",
+          "fp32_precision": {
+            "cudnn": "ieee",
+            "cudnn_conv": "ieee",
+            "matmul": "ieee"
+          },
+          "gpu": "NVIDIA GeForce RTX 5060 Ti",
+          "gpu_total_bytes": 17074749440,
+          "opencv": "5.0.0",
+          "torch": "2.13.0+cu130"
+        },
+        "execution_commit": "33ae11e6ff421a61d85aac139fa7a0fbfab1da39",
+        "job_id": "0-8204474787411339166_2026-11-24T13-00-12-588660833Z_1826380_i2490-vitpose-h-pt32-accuracy.job",
+        "log": {
+          "path": "repro/0-8204474787411339166_2026-11-24T13-00-12-588660833Z_1826380_i2490-vitpose-h-pt32-accuracy/predictions/queue.log",
+          "sha256": "066495756b99fabe22c3c00f329e4a108dce0a2b95e572bd405bdae7b4ec3387"
+        },
+        "metrics": {
+          "box_recall": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "finite_pairs": {
+            "eligible_joints": 437714,
+            "oks": {
+              "count": 25811,
+              "mean": 0.7777741732740489,
+              "median": 0.7962590854960444,
+              "p95": 0.9442209012966678
+            },
+            "pck": {
+              "0.1": 0.7948180775574919,
+              "0.2": 0.9635721041593369
+            },
+            "pixel_error_px": {
+              "count": 437714,
+              "mean": 4.5207969385895455,
+              "median": 3.385532955228708,
+              "p95": 11.940470949377053
+            },
+            "pose_references": 25811,
+            "pose_references_with_prediction": 25811,
+            "predicted_joints": 437714,
+            "valid_joint_fraction": 1.0
+          },
+          "fixed": {
+            "eligible_joints": 437714,
+            "oks": {
+              "count": 25811,
+              "mean": 0.7777741732740489,
+              "median": 0.7962590854960444,
+              "p95": 0.9442209012966678
+            },
+            "pck": {
+              "0.1": 0.7948180775574919,
+              "0.2": 0.9635721041593369
+            },
+            "pixel_error_px": {
+              "count": 437714,
+              "mean": 4.5207969385895455,
+              "median": 3.385532955228708,
+              "p95": 11.940470949377053
+            },
+            "pose_references": 25811,
+            "pose_references_with_prediction": 25811,
+            "predicted_joints": 437714,
+            "valid_joint_fraction": 1.0
+          }
+        },
+        "original_output": "repro/0-8204474787411339166_2026-11-24T13-00-12-588660833Z_1826380_i2490-vitpose-h-pt32-accuracy/predictions",
+        "original_score_sha256": "8f33f8bd73d7dea481b27490d8aecc1b6712b7d23992c261be26db9f6adb9133",
+        "prediction_sha256": "7b30dc1a66f7fafd8e37ebe5d93bde13e7deeffc1f123d1c894f0e45d7b66970",
+        "queue_run_sha256": "fb24c76015fe071bb62779d86065f100985c85a4bbfb11e1148b59f667b5f75e",
+        "receipt_sha256": "a69fcb340348dc37782fe98835a064f18475fb5eb5857ed46766ab4c5ccea25e",
+        "rescore_diff": {
+          "changed_metric_sections": [],
+          "changed_policy_fields": [
+            "candidate_order_for_iou_ties"
+          ],
+          "matched_at_iou_0_50_after": 26276,
+          "matched_at_iou_0_50_before": 26276,
+          "recall_by_iou_after": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "recall_by_iou_before": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "reference_boxes": 26276
+        },
+        "score": {
+          "path": "vitpose-h-pt32.json",
+          "sha256": "27e980a65f5bf5a4024af8009a1f70263202726203c41f9cd096ab8334bf3010"
+        },
+        "weights": {
+          "checkpoint": {
+            "bytes": 2549075546,
+            "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+          }
+        }
+      },
+      "TRT16": {
+        "batch_size": 8,
+        "command_sha256": "433ba814764364c669f5b88a2389f49895a234dd48024bf363d3f0c0bbbe19b5",
+        "engines": {
+          "plan": {
+            "bytes": 1283718268,
+            "sha256": "e67fd615d17ed7c8cb56f62b7f5491601dca260f3913f6cb5303a003684e8366"
+          }
+        },
+        "environment": {
+          "cuda": "13.0",
+          "cuda_device": "cuda:0",
+          "fp32_precision": {
+            "cudnn": "ieee",
+            "cudnn_conv": "ieee",
+            "matmul": "ieee"
+          },
+          "gpu": "NVIDIA GeForce RTX 5060 Ti",
+          "gpu_total_bytes": 17074749440,
+          "opencv": "5.0.0",
+          "torch": "2.13.0+cu130"
+        },
+        "execution_commit": "33ae11e6ff421a61d85aac139fa7a0fbfab1da39",
+        "job_id": "0-8204474786723768226_2026-11-24T13-00-13-276231773Z_1826728_i2490-vitpose-h-trt16-accuracy.job",
+        "log": {
+          "path": "repro/0-8204474786723768226_2026-11-24T13-00-13-276231773Z_1826728_i2490-vitpose-h-trt16-accuracy/predictions/queue.log",
+          "sha256": "f2ae5df6b2e32041a0f0d3311911afb622fc506b13bbe276a2a3e8910b9341e1"
+        },
+        "metrics": {
+          "box_recall": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "finite_pairs": {
+            "eligible_joints": 437714,
+            "oks": {
+              "count": 25811,
+              "mean": 0.7777744228881672,
+              "median": 0.7963048768000192,
+              "p95": 0.9442406157907606
+            },
+            "pck": {
+              "0.1": 0.794840923525407,
+              "0.2": 0.963594950127252
+            },
+            "pixel_error_px": {
+              "count": 437714,
+              "mean": 4.520703131323717,
+              "median": 3.3850562785089418,
+              "p95": 11.936195525823823
+            },
+            "pose_references": 25811,
+            "pose_references_with_prediction": 25811,
+            "predicted_joints": 437714,
+            "valid_joint_fraction": 1.0
+          },
+          "fixed": {
+            "eligible_joints": 437714,
+            "oks": {
+              "count": 25811,
+              "mean": 0.7777744228881672,
+              "median": 0.7963048768000192,
+              "p95": 0.9442406157907606
+            },
+            "pck": {
+              "0.1": 0.794840923525407,
+              "0.2": 0.963594950127252
+            },
+            "pixel_error_px": {
+              "count": 437714,
+              "mean": 4.520703131323717,
+              "median": 3.3850562785089418,
+              "p95": 11.936195525823823
+            },
+            "pose_references": 25811,
+            "pose_references_with_prediction": 25811,
+            "predicted_joints": 437714,
+            "valid_joint_fraction": 1.0
+          }
+        },
+        "original_output": "repro/0-8204474786723768226_2026-11-24T13-00-13-276231773Z_1826728_i2490-vitpose-h-trt16-accuracy/predictions",
+        "original_score_sha256": "68423adbbd3bc226756acd0a94d2c82b04d6bedb3b040ffc1eb356e3960aec2a",
+        "prediction_sha256": "4a82a4e0ff31a60b0758c5cd6c331daf6dfa11c9fbf056e11352d48053b86c78",
+        "queue_run_sha256": "3525af377d40e1f173686ce9d918457c67769f888ebda4917cad7c7a4aa40645",
+        "receipt_sha256": "8206f4c6578ef9c06e387e5c553851b310138146d1c5c0607f39a36811fa3a4e",
+        "rescore_diff": {
+          "changed_metric_sections": [],
+          "changed_policy_fields": [
+            "candidate_order_for_iou_ties"
+          ],
+          "matched_at_iou_0_50_after": 26276,
+          "matched_at_iou_0_50_before": 26276,
+          "recall_by_iou_after": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "recall_by_iou_before": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "reference_boxes": 26276
+        },
+        "score": {
+          "path": "vitpose-h-trt16.json",
+          "sha256": "9947c969384f6ddb4ddcfb27c87a6eb3ffbfe443d3a44e5d09a8703b816d37f7"
+        },
+        "vs_pt32": {
+          "joints": 446692,
+          "missing_in_both": 0,
+          "missing_in_candidate_only": 0,
+          "missing_in_reference_only": 0,
+          "paired_joints": 446692,
+          "score_abs_p95": 0.0018428564071655273,
+          "worst": {
+            "camera_id": "cam2",
+            "clip_id": "video_000/clip_003",
+            "joint": "left_wrist",
+            "player_id": 6,
+            "row_index": 1615,
+            "source_frame": 66
+          },
+          "xy_above_1px": 131,
+          "xy_above_5px": 97,
+          "xy_px": {
+            "max": 90.80301050940304,
+            "mean": 0.012382853775077723,
+            "p50": 0.004672678722027149,
+            "p95": 0.023894460765549252,
+            "p99": 0.05597667513973812
+          }
+        },
+        "weights": {
+          "checkpoint": {
+            "bytes": 2549075546,
+            "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+          }
+        }
+      }
+    },
+    "vitpose-h-no-flip": {
+      "PT16": {
+        "batch_size": 8,
+        "command_sha256": "8c3daeaa23c00cc5ff4c56d7da298c4df567fabeddf29ddc3977a14efc5c2198",
+        "engines": {},
+        "environment": {
+          "cuda": "13.0",
+          "cuda_device": "cuda:0",
+          "fp32_precision": {
+            "cudnn": "ieee",
+            "cudnn_conv": "ieee",
+            "matmul": "ieee"
+          },
+          "gpu": "NVIDIA GeForce RTX 5060 Ti",
+          "gpu_total_bytes": 17074749440,
+          "opencv": "5.0.0",
+          "torch": "2.13.0+cu130"
+        },
+        "execution_commit": "33ae11e6ff421a61d85aac139fa7a0fbfab1da39",
+        "job_id": "0-8204474786027083591_2026-11-24T13-00-13-972916408Z_1826882_i2490-vitpose-h-no-flip-pt16-accuracy.job",
+        "log": {
+          "path": "repro/0-8204474786027083591_2026-11-24T13-00-13-972916408Z_1826882_i2490-vitpose-h-no-flip-pt16-accuracy/predictions/queue.log",
+          "sha256": "0d53db3b0b950de6a9970c01b471c6da6b9e8ed94ef3b22dd075848f9acbb2c0"
+        },
+        "metrics": {
+          "box_recall": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "finite_pairs": {
+            "eligible_joints": 437714,
+            "oks": {
+              "count": 25811,
+              "mean": 0.7759434645180094,
+              "median": 0.794898689811755,
+              "p95": 0.944601673283817
+            },
+            "pck": {
+              "0.1": 0.7922022142312103,
+              "0.2": 0.9621670771325569
+            },
+            "pixel_error_px": {
+              "count": 437714,
+              "mean": 4.547473466188583,
+              "median": 3.4032140402069535,
+              "p95": 12.050469751082117
+            },
+            "pose_references": 25811,
+            "pose_references_with_prediction": 25811,
+            "predicted_joints": 437714,
+            "valid_joint_fraction": 1.0
+          },
+          "fixed": {
+            "eligible_joints": 437714,
+            "oks": {
+              "count": 25811,
+              "mean": 0.7759434645180094,
+              "median": 0.794898689811755,
+              "p95": 0.944601673283817
+            },
+            "pck": {
+              "0.1": 0.7922022142312103,
+              "0.2": 0.9621670771325569
+            },
+            "pixel_error_px": {
+              "count": 437714,
+              "mean": 4.547473466188583,
+              "median": 3.4032140402069535,
+              "p95": 12.050469751082117
+            },
+            "pose_references": 25811,
+            "pose_references_with_prediction": 25811,
+            "predicted_joints": 437714,
+            "valid_joint_fraction": 1.0
+          }
+        },
+        "original_output": "repro/0-8204474786027083591_2026-11-24T13-00-13-972916408Z_1826882_i2490-vitpose-h-no-flip-pt16-accuracy/predictions",
+        "original_score_sha256": "7f5d50e4d24e64acab2009aca205cd0a872a95c0b5f9bdb7ae1e44aa60bf27a1",
+        "prediction_sha256": "84c9d5b48732c2a4117eb21a41aee680ccd28e0412ce1db6dc55717766f5aae6",
+        "queue_run_sha256": "c4244e7dc540f8d8db23ceb0e0dfac25229944b85cdd30516a8b8c65205181e4",
+        "receipt_sha256": "7aa4b7243e1704eec54b911b79b53cb4999a5012fa25f83a0a756cb00a43aa1f",
+        "rescore_diff": {
+          "changed_metric_sections": [],
+          "changed_policy_fields": [
+            "candidate_order_for_iou_ties"
+          ],
+          "matched_at_iou_0_50_after": 26276,
+          "matched_at_iou_0_50_before": 26276,
+          "recall_by_iou_after": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "recall_by_iou_before": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "reference_boxes": 26276
+        },
+        "score": {
+          "path": "vitpose-h-no-flip-pt16.json",
+          "sha256": "ca69b6b0ea4d7b5ab36c1633a3ed6a4d62c2c95a1553a595e0df3c5e33d1fe74"
+        },
+        "vs_pt32": {
+          "joints": 446692,
+          "missing_in_both": 0,
+          "missing_in_candidate_only": 0,
+          "missing_in_reference_only": 0,
+          "paired_joints": 446692,
+          "score_abs_p95": 0.0008133649826049805,
+          "worst": {
+            "camera_id": "cam1",
+            "clip_id": "video_000/clip_004",
+            "joint": "left_ankle",
+            "player_id": 4,
+            "row_index": 4704,
+            "source_frame": 378
+          },
+          "xy_above_1px": 55,
+          "xy_above_5px": 35,
+          "xy_px": {
+            "max": 144.65401751279572,
+            "mean": 0.005308791567526141,
+            "p50": 0.001995578945833962,
+            "p95": 0.01064696807395065,
+            "p99": 0.02588897090743866
+          }
+        },
+        "weights": {
+          "checkpoint": {
+            "bytes": 2549075546,
+            "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+          }
+        }
+      },
+      "PT32": {
+        "batch_size": 8,
+        "command_sha256": "dfda35df13b8bac784f3ebf6f8d78738aaf2856d7eb70872653a48e1108c9d57",
+        "engines": {},
+        "environment": {
+          "cuda": "13.0",
+          "cuda_device": "cuda:0",
+          "fp32_precision": {
+            "cudnn": "ieee",
+            "cudnn_conv": "ieee",
+            "matmul": "ieee"
+          },
+          "gpu": "NVIDIA GeForce RTX 5060 Ti",
+          "gpu_total_bytes": 17074749440,
+          "opencv": "5.0.0",
+          "torch": "2.13.0+cu130"
+        },
+        "execution_commit": "33ae11e6ff421a61d85aac139fa7a0fbfab1da39",
+        "job_id": "0-8204474786353677687_2026-11-24T13-00-13-646322312Z_1826802_i2490-vitpose-h-no-flip-pt32-accuracy.job",
+        "log": {
+          "path": "repro/0-8204474786353677687_2026-11-24T13-00-13-646322312Z_1826802_i2490-vitpose-h-no-flip-pt32-accuracy/predictions/queue.log",
+          "sha256": "99171ab618215998e4429a8336f99948c7c10254206bfecdcc5746ea273d6d21"
+        },
+        "metrics": {
+          "box_recall": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "finite_pairs": {
+            "eligible_joints": 437714,
+            "oks": {
+              "count": 25811,
+              "mean": 0.7759387903821222,
+              "median": 0.7949516895903267,
+              "p95": 0.9445788500675515
+            },
+            "pck": {
+              "0.1": 0.7922136372151679,
+              "0.2": 0.9621785001165144
+            },
+            "pixel_error_px": {
+              "count": 437714,
+              "mean": 4.547356221140563,
+              "median": 3.4033067748092245,
+              "p95": 12.05115142587814
+            },
+            "pose_references": 25811,
+            "pose_references_with_prediction": 25811,
+            "predicted_joints": 437714,
+            "valid_joint_fraction": 1.0
+          },
+          "fixed": {
+            "eligible_joints": 437714,
+            "oks": {
+              "count": 25811,
+              "mean": 0.7759387903821222,
+              "median": 0.7949516895903267,
+              "p95": 0.9445788500675515
+            },
+            "pck": {
+              "0.1": 0.7922136372151679,
+              "0.2": 0.9621785001165144
+            },
+            "pixel_error_px": {
+              "count": 437714,
+              "mean": 4.547356221140563,
+              "median": 3.4033067748092245,
+              "p95": 12.05115142587814
+            },
+            "pose_references": 25811,
+            "pose_references_with_prediction": 25811,
+            "predicted_joints": 437714,
+            "valid_joint_fraction": 1.0
+          }
+        },
+        "original_output": "repro/0-8204474786353677687_2026-11-24T13-00-13-646322312Z_1826802_i2490-vitpose-h-no-flip-pt32-accuracy/predictions",
+        "original_score_sha256": "1afa08f7addc4a9efd540b02341d851c24410001ca5d0e7120506741546eb89f",
+        "prediction_sha256": "ed8004bf90da4f68c35aa4b90d0fed104a790b5e1593876f770bdeebdee3d828",
+        "queue_run_sha256": "1dd53294f3c64344300c273d4393993d156e39440b5d47a7f400d06a11af70de",
+        "receipt_sha256": "0af6d9a342b2c70e2b29c2f520aa725d4541cbff476bc1cfce9dbf50d6521d85",
+        "rescore_diff": {
+          "changed_metric_sections": [],
+          "changed_policy_fields": [
+            "candidate_order_for_iou_ties"
+          ],
+          "matched_at_iou_0_50_after": 26276,
+          "matched_at_iou_0_50_before": 26276,
+          "recall_by_iou_after": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "recall_by_iou_before": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "reference_boxes": 26276
+        },
+        "score": {
+          "path": "vitpose-h-no-flip-pt32.json",
+          "sha256": "d77d079a283a8a3a9563fb3adce8ac694c623a8e50241ae602c4f3bbf7de1fba"
+        },
+        "weights": {
+          "checkpoint": {
+            "bytes": 2549075546,
+            "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+          }
+        }
+      },
+      "TRT16": {
+        "batch_size": 8,
+        "command_sha256": "7ea24f0bafc7f22aeb75c36c52139f8751cecddf6aaf31f7c8bd3234824af972",
+        "engines": {
+          "plan": {
+            "bytes": 1283658580,
+            "sha256": "4b982f968826b9f4ffd2f9d52a0b88c2379c1528603cc793064329dfc8478e60"
+          }
+        },
+        "environment": {
+          "cuda": "13.0",
+          "cuda_device": "cuda:0",
+          "fp32_precision": {
+            "cudnn": "ieee",
+            "cudnn_conv": "ieee",
+            "matmul": "ieee"
+          },
+          "gpu": "NVIDIA GeForce RTX 5060 Ti",
+          "gpu_total_bytes": 17074749440,
+          "opencv": "5.0.0",
+          "torch": "2.13.0+cu130"
+        },
+        "execution_commit": "33ae11e6ff421a61d85aac139fa7a0fbfab1da39",
+        "job_id": "0-8204474785269370750_2026-11-24T13-00-14-730629249Z_1827025_i2490-vitpose-h-no-flip-trt16-accuracy.job",
+        "log": {
+          "path": "repro/0-8204474785269370750_2026-11-24T13-00-14-730629249Z_1827025_i2490-vitpose-h-no-flip-trt16-accuracy/predictions/queue.log",
+          "sha256": "bcf32ece81f112035defa2ddeb48be7db6b7f1500f9fbd67f4db123369eef547"
+        },
+        "metrics": {
+          "box_recall": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "finite_pairs": {
+            "eligible_joints": 437714,
+            "oks": {
+              "count": 25811,
+              "mean": 0.7759220948201111,
+              "median": 0.7948578062466404,
+              "p95": 0.9445791668694286
+            },
+            "pck": {
+              "0.1": 0.7921131149563414,
+              "0.2": 0.9621716463261399
+            },
+            "pixel_error_px": {
+              "count": 437714,
+              "mean": 4.548024901720651,
+              "median": 3.403566312705644,
+              "p95": 12.049884856131637
+            },
+            "pose_references": 25811,
+            "pose_references_with_prediction": 25811,
+            "predicted_joints": 437714,
+            "valid_joint_fraction": 1.0
+          },
+          "fixed": {
+            "eligible_joints": 437714,
+            "oks": {
+              "count": 25811,
+              "mean": 0.7759220948201111,
+              "median": 0.7948578062466404,
+              "p95": 0.9445791668694286
+            },
+            "pck": {
+              "0.1": 0.7921131149563414,
+              "0.2": 0.9621716463261399
+            },
+            "pixel_error_px": {
+              "count": 437714,
+              "mean": 4.548024901720651,
+              "median": 3.403566312705644,
+              "p95": 12.049884856131637
+            },
+            "pose_references": 25811,
+            "pose_references_with_prediction": 25811,
+            "predicted_joints": 437714,
+            "valid_joint_fraction": 1.0
+          }
+        },
+        "original_output": "repro/0-8204474785269370750_2026-11-24T13-00-14-730629249Z_1827025_i2490-vitpose-h-no-flip-trt16-accuracy/predictions",
+        "original_score_sha256": "a36ebc9e8bae014d7ead364a5d2c5f3628727b4d943472c8fc99cdb3a8fdfd52",
+        "prediction_sha256": "4d844ce6ebcbed6b028ea1314319d168e9c2788414a594370de1a181a2dcf1a0",
+        "queue_run_sha256": "eda0d3e1901d81d2c3bba91bd6ec318d65c9656a676009c96df5b95f203aa4a7",
+        "receipt_sha256": "425429dcab0ad4e0c555479788ceb7c3b68ca53e097fdc1f407facabc807e63b",
+        "rescore_diff": {
+          "changed_metric_sections": [],
+          "changed_policy_fields": [
+            "candidate_order_for_iou_ties"
+          ],
+          "matched_at_iou_0_50_after": 26276,
+          "matched_at_iou_0_50_before": 26276,
+          "recall_by_iou_after": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "recall_by_iou_before": {
+            "0.50": 1.0,
+            "0.75": 1.0
+          },
+          "reference_boxes": 26276
+        },
+        "score": {
+          "path": "vitpose-h-no-flip-trt16.json",
+          "sha256": "15d6dfc4eb3425bf8db335c4d7ce0b951f2d619f73d62bb4c00ffbf7a9f7010c"
+        },
+        "vs_pt32": {
+          "joints": 446692,
+          "missing_in_both": 0,
+          "missing_in_candidate_only": 0,
+          "missing_in_reference_only": 0,
+          "paired_joints": 446692,
+          "score_abs_p95": 0.002287772297859189,
+          "worst": {
+            "camera_id": "cam1",
+            "clip_id": "video_000/clip_004",
+            "joint": "left_ankle",
+            "player_id": 4,
+            "row_index": 4704,
+            "source_frame": 378
+          },
+          "xy_above_1px": 179,
+          "xy_above_5px": 119,
+          "xy_px": {
+            "max": 144.64924820054165,
+            "mean": 0.016030397760293195,
+            "p50": 0.0061388139456446085,
+            "p95": 0.03128264629284992,
+            "p99": 0.07466487654770994
+          }
+        },
+        "weights": {
+          "checkpoint": {
+            "bytes": 2549075546,
+            "sha256": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+          }
+        }
+      }
+    }
+  },
+  "full_replay_reports": ".worktree-outputs/parent-2492-issue-2490-primary/pose-comparison/vitpose-replay",
+  "images": 6844,
+  "no_flip_trt16_conversion": {
+    "command": {
+      "path": "repro/0-8204474785676441981_2026-11-24T13-00-14-323558018Z_1826951_i2490-vitpose-h-no-flip-trt16-engine/repro.sh",
+      "sha256": "89d6017f0648aead7a65fc24906136e51936c0500a0dc5b743781a1cc30655dc"
+    },
+    "engine_manifest": {
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "device_name": "NVIDIA GeForce RTX 5060 Ti",
+        "tensorrt_version": "10.14.1.48.post1"
+      },
+      "export_sha256": "15e98f96fc941b17e81f2cd1386be253936de523703fa5ba91230b2ba32702b7",
+      "path": "vitpose-h-no-flip-trt16-engine/engine.json",
+      "plan_sha256": "4b982f968826b9f4ffd2f9d52a0b88c2379c1528603cc793064329dfc8478e60",
+      "profiles": {
+        "pixels": {
+          "maximum": [
+            8,
+            3,
+            256,
+            192
+          ],
+          "minimum": [
+            1,
+            3,
+            256,
+            192
+          ],
+          "optimum": [
+            8,
+            3,
+            256,
+            192
+          ]
+        }
+      },
+      "sha256": "4a5115e32a206c1a56a7d355e43ad0d66823517d23f854d9d489babc5658c54c",
+      "version": 1
+    },
+    "job_id": "0-8204474785676441981_2026-11-24T13-00-14-323558018Z_1826951_i2490-vitpose-h-no-flip-trt16-engine.job",
+    "log": {
+      "path": "repro/0-8204474785676441981_2026-11-24T13-00-14-323558018Z_1826951_i2490-vitpose-h-no-flip-trt16-engine/conversion.log",
+      "sha256": "291ded38134102032962f5e73552d4ffa1ef82b7cb5447b14cc790bd34935848"
+    },
+    "onnx_export": {
+      "inputs": {
+        "pixels": {
+          "dtype": "float16",
+          "shape": [
+            -1,
+            3,
+            256,
+            192
+          ]
+        }
+      },
+      "model": "vitpose_huge_coco17",
+      "onnx_files": {
+        "model.onnx": "258c162d07161cf66f0cceaf50ef5d53128314461458da32346fc67453f15267"
+      },
+      "outputs": {
+        "heatmaps": {
+          "dtype": "float16",
+          "shape": [
+            -1,
+            17,
+            -1,
+            -1
+          ]
+        }
+      },
+      "path": "vitpose-h-no-flip-trt16-engine/export.json",
+      "precision": "fp16",
+      "settings": {
+        "flip_test": false,
+        "head": {
+          "final_conv_kernel": 1,
+          "in_channels": 1280,
+          "num_conv_kernels": [],
+          "num_conv_layers": 0,
+          "num_deconv_filters": [
+            256,
+            256
+          ],
+          "num_deconv_kernels": [
+            4,
+            4
+          ],
+          "num_deconv_layers": 2,
+          "out_channels": 17
+        }
+      },
+      "sha256": "15e98f96fc941b17e81f2cd1386be253936de523703fa5ba91230b2ba32702b7",
+      "sources": {
+        "checkpoint": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+      },
+      "version": 1
+    },
+    "run": {
+      "path": "repro/0-8204474785676441981_2026-11-24T13-00-14-323558018Z_1826951_i2490-vitpose-h-no-flip-trt16-engine/run.json",
+      "sha256": "52ea09726fb35d457dfb94d1b75f38be4a0cfca5591eb18bb746d083f904ea94"
+    }
+  },
+  "queue_root": ".training_queue",
+  "replay_commit": "f782520647f6f0162482ac4d2ec566f1fde9d04b",
+  "rows": 26276,
+  "score_players_sha256": "7a8acb2538b48c943f9b9e681f8f62c90f9fe2403b0404fac2f5ca1a2cacd3c3"
+}

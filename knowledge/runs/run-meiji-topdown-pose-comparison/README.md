@@ -37,6 +37,7 @@ Use the [#2496 harness](../../../src/utils/inference_benchmark.md) and its publi
 run=knowledge/runs/run-meiji-topdown-pose-comparison
 media=data/tennis_multiview/processed/meiji_4cam/benchmarks
 queue_root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")/.training_queue"
+mapfile -t VITPOSE_ACCURACY_JOBS < <(jq -r '.conditions[][].job_id' "$run/vitpose_accuracy.json")
 PYTHONPATH="$PWD:$PWD/$run" OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
   .venv/bin/python -B "$run/replay_accuracy.py" --queue "$queue_root" \
   --bundle "$media/multiview-player-evaluation-v1" \
@@ -46,8 +47,23 @@ PYTHONPATH="$PWD:$PWD/$run" OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THR
 
 Supply the six complete `.job` IDs in `VITPOSE_ACCURACY_JOBS`. `--retain` preserves the original receipt, predictions, scores and log in the queue's retained `repro/<job>/predictions/`. The replay writes its own report directory and keeps the prior scores available for comparison.
 
+## Review synchronized overlays
+
+Each panel uses the same native frame, player-box geometry and frame label. The SMPL panel draws the eligible reference joints. Model panels draw their finite predictions. Use the original camera frame number for a PNG, or omit `--frame` and set an MP4 output to render the full evaluation timeline of that camera.
+
+```bash
+mapfile -t vi_jobs < <(jq -r '.conditions["vitpose-h"] | .PT32.job_id, .TRT16.job_id' "$run/vitpose_accuracy.json")
+PYTHONPATH="$PWD:$PWD/$run" .venv/bin/python -B "$run/render_overlays.py" \
+  --queue "$queue_root" --bundle "$media/multiview-player-evaluation-v1" \
+  --bundle-sha256 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580 \
+  --media-root "$media/multiview-v1" --clip video_000/clip_003 --camera cam2 \
+  --frame 66 --player 6 --output outputs/pose-comparison/clip_003-cam2-66.png "${vi_jobs[@]}"
+```
+
+The five-model PT32 video for `clip_003/cam2` uses the PT32 job IDs from `vitpose_accuracy.json`, `rtmpose_accuracy.json` and `pmpose_accuracy.json`. Select `vitpose-h` as the ViTPose variant. The frame count and hashes of both previews are recorded in the [knowledge node](../../nodes/tennis_scene/000086-run-meiji-topdown-pose-comparison.md).
+
 ## Adapter and tests
 
 The adapter contract binds one explicit backend, input order and COCO17 axis. Each adapter declares its forward calls with `stages.measure_forward(backend, operation, name="pose")` and may return person-aligned supplementary outputs. Renderer and analysis code can use row addresses to join with the frozen source. [Input and output contract](https://github.com/Motoki0705/tennis-lab/issues/2490#issuecomment-7129915413) · [Forward method](https://github.com/Motoki0705/tennis-lab/issues/2490#issuecomment-7131482779)
 
-The focused CPU tests use unequal boxes, nonconsecutive frames, a partially empty cohort and a short final batch to expose reordering, skipped rows, mismatched backends and confidence-induced false misses. Replay tests reject a reordered player column and recover a retained copy after the temporary source is removed. The tests reuse the shared scorer's reference dataclasses and the production ViTPose frame sequence. The focused cases use tiny arrays and an injected frame stream, with no external weights, video or GPU. [Coverage test](../../../tests/unit/tennis_scene/evaluation/player_pose/test_scoring.py) · [ViTPose decoding test](../../../tests/unit/submodules/models/vitpose/test_pose2d.py)
+The focused CPU tests use unequal boxes, nonconsecutive frames, a partially empty cohort and a short final batch to expose reordering, skipped rows, mismatched backends and confidence-induced false misses. Replay tests reject a reordered player column and recover a retained copy after the temporary source is removed. The overlay test checks exact display pixels from a known source frame and respects the reference mask. The tests reuse the shared scorer's reference dataclasses and the production ViTPose frame sequence. The focused cases use tiny arrays and an injected frame stream, with no external weights, video or GPU. [Coverage test](../../../tests/unit/tennis_scene/evaluation/player_pose/test_scoring.py) · [ViTPose decoding test](../../../tests/unit/submodules/models/vitpose/test_pose2d.py)

@@ -305,3 +305,32 @@ def test_replay_checks_fixed_rows_and_can_use_retained_queue_results(
     _, copied, _, copied_record = replay.read_condition(*arguments, columns)
     np.testing.assert_array_equal(copied.keypoints_xyc, points)
     assert copied_record["log"]["sha256"] == record["log"]["sha256"]
+
+
+@pytest.mark.usefixtures("run_modules")
+def test_overlay_uses_the_same_source_frame_and_eligible_joints() -> None:
+    render = import_module("render_overlays")
+    before = FrameKey("video/clip", "cam2", 2)
+    target = FrameKey("video/clip", "cam2", 4)
+    points = np.zeros((1, 17, 2))
+    points[0, 0] = (4, 2)
+    points[0, 1] = (5, 1)
+    eligible: NDArray[np.bool_] = np.zeros((1, 17), bool)
+    eligible[0, 0] = True
+    reference = ReferenceFrame(
+        np.array([5]), np.array([[1.0, 1.5, 6.0, 3.5]]), points, eligible
+    )
+    bounds = render.frame_slices({target: reference, before: reference})
+    predicted: NDArray[np.float32] = np.full((2, 17, 3), np.nan, np.float32)
+    predicted[0, 0] = (2, 2, 1)
+    predicted[1, 0] = (5, 2, 1)
+    image: NDArray[np.uint8] = np.zeros((4, 8, 3), np.uint8)
+    grid = render._sheet(
+        image, target, bounds[target], reference, {"model PT32": predicted}, None
+    )
+    assert grid.shape == (392, 1280, 3)
+    # Both panels map the image's pixels at 80 display pixels per source pixel.
+    assert grid[212, 320].tolist() == list(render.COLORS[1])
+    assert grid[212, 1040].tolist() == list(render.COLORS[1])
+    assert grid[212, 800].tolist() == [0, 0, 0]
+    assert grid[132, 400].tolist() == [0, 0, 0]
