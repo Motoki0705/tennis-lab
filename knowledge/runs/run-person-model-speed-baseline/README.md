@@ -49,7 +49,7 @@ done
 - 環境、重みとplanのSHA-256、初回parity、元JSONとログのSHA-256は [初回の条件別記録](cases.json) にある。個別stage呼び出しを含む元JSONと予測は初回の永続出力 `outputs/person-model-speed-baseline-v1/results/<workload>/<backend>-b<batch>/` にある。追加planの初回buildは [receipt](vitpose-b1-build.json) に記録した。
 - 初回の代表値と先行値の照合は [runノード](../../nodes/tennis_scene/000085-run-person-model-speed-baseline.md) にある。
 
-再計測後は728ファイルの内容と各反復の入力ID・集計を照合し、新しい記録ディレクトリに22条件を出力する。`parity_status`、未判定の理由、速度を条件ごとに記録する。計時に失敗した条件も、理由と取得できた反復を記録する。
+再計測後は728ファイルの内容と各反復の入力ID・集計を照合し、新しい記録ディレクトリに22条件を出力する。`parity_status`、未判定の理由、速度を条件ごとに記録する。計時に失敗した条件も、理由と取得できた反復を記録する。 [再計測の成果物](../run-person-model-speed-low-precision/README.md)
 
 ```bash
 result_bundle=knowledge/runs/run-person-model-speed-low-precision

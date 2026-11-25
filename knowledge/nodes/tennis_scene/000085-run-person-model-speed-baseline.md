@@ -69,7 +69,7 @@ tags: []
 
 ## 考察 / Findings
 
-このノードは初回の実測記録。PT32の速度は修正前の計時プログラムによる暫定値で、初回のparityとともに保存する。2026-11-25のユーザー判断に基づき、再計測はPT16・TRT16を対象に、バッチ終端の同期を含めて速度を測り、parityを未判定として扱う。[現行の手順](../../runs/run-person-model-speed-baseline/README.md)
+このノードは初回の実測記録。PT32の速度は修正前の計時プログラムによる暫定値で、初回のparityとともに保存する。2026-11-25のユーザー判断に基づく再計測では、PT16・TRT16の22条件をバッチ終端の同期込みで測り、parityを未判定とした。 [再計測の基準値](000086-run-person-model-speed-low-precision.md)
 
 DINO、ViTPose-Hのflipあり・なし、DINO＋ViTPose-H、HMR2特徴＋GVHMRで、39条件それぞれの300反復を取得した。PT32を参照に24条件がparityを通過し、15条件は許容差を超えた。OOM・変換失敗・子プロセスの異常終了は0件だった。queue 4ジョブは完了し、39件の子プロセス終了値をすべて0と確認した。 [全batchの速度・VRAM・判定](../../runs/run-person-model-speed-baseline/cases.csv) · [条件別記録](../../runs/run-person-model-speed-baseline/cases.json)
 
