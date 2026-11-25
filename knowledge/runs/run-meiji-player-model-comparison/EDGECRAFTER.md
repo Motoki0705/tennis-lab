@@ -103,6 +103,27 @@ On the same saved frames, the shared parity rules passed the two COCO-only PT16 
 
 The original ECDet-L COCO TensorRT plan ran all 6,844 images at batch 1 on the RTX 5060 Ti. The initial diagnostic at score ≥0.25 matched 66.4% of the person rows in both directions against PT32. The matched IoU P05 was 0.884 and absolute score error P95 was 0.313. For original frames 0 and 2 of `clip_003/cam0`, ONNX Runtime CPU running the same exported graph matched 24 of 24 PT32 rows. The TensorRT plan matched 17 of 24 on those inputs. The dynamic batch warning and the batch-1 precision mismatch are separate observations.
 
+## Diagnosis of the batch-2-traced plans
+
+The diagnosis uses four published #2496 inputs. It selects one image per clip in descending order of the total person detections at score ≥0.25 across ECDet-L COCO, ECPose-L and ECPose-X PT16. The diagnostic records both single-image inputs and both image orders for each pair. It passes one contiguous preprocessed tensor per case to the PT16 forward and the TensorRT runner, then records each raw head's shape, dtype, finite range and NaN/Inf counts. The report compares outputs by source image ID and checks context strides against the PyTorch buffers. Decoded boxes use the same top-k and score settings as accuracy, with no NMS.
+
+```bash
+diagnose=knowledge/runs/run-meiji-player-model-comparison/edgecrafter_diagnose.py
+baseline=knowledge/runs/run-person-model-speed-baseline
+
+# Run the alternate interpreter on CPU.
+PYTHONPATH=".:$baseline" OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
+  .venv/bin/python -B "$diagnose" --inputs "$fixed_speed_inputs" \
+  --output outputs/player-model-comparison/trt16-diagnosis-v1 --onnx-cpu
+
+# Submit this command through the training queue with resource all.
+PYTHONPATH=".:$baseline" OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
+  .venv/bin/python -B "$diagnose" --inputs "$fixed_speed_inputs" \
+  --output outputs/player-model-comparison/trt16-diagnosis-v1
+```
+
+On `clip_028/cam3` frame 513, ONNX Runtime CPU reproduced all 68 archived PT16 ECDet-L boxes and all 60 archived PT16 ECPose-X boxes at IoU ≥0.50. The same ONNX files yielded 30 and 11 matching boxes through their archived TRT16 plans. The gap on this image points to the TensorRT path. The differing compiler operation or runtime behavior remains under investigation. [ONNX CPU comparison](edgecrafter-trt-onnx-cpu.json)
+
 ## CPU integration check
 
 On the adapter revision `bf9cf828f6508c48da90e220743e06b330be47ff`, the detached local job `20261124T113947Z_a94715bdcac9_edgecrafter-assets-and-cpu-smoke` exited successfully. All six downloaded weights matched the official release byte sizes and digests. A two-image CPU batch used the original frames 0 and 2 from `video_000/clip_003`, `cam0`. ECPose used margin `0.10` for this contract check. Each model wrote `outputs/player-model-comparison/<model_id>/smoke-pt32.json` in the worker worktree. [CPU result paths and checksums](edgecrafter-cpu-smoke.json)
