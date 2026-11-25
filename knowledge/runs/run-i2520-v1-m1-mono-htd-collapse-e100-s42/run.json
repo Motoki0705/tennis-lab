@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8204421196708458945_2026-11-25T03-53-23-291541054Z_24550_i2520_m1_mono_gvhmr_htd_e100_s42",
+  "name": "i2520_m1_mono_gvhmr_htd_e100_s42",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train model=monocular_gvhmr_htd data=monocular_sequence loss=monocular_htd data.scene_dir=plcs/single_object_mixed training.trainer.max_epochs=100 training.warmup_steps=500 training.trainer.check_val_every_n_epoch=5 training.compile.enabled=false training.checkpoint.save_top_k=1 training.checkpoint.save_last=true run.output_dir=plcs/i2520_m1_mono_gvhmr_htd_e100_s42 run.seed=42",
+  "provider": "gemini",
+  "session": "ec99afa3-0ddf-4af9-b92f-9e3912cd1273",
+  "issue": "2520",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "d08f191cc66ac3a50980bcd2a19de4f7c40d2551",
+  "branch": "main",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-11-25T13:22:28+09:00"
+}
