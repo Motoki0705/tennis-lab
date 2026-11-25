@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 import sys
 from collections.abc import Callable
 from copy import deepcopy
@@ -15,7 +16,16 @@ import pytest
 import torch
 from numpy.typing import NDArray
 
-from src.utils.inference_benchmark import Backend, ConditionUnavailable, Status
+from src.utils.inference_benchmark import (
+    Backend,
+    Batch,
+    BenchmarkCase,
+    BenchmarkProtocol,
+    BenchmarkReport,
+    ConditionUnavailable,
+    Status,
+)
+from src.utils.inference_benchmark_inputs import TimingSchedule
 from src.utils.schema.player import COCO_KP_NAMES
 
 RUN = (
@@ -29,6 +39,136 @@ def rtmpose(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
     monkeypatch.syspath_prepend(str(RUN))
     monkeypatch.setattr(sys, "dont_write_bytecode", True)
     return import_module("rtmpose")
+
+
+@pytest.fixture
+def rtmpose_speed(rtmpose: ModuleType, monkeypatch: pytest.MonkeyPatch) -> ModuleType:
+    monkeypatch.syspath_prepend(str(RUN.parent / "run-person-model-speed-baseline"))
+    return import_module("rtmpose_speed")
+
+
+def test_speed_cli_rejects_pt32(
+    rtmpose_speed: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.setattr(sys, "argv", ["rtmpose_speed.py", "--backend", "PT32"])
+
+    with pytest.raises(SystemExit) as rejected:
+        rtmpose_speed.main()
+
+    assert rejected.value.code == 2
+    assert "invalid choice: 'PT32'" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("backend", [Backend.PT16, Backend.TRT16])
+def test_speed_cli_passes_pinned_crops_and_explicit_parity_opt_out(
+    rtmpose_speed: ModuleType,
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    backend: Backend,
+) -> None:
+    protocol = BenchmarkProtocol(
+        batch_sizes=(1,), warmup=1, iterations_per_block=2, blocks=1
+    )
+    schedule = TimingSchedule(protocol, (("second",), ("first",)), "2" * 64)
+    rows: tuple[dict[str, Any], ...] = (
+        {"id": "first", "frame_id": "a", "xyxy": [1, 2, 5, 7]},
+        {"id": "second", "frame_id": "b", "xyxy": [2, 3, 6, 8]},
+    )
+    images: dict[str, NDArray[np.uint8]] = {
+        key: np.full((10, 10, 3), i, np.uint8) for i, key in enumerate("ab")
+    }
+    manifest_sha256 = "0" * 64
+    engine = tmp_path / "engine" if backend is Backend.TRT16 else None
+    adapter = object()
+
+    def load_schedule(index: str, batch: int) -> TimingSchedule:
+        assert (index, batch) == ("crops", 1)
+        return schedule
+
+    def make_adapter(**settings: Any) -> object:
+        assert settings["backend"] is backend
+        assert settings["engine"] == engine
+        return adapter
+
+    def benchmark(
+        case: BenchmarkCase,
+        batches: tuple[Batch[tuple[Any, ...]], ...],
+        backends: dict[Backend, object],
+        *,
+        device: str,
+        dedicated_stream: bool,
+        protocol: BenchmarkProtocol,
+        parity_not_evaluated_reason: str,
+    ) -> BenchmarkReport:
+        assert device == "cuda:0" and dedicated_stream
+        assert protocol == schedule.protocol
+        assert backends == {backend: adapter}
+        assert [batch.ids for batch in batches] == list(schedule.batch_ids)
+        for batch, row in zip(batches, reversed(rows), strict=True):
+            assert batch.data[0].frame_bgr is images[row["frame_id"]]
+            np.testing.assert_array_equal(batch.data[0].bbox_xyxy, row["xyxy"])
+        return BenchmarkReport(
+            case, protocol, (), parity_not_evaluated_reason=parity_not_evaluated_reason
+        )
+
+    monkeypatch.setattr(
+        rtmpose_speed,
+        "InputSet",
+        lambda _: SimpleNamespace(
+            sha256=manifest_sha256,
+            manifest={"id": "test"},
+            pins=SimpleNamespace(timing_sha256="1" * 64, schedule=load_schedule),
+            rows=lambda _: rows,
+            frame=images.__getitem__,
+        ),
+    )
+    monkeypatch.setattr(rtmpose_speed, "make_adapter", make_adapter)
+    monkeypatch.setattr(rtmpose_speed, "benchmark", benchmark)
+    monkeypatch.setattr(rtmpose_speed.torch, "set_num_threads", lambda _: None)
+    monkeypatch.setattr(rtmpose_speed.cv2, "setNumThreads", lambda _: None)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "rtmpose_speed.py",
+            "--inputs",
+            str(tmp_path),
+            "--input-sha256",
+            manifest_sha256,
+            "--model",
+            "rtmpose-m",
+            "--backend",
+            backend,
+            "--batch",
+            "1",
+            "--checkpoint",
+            str(tmp_path / "checkpoint"),
+            "--source-root",
+            str(tmp_path),
+            "--output",
+            str(tmp_path),
+            *(["--engine", str(engine)] if engine is not None else []),
+        ],
+    )
+
+    rtmpose_speed.main()
+    report = json.loads(
+        (tmp_path / "rtmpose-m" / f"{backend}-b1" / "report.json").read_text()
+    )
+
+    assert report["status"] == "ok"
+    assert report["parity_status"] == "not_evaluated"
+    assert (
+        report["parity_not_evaluated_reason"]
+        == "PT32計測はスコープ外（ユーザー判断 2026-11-25）"
+    )
+    assert report["case"]["input_manifest_sha256"] == manifest_sha256
+    assert (
+        report["case"]["settings"]["timed_input_ids_sha256"]
+        == schedule.timed_ids_sha256
+    )
 
 
 def test_coco17_projection_keeps_side_row_and_valid_raw_scores(
