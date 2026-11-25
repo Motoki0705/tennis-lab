@@ -136,7 +136,7 @@ row ID. If 5B PT32 fails on the local GPU, 5B PT16 and TRT16 can still be scored
 against the pseudo-reference. Retain their timing samples with the harness's
 parity status and the reason the PT32 reference is unavailable.
 
-## Evidence available before execution
+## Conversion and accuracy evidence
 
 The isolated runtime preflight passed with Python 3.12.3, PyTorch
 2.13.0+cu130 (CUDA 13.0), TensorRT 10.14.1.48.post1 and ONNX Script 0.7.2.
@@ -147,18 +147,14 @@ The 1B export took 138.81 s and the 5B export took 686.88 s.
 
 | Model | PT32 | PT16 | TRT16 |
 |---|---|---|---|
-| Sapiens2-1B | Pending GPU run | Pending GPU run | ONNX checked. Pending engine build and GPU run |
-| Sapiens2-5B | Pending CUDA allocation attempt | Pending GPU run | ONNX checked. Pending engine build and GPU run |
+| Sapiens2-1B | Fixed-cohort accuracy running at observation | Accuracy job cancelled | Initial build stopped during parsing. Accuracy job cancelled |
+| Sapiens2-5B | CUDA weight load completed. Forward and accuracy pending | Accuracy job cancelled | Initial build stopped during parsing. Accuracy job cancelled |
 
-The 5B checkpoint contains 20,480,794,652 bytes (19.074 GiB) of FP32
-tensors. The RTX 5060 Ti reported 16,311 MiB. The checkpoint therefore
-requires about 3,221 MiB more than the installed VRAM before CUDA runtime,
-activations and scratch space. Record the actual PT32 load failure and peak
-allocator figures after the local test.
+Both TensorRT builds stopped at the first RMSNorm's `ReduceMean` node because TensorRT required the axes input to be an initializer. These attempts produced no engine or parity result. The queue record contains the build job IDs, exit values and terminal log digests. [Queue observations](sapiens2_attempts.json)
+
+The 5B PT32 probe completed CUDA weight loading on the RTX 5060 Ti. The FP32 weights alone contain 20,480,794,652 bytes (19.07 GiB), 3,406,045,212 bytes more than CUDA's reported device capacity of 17,074,749,440 bytes. PyTorch reported a peak of 20,540,379,648 bytes allocated and 20,948,451,328 bytes reserved during loading. The resident VRAM and forward memory are unverified. [Load receipt and log digest](sapiens2_attempts.json)
 
 The CPU tests exercise the named source joints and left/right reflection
 using asymmetric predictions, the crop inverse and short batch ordering,
 nonpositive peaks with preserved confidence, strict checkpoint binding, and
 TRT availability without a plan. They use synthetic inputs and weights.
-The official model forward, TensorRT builds and fixed-cohort measurements
-are pending.
