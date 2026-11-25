@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8204408697298112696_2026-11-25T07-21-42-701887303Z_1486825_i2520_v2_a3_world3d_only_e100_s42",
+  "name": "i2520_v2_a3_world3d_only_e100_s42",
+  "command": "PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True .venv/bin/python -m src.tasks.plcs.scripts.train model=monocular_gvhmr_htd loss=monocular_htd data=monocular_sequence data.scene_dir=plcs/single_object_mixed loss.world_kp_3d_weight=2.0 loss.position_weight=2.0 loss.rotation_weight=0.02 loss.angle_weight=0.0 loss.reprojection_weight=0.5 loss.joint_angle_weight=0.1 loss.torsion_angle_weight=0.1 loss.torso_twist_weight=0.1 loss.bone_length_weight=0.5 loss.kinematic_velocity_consistency_weight=0.0 loss.kinematic_acceleration_consistency_weight=0.0 training.trainer.max_epochs=100 training.warmup_steps=500 training.trainer.check_val_every_n_epoch=5 training.compile.enabled=false training.checkpoint.save_top_k=1 training.checkpoint.save_last=true run.seed=42 loss.canonical_pose_weight=0.0 loss.joint_angle_weight=0.0 loss.torsion_angle_weight=0.0 loss.torso_twist_weight=0.0 run.output_dir=plcs/i2520_v2_a3_world3d_only_e100_s42",
+  "provider": "gemini",
+  "session": "ec99afa3-0ddf-4af9-b92f-9e3912cd1273",
+  "issue": "2520",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+  "branch": "main",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab",
+  "repo_root": "/home/kamimura/projects/tennis-lab",
+  "captured_at": "2026-11-25T19:39:47+09:00"
+}
