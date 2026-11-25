@@ -30,6 +30,7 @@ from src.tasks.blcs.generate_dataset.simulation.cell_manager import (
 from src.tasks.blcs.generate_dataset.simulation.net_contact import (
     NetContact,
     NetContactPlan,
+    NetContactProposalRejected,
     sample_net_velocity,
     swept_net_contact,
 )
@@ -845,6 +846,18 @@ class RallySimulator:
 
             trajectory_sim.append(state.position.clone())
             velocities_sim.append(state.velocity.clone())
+
+        if swept_net and not hit_net_before_bounce:
+            raise NetContactProposalRejected("The aimed shot missed the net")
+        if (
+            swept_net
+            and bounce1_pos is not None
+            and self.cell_manager.is_position_on_side(bounce1_pos, target_side)
+            and not self.cell_manager.is_position_in_cell_grid(bounce1_pos, target_side)
+        ):
+            raise NetContactProposalRejected(
+                "The aimed shot landed beyond the receiving half-court grid"
+            )
 
         category, to_cell = self.cell_manager.classify_shot(
             hit_net_before_bounce=hit_net_before_bounce,

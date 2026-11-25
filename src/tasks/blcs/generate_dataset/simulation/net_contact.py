@@ -28,7 +28,7 @@ class NetContactPlan:
 
 
 class NetContactProposalRejected(RuntimeError):
-    """The sampled flight could not be aimed at the requested net height."""
+    """The sampled shot did not satisfy the net contact proposal."""
 
 
 def swept_net_contact(
@@ -120,6 +120,10 @@ def sample_net_velocity(
                 ).tolist()
                 error = crossing_z - (net_height_at_x(crossing_x) - depth)
                 if abs(error) <= min(0.0001, depth / 4):
+                    if abs(crossing_x) >= HALF_DOUBLES_WIDTH:
+                        raise NetContactProposalRejected(
+                            "The aimed shot crosses the net plane outside the posts"
+                        )
                     return velocity
                 duration = (step - 1 + fraction) * physics.config.dt
                 break

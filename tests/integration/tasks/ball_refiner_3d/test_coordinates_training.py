@@ -11,16 +11,21 @@ from hydra import compose, initialize_config_dir
 
 from src.tasks.ball_refiner_3d.configuration.core import parse_section
 from src.tasks.ball_refiner_3d.configuration.data import CorruptionConfig
-from src.tasks.ball_refiner_3d.configuration.generation import CameraSampling
+from src.tasks.ball_refiner_3d.configuration.generation import (
+    CameraSampling,
+    generation_config,
+)
 from src.tasks.ball_refiner_3d.data.dataset import SharedDataset
 from src.tasks.ball_refiner_3d.data.preprocessing import prepare
 from src.tasks.ball_refiner_3d.evaluation.evaluator import evaluate
 from src.tasks.ball_refiner_3d.evaluation.physics import PhysicsProtocol, physics_report
+from src.tasks.ball_refiner_3d.generate_dataset.blcs_adapter import simulate_rally
 from src.tasks.ball_refiner_3d.generate_dataset.generator import generate_dataset
 from src.tasks.ball_refiner_3d.generate_dataset.reprojection import reproject_dataset
 from src.tasks.ball_refiner_3d.inference.files import predict_file
 from src.tasks.ball_refiner_3d.model_io.checkpoint import load_checkpoint
 from src.tasks.ball_refiner_3d.training.runner import run_training
+from src.tasks.blcs.generate_dataset.simulation.net_contact import NetContact
 from src.utils.paths import PROJECT_ROOT
 from src.utils.physics.ball.record import EVENT_KINDS
 from src.utils.schema.court import net_height_at_x
@@ -113,6 +118,22 @@ def test_net_preset_saves_both_physical_outcomes_and_reproduces_coordinates(tmp_
             assert row["net_contact"] == "dropped" and row["end_reason"] == "net_fault"
             assert side * record.event_position[bounce, 1] > 0
             assert not np.any(shots > net)
+
+
+def test_net_preset_resamples_an_aimed_shot_outside_the_net_posts(tmp_path):
+    with initialize_config_dir(version_base=None, config_dir=CONFIGS):
+        cfg = compose(
+            config_name="generate_dataset",
+            overrides=["generation=net_contacts", f"paths.data_root={tmp_path}"],
+        )
+    _, _, generation, cameras, physics = generation_config(cfg)
+    # This rally's first proposal crosses left of the post and lands outside
+    # the receiving grid. The same assigned outcome must survive the retry.
+    _, record, _, _, attempts = simulate_rally(
+        43, generation, cameras, physics, NetContact.CROSSED
+    )
+    assert attempts > 1
+    assert np.count_nonzero(record.event_mask() & 4) == 1
 
 
 PHYSICS_OVERRIDES = [
