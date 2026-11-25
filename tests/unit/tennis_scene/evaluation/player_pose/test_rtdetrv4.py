@@ -492,14 +492,97 @@ def test_fp32_attention_compares_swapped_slots_by_image(adapter, batch_size):
         logits, boxes = output
         return torch.zeros_like(logits, dtype=torch.long), boxes, logits.sigmoid()
 
-    heads, rows = probe.capture_in_frame_order(
-        forward, SimpleNamespace(decode=decode), pixels, sizes, batch_size, (1, 0, 3, 2)
+    heads = probe.capture_heads_in_frame_order(
+        forward, pixels, batch_size, (1, 0, 3, 2)
     )
+    case: dict = {}
+    rows = probe._decode_case(SimpleNamespace(decode=decode), heads, sizes, case)
     assert observed_calls == (
         [[6], [1], [18], [12]] if batch_size == 1 else [[6, 1], [18, 12]]
     )
     np.testing.assert_array_equal(heads["pred_logits"], [[1], [6], [12], [18]])
+    assert case["status"] == "ok" and rows is not None
     np.testing.assert_array_equal(
         np.concatenate([row.boxes_xyxy for row in rows]),
         [[1, 1, 4, 6], [6, 1, 10, 6], [12, 1, 14, 6], [18, 1, 22, 6]],
     )
+
+
+def test_fp32_attention_keeps_raw_heads_when_an_early_batch_is_nonfinite(adapter):
+    pytest.importorskip("onnx")
+    probe = import_module("rtdetrv4_fp32attn")
+    forward_calls: list[float] = []
+    pixels = torch.tensor([[1.0], [6.0], [12.0], [18.0]])
+
+    def forward(prepared):
+        (value,) = prepared[:, 0].tolist()
+        forward_calls.append(value)
+        logit = float("nan") if value == 6.0 else value
+        right = float("inf") if value == 12.0 else value + 4
+        return torch.tensor([[logit]]), torch.tensor([[[value, 1.0, right, 6.0]]])
+
+    def unexpected_decode(*_args):
+        pytest.fail("Non-finite raw output must not reach the postprocessor")
+
+    heads = probe.capture_heads_in_frame_order(forward, pixels, 1, (1, 0, 3, 2))
+    assert forward_calls == [6.0, 1.0, 18.0, 12.0]
+    np.testing.assert_array_equal(
+        heads["pred_logits"], [[1.0], [np.nan], [12.0], [18.0]]
+    )
+    assert np.isposinf(heads["pred_boxes"][2, 0, 2])
+    case: dict = {}
+    assert (
+        probe._decode_case(
+            SimpleNamespace(decode=unexpected_decode), heads, torch.ones((4, 2)), case
+        )
+        is None
+    )
+    assert case["status"] == "infeasible"
+    assert case["failure_stage"] == "raw_heads"
+    assert case["nonfinite_by_frame"] == {
+        "pred_logits": {"nan": [0, 1, 0, 0], "inf": [0, 0, 0, 0]},
+        "pred_boxes": {"nan": [0, 0, 0, 0], "inf": [0, 0, 1, 0]},
+    }
+
+
+@pytest.mark.parametrize("wrong_hash", [False, True], ids=["matching", "wrong-hash"])
+def test_fp32_attention_reuses_only_the_pinned_candidate_plan(
+    adapter, tmp_path, monkeypatch, wrong_hash
+):
+    pytest.importorskip("onnx")
+    probe = import_module("rtdetrv4_fp32attn")
+    plan_sha = "a" * 64
+    args = SimpleNamespace(
+        candidate_engine_dir=tmp_path / "existing",
+        candidate_plan_sha256="b" * 64 if wrong_hash else plan_sha,
+        output=tmp_path / "new",
+    )
+    assets = SimpleNamespace(model_id="rtdetrv4-l")
+    profiles = {"pixels": (1, 2, 2)}
+    base = SimpleNamespace(
+        engine=SimpleNamespace(profiles=profiles),
+        export=SimpleNamespace(settings={}, onnx_files={"model.onnx": "c" * 64}),
+    )
+    candidate = SimpleNamespace(
+        engine=SimpleNamespace(plan_sha256=plan_sha, profiles=profiles)
+    )
+
+    def read_bundle(observed_assets, path, settings):
+        assert observed_assets is assets
+        assert path == args.candidate_engine_dir
+        assert settings["precision_variant"] == "trt16-fp32attn"
+        return candidate
+
+    def unexpected_conversion(*_args, **_kwargs):
+        pytest.fail("Reusing an existing plan must neither export nor build")
+
+    monkeypatch.setattr(probe, "detector_engine_bundle", read_bundle)
+    monkeypatch.setattr(probe, "measure_conversion", unexpected_conversion)
+    if wrong_hash:
+        with pytest.raises(ValueError, match="Reused candidate plan SHA-256 mismatch"):
+            probe._candidate_bundle(args, assets, base, torch.device("cpu"))
+    else:
+        assert (
+            probe._candidate_bundle(args, assets, base, torch.device("cpu"))
+            is candidate
+        )

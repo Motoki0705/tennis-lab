@@ -32,7 +32,7 @@ from rtdetrv4 import (
     detector_engine_bundle,
     preprocess,
 )
-from rtdetrv4_diagnose import FRAME_INDICES, capture_batches, decode_rows
+from rtdetrv4_diagnose import FRAME_INDICES, decode_rows
 
 from src.tennis_scene.evaluation.player_pose.bundle import load_reference_frames
 from src.tennis_scene.evaluation.player_pose.scoring import (
@@ -196,24 +196,69 @@ def export_attention_variant(base: EngineBundle, assets: Assets, target: Path) -
         raise ValueError("The FP32 attention graph changed its I/O or weight contract")
 
 
-def capture_in_frame_order(
+def capture_heads_in_frame_order(
     forward: Callable[[torch.Tensor], ModelOutputs],
-    decoder: Detector,
     pixels: torch.Tensor,
-    sizes: torch.Tensor,
     batch_size: int,
     order: tuple[int, ...],
-) -> tuple[dict[str, np.ndarray], list[Predictions]]:
+) -> dict[str, np.ndarray]:
     indices = list(order)
     if sorted(indices) != list(range(len(pixels))):
         raise ValueError("Expected a permutation of all diagnostic frames")
-    heads, rows = capture_batches(
-        forward, decoder, pixels[indices], sizes[indices], batch_size
-    )
+    ordered = pixels[indices]
+    logits, boxes = [], []
+    for start in range(0, len(pixels), batch_size):
+        batch_logits, batch_boxes = forward(ordered[start : start + batch_size])
+        logits.append(batch_logits.cpu().numpy())
+        boxes.append(batch_boxes.cpu().numpy())
     frame_order = np.argsort(indices)
-    return {name: head[frame_order] for name, head in heads.items()}, [
-        rows[index] for index in frame_order
-    ]
+    return {
+        "pred_logits": np.concatenate(logits)[frame_order],
+        "pred_boxes": np.concatenate(boxes)[frame_order],
+    }
+
+
+def decode_captured_heads(
+    decoder: Detector, heads: dict[str, np.ndarray], sizes: torch.Tensor
+) -> list[Predictions]:
+    return decode_rows(
+        decoder,
+        (torch.from_numpy(heads["pred_logits"]), torch.from_numpy(heads["pred_boxes"])),
+        sizes,
+    )
+
+
+def _decode_case(
+    decoder: Detector,
+    heads: dict[str, np.ndarray],
+    sizes: torch.Tensor,
+    case: dict[str, Any],
+) -> list[Predictions] | None:
+    if any(not np.isfinite(head).all() for head in heads.values()):
+        case.update(
+            status="infeasible",
+            failure_stage="raw_heads",
+            reason="Non-finite RT-DETRv4 raw output",
+            nonfinite_by_frame={
+                name: {
+                    "nan": np.count_nonzero(
+                        np.isnan(head).reshape(len(head), -1), axis=1
+                    ).tolist(),
+                    "inf": np.count_nonzero(
+                        np.isinf(head).reshape(len(head), -1), axis=1
+                    ).tolist(),
+                }
+                for name, head in heads.items()
+            },
+        )
+        return None
+    try:
+        rows = decode_captured_heads(decoder, heads, sizes)
+    except ValueError as error:
+        case.update(status="infeasible", failure_stage="postprocess", reason=str(error))
+        return None
+    case["status"] = "ok"
+    return rows
 
 
 def _compare(
@@ -291,6 +336,40 @@ def _read_pt16(
     return result
 
 
+def _candidate_bundle(
+    args: argparse.Namespace, assets: Assets, base: EngineBundle, device: torch.device
+) -> EngineBundle:
+    target = args.candidate_engine_dir
+    if target is None:
+        target = args.output / "engine"
+        export = measure_conversion(
+            Conversion.ONNX_EXPORT,
+            lambda: export_attention_variant(base, assets, target),
+        )
+        write_json_atomic(args.output / "onnx-export.json", asdict(export))
+        if export.failure:
+            raise ValueError(export.failure.message)
+        build = measure_conversion(
+            Conversion.ENGINE_BUILD,
+            lambda: build_bundle(
+                target, base.engine.profiles, device=device, workspace_bytes=GIB
+            ),
+            device=device,
+        )
+        write_json_atomic(args.output / "engine-build.json", asdict(build))
+        if build.failure:
+            raise RuntimeError(build.failure.message)
+    candidate = detector_engine_bundle(assets, target, _attention_settings(base))
+    if (
+        args.candidate_plan_sha256 is not None
+        and candidate.engine.plan_sha256 != args.candidate_plan_sha256
+    ):
+        raise ValueError("Reused candidate plan SHA-256 mismatch")
+    if candidate.engine.profiles != base.engine.profiles:
+        raise ValueError("The candidate plan has a different input profile")
+    return candidate
+
+
 def _diagnose(args: argparse.Namespace, receipt: dict[str, Any]) -> None:
     assets = Assets(args.model_id, args.upstream, args.weights)
     assets.verify()
@@ -322,25 +401,9 @@ def _diagnose(args: argparse.Namespace, receipt: dict[str, Any]) -> None:
     prepared, native_sizes = preprocess([fixed.frame(id_) for id_ in ids])
     pt16_heads = _read_pt16(args.archive, archive, prepared)
 
-    target = args.output / "engine"
     device = torch.device("cuda:0")
-    export = measure_conversion(
-        Conversion.ONNX_EXPORT, lambda: export_attention_variant(base, assets, target)
-    )
-    write_json_atomic(args.output / "onnx-export.json", asdict(export))
-    if export.failure:
-        raise ValueError(export.failure.message)
-    build = measure_conversion(
-        Conversion.ENGINE_BUILD,
-        lambda: build_bundle(
-            target, base.engine.profiles, device=device, workspace_bytes=GIB
-        ),
-        device=device,
-    )
-    write_json_atomic(args.output / "engine-build.json", asdict(build))
-    if build.failure:
-        raise RuntimeError(build.failure.message)
-    candidate = detector_engine_bundle(assets, target, _attention_settings(base))
+    candidate = _candidate_bundle(args, assets, base, device)
+    receipt["reused_candidate_plan"] = args.candidate_engine_dir is not None
     receipt["engines"] = {
         name: {
             "plan_sha256": bundle.engine.plan_sha256,
@@ -375,48 +438,50 @@ def _diagnose(args: argparse.Namespace, receipt: dict[str, Any]) -> None:
             decoder = Detector(Backend.TRT16, device, forward, postprocessor)
             for batch_size in (1, 2):
                 saved = pt16_heads[batch_size]
-                pt16_rows = decode_rows(
-                    decoder,
-                    (
-                        torch.from_numpy(saved["pred_logits"]),
-                        torch.from_numpy(saved["pred_boxes"]),
-                    ),
-                    sizes,
-                )
+                pt16_rows = decode_captured_heads(decoder, saved, sizes)
+                original = None
                 for order_name, order in FRAME_ORDERS.items():
-                    heads, rows = capture_in_frame_order(
-                        forward, decoder, pixels, sizes, batch_size, order
+                    case_id = f"{name}_b{batch_size}_{order_name}"
+                    case: dict[str, Any] = {
+                        "batch_size": batch_size,
+                        "execution_order": [ids[index] for index in order],
+                    }
+                    receipt["cases"][case_id] = case
+                    heads = capture_heads_in_frame_order(
+                        forward, pixels, batch_size, order
                     )
-                    case = f"{name}_b{batch_size}_{order_name}"
-                    raw.update({f"{case}_{key}": value for key, value in heads.items()})
+                    raw.update(
+                        {f"{case_id}_{key}": value for key, value in heads.items()}
+                    )
+                    rows = _decode_case(decoder, heads, sizes, case)
+                    if rows is None:
+                        continue
                     for index, row in enumerate(rows):
-                        raw[f"{case}_xyxy_{index}"] = row.boxes_xyxy
-                        raw[f"{case}_scores_{index}"] = row.scores
+                        raw[f"{case_id}_xyxy_{index}"] = row.boxes_xyxy
+                        raw[f"{case_id}_scores_{index}"] = row.scores
                     score = score_players(
                         references, dict(zip(keys, rows, strict=True))
                     )
                     detection = score["overall"]["detection"]
-                    receipt["cases"][case] = {
-                        "batch_size": batch_size,
-                        "execution_order": [ids[index] for index in order],
-                        "vs_saved_pt16": _compare(saved, pt16_rows, heads, rows),
-                        "pseudo_gt_references": detection["references"],
-                        "pseudo_gt_recall": detection["recall_by_iou"],
-                        "pseudo_gt_recall_by_min_score": detection[
-                            "recall_by_min_score"
-                        ],
-                    }
+                    case.update(
+                        vs_saved_pt16=_compare(saved, pt16_rows, heads, rows),
+                        pseudo_gt_references=detection["references"],
+                        pseudo_gt_recall=detection["recall_by_iou"],
+                        pseudo_gt_recall_by_min_score=detection["recall_by_min_score"],
+                    )
                     if order_name == "original":
-                        original_heads, original_rows = heads, rows
-                    else:
-                        receipt["cases"][case]["vs_original_order"] = _compare(
-                            original_heads, original_rows, heads, rows
-                        )
+                        original = (heads, rows)
+                    elif original is not None:
+                        case["vs_original_order"] = _compare(*original, heads, rows)
 
     raw_path = args.output / "raw-outputs.npz"
     np.savez_compressed(raw_path, allow_pickle=False, **raw)
+    infeasible = [
+        case for case, result in receipt["cases"].items() if result["status"] != "ok"
+    ]
     receipt.update(
-        status="ok",
+        status="infeasible" if infeasible else "ok",
+        infeasible_cases=infeasible,
         weight_sha256=assets.weight_sha256,
         source_diagnostic_job=archive["job_id"],
         source_pixels_sha256=archive["pixels"]["sha256"],
@@ -441,7 +506,11 @@ def main() -> None:
         parser.add_argument(f"--{name}", type=Path, required=True)
     parser.add_argument("--speed-sha256", required=True)
     parser.add_argument("--manifest-sha256", required=True)
+    parser.add_argument("--candidate-engine-dir", type=Path)
+    parser.add_argument("--candidate-plan-sha256")
     args = parser.parse_args()
+    if (args.candidate_engine_dir is None) != (args.candidate_plan_sha256 is None):
+        parser.error("Supply both --candidate-engine-dir and --candidate-plan-sha256")
     if not os.environ.get("TENNIS_RUN_ID") or not os.environ.get("TENNIS_REPRO_DIR"):
         raise ValueError("Run the FP32 attention probe in the shared training queue")
     args.output.mkdir(parents=True, exist_ok=False)
@@ -466,9 +535,11 @@ def main() -> None:
         raise
     write_json_atomic(path, receipt)
     print(
-        f"{args.model_id}/{CONDITION}: {len(receipt['cases'])} cases at {path}",
+        f"{args.model_id}/{CONDITION} {receipt['status']} ({len(receipt['cases'])} cases) at {path}",
         flush=True,
     )
+    if receipt["status"] != "ok":
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":
