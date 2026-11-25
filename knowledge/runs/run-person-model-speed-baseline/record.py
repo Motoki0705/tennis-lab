@@ -12,15 +12,14 @@ from shutil import copyfile
 from statistics import median, quantiles
 from tempfile import TemporaryDirectory
 
-import numpy as np
-from run import CASE_UNITS, GROUPS, SWEEPS
-from speed_inputs import BODY_LENGTH, WORKLOAD_INDEX, InputSet, require_sha
+from run import BACKENDS, CASE_UNITS, GROUPS, SWEEPS
+from speed_inputs import BODY_LENGTH, WORKLOAD_INDEX, InputSet
 
 from src.utils.checksum import dual_sha256
+from src.utils.inference_benchmark import ParityStatus
 from src.utils.inference_benchmark_inputs import TimingSchedule
 from src.utils.io import write_json_atomic
 
-BACKENDS = ("PT32", "PT16", "TRT16")
 STAGES = ("preprocess", "h2d", "forward", "postprocess", "d2h")
 RAW_FIELDS = (
     "batch_size",
@@ -39,6 +38,8 @@ CASE_FIELDS = (
     "batch_size",
     "item_unit",
     "status",
+    "parity_status",
+    "parity_not_evaluated_reason",
     "failure_code",
     "failure_phase",
     "failure_reason",
@@ -63,11 +64,10 @@ def read_json(path: Path):
     return json.loads(path.read_bytes())
 
 
-def pinned_inputs(directory: Path, destination: Path):
+def pinned_inputs(directory: Path):
     fixed = InputSet(directory)
-    exports = {"manifest.json": fixed.sha256}
     verified = {}
-    for name, spec in fixed.manifest["indexes"].items():
+    for name in fixed.manifest["indexes"]:
         for row in fixed.rows(name):
             relative, expected_hash = row["path"], row["sha256"]
             if relative in verified and verified[relative] != expected_hash:
@@ -75,12 +75,6 @@ def pinned_inputs(directory: Path, destination: Path):
             if relative not in verified:
                 fixed.pins.verified_asset(row)
                 verified[relative] = expected_hash
-        exports[spec["path"]] = spec["sha256"]
-    (destination / "inputs").mkdir(exist_ok=True)
-    for path, expected in exports.items():
-        target = destination / "inputs" / path
-        copyfile(directory / path, target)
-        require_sha(target, expected)
     print(f"Verified {len(verified)} fixed input files and manifest {fixed.sha256}")
     return fixed, len(verified)
 
@@ -217,44 +211,53 @@ def archive_asset_paths(assets, source):
             raise ValueError(f"Unknown weight or engine asset path: {path}")
 
 
-def pelvis_aligned_joint_error_p95(source: Path) -> float | None:
-    pt32 = source / "results/body/PT32-b1/predictions.json"
-    trt16 = source / "results/body/TRT16-b1/predictions.json"
-    if not (pt32.is_file() and trt16.is_file()):
-        return None
-    reference, candidate = read_json(pt32), read_json(trt16)
-    if not reference or reference.keys() != candidate.keys():
-        return None
-    distances = []
-    for key, value in reference.items():
-        first, second = (
-            np.asarray(value["joints"]),
-            np.asarray(candidate[key]["joints"]),
-        )
-        if first.shape != second.shape or first.ndim != 3 or first.shape[-1] != 3:
-            return None
-        distances.append(
-            np.linalg.norm(
-                (first - first[:, :1]) - (second - second[:, :1]), axis=-1
-            ).ravel()
-        )
-    return 1000 * float(np.percentile(np.concatenate(distances), 95))
-
-
 def verify_outcome(report, schedule: TimingSchedule, path: Path):
     status, failure, parity = report["status"], report["failure"], report["parity"]
-    if status == "ok":
-        if failure is not None or parity is None or parity["passed"] is not True:
-            raise ValueError(f"Missing successful parity outcome: {path}")
-    elif status in ("parity_failed", "infeasible"):
-        if not failure or not failure["message"]:
-            raise ValueError(f"Missing condition failure reason: {path}")
-        if status == "parity_failed" and (
-            failure["phase"] != "parity" or (parity is not None and parity["passed"])
+    parity_status = ParityStatus(report["parity_status"])
+    reason = report["parity_not_evaluated_reason"]
+    if parity_status is ParityStatus.NOT_EVALUATED:
+        if not isinstance(reason, str) or not reason.strip() or parity is not None:
+            raise ValueError(
+                f"Missing explicit reason or unexpected parity result: {path}"
+            )
+    elif reason is not None:
+        raise ValueError(f"Unexpected parity opt-out reason: {path}")
+    if parity_status in (ParityStatus.PASSED, ParityStatus.FAILED):
+        if parity is None or parity["passed"] is not (
+            parity_status is ParityStatus.PASSED
         ):
             raise ValueError(f"Mismatched parity outcome: {path}")
+    elif parity is not None:
+        raise ValueError(f"Unexpected parity result: {path}")
+
+    if status == "ok":
+        valid = failure is None and parity_status in (
+            ParityStatus.PASSED,
+            ParityStatus.NOT_EVALUATED,
+        )
+    elif status == "parity_failed":
+        valid = (
+            failure
+            and failure["phase"] == "parity"
+            and failure["message"]
+            and parity_status
+            in (
+                ParityStatus.FAILED,
+                ParityStatus.UNAVAILABLE,
+            )
+        )
+    elif status == "infeasible":
+        valid = (
+            failure
+            and failure["message"]
+            and parity_status in (ParityStatus.NOT_RUN, ParityStatus.NOT_EVALUATED)
+        )
     else:
         raise ValueError(f"Unknown condition status {status}: {path}")
+    if not valid:
+        raise ValueError(
+            f"Missing failure reason or inconsistent timing and parity status: {path}"
+        )
     if (
         parity is not None
         and not parity["metrics"].get("invalid")
@@ -263,8 +266,8 @@ def verify_outcome(report, schedule: TimingSchedule, path: Path):
         raise ValueError(f"Incomplete parity input coverage: {path}")
 
 
-def record(source: Path, destination: Path, *, input_dir: Path | None = None):
-    fixed, file_count = pinned_inputs(input_dir or source / "inputs", destination)
+def record(source: Path, destination: Path, *, input_dir: Path):
+    fixed, file_count = pinned_inputs(input_dir)
     defined = {
         (workload, backend, size)
         for workload, sweep in SWEEPS.items()
@@ -336,6 +339,10 @@ def record(source: Path, destination: Path, *, input_dir: Path | None = None):
                         "batch_size": size,
                         "item_unit": case["item_unit"],
                         "status": report["status"],
+                        "parity_status": report["parity_status"],
+                        "parity_not_evaluated_reason": report[
+                            "parity_not_evaluated_reason"
+                        ],
                         "failure_code": failure.get("status"),
                         "failure_phase": failure.get("phase"),
                         "failure_reason": failure.get("message"),
@@ -380,11 +387,6 @@ def record(source: Path, destination: Path, *, input_dir: Path | None = None):
             "timing_protocol_sha256": fixed.pins.timing_sha256,
             "fixed_input_files_verified": file_count,
             "conditions": cases,
-            "diagnostics": {
-                "body_trt16_b1_pelvis_aligned_joint_error_p95_mm": pelvis_aligned_joint_error_p95(
-                    source
-                )
-            },
         },
     )
     build = source / "vitpose-b1-build.json"
@@ -400,16 +402,14 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("source", type=Path)
     parser.add_argument("destination", type=Path)
-    parser.add_argument("--input-dir", type=Path)
+    parser.add_argument("--input-dir", type=Path, required=True)
     args = parser.parse_args()
+    if args.destination.exists():
+        parser.error(f"Use a fresh record directory: {args.destination}")
     args.destination.parent.mkdir(parents=True, exist_ok=True)
     with TemporaryDirectory(
         prefix=".person-speed-record-", dir=args.destination.parent
     ) as staging:
         staging = Path(staging)
         record(args.source, staging, input_dir=args.input_dir)
-        for path in sorted(staging.rglob("*")):
-            if path.is_file():
-                target = args.destination / path.relative_to(staging)
-                target.parent.mkdir(parents=True, exist_ok=True)
-                path.replace(target)
+        staging.rename(args.destination)

@@ -3,17 +3,18 @@ from __future__ import annotations
 import csv
 import hashlib
 import json
-from dataclasses import replace
 from pathlib import Path
+from subprocess import STDOUT, CompletedProcess
 from types import SimpleNamespace
 
 import numpy as np
 import pytest
 import record as publish_run
+import run as baseline
 import speed_inputs
 import torch
 from parity import compare
-from run import reference_predictions, start_suite
+from run import PARITY_NOT_EVALUATED_REASON, start_suite
 from speed_inputs import ClipRows, publish, require_sha, write_crops
 from speed_models import classify_startup, dino_decode_gpu
 
@@ -143,54 +144,74 @@ def test_suite_rejects_existing_results_before_running_children(tmp_path: Path) 
     assert not (tmp_path / "invocation-detection.json").exists()
 
 
-def test_pt32_reference_requires_same_invocation_and_current_artifacts(
+def test_baseline_suites_only_schedule_the_authorized_conditions(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    checkpoint = tmp_path / "weights.pt"
-    checkpoint.write_bytes(b"reference model")
-    predictions = tmp_path / "predictions.json"
-    write_json_atomic(predictions, {"a": 1})
-    identity = {
-        "commit": "ref-commit",
-        "suite_id": "fresh-suite",
-        "contract": {"flip": True},
+    launched = []
+
+    def child_process(command, **kwargs):
+        action, workload, backend, size, _ = command[-5:]
+        assert action == "case"
+        launched.append((workload, backend, int(size)))
+        result = tmp_path / "results" / workload / f"{backend}-b{size}" / "report.json"
+        write_json_atomic(result, {"status": "ok"})
+        return CompletedProcess(command, 0)
+
+    monkeypatch.setattr(
+        baseline,
+        "subprocess",
+        SimpleNamespace(
+            run=child_process,
+            check_output=lambda *a, **kw: "a" * 40,
+            STDOUT=STDOUT,
+        ),
+    )
+    monkeypatch.setattr(
+        baseline,
+        "InputSet",
+        lambda _: SimpleNamespace(
+            pins=SimpleNamespace(schedule=lambda *a: None),
+        ),
+    )
+    for group in ("detection", "pose", "body"):
+        args = SimpleNamespace(
+            group=group,
+            output=tmp_path,
+            input_dir=tmp_path / "fixed",
+            benchmark=baseline.BENCHMARK,
+            external_assets=tmp_path / "external",
+            trt_root=tmp_path / "trt",
+            pose_engine_run=tmp_path / "prior",
+        )
+        assert baseline.suite(args) == 0
+        invocation = json.loads((tmp_path / f"invocation-{group}.json").read_bytes())
+        assert (
+            invocation["settings"]["parity_not_evaluated_reason"]
+            == PARITY_NOT_EVALUATED_REASON
+        )
+    assert len(launched) == len(set(launched)) == 22
+    assert {backend for _, backend, _ in launched} == {"PT16", "TRT16"}
+    assert {(workload, size) for workload, _, size in launched} == {
+        ("dino", 1),
+        ("dino", 2),
+        ("vitpose", 1),
+        ("vitpose", 4),
+        ("vitpose", 8),
+        ("vitpose-flip", 1),
+        ("vitpose-flip", 4),
+        ("vitpose-flip", 8),
+        ("body", 1),
+        ("body", 2),
+        ("body", 4),
     }
-    case = BenchmarkCase(
-        "dino", Backend.PT16, 2, "image", "a" * 64, {"reference_identity": identity}
-    )
-    write_json_atomic(
-        tmp_path / "report.json",
-        {
-            "case": {
-                "name": "dino",
-                "backend": "PT32",
-                "batch_size": 1,
-                "input_manifest_sha256": case.input_manifest_sha256,
-                "settings": case.settings,
-            },
-            "status": "ok",
-            "predictions_sha256": dual_sha256(predictions),
-            "weights": {
-                "dino": {"path": str(checkpoint), "sha256": dual_sha256(checkpoint)}
-            },
-        },
-    )
-    weights = {"dino": checkpoint}
-    assert reference_predictions(tmp_path, case, weights) == {"a": 1}
-    older = replace(
-        case, settings={"reference_identity": {**identity, "commit": "older"}}
-    )
-    with pytest.raises(ConditionUnavailable, match="reference identity"):
-        reference_predictions(tmp_path, older, weights)
-    with pytest.raises(ConditionUnavailable, match="asset path differs"):
-        reference_predictions(tmp_path, case, {"dino": tmp_path / "alternate.pt"})
-    checkpoint.write_bytes(b"changed")
-    with pytest.raises(ConditionUnavailable, match="SHA-256 mismatch"):
-        reference_predictions(tmp_path, case, weights)
-    checkpoint.write_bytes(b"reference model")
-    write_json_atomic(predictions, {"a": 2})
-    with pytest.raises(ConditionUnavailable, match="SHA-256 mismatch"):
-        reference_predictions(tmp_path, case, weights)
+
+
+def test_direct_case_rejects_pt32_before_accessing_assets() -> None:
+    with pytest.raises(
+        ValueError, match="PT32 is outside the baseline measurement scope"
+    ):
+        baseline.one_case(SimpleNamespace(workload="dino", backend="PT32", batch=1))
 
 
 def test_trt_context_creation_failure_can_be_recorded_as_unavailable() -> None:
@@ -259,9 +280,21 @@ def _record_fixture(
     return speed_inputs.InputSet(directory)
 
 
-@pytest.mark.parametrize("oom_samples", [0, 1])
-def test_failures_reach_public_json_and_csv(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, oom_samples: int
+@pytest.mark.parametrize(
+    ("code", "phase", "completed"),
+    [
+        (Status.OOM, "load", 0),
+        (Status.OOM, "measure", 1),
+        (Status.CONVERSION_FAILED, "engine_build", 0),
+        (Status.PARITY_FAILED, "parity", 2),
+    ],
+)
+def test_outcomes_reach_public_json_and_csv(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    code: Status,
+    phase: str,
+    completed: int,
 ) -> None:
     fixed = _record_fixture(tmp_path / "inputs", monkeypatch)
     schedule = fixed.pins.schedule("frames", 1)
@@ -271,24 +304,13 @@ def test_failures_reach_public_json_and_csv(
     sample = BatchSample(
         1, ("video/clip/frame",), 1, 1, 2, (StageSample(Stage.FORWARD, "dino", 2, 2),)
     )
-    statuses = {
-        Backend.PT32: (
-            Failure(
-                Status.OOM, "measure" if oom_samples else "load", "allocator failed"
-            ),
-            [sample] * oom_samples,
-        ),
-        Backend.PT16: (
-            Failure(Status.PARITY_FAILED, "parity", "score limit exceeded"),
-            [sample, sample],
-        ),
-        Backend.TRT16: (
-            Failure(Status.CONVERSION_FAILED, "engine_build", "unsupported TRT op"),
-            [],
-        ),
-    }
     attempts = []
-    for backend, (failure, samples) in statuses.items():
+    for backend in (Backend.PT16, Backend.TRT16):
+        reference_checked = backend is Backend.TRT16 and code is Status.PARITY_FAILED
+        failure = (
+            None if backend is Backend.PT16 else Failure(code, phase, "fixture failure")
+        )
+        samples = [sample] * (2 if backend is Backend.PT16 else completed)
         case = BenchmarkCase(
             "dino",
             backend,
@@ -302,18 +324,26 @@ def test_failures_reach_public_json_and_csv(
             },
         )
         report = BenchmarkReport(
-            case, BenchmarkProtocol((1,), 1, 2, 1), (), samples=samples, failure=failure
+            case,
+            BenchmarkProtocol((1,), 1, 2, 1),
+            (),
+            samples=samples,
+            failure=failure,
+            parity_not_evaluated_reason=None
+            if reference_checked
+            else PARITY_NOT_EVALUATED_REASON,
         )
-        if backend is Backend.PT16:
+        if reference_checked:
             report.parity = compare(
                 "dino",
                 {"frame": {"boxes": [[0, 0, 10, 10]], "scores": [0.9]}},
                 {"frame": {"boxes": [[0, 0, 10, 10]], "scores": [0.8]}},
             )
+        if backend is Backend.PT16 or reference_checked:
             report.summary = dict.fromkeys(
                 ("stage_wall", "model_gpu", "forward"), speed
             )
-        if backend is Backend.TRT16:
+        if failure and failure.status is Status.CONVERSION_FAILED:
             report.conversion = (
                 ConversionResult(Conversion.ENGINE_BUILD, None, failure),
             )
@@ -321,7 +351,9 @@ def test_failures_reach_public_json_and_csv(
         directory = tmp_path / relative
         directory.mkdir(parents=True)
         write_json_atomic(directory / "report.json", report.to_dict())
-        (directory / "case.log").write_text(failure.message)
+        (directory / "case.log").write_text(
+            failure.message if failure else "case completed"
+        )
         attempts.append(
             {
                 "workload": "dino",
@@ -336,36 +368,38 @@ def test_failures_reach_public_json_and_csv(
 
     publication = tmp_path / "published"
     publication.mkdir()
-    publish_run.record(tmp_path, publication)
+    publish_run.record(tmp_path, publication, input_dir=tmp_path / "inputs")
     conditions = json.loads((publication / "cases.json").read_bytes())["conditions"]
     with (publication / "cases.csv").open() as file:
         rows = {row["backend"]: row for row in csv.DictReader(file)}
-    for backend, code, count in (
-        ("PT32", "oom", oom_samples),
-        ("TRT16", "conversion_failed", 0),
-    ):
-        row = rows[backend]
-        assert row["status"] == "infeasible" and row["failure_code"] == code
-        assert (
-            row["samples"] == str(count)
-            and row["wall_p50_ms"] == ""
-            and row["failure_reason"]
-        )
-        case = next(
-            condition
-            for condition in conditions
-            if condition["case"]["backend"] == backend
-        )
-        assert case["summary"] is None and case["parity"] is None
-        assert case["failure"]["status"] == code and case["samples"] == count
-    with (publication / "measurements/dino-pt32.csv").open() as file:
-        assert len(list(csv.DictReader(file))) == oom_samples
+    assert set(rows) == {"PT16", "TRT16"}
+    measured = rows["PT16"]
+    assert measured["status"] == "ok" and measured["parity_status"] == "not_evaluated"
+    assert measured["parity_not_evaluated_reason"] == PARITY_NOT_EVALUATED_REASON
+    assert float(measured["wall_p50_ms"]) == 2
+    measured_case, failed_case = conditions
+    assert measured_case["parity"] is None and measured_case["failure"] is None
+    assert measured_case["parity_not_evaluated_reason"] == PARITY_NOT_EVALUATED_REASON
+
+    row = rows["TRT16"]
     assert (
-        rows["PT16"]["status"] == "parity_failed"
-        and float(rows["PT16"]["wall_p50_ms"]) == 2
+        row["failure_code"] == code
+        and row["failure_phase"] == phase
+        and row["failure_reason"]
     )
-    parity_case = next(
-        condition for condition in conditions if condition["status"] == "parity_failed"
+    assert row["samples"] == str(completed)
+    assert (
+        failed_case["failure"]["status"] == code and failed_case["samples"] == completed
     )
-    assert parity_case["summary"]["stage_wall"]["p95_ms"] == 2
-    assert not parity_case["parity"]["passed"]
+    with (publication / "measurements/dino-trt16.csv").open() as file:
+        assert len(list(csv.DictReader(file))) == completed
+    if code is Status.PARITY_FAILED:
+        assert row["status"] == "parity_failed" and row["parity_status"] == "failed"
+        assert float(row["wall_p50_ms"]) == 2 and not failed_case["parity"]["passed"]
+    else:
+        assert row["status"] == "infeasible" and row["parity_status"] == "not_evaluated"
+        assert (
+            row["wall_p50_ms"] == ""
+            and failed_case["summary"] is None
+            and failed_case["parity"] is None
+        )
