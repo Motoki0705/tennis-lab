@@ -45,14 +45,12 @@ accuracy() {
     local backend=$1 destination=$2
     shift 2
     record "${python_run[@]}" "$experiment/edgecrafter.py" evaluate \
-        --model "$model" --backend "$backend" --batch-size 1 \
+        --model "$model" --backend "$backend" --batch-size 1 --parity not_measured \
         --manifest-sha256 "$cohort_sha" --output "$destination" "${pose[@]}" "$@"
 }
 
 if [[ $model == ecpose-* ]]; then
-    for backend in pt32 pt16; do
-        accuracy "$backend" "$output/$backend" || true
-    done
+    accuracy pt16 "$output/pt16" || true
 fi
 
 trt="$output/trt16-trace2"

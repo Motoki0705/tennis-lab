@@ -9,7 +9,7 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-from edgecrafter import PREDICTION_SCHEMA
+from edgecrafter import PARITY_NOT_MEASURED, PREDICTION_SCHEMA
 
 from src.tennis_scene.evaluation.player_pose.scoring import (
     FrameKey,
@@ -54,6 +54,8 @@ def compare_files(reference: Path, candidate: Path) -> dict[str, object]:
         for path in (reference, candidate)
     ]
     first, second = metadata
+    if (second.get("parity") or {}).get("status") == PARITY_NOT_MEASURED:
+        raise ValueError("Candidate explicitly records PT32未計測")
     header_keys = ("schema", "benchmark_id", "manifest_sha256", "model_id", "has_pose")
     settings_keys = (
         "weight_sha256",

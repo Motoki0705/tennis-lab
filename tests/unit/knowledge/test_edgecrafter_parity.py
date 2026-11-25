@@ -119,3 +119,20 @@ def test_file_comparison_rejects_different_source_frames(
         )
     with pytest.raises(ValueError, match="misaligned"):
         script["compare_files"](tmp_path / "pt32", tmp_path / "pt16")
+
+
+def test_file_comparison_respects_explicit_parity_opt_out(
+    script: dict[str, Any], tmp_path: Path
+) -> None:
+    reference = tmp_path / "pt32"
+    candidate = tmp_path / "pt16"
+    reference.mkdir()
+    candidate.mkdir()
+    write_json_atomic(reference / "metrics.json", {})
+    write_json_atomic(
+        candidate / "metrics.json",
+        {"parity": {"status": "not_measured", "reason": "PT32未計測"}},
+    )
+
+    with pytest.raises(ValueError, match="PT32未計測"):
+        script["compare_files"](reference, candidate)
