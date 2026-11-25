@@ -400,19 +400,28 @@ def make_adapter(
             )
         try:
             runner = load_engine(model_id, engine, device_spec)
-        except (OSError, ImportError, ValueError, FileIntegrityError) as error:
+        except torch.OutOfMemoryError:
+            raise
+        except (
+            OSError,
+            ImportError,
+            ValueError,
+            RuntimeError,
+            FileIntegrityError,
+        ) as error:
             raise ConditionUnavailable(
                 Status.UNAVAILABLE, f"PMPose TensorRT engine: {error}"
             ) from error
 
         def forward(pixels: torch.Tensor) -> TensorOutputs:
             try:
-                runner.bundle.engine.profiles["pixels"].require(
-                    tuple(pixels.shape), tensor="pixels"
-                )
-            except ValueError as error:
-                raise ConditionUnavailable(Status.UNSUPPORTED, str(error)) from error
-            raw = runner({"pixels": pixels})
+                raw = runner({"pixels": pixels})
+            except torch.OutOfMemoryError:
+                raise
+            except (ValueError, RuntimeError) as error:
+                raise ConditionUnavailable(
+                    Status.UNSUPPORTED, f"PMPose TensorRT inference: {error}"
+                ) from error
             return tuple(raw[name] for name in OUTPUT_SPEC)
 
         return _infer(upstream, forward, backend, device_spec, dtype)
