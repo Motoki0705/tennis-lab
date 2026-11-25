@@ -8,6 +8,7 @@ import sys
 from pathlib import Path
 from types import SimpleNamespace
 
+import cv2
 import numpy as np
 import pytest
 import torch
@@ -207,11 +208,14 @@ def test_speed_cli_passes_pinned_schedule_and_explicit_parity_policy(
     )
     batches = [Batch(("image",), (np.zeros((1, 1, 3), np.uint8),))]
     reason = "PT32計測はスコープ外（ユーザー判断 2026-11-25）"
+    threads = {"torch": 2, "opencv": 12}
 
     def inspect_benchmark(case, inputs, adapters, **options):
         assert case.backend is Backend.PT16
         assert inputs is batches
         assert tuple(adapters) == (Backend.PT16,)
+        assert case.settings["host_threads"] == threads["torch"] == 4
+        assert case.settings["opencv_threads"] == threads["opencv"] == 1
         assert options == {
             "device": torch.device("cuda:0"),
             "dedicated_stream": True,
@@ -222,6 +226,10 @@ def test_speed_cli_passes_pinned_schedule_and_explicit_parity_policy(
         return BenchmarkReport(case, protocol, (), parity_not_evaluated_reason=reason)
 
     monkeypatch.delenv("TENNIS_REPRO_DIR", raising=False)
+    monkeypatch.setattr(torch, "set_num_threads", lambda n: threads.update(torch=n))
+    monkeypatch.setattr(torch, "get_num_threads", lambda: threads["torch"])
+    monkeypatch.setattr(cv2, "setNumThreads", lambda n: threads.update(opencv=n))
+    monkeypatch.setattr(cv2, "getNumThreads", lambda: threads["opencv"])
     monkeypatch.setattr(model, "open", lambda path, _: model(path))
     monkeypatch.setitem(main.__globals__, "benchmark", inspect_benchmark)
     monkeypatch.setitem(

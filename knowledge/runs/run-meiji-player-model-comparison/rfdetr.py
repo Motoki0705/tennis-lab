@@ -389,6 +389,9 @@ def measure_speed(
     input_dir: Path,
     batch_size: int,
 ) -> Status:
+    # Match the host thread settings used by the fixed-input DINO benchmark.
+    torch.set_num_threads(4)
+    cv2.setNumThreads(1)
     pins, schedule, batches = speed_batches(input_dir, batch_size)
     conversions = speed_conversion(engine.parent) if backend is Backend.TRT16 else ()
     case = BenchmarkCase(
@@ -405,6 +408,7 @@ def measure_speed(
             "harness_merge_commit": HARNESS_MERGE_COMMIT,
             "input_decode": "predecoded BGR",
             "host_threads": torch.get_num_threads(),
+            "opencv_threads": cv2.getNumThreads(),
             "cuda_stream": "non-default",
             "source_commit": subprocess.check_output(
                 ["git", "rev-parse", "HEAD"], text=True

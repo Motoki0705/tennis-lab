@@ -45,12 +45,14 @@ export PYTHONPATH="$tooling/python:."
 
 The six jobs submitted with the earlier timing program were cancelled before execution on 2026-11-25 JST. The current protocol comes from #2497, merged as `59faa32a28d2f54e6492abdba2429846fa0397e3`. It uses the same 96 BGR images, batch 1 and 2, a dedicated CUDA stream, 30 warmups and three blocks of 100 synchronized timed batches. The loader verifies the fixed assets and batch-specific timing order. Reports label parity as `PT32未計測` in the comparison and record the reason in `parity_not_evaluated_reason`. [Cancellation receipts](rfdetr-speed-cancellations.json) · [Fixed inputs](../run-person-model-speed-baseline/inputs/manifest.json) · [Timing protocol](../run-person-model-speed-baseline/timing-protocol.json) · [DINO speed results](../run-person-model-speed-low-precision/cases.csv)
 
-Use a fresh `speed_out`. Submit each speed condition to the shared training queue with the complete GPU reservation. Reuse the validated batch-1 plan and run export, build and speed as separate processes for batch 2. The batch-2 speed process requires a successful build.
+The first synchronized RF-DETR run completed 300 timed batches per condition with two PyTorch CPU threads. The DINO run used four. The speed command now sets four PyTorch CPU threads and one OpenCV thread, matching the baseline runner. The original reports, conversion receipts and exact queue commands are indexed with their SHA-256 digests. [Initial speed run](rfdetr-speed-initial.json) · [DINO runner](../run-person-model-speed-baseline/run.py)
+
+Use a fresh `speed_out`. Submit each speed condition to the shared training queue with the complete GPU reservation. Both batch-specific plans from the completed runs have been verified. To regenerate the batch-2 plan, run `export --batch-size 2` followed by `build --batch-size 2` in a fresh output root and point `--engine-dir` at the resulting plan directory.
 
 ```bash
 checkout_root=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
 speed_inputs="$checkout_root/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs"
-speed_out=outputs/player-model-comparison/speed-synchronized-v1
+speed_out="$out/speed-synchronized-v2"
 rf=(.venv/bin/python -B -u knowledge/runs/run-meiji-player-model-comparison/rfdetr.py
     --weights "$tooling/rf-detr-large-2026.pth" --output-root "$speed_out")
 common=(--speed-inputs "$speed_inputs" --parity not_measured)
@@ -59,8 +61,8 @@ for batch in 1 2; do
 done
 "${rf[@]}" speed --backend trt16 --batch-size 1 "${common[@]}" \
   --engine-dir "$out/rfdetr-l/trt16/batch-1/engine"
-"${rf[@]}" export --batch-size 2 && "${rf[@]}" build --batch-size 2 &&
-  "${rf[@]}" speed --backend trt16 --batch-size 2 "${common[@]}"
+"${rf[@]}" speed --backend trt16 --batch-size 2 "${common[@]}" \
+  --engine-dir "$out/speed-synchronized-v1/rfdetr-l/trt16/batch-2/engine"
 ```
 
 Reports at `rfdetr-l/<backend>/speed-b<batch>/report.json` include case status, timings, VRAM, per-batch input IDs, and the measured Git HEAD and harness merge. Preflight failures have a `speed-failure.json` in the condition directory. Export and build receipts are under `rfdetr-l/trt16/batch-<batch>/` in the corresponding asset root.
