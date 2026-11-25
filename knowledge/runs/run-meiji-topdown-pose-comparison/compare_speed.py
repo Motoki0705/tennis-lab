@@ -447,7 +447,7 @@ def main() -> None:
     with (args.output / "comparison.csv").open(
         "x", encoding="utf-8", newline=""
     ) as handle:
-        writer = csv.DictWriter(handle, fieldnames=list(rows[0]))
+        writer = csv.DictWriter(handle, fieldnames=list(rows[0]), lineterminator="\n")
         writer.writeheader()
         writer.writerows(rows)
     _plot(rows, args.output / "pareto-batch1.png")

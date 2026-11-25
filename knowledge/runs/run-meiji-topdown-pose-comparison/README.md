@@ -37,13 +37,25 @@ Use the common harness and pinned crop schedule for new candidate runs. Pass `pa
 
 For the primary comparison, join fixed-denominator pseudo-GT accuracy to synchronized speed by model and backend. Accuracy comes from the previously saved batch 8 runs. Compare each speed row to ViTPose-H with flip at the same batch and backend. Compute the Pareto frontier separately for each batch by maximizing mean OKS and minimizing wall P50 per person and sampled NVML device memory. The batch 1 plot shows accuracy against both cost axes and marks membership in the three-metric frontier. Identical points share frontier membership. Supplemental ViTPose-H results without flip are available in the original speed and accuracy tables.
 
-Run the comparison on the CPU after checking the terminal job reports. The positional arguments are the candidate `report.json` paths from the two RTMPose and four PMPose jobs. If a terminal case has no report, pass `--omissions` with a JSON list of entries containing `model`, `backend`, `batch_size`, `reason`, and `evidence` pointing to the terminal log. The command requires evidence for every case before it writes `comparison.csv` and `pareto-batch1.png`.
+The published comparison contains all 30 synchronized speed cases and their fixed-box accuracy. The CSV reports latency and sampled-memory reductions versus the same backend and batch of ViTPose-H with flip. Positive reductions indicate lower time or memory. Throughput gain uses persons/s. Accuracy differences are percentage points, and the original accuracy table retains the historical PT32 values and output differences. [Comparison CSV](comparison.csv) · [Batch 1 Pareto plot](pareto-batch1.png) · [Original accuracy table](accuracy.csv)
+
+Run the comparison on the CPU from the checkout root and choose a new output directory. The index pins the 24 candidate reports and the reused baseline summary. It also locates the retained jobs, commands and logs. If a future terminal case has no report, pass `--omissions` with a JSON list of entries containing `model`, `backend`, `batch_size`, `reason`, and `evidence` pointing to the terminal log. The command requires evidence for every case before it writes the CSV and plot. [Comparison inputs and queue records](comparison_inputs.json)
 
 ```bash
+set -euo pipefail
+run=knowledge/runs/run-meiji-topdown-pose-comparison
 baseline=knowledge/runs/run-person-model-speed-baseline
-CUDA_VISIBLE_DEVICES='' PYTHONPATH="$PWD:$PWD/$run:$PWD/$baseline" \
-  .venv/bin/python -B "$run/compare_speed.py" --inputs "$PERSON_FIXED_INPUTS" \
-  --output outputs/pose-comparison/final-speed "${candidate_reports[@]}"
+root="$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")"
+fixed="$root/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs"
+jq -r --arg root "$root" '.reports[] | "\(.sha256)  \($root)/\(.path)"' \
+  "$run/comparison_inputs.json" | sha256sum --check --quiet
+jq -r '.baseline_cases | "\(.sha256)  \(.path)"' \
+  "$run/comparison_inputs.json" | sha256sum --check --quiet
+mapfile -t reports < <(jq -r --arg root "$root" '.reports[] | "\($root)/\(.path)"' "$run/comparison_inputs.json")
+CUDA_VISIBLE_DEVICES='' PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$PWD:$PWD/$run:$PWD/$baseline" \
+  OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 OPENBLAS_NUM_THREADS=1 \
+  .venv/bin/python -B "$run/compare_speed.py" --inputs "$fixed" \
+  --output outputs/pose-comparison/final-speed-reproduced "${reports[@]}"
 ```
 
 The comparison tests reuse `test_pinned_schedule_rejects_reordered_loaded_batches` and `test_explicit_parity_opt_out_records_speed_without_extra_inference` from the shared harness. The comparison-specific CPU tests use a short synthetic schedule to reject reordered or missing timed rows, check a dominated point and tied frontier points, and verify a hand-calculated baseline improvement. A preflight against the published ViTPose-H reports uses saved JSON and the fixed input index.

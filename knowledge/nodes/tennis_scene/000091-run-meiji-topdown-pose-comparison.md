@@ -8,8 +8,8 @@ title: Meiji 4camの固定疑似BBoxでトップダウンCOCO17を比較
 issue: 2490
 provider: codex
 date: '2026-11-24'
-status: running
-summary_impact: none
+status: done
+summary_impact: updated
 config:
   accuracy_input: meiji_4cam/multiview-player-evaluation-v1
   accuracy_manifest_sha256: 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580
@@ -19,6 +19,8 @@ config:
   speed_timing_protocol_sha256: 39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2
   speed_harness_merge_commit: 59faa32a28d2f54e6492abdba2429846fa0397e3
   vitpose_speed_measurement_commit: 13e508cb78c46663fbe58ad8be03bcf9c96816a6
+  rtmpose_speed_measurement_commit: 645bf735dc4a183c46ce1a9448bbd8eee8d0ec30
+  pmpose_speed_measurement_commit: 206aa346f555a60292a61b5284830f00e14a68cd
   speed_parity: not_evaluated
 metrics:
   images: 6844
@@ -27,6 +29,14 @@ metrics:
   completed_primary_accuracy_conditions: 15
   completed_supplemental_accuracy_conditions: 3
   vitpose_reused_speed_cases: 12
+  primary_synchronized_speed_cases: 30
+  candidate_speed_jobs: 6
+  candidate_speed_samples_verified: 7200
+  primary_pareto_batch_1_cases: 9
+  rtmpose_x_trt16_batch_1_wall_p50_ms: 9.0147425
+  rtmpose_x_trt16_batch_1_wall_p95_ms: 12.10731940000001
+  rtmpose_x_trt16_mean_oks: 0.7682614289789691
+  pmpose_h_trt16_mean_oks: 0.7808494440437247
   excluded_sapiens2_conditions: 6
   downstream_pose_tracks_per_condition: 96
   downstream_nonfinite_conditions: 1
@@ -61,6 +71,15 @@ artifacts:
   vitpose_speed_records: knowledge/runs/run-person-model-speed-low-precision/cases.json
   rtmpose_accuracy: knowledge/runs/run-meiji-topdown-pose-comparison/rtmpose_accuracy.json
   pmpose_accuracy: knowledge/runs/run-meiji-topdown-pose-comparison/pmpose_accuracy.json
+  rtmpose_speed: knowledge/runs/run-meiji-topdown-pose-comparison/rtmpose_speed.json
+  pmpose_speed: knowledge/runs/run-meiji-topdown-pose-comparison/pmpose_speed.json
+  comparison_inputs: knowledge/runs/run-meiji-topdown-pose-comparison/comparison_inputs.json
+  speed_accuracy_comparison:
+    path: knowledge/runs/run-meiji-topdown-pose-comparison/comparison.csv
+    sha256: 07ec9043a04343d6c81570220ec55282b202f8f48faa5874d5cdcf89b8d6e761
+  pareto_batch_1:
+    path: knowledge/runs/run-meiji-topdown-pose-comparison/pareto-batch1.png
+    sha256: 62906a8df14648b6455ef49bf2afbf325169550e12a6b3357807fa03057d13af
   sapiens2_conversion: knowledge/runs/run-meiji-topdown-pose-comparison/sapiens2_conversion.json
   sapiens2_attempts: knowledge/runs/run-meiji-topdown-pose-comparison/sapiens2_attempts.json
   difficulty_pt32: knowledge/runs/run-meiji-topdown-pose-comparison/difficulty_pt32.csv
@@ -129,4 +148,24 @@ ViTPose-HのflipありでPT32に対する座標差はPT16がP95 0.0088 px、TRT1
 
 ViTPose-Hの速度基準は、#2497で同期込み再計測済みのflipあり・なし×PT16・TRT16×batch 1/4/8の12条件を採用した。計測commit `13e508cb78c46663fbe58ad8be03bcf9c96816a6` とmainのマージcommit `59faa32a28d2f54e6492abdba2429846fa0397e3` で共通harnessと計測コードが一致する。固定cropの各反復のID順、元レポートのSHA-256、計時の成功とparity未判定を照合した。B=1の主比較（flipあり）のwall P50はPT16 22.17 ms、TRT16 12.64 ms、NVMLのデバイス使用量のサンプル最大値は4,388 MiB、1,752 MiBだった。 [再計測の基準値](000086-run-person-model-speed-low-precision.md) · [全条件と元レポートのSHA-256](../../runs/run-person-model-speed-low-precision/cases.json)
 
-RTMPose-M/XとPMPose-L/Hは各担当の速度・VRAM結果が揃い次第、同じ疑似GTの精度と照合してPareto比較と採用候補をまとめる。
+### 精度・速度・VRAMの最終比較
+
+RTX 5060 Ti上で、RTMPose-M/XとPMPose-L/HのPT16・TRT16、batch 1/4/8の計24条件がすべて完了した。6件のqueue終端と元レポートを照合し、7,200反復の入力ID順・flip込み各2 forward・wallとGPUの分位点およびthroughputを再集計した。ドライバ621.24、CUDA 13.0、PyTorch 2.13.0+cu130、TensorRT 10.14.1.48.post1、180 W電力上限はViTPose-Hと一致した。固定速度入力は384人物cropで、batch 1は先頭300 crop、batch 4/8は384 cropを巡回する。主比較の精度は各モデル・backendの保存済みbatch 8予測を使用した。 [元レポートとqueue記録](../../runs/run-meiji-topdown-pose-comparison/comparison_inputs.json) · [全30速度条件と改善率](../../runs/run-meiji-topdown-pose-comparison/comparison.csv)
+
+各batchで、固定母数の平均OKSは大きい方、人物あたりのwall P50とNVMLデバイス使用量のサンプル最大値は小さい方を選ぶ3指標のParetoを算出した。batch 1/4/8の各10条件で、PMPose-H PT16が同モデルのTRT16に支配され、9条件がfrontierに残った。判定は数値の大小に基づくため、丸めで一致する程度のOKS差にも反応する。精度差の解釈にはclip別の結果と母数を使う。 [Batch 1のPareto図](../../runs/run-meiji-topdown-pose-comparison/pareto-batch1.png)
+
+| Batch 1 TRT16 | 平均OKS | OKS差 (pt) | wall P50 / P95 (ms/人) | 人物/s | NVML MiB |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| ViTPose-H flipあり | 0.77777 | 0.00 | 12.64 / 13.47 | 78.1 | 1,752 |
+| RTMPose-M | 0.75181 | −2.60 | 7.28 / 14.22 | 121.5 | 548 |
+| RTMPose-X | 0.76826 | −0.95 | 9.01 / 12.11 | 105.8 | 698 |
+| PMPose-L | 0.77662 | −0.12 | 30.98 / 50.31 | 28.2 | 1,292 |
+| PMPose-H | 0.78085 | +0.31 | 41.25 / 49.84 | 22.8 | 2,044 |
+
+- **速度とVRAMの候補はRTMPose-X TRT16**。batch 1で現行flipありTRT16比でwall P50が28.7%、P95が10.1%、NVMLピークが60.2%低い。全体の平均OKS差は−0.95ポイントで、clip別には＋1.30から−2.57ポイントまで変動した。小人物の平均OKSは0.74393（現行0.74486）、高速群では0.72147（現行0.74060）。高速時や難しいclipで下流品質を確認する必要がある。
+- **スループット優先の候補はRTMPose-M TRT16**。batch 8で計測した最大throughputは475.9人物/s。batch 1のP50は42.4%短縮した。P95は現行の13.47 msから14.22 msに増えた。平均OKSは−2.60ポイントで右手首1点の非有限座標もあった。PT16のRTMPose-M/Xはbatch 1では現行PT16より遅く、batch 4/8では短縮した。
+- **疑似GTの精度重視ではPMPose-H TRT16**。全体OKSは＋0.31ポイントで、clip別に3本が上昇し3本が低下した。batch 1のwall P50は現行の3.26倍。PMPose-L TRT16はOKSが近くVRAMは26.3%少ない条件だが、wall P50は2.45倍だった。LのTRT16 model GPU P50は9.77 msで、前処理のP50だけで16.06 msかかった。 [PMPoseの各stageと利用条件](../../runs/run-meiji-topdown-pose-comparison/PMPose.md)
+
+補助比較のViTPose-H flipなしTRT16はbatch 1でwall P50 8.89 ms、P95 10.18 ms、NVMLピーク1,694 MiBだった。保存済みのbatch 8精度はOKS 0.77592。速度計測と精度計測で使用したplanは別で、実運用でflipを外す判断には同じplanでの精度・下流確認が要る。 [flipなしの基準値](000086-run-person-model-speed-low-precision.md) · [精度計測のplan](../../runs/run-meiji-topdown-pose-comparison/vitpose_accuracy.json)
+
+RTMPose-X TRT16を実DINO BBoxと時系列再構成で検証する優先候補とする。各モデルのconfidenceの尺度と欠測処理、実BBoxでのROI誤差、3D coverage・再投影・選手IDへの影響は未検証。数値はSMPL疑似GTと固定BBoxでの一致度で、クロップの速度から動画全体のFPSは求めていない。RTMPoseの重み・engineの配布条件とPMPoseのGPL-3.0の適用範囲は本番採用の前提として残る。既定モデルの採否はこの検証を踏まえる。 [下流向けの契約とライセンス](../../runs/run-meiji-topdown-pose-comparison/README.md)
