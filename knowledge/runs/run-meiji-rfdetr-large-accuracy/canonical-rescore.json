@@ -1,0 +1,59 @@
+{
+  "conditions": {
+    "pt16": {
+      "all_scored_values_equal": true,
+      "pose_output": "absent (detector only)",
+      "predictions_sha256": "d9021ee4c51b4845d4c48701c791a93656fc8fa53e6f6ae90c02ecc2fe0dad43",
+      "recall_by_iou": {
+        "0.50": 0.9681838940478003,
+        "0.75": 0.4203075049474806
+      },
+      "required_policy_metadata_added": {
+        "candidate_order_for_iou_ties": [
+          "detection_score_descending",
+          "boxes_xyxy_lexicographic",
+          "keypoints_xyc_lexicographic"
+        ]
+      }
+    },
+    "pt32": {
+      "all_scored_values_equal": true,
+      "pose_output": "absent (detector only)",
+      "predictions_sha256": "b8762e75d80e33ad32fc574687062a70998c753dcb29b10327622723d87cdbed",
+      "recall_by_iou": {
+        "0.50": 0.9680697214187852,
+        "0.75": 0.4206119652915208
+      },
+      "required_policy_metadata_added": {
+        "candidate_order_for_iou_ties": [
+          "detection_score_descending",
+          "boxes_xyxy_lexicographic",
+          "keypoints_xyc_lexicographic"
+        ]
+      }
+    },
+    "trt16": {
+      "all_scored_values_equal": true,
+      "pose_output": "absent (detector only)",
+      "predictions_sha256": "fc94b4ab47216d9799242bb3d82f44d97bf35bc248a89ea627bedad9dec1b11a",
+      "recall_by_iou": {
+        "0.50": 0.9681458365047952,
+        "0.75": 0.42087836809255597
+      },
+      "required_policy_metadata_added": {
+        "candidate_order_for_iou_ties": [
+          "detection_score_descending",
+          "boxes_xyxy_lexicographic",
+          "keypoints_xyc_lexicographic"
+        ]
+      }
+    }
+  },
+  "images": 6844,
+  "manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+  "measured_commit": "64fde00dca465a7c2bb27881805f971d0bbaaee4",
+  "original_results_sha256": "10562ad68296a4823d02cc0098bf3437a81b4d9b2717a7032b457288b39c915f",
+  "schema_version": 1,
+  "scorer_revision": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364",
+  "scorer_sha256": "7a8acb2538b48c943f9b9e681f8f62c90f9fe2403b0404fac2f5ca1a2cacd3c3"
+}

@@ -3,13 +3,15 @@
 from __future__ import annotations
 
 import argparse
+import os
+import subprocess
 import sys
 import tempfile
-from collections.abc import Callable, Iterable, Mapping, Sequence
+from collections.abc import Callable, Mapping, Sequence
 from dataclasses import dataclass
 from importlib import import_module, metadata
 from pathlib import Path
-from typing import Any, ClassVar, TypeAlias, cast
+from typing import Any, ClassVar, TypeAlias, TypeVar, cast
 
 import cv2
 import numpy as np
@@ -26,23 +28,27 @@ from src.tennis_scene.evaluation.player_pose.bundle import (
 from src.tennis_scene.evaluation.player_pose.scoring import (
     FrameKey,
     Predictions,
-    describe,
     score_players,
 )
 from src.utils.checksum import dual_sha256
-from src.utils.geometry.bbox import match_iou, pairwise_iou
 from src.utils.inference_benchmark import (
     Backend,
+    Batch,
     BatchStages,
     BenchmarkAdapter,
+    BenchmarkCase,
     ConditionUnavailable,
     Conversion,
-    ParityResult,
+    ConversionResult,
+    Failure,
+    ParityStatus,
     Stage,
     Status,
+    benchmark,
     measure_conversion,
 )
-from src.utils.io import load_json, read_jsonl, write_json_atomic, write_jsonl
+from src.utils.inference_benchmark_inputs import PinnedBenchmarkInputs, TimingSchedule
+from src.utils.io import load_json, write_json_atomic, write_jsonl
 from src.utils.models.tensorrt_artifacts import (
     PLAN_FILE,
     EngineBundle,
@@ -66,8 +72,12 @@ IMAGENET_MEAN = [0.485, 0.456, 0.406]
 IMAGENET_STD = [0.229, 0.224, 0.225]
 SCHEMA = "player_model_predictions_v1"
 WORKSPACE_BYTES = 2 * 1024**3
+SPEED_BASELINE = "knowledge.runs.run-person-model-speed-baseline"
+HARNESS_MERGE_COMMIT = "59faa32a28d2f54e6492abdba2429846fa0397e3"
+PARITY_NOT_EVALUATED_REASON = "PT32計測はスコープ外（ユーザー判断 2026-11-25）"
 Image: TypeAlias = NDArray[np.uint8]
 Tensors: TypeAlias = dict[str, torch.Tensor]
+_Value = TypeVar("_Value")
 
 
 @dataclass(frozen=True)
@@ -119,7 +129,6 @@ class Model:
             "nms": False,
             "tf32": False,
             "forward": {
-                Backend.PT32: "PyTorch eager FP32",
                 Backend.PT16: "PyTorch eager, CUDA FP16 autocast",
                 Backend.TRT16: "Strongly typed TensorRT, upstream FP16 ONNX cast, FP32 bindings",
             }[backend],
@@ -185,10 +194,12 @@ class Detector:
             if metadata.version("rfdetr") != CORE_VERSION:
                 raise ValueError(f"Expected rfdetr {CORE_VERSION}")
             self.runner = TensorRTRunner(engine, device)
-        else:
+        elif backend is Backend.PT16:
             self.network: torch.nn.Module = (
                 model.open_upstream(device).model.model.float().eval().to(device)
             )
+        else:
+            raise ValueError("RF-DETR measurements require PT16 or TRT16")
 
     def transfer(
         self, data: tuple[torch.Tensor, torch.Tensor]
@@ -200,9 +211,7 @@ class Detector:
         if self.backend is Backend.TRT16:
             result = self.runner({"input": images})
             return {"pred_boxes": result["dets"], "pred_logits": result["labels"]}
-        with torch.autocast(
-            self.device.type, dtype=torch.float16, enabled=self.backend is Backend.PT16
-        ):
+        with torch.autocast(self.device.type, dtype=torch.float16):
             return cast(Tensors, self.network(images))
 
     def decode(
@@ -296,13 +305,24 @@ def benchmark_adapter(
     batch_size: int,
     engine_path: Path,
 ) -> BenchmarkAdapter[Sequence[Image], list[Predictions]]:
+    if backend is Backend.TRT16:
+        quiet_nvtx = import_module(f"{SPEED_BASELINE}.speed_models").quiet_nvtx
+
     def load() -> Callable[[Sequence[Image], BatchStages], list[Predictions]]:
-        engine = (
-            load_engine(model, engine_path, batch_size)
-            if backend is Backend.TRT16
-            else None
-        )
-        return Detector(model, backend, device, engine).timed
+        def create() -> Detector:
+            if backend is Backend.TRT16:
+                engine = load_engine(model, engine_path, batch_size)
+                detector = Detector(model, backend, device, engine)
+                quiet_nvtx(detector.runner)
+                return detector
+            return Detector(model, backend, device, None)
+
+        detector = benchmark_call(create)
+
+        def infer(images: Sequence[Image], stages: BatchStages) -> list[Predictions]:
+            return benchmark_call(lambda: detector.timed(images, stages))
+
+        return infer
 
     return BenchmarkAdapter(
         backend,
@@ -310,6 +330,108 @@ def benchmark_adapter(
         {"model": model.weights},
         {"plan": engine_path / PLAN_FILE} if backend is Backend.TRT16 else {},
     )
+
+
+def benchmark_call(operation: Callable[[], _Value]) -> _Value:
+    try:
+        return operation()
+    except (ConditionUnavailable, torch.OutOfMemoryError):
+        raise
+    except (ImportError, OSError, RuntimeError, ValueError) as error:
+        raise ConditionUnavailable(
+            Status.UNAVAILABLE, f"{type(error).__name__}: {error}"
+        ) from error
+
+
+def speed_batches(
+    input_dir: Path, batch_size: int
+) -> tuple[PinnedBenchmarkInputs, TimingSchedule, list[Batch[Sequence[Image]]]]:
+    fixed = import_module(f"{SPEED_BASELINE}.speed_inputs").InputSet(input_dir)
+    pins: PinnedBenchmarkInputs = fixed.pins
+    schedule = pins.schedule("frames", batch_size)
+    batches: list[Batch[Sequence[Image]]] = [
+        Batch(ids, tuple(fixed.frame(key) for key in ids), processed_items=len(ids))
+        for ids in schedule.batch_ids
+    ]
+    return pins, schedule, batches
+
+
+def speed_conversion(directory: Path) -> tuple[ConversionResult, ...]:
+    results = []
+    for phase in Conversion:
+        path = directory / f"{phase.value}.json"
+        if not path.is_file():
+            continue
+        row = load_json(path)
+        if row["phase"] != phase.value:
+            raise ValueError(f"Wrong conversion phase in {path}")
+        failure = row["failure"]
+        results.append(
+            ConversionResult(
+                phase,
+                row["wall_ms"],
+                None
+                if failure is None
+                else Failure(
+                    Status(failure["status"]), failure["phase"], failure["message"]
+                ),
+            )
+        )
+    return tuple(results)
+
+
+def measure_speed(
+    model: Model,
+    backend: Backend,
+    device: torch.device,
+    destination: Path,
+    engine: Path,
+    input_dir: Path,
+    batch_size: int,
+) -> Status:
+    # Match the host thread settings used by the fixed-input DINO benchmark.
+    torch.set_num_threads(4)
+    cv2.setNumThreads(1)
+    pins, schedule, batches = speed_batches(input_dir, batch_size)
+    conversions = speed_conversion(engine.parent) if backend is Backend.TRT16 else ()
+    case = BenchmarkCase(
+        MODEL_ID,
+        backend,
+        batch_size,
+        "image",
+        pins.manifest_sha256,
+        {
+            **model.settings(backend),
+            "dataset_id": pins.manifest["id"],
+            "timing_protocol_sha256": pins.timing_sha256,
+            "timed_input_ids_sha256": schedule.timed_ids_sha256,
+            "harness_merge_commit": HARNESS_MERGE_COMMIT,
+            "input_decode": "predecoded BGR",
+            "host_threads": torch.get_num_threads(),
+            "opencv_threads": cv2.getNumThreads(),
+            "cuda_stream": "non-default",
+            "source_commit": subprocess.check_output(
+                ["git", "rev-parse", "HEAD"], text=True
+            ).strip(),
+        },
+    )
+    adapter = benchmark_adapter(model, backend, device, batch_size, engine)
+    report = benchmark(
+        case,
+        batches,
+        {backend: adapter},
+        device=device,
+        dedicated_stream=True,
+        protocol=schedule.protocol,
+        conversion=conversions,
+        parity_not_evaluated_reason=PARITY_NOT_EVALUATED_REASON,
+    )
+    path = destination / "report.json"
+    write_json_atomic(path, report.to_dict())
+    print(f"{MODEL_ID} {backend} B={batch_size} {report.status} {path}", flush=True)
+    if report.failure is not None:
+        print(f"{report.failure.phase}: {report.failure.message}", file=sys.stderr)
+    return report.status
 
 
 def export_onnx(model: Model, target: Path, batch_size: int) -> None:
@@ -340,51 +462,6 @@ def export_onnx(model: Model, target: Path, batch_size: int) -> None:
             export=write_graph,
         )
         (stage / "bundle").rename(target)
-
-
-def prediction_parity(pairs: Iterable[tuple[Predictions, Predictions]]) -> ParityResult:
-    images = expected = observed = matched = 0
-    ious, coordinates, scores = [], [], []
-    for reference, candidate in pairs:
-        images += 1
-        expected += len(reference.scores)
-        observed += len(candidate.scores)
-        overlaps = pairwise_iou(reference.boxes_xyxy, candidate.boxes_xyxy)
-        base, trial = match_iou(overlaps, 0.5)
-        matched += len(base)
-        ious.extend(overlaps[base, trial])
-        coordinates.extend(
-            np.abs(reference.boxes_xyxy[base] - candidate.boxes_xyxy[trial]).ravel()
-        )
-        scores.extend(np.abs(reference.scores[base] - candidate.scores[trial]))
-    recall = matched / expected if expected else float(observed == 0)
-    precision = matched / observed if observed else float(expected == 0)
-    iou_p05 = float(np.quantile(ious, 0.05)) if ious else None
-    score_stats = describe(np.asarray(scores))
-    score_p95 = score_stats["p95"]
-    passed = (
-        images > 0
-        and min(recall, precision) >= 0.98
-        and (iou_p05 is None or iou_p05 >= 0.90)
-        and (score_p95 is None or score_p95 <= 0.05)
-    )
-    return ParityResult(
-        passed,
-        {
-            "images": images,
-            "pt32_boxes": expected,
-            "candidate_boxes": observed,
-            "matched": matched,
-            "pt32_retained_fraction": recall,
-            "candidate_matched_fraction": precision,
-            "matched_iou_p05": iou_p05,
-            "abs_score_difference": score_stats,
-            "abs_xyxy_difference_px": describe(np.asarray(coordinates)),
-        },
-        None
-        if passed
-        else "Expected >=98% matches in both directions, matched IoU P05 >=0.90 and score delta P95 <=0.05",
-    )
 
 
 def header(benchmark_id: str, manifest_sha: str, backend: Backend) -> dict[str, Any]:
@@ -421,32 +498,6 @@ def write_predictions(
         destination.replace(path)
 
 
-def read_pt32_predictions(
-    directory: Path, identity: dict[str, Any], weights_sha256: str
-) -> dict[FrameKey, Predictions]:
-    accuracy = load_json(directory / "accuracy.json")
-    if accuracy["weights_sha256"] != weights_sha256 or accuracy[
-        "predictions_sha256"
-    ] != dual_sha256(directory / "predictions.jsonl"):
-        raise ValueError(
-            "PT32 checkpoint or predictions do not match the accuracy receipt"
-        )
-    records = read_jsonl(directory / "predictions.jsonl")
-    if not records or records[0] != identity:
-        raise ValueError("PT32 prediction header does not match the pinned evaluation")
-    result = {}
-    for row in records[1:]:
-        key = FrameKey(row["clip_id"], row["camera_id"], row["source_frame"])
-        if key in result or row["keypoints_xyc"] is not None:
-            raise ValueError(f"Duplicate frame or unexpected pose data: {key}")
-        boxes = np.asarray(row["boxes_xyxy"], dtype=np.float32)
-        scores = np.asarray(row["scores"], dtype=np.float32)
-        result[key] = Predictions(
-            boxes.reshape(0, 4) if boxes.shape == (0,) else boxes, scores
-        )
-    return result
-
-
 def evaluate(
     model: Model,
     backend: Backend,
@@ -462,15 +513,6 @@ def evaluate(
     source_sha = cohort["source_benchmark"]["manifest_sha256"]
     pinned_file(source, {"path": "manifest.json", "sha256": source_sha})
     benchmark_id = cohort["benchmark_id"]
-    pt32 = None
-    if backend is not Backend.PT32:
-        pt32 = read_pt32_predictions(
-            output.parent / "pt32",
-            header(benchmark_id, manifest_sha, Backend.PT32),
-            model.sha256,
-        )
-        if pt32.keys() != references.keys():
-            raise ValueError("PT32 predictions lack the exact set of evaluation frames")
     engine = load_engine(model, engine_path, 1) if backend is Backend.TRT16 else None
     detector = Detector(model, backend, device, engine)
     # The evaluation CLI is a separate process. Match the harness's precision controls.
@@ -493,7 +535,6 @@ def evaluate(
     if predictions.keys() != references.keys():
         raise ValueError("Predictions lack the exact set of evaluation frames")
     identity = header(benchmark_id, manifest_sha, backend)
-    output.mkdir(parents=True, exist_ok=True)
     raw = output / "predictions.jsonl"
     write_predictions(raw, identity, predictions)
     write_json_atomic(
@@ -517,13 +558,9 @@ def evaluate(
                 if engine is None
                 else engine.engine.environment.tensorrt_version,
             },
-            "parity_vs_pt32": (
-                None
-                if pt32 is None
-                else prediction_parity(
-                    (pt32[key], predictions[key]) for key in references
-                )
-            ),
+            "parity_vs_pt32": None,
+            "parity_status": ParityStatus.NOT_EVALUATED,
+            "parity_not_evaluated_reason": PARITY_NOT_EVALUATED_REASON,
             "pseudo_gt": score_players(references, predictions),
         },
     )
@@ -540,44 +577,72 @@ def main() -> int:
     for command in ("export", "build"):
         commands.add_parser(command).add_argument("--batch-size", type=int, default=1)
     accuracy = commands.add_parser("evaluate")
-    accuracy.add_argument(
-        "--backend",
-        choices=[backend.value.lower() for backend in Backend],
-        required=True,
-    )
     accuracy.add_argument("--evaluation-bundle", type=Path, required=True)
     accuracy.add_argument("--manifest-sha256", required=True)
     accuracy.add_argument("--source", type=Path, required=True)
+    speed = commands.add_parser("speed")
+    speed.add_argument("--batch-size", type=int, choices=(1, 2), required=True)
+    speed.add_argument("--speed-inputs", type=Path, required=True)
+    for measurement in (accuracy, speed):
+        measurement.add_argument("--backend", choices=("pt16", "trt16"), required=True)
+        measurement.add_argument("--parity", choices=("not_measured",), required=True)
+        measurement.add_argument("--engine-dir", type=Path)
     args = parser.parse_args()
     output = args.output_root / args.model
-    trt = output / "trt16" / f"batch-{getattr(args, 'batch_size', 1)}"
+    batch_size = getattr(args, "batch_size", 1)
+    if batch_size < 1:
+        parser.error("--batch-size must be positive")
+    device = torch.device(args.device)
+    if args.command != "export" and device.type != "cuda":
+        parser.error("Measurements and engine builds require an explicit CUDA device")
+    trt = output / "trt16" / f"batch-{batch_size}"
     engine_path = trt / "engine"
+    measuring = args.command in ("evaluate", "speed")
+    destination = trt
+    if measuring:
+        if args.engine_dir is not None:
+            if args.backend != "trt16":
+                parser.error("--engine-dir requires --backend trt16")
+            engine_path = args.engine_dir
+        if args.command == "speed":
+            destination = output / args.backend / f"speed-b{batch_size}"
+        else:
+            destination = output / "accuracy" / args.backend
+        destination.mkdir(parents=True)
+    if repro := os.environ.get("TENNIS_REPRO_DIR"):
+        (Path(repro) / "output_dir.txt").write_text(f"{destination.resolve()}\n")
     try:
         model = Model.open(args.weights, args.weights_sha256)
-        device = torch.device(args.device)
-        if args.command != "export" and device.type != "cuda":
-            parser.error("Evaluation and engine builds require an explicit CUDA device")
         if args.command == "evaluate":
             evaluate(
                 model,
                 Backend(args.backend.upper()),
                 device,
-                output / args.backend,
+                destination,
                 engine_path,
                 args.evaluation_bundle,
                 args.manifest_sha256,
                 args.source,
             )
             return 0
-        if args.batch_size < 1:
-            parser.error("--batch-size must be positive")
+        if args.command == "speed":
+            status = measure_speed(
+                model,
+                Backend(args.backend.upper()),
+                device,
+                destination,
+                engine_path,
+                args.speed_inputs,
+                batch_size,
+            )
+            return 0 if status is Status.OK else 1
         if args.command == "export":
             receipt = measure_conversion(
                 Conversion.ONNX_EXPORT,
-                lambda: export_onnx(model, engine_path, args.batch_size),
+                lambda: export_onnx(model, engine_path, batch_size),
             )
         else:
-            shape = model.input_shape(args.batch_size)
+            shape = model.input_shape(batch_size)
             receipt = measure_conversion(
                 Conversion.ENGINE_BUILD,
                 lambda: build_bundle(
@@ -605,10 +670,14 @@ def main() -> int:
         )
         if isinstance(error, ConditionUnavailable):
             status = error.status
-        destination = output / args.backend if args.command == "evaluate" else trt
         write_json_atomic(
             destination / f"{args.command}-failure.json",
-            {"status": status, "error": type(error).__name__, "reason": str(error)},
+            {
+                "status": Status.INFEASIBLE,
+                "failure": Failure(
+                    status, args.command, f"{type(error).__name__}: {error}"
+                ),
+            },
         )
         raise
 
