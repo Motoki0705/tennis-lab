@@ -9,14 +9,16 @@
 | 構成 | PT32 | PT16 | TRT16 |
 | --- | --- | --- | --- |
 | HMR2特徴＋GVHMR | #2496の既存計測 | #2496の既存計測 | #2496の既存計測 |
-| FastHMR CameraHMR | 固定入力8フレームの既存試行 | 固定6 clipの目視用メッシュを生成 | 実行不能（書き出し停止） |
+| FastHMR CameraHMR | 固定入力8フレームの既存試行 | 固定6 clipの目視用メッシュと速度の参考値 | 実行不能（書き出し停止） |
 | FastHMR HMR 2.0 | 実行不能（公開版のMask-ToMe非対応） | 同左 | 同左 |
 
 公式重みには両backboneのlayer-mergedチェックポイント、専用diffusion decoder、共通VAEがある。公開デモのMask-ToMeパッチはCameraHMR側のBlockとAttentionにだけ適用される。HMR 2.0で同じ公開デモを呼ぶとlayer mergingとdiffusionは動く構成だが、Mask-ToMeは適用されない。TensorRT用には、person maskの有無で分岐するtoken mergingや `scatter_reduce` を含む処理の同等性確認が要る。[デモ](https://github.com/TaatiTeam/FastHMR/blob/dc5c8daf0beea56a419c631f494ef7bd7ce35d3c/demo.py)・[Mask-ToMe](https://github.com/TaatiTeam/FastHMR/blob/dc5c8daf0beea56a419c631f494ef7bd7ce35d3c/model/hmr2_tools/patch_vit.py)・[論文](https://arxiv.org/abs/2510.10868)
 
 #2491の新規速度計測はPT16・TRT16を対象とし、比較図とは別に参考値として記録する。PT32とのparityは8フレームの既存記録を参照する。代表6 clipのPT16推論は保存済みGVHMRとの同期動画を使う目視確認に供する。 [既存試行](https://github.com/Motoki0705/tennis-lab/pull/2534)
 
-CameraHMRのTensorRT試行では、実crop・batch 1・256×256で、`torch.export` がcuDNNのTF32フラグの問い合わせで停止し、TorchScriptはLightningの`Trainer`参照で停止した。どちらもONNXとエンジンの生成前に止まった。PT16の参考速度は #2497 の公開入力・計時順を使い、PT32とのparityを明示的に未判定として記録する。 [変換試行と固定6 clipの記録](https://github.com/Motoki0705/tennis-lab/pull/2534)
+CameraHMRのTensorRT試行では、実crop・batch 1・256×256で、`torch.export` がcuDNNのTF32フラグの問い合わせで停止し、TorchScriptはLightningの`Trainer`参照で停止した。どちらもONNXとエンジンの生成前に止まった。 [変換試行と固定6 clipの記録](https://github.com/Motoki0705/tennis-lab/pull/2534)
+
+PT16の参考計測では、#2497の16フレーム×24系列と同じ順序で、系列batch 1/2/4を各300反復した。batch 1の処理全体P50はFastHMRが1,091 ms、HMR2特徴＋GVHMRが492 msだった。計時はデコード済みフレームから身体パラメータまでで、PyTorch CPUスレッド数はFastHMRが2、現行経路が4。PT32とのparityはユーザー判断により未判定。速度・VRAMの全条件と目視用24動画の所在は記録PRを参照する。 [実測と再現](https://github.com/Motoki0705/tennis-lab/pull/2534)
 
 ## 資産と設定
 
