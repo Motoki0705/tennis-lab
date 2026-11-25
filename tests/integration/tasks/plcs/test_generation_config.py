@@ -36,6 +36,26 @@ _TRAINING_PROFILES = (
         "physical_v1",
         "plcs_multiview_axial",
     ),
+    (
+        "monocular_sequence",
+        "train",
+        ("model=monocular_gvhmr_htd", "loss=monocular_htd"),
+        "plcs/single_object",
+        "default",
+        (1, 1),
+        "physical_v1",
+        "plcs_monocular_gvhmr",
+    ),
+    (
+        "monocular_chunked_sequence",
+        "train_chunked",
+        ("model=monocular_gvhmr_htd", "loss=monocular_htd"),
+        "plcs/single_object",
+        "chunked",
+        (1, 1),
+        "physical_v1",
+        "plcs_monocular_gvhmr",
+    ),
 )
 
 

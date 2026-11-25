@@ -164,7 +164,7 @@ def _write_mixed_synthetic_dataset(root: Path) -> Path:
 
 def _compose_monocular_config(data_root: Path) -> DictConfig:
     with initialize_config_dir(config_dir=str(_CONFIG_DIR), version_base="1.3"):
-        cfg = compose(config_name="train", overrides=["data=_monocular_sequence"])
+        cfg = compose(config_name="train", overrides=["data=monocular_sequence"])
     with open_dict(cfg):
         cfg.paths.data_root = str(data_root)
         cfg.data.scene_dir = "plcs_mono_test"

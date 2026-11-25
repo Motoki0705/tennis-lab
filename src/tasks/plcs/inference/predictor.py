@@ -27,6 +27,10 @@ from src.tasks.plcs.court_keypoint_contract import (
     normalized_points_target_to_physical,
 )
 from src.tasks.plcs.inference.checkpoint import load_plcs_pair
+from src.tasks.plcs.inference.htd_refiner import (
+    HTDRefineCameraView,
+    PLCSHTDRefiner,
+)
 from src.tasks.plcs.model_io import (
     PLCSDecodedPrediction,
     PLCSInputProfile,
@@ -153,6 +157,31 @@ class PLCSPredictor(BasePredictor):
             auxiliary_position=(
                 decoded.auxiliary_position.detach().cpu()
                 if decoded.auxiliary_position is not None
+                else None
+            ),
+            world_kp_3d=(
+                decoded.world_kp_3d.detach().cpu()
+                if decoded.world_kp_3d is not None
+                else None
+            ),
+            pred_cam=(
+                decoded.pred_cam.detach().cpu()
+                if decoded.pred_cam is not None
+                else None
+            ),
+            pred_vel_3d=(
+                decoded.pred_vel_3d.detach().cpu()
+                if decoded.pred_vel_3d is not None
+                else None
+            ),
+            pred_acc_3d=(
+                decoded.pred_acc_3d.detach().cpu()
+                if decoded.pred_acc_3d is not None
+                else None
+            ),
+            static_contact_logits=(
+                decoded.static_contact_logits.detach().cpu()
+                if decoded.static_contact_logits is not None
                 else None
             ),
             court_reference_provenance=decoded.court_reference_provenance,
@@ -453,6 +482,134 @@ class PLCSPredictor(BasePredictor):
                 court_reference_provenance=decoded.court_reference_provenance,
                 reference_metadata=decoded.reference_metadata,
             )
+
+    def predict_monocular_sequence(
+        self,
+        *,
+        kp2d_px: np.ndarray,
+        kp_vis: np.ndarray,
+        bbx_xys: np.ndarray | None,
+        frame_observed: np.ndarray | None,
+        R_w2c: np.ndarray,
+        C_w: np.ndarray,
+        fx: float | np.ndarray,
+        fy: float | np.ndarray,
+        cx0: float | np.ndarray,
+        cy0: float | np.ndarray,
+        image_w: int | float,
+        image_h: int | float,
+        fps: float = 60.0,
+        vis_threshold: float = 0.0,
+        htd_refiner: PLCSHTDRefiner | None = None,
+    ) -> PLCSPhysicalPrediction:
+        """Predict physical court 3D COCO-17 skeleton from calibrated monocular inputs."""
+        with torch.no_grad():
+            prepared = self.io_adapter.prepare_monocular_observations(
+                kp2d_px=kp2d_px,
+                kp_vis=kp_vis,
+                bbx_xys=bbx_xys,
+                frame_observed=frame_observed,
+                R_w2c=R_w2c,
+                C_w=C_w,
+                fx=fx,
+                fy=fy,
+                cx0=cx0,
+                cy0=cy0,
+                image_w=image_w,
+                image_h=image_h,
+                vis_threshold=vis_threshold,
+            )
+            decoded = self._run_prepared(prepared)
+
+        world_kp = decoded.world_kp_3d
+        pos_norm = decoded.position
+        rot_cs = decoded.rotation
+        canon = decoded.canonical_pose
+        if htd_refiner is not None and world_kp is not None and world_kp.shape[0] == 1:
+            obs_mask = (
+                prepared.frame_observed[0].cpu()
+                if prepared.frame_observed is not None
+                else torch.ones((world_kp.shape[1],), dtype=torch.bool)
+            )
+            kp_px_t = torch.as_tensor(kp2d_px, dtype=torch.float32)
+            if kp_px_t.ndim == 4:
+                kp_px_t = kp_px_t[0]
+            vis_t = torch.as_tensor(kp_vis, dtype=torch.float32)
+            if vis_t.ndim == 3:
+                vis_t = vis_t[0]
+            view = HTDRefineCameraView(
+                R_w2c=torch.as_tensor(R_w2c, dtype=torch.float32),
+                C_w=torch.as_tensor(C_w, dtype=torch.float32),
+                fx=torch.as_tensor(fx, dtype=torch.float32),
+                fy=torch.as_tensor(fy, dtype=torch.float32),
+                cx0=torch.as_tensor(cx0, dtype=torch.float32),
+                cy0=torch.as_tensor(cy0, dtype=torch.float32),
+                image_w=float(image_w),
+                image_h=float(image_h),
+                kp2d_px=kp_px_t,
+                kp_conf=vis_t,
+                frame_observed=obs_mask,
+            )
+            refined = htd_refiner.refine(
+                world_kp_init=world_kp[0],
+                pred_vel_3d=(
+                    decoded.pred_vel_3d[0] if decoded.pred_vel_3d is not None else None
+                ),
+                pred_acc_3d=(
+                    decoded.pred_acc_3d[0] if decoded.pred_acc_3d is not None else None
+                ),
+                static_contact_logits=(
+                    decoded.static_contact_logits[0]
+                    if decoded.static_contact_logits is not None
+                    else None
+                ),
+                views=[view],
+                fps=fps,
+            )
+            world_kp = refined.world_kp_3d.unsqueeze(0)
+            pos_norm = refined.position.unsqueeze(0)
+            rot_cs = refined.rotation.unsqueeze(0)
+            canon = refined.canonical_pose.unsqueeze(0)
+
+        position_physical, heading_physical = self._physical_outputs(
+            pos_norm,
+            rot_cs,
+            decoded.court_reference_provenance,
+        )
+        yaw_radians = torch.atan2(
+            heading_physical[..., 1], heading_physical[..., 0]
+        ).numpy()
+        return PLCSPhysicalPrediction(
+            position_meters=position_physical.numpy().astype(np.float32, copy=False),
+            yaw_radians=yaw_radians.astype(np.float32, copy=False),
+            canonical_pose=(
+                canon.numpy().astype(np.float32, copy=False)
+                if canon is not None
+                else None
+            ),
+            world_kp_3d_meters=(
+                world_kp.numpy().astype(np.float32, copy=False)
+                if world_kp is not None
+                else None
+            ),
+            pred_vel_3d_mps=(
+                decoded.pred_vel_3d.numpy().astype(np.float32, copy=False)
+                if decoded.pred_vel_3d is not None
+                else None
+            ),
+            pred_acc_3d_mps2=(
+                decoded.pred_acc_3d.numpy().astype(np.float32, copy=False)
+                if decoded.pred_acc_3d is not None
+                else None
+            ),
+            static_contact_logits=(
+                decoded.static_contact_logits.numpy().astype(np.float32, copy=False)
+                if decoded.static_contact_logits is not None
+                else None
+            ),
+            court_reference_provenance=decoded.court_reference_provenance,
+            reference_metadata=decoded.reference_metadata,
+        )
 
 
 __all__ = ["PLCSPredictor"]

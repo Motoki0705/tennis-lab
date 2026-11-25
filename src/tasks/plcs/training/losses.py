@@ -107,6 +107,13 @@ class PLCSLossConfig:
     # None -> uniform. Lengths: 12 joint angles, 4 torsion angles, 1 twist.
     joint_angle_velocity_angle_weights: tuple[float, ...] | None
     torsion_angle_velocity_angle_weights: tuple[float, ...] | None
+    # Monocular physical world-pose and HTD-Refine Stage A PVA-Heads weights.
+    world_kp_3d_weight: float = 0.0
+    pva_velocity_weight: float = 0.0
+    pva_acceleration_weight: float = 0.0
+    kinematic_velocity_consistency_weight: float = 0.0
+    kinematic_acceleration_consistency_weight: float = 0.0
+    static_contact_weight: float = 0.0
 
     @classmethod
     def from_dict(cls, cfg: dict[str, object]) -> PLCSLossConfig:
@@ -207,6 +214,16 @@ class PLCSLossConfig:
             torsion_angle_velocity_angle_weights=_opt_weights(
                 "torsion_angle_velocity_angle_weights", expected_length=4
             ),
+            world_kp_3d_weight=weights["world_kp_3d_weight"],
+            pva_velocity_weight=weights["pva_velocity_weight"],
+            pva_acceleration_weight=weights["pva_acceleration_weight"],
+            kinematic_velocity_consistency_weight=weights[
+                "kinematic_velocity_consistency_weight"
+            ],
+            kinematic_acceleration_consistency_weight=weights[
+                "kinematic_acceleration_consistency_weight"
+            ],
+            static_contact_weight=weights["static_contact_weight"],
         )
 
 
@@ -355,6 +372,12 @@ class PLCSLossInputs:
     pred_canonical_pose: Tensor | None = None
     target_canonical_pose: Tensor | None = None
     reprojection_target: PLCSReprojectionTarget | None = None
+    pred_world_kp_3d: Tensor | None = None
+    target_world_kp_3d: Tensor | None = None
+    pred_vel_3d: Tensor | None = None
+    pred_acc_3d: Tensor | None = None
+    pred_static_contact_logits: Tensor | None = None
+    frame_rate_hz: Tensor | None = None
 
     @property
     def zero(self) -> Tensor:
@@ -371,10 +394,16 @@ class PLCSLossInputs:
 
     @property
     def has_reprojection(self) -> bool:
-        """Whether predicted canonical pose and 2D/camera targets are available."""
+        """Whether predicted pose and 2D/camera targets are available."""
         return (
-            self.pred_canonical_pose is not None
-            and self.reprojection_target is not None
+            self.pred_world_kp_3d is not None or self.pred_canonical_pose is not None
+        ) and self.reprojection_target is not None
+
+    @property
+    def has_world_pose(self) -> bool:
+        """Whether both predicted and target physical court 3D poses exist."""
+        return (
+            self.pred_world_kp_3d is not None and self.target_world_kp_3d is not None
         )
 
 
@@ -491,13 +520,16 @@ def reprojection_loss_term(
     """Project the composed predicted world pose and compare it to clean 2D pose."""
     if not inputs.has_reprojection:
         return inputs.zero
-    canonical_pose = cast(Tensor, inputs.pred_canonical_pose)
     target = cast(PLCSReprojectionTarget, inputs.reprojection_target)
-    world_pose = canonical_pose_to_world_pose(
-        canonical_pose,
-        inputs.pred_position,
-        inputs.pred_rotation,
-    )
+    if inputs.pred_world_kp_3d is not None:
+        world_pose = inputs.pred_world_kp_3d
+    else:
+        canonical_pose = cast(Tensor, inputs.pred_canonical_pose)
+        world_pose = canonical_pose_to_world_pose(
+            canonical_pose,
+            inputs.pred_position,
+            inputs.pred_rotation,
+        )
     pred_uv, _in_front = projector(
         world_points=world_pose,
         camera_R=target.camera_R,
@@ -657,6 +689,273 @@ def torso_twist_velocity_loss_term(inputs: PLCSLossInputs) -> Tensor:
     )
 
 
+# ---------------------------------------------------------------------------
+# Physical world-pose and HTD-Refine Stage A PVA-Heads losses
+# ---------------------------------------------------------------------------
+
+STATIC_CONTACT_JOINT_INDICES: tuple[int, int, int, int] = (15, 16, 13, 14)
+_STATIC_CONTACT_SPEED_THRESHOLD_MPS = 0.25
+_STATIC_CONTACT_HEIGHT_THRESHOLDS_M: tuple[float, float, float, float] = (
+    0.15,
+    0.15,
+    0.70,
+    0.70,
+)
+
+
+def _resolve_sequence_fps(
+    frame_rate_hz: Tensor | None,
+    *,
+    batch_size: int,
+    device: torch.device,
+    dtype: torch.dtype,
+) -> Tensor:
+    if frame_rate_hz is None:
+        return torch.full((batch_size, 1, 1, 1), 30.0, device=device, dtype=dtype)
+    fps = frame_rate_hz.to(device=device, dtype=dtype)
+    if fps.ndim == 0:
+        fps = fps.expand(batch_size)
+    elif fps.ndim != 1 or fps.shape[0] != batch_size:
+        raise ValueError(
+            "frame_rate_hz must be scalar or shape (B,), got "
+            f"{tuple(fps.shape)} for batch_size={batch_size}."
+        )
+    if not bool(torch.isfinite(fps).all().item()) or bool((fps <= 0.0).any().item()):
+        raise ValueError("frame_rate_hz must be strictly positive and finite.")
+    return fps.view(batch_size, 1, 1, 1)
+
+
+def _safe_masked_sequence(tensor: Tensor, frame_valid: Tensor) -> Tensor:
+    mask = frame_valid
+    while mask.ndim < tensor.ndim:
+        mask = mask.unsqueeze(-1)
+    return torch.where(mask, tensor, torch.zeros_like(tensor))
+
+
+def world_kp_3d_loss_term(inputs: PLCSLossInputs) -> Tensor:
+    """Physical court-space 3D COCO-17 keypoint smooth-L1 loss (metres)."""
+    if not inputs.has_world_pose:
+        return inputs.zero
+    pred = cast(Tensor, inputs.pred_world_kp_3d)
+    target = cast(Tensor, inputs.target_world_kp_3d)
+    frame_valid = _valid_pose_frames(pred, inputs.frame_mask)
+    pred_safe = _safe_masked_sequence(pred, frame_valid)
+    target_safe = _safe_masked_sequence(target, frame_valid)
+    per_frame = nn.functional.smooth_l1_loss(
+        pred_safe,
+        target_safe,
+        reduction="none",
+        beta=0.1,
+    ).mean(dim=(-1, -2))
+    return _masked_frame_mean(per_frame, frame_valid)
+
+
+def pva_velocity_loss_term(inputs: PLCSLossInputs) -> Tensor:
+    """Stage A PVA-Heads 3D joint velocity loss strictly within valid transitions."""
+    if inputs.pred_vel_3d is None or inputs.target_world_kp_3d is None:
+        return inputs.zero
+    pred_vel = inputs.pred_vel_3d
+    target_kp = inputs.target_world_kp_3d
+    if target_kp.ndim != 4 or target_kp.shape[1] < 2:
+        return inputs.zero
+    frame_valid = _valid_pose_frames(target_kp, inputs.frame_mask)
+    valid_v = frame_valid[:, 1:] & frame_valid[:, :-1]
+    if not bool(valid_v.any().item()):
+        return inputs.zero
+    fps = _resolve_sequence_fps(
+        inputs.frame_rate_hz,
+        batch_size=target_kp.shape[0],
+        device=target_kp.device,
+        dtype=target_kp.dtype,
+    )
+    target_safe = _safe_masked_sequence(target_kp, frame_valid)
+    v_gt = (target_safe[:, 1:] - target_safe[:, :-1]) * fps
+    pred_v_safe = _safe_masked_sequence(pred_vel[:, :-1], valid_v)
+    per_step = nn.functional.smooth_l1_loss(
+        pred_v_safe,
+        v_gt,
+        reduction="none",
+        beta=0.5,
+    ).mean(dim=(-1, -2))
+    return _masked_frame_mean(per_step, valid_v)
+
+
+def pva_acceleration_loss_term(inputs: PLCSLossInputs) -> Tensor:
+    """Stage A PVA-Heads 3D joint acceleration loss strictly within 3-frame windows."""
+    if inputs.pred_acc_3d is None or inputs.target_world_kp_3d is None:
+        return inputs.zero
+    pred_acc = inputs.pred_acc_3d
+    target_kp = inputs.target_world_kp_3d
+    if target_kp.ndim != 4 or target_kp.shape[1] < 3:
+        return inputs.zero
+    frame_valid = _valid_pose_frames(target_kp, inputs.frame_mask)
+    valid_a = frame_valid[:, 2:] & frame_valid[:, 1:-1] & frame_valid[:, :-2]
+    if not bool(valid_a.any().item()):
+        return inputs.zero
+    fps = _resolve_sequence_fps(
+        inputs.frame_rate_hz,
+        batch_size=target_kp.shape[0],
+        device=target_kp.device,
+        dtype=target_kp.dtype,
+    )
+    target_safe = _safe_masked_sequence(target_kp, frame_valid)
+    a_gt = (
+        target_safe[:, 2:] - 2.0 * target_safe[:, 1:-1] + target_safe[:, :-2]
+    ) * (fps * fps)
+    pred_a_safe = _safe_masked_sequence(pred_acc[:, 1:-1], valid_a)
+    per_step = nn.functional.smooth_l1_loss(
+        pred_a_safe,
+        a_gt,
+        reduction="none",
+        beta=2.0,
+    ).mean(dim=(-1, -2))
+    return _masked_frame_mean(per_step, valid_a)
+
+
+def kinematic_velocity_consistency_loss_term(inputs: PLCSLossInputs) -> Tensor:
+    """First-order kinematic consistency between predicted world pose and GT/PVA."""
+    if not inputs.has_world_pose:
+        return inputs.zero
+    pred_kp = cast(Tensor, inputs.pred_world_kp_3d)
+    target_kp = cast(Tensor, inputs.target_world_kp_3d)
+    if pred_kp.ndim != 4 or pred_kp.shape[1] < 2:
+        return inputs.zero
+    frame_valid = _valid_pose_frames(pred_kp, inputs.frame_mask)
+    valid_v = frame_valid[:, 1:] & frame_valid[:, :-1]
+    if not bool(valid_v.any().item()):
+        return inputs.zero
+    fps = _resolve_sequence_fps(
+        inputs.frame_rate_hz,
+        batch_size=pred_kp.shape[0],
+        device=pred_kp.device,
+        dtype=pred_kp.dtype,
+    )
+    pred_safe = _safe_masked_sequence(pred_kp, frame_valid)
+    target_safe = _safe_masked_sequence(target_kp, frame_valid)
+    v_pred = (pred_safe[:, 1:] - pred_safe[:, :-1]) * fps
+    v_gt = (target_safe[:, 1:] - target_safe[:, :-1]) * fps
+    per_step = nn.functional.smooth_l1_loss(
+        v_pred,
+        v_gt,
+        reduction="none",
+        beta=0.5,
+    ).mean(dim=(-1, -2))
+    if inputs.pred_vel_3d is not None:
+        pred_v_safe = _safe_masked_sequence(inputs.pred_vel_3d[:, :-1].detach(), valid_v)
+        per_step = per_step + 0.5 * nn.functional.smooth_l1_loss(
+            v_pred,
+            pred_v_safe,
+            reduction="none",
+            beta=0.5,
+        ).mean(dim=(-1, -2))
+    return _masked_frame_mean(per_step, valid_v)
+
+
+def kinematic_acceleration_consistency_loss_term(inputs: PLCSLossInputs) -> Tensor:
+    """Second-order kinematic consistency between predicted world pose and GT/PVA."""
+    if not inputs.has_world_pose:
+        return inputs.zero
+    pred_kp = cast(Tensor, inputs.pred_world_kp_3d)
+    target_kp = cast(Tensor, inputs.target_world_kp_3d)
+    if pred_kp.ndim != 4 or pred_kp.shape[1] < 3:
+        return inputs.zero
+    frame_valid = _valid_pose_frames(pred_kp, inputs.frame_mask)
+    valid_a = frame_valid[:, 2:] & frame_valid[:, 1:-1] & frame_valid[:, :-2]
+    if not bool(valid_a.any().item()):
+        return inputs.zero
+    fps = _resolve_sequence_fps(
+        inputs.frame_rate_hz,
+        batch_size=pred_kp.shape[0],
+        device=pred_kp.device,
+        dtype=pred_kp.dtype,
+    )
+    pred_safe = _safe_masked_sequence(pred_kp, frame_valid)
+    target_safe = _safe_masked_sequence(target_kp, frame_valid)
+    a_pred = (
+        pred_safe[:, 2:] - 2.0 * pred_safe[:, 1:-1] + pred_safe[:, :-2]
+    ) * (fps * fps)
+    a_gt = (
+        target_safe[:, 2:] - 2.0 * target_safe[:, 1:-1] + target_safe[:, :-2]
+    ) * (fps * fps)
+    per_step = nn.functional.smooth_l1_loss(
+        a_pred,
+        a_gt,
+        reduction="none",
+        beta=2.0,
+    ).mean(dim=(-1, -2))
+    if inputs.pred_acc_3d is not None:
+        pred_a_safe = _safe_masked_sequence(
+            inputs.pred_acc_3d[:, 1:-1].detach(), valid_a
+        )
+        per_step = per_step + 0.5 * nn.functional.smooth_l1_loss(
+            a_pred,
+            pred_a_safe,
+            reduction="none",
+            beta=2.0,
+        ).mean(dim=(-1, -2))
+    return _masked_frame_mean(per_step, valid_a)
+
+
+def static_contact_loss_term(inputs: PLCSLossInputs) -> Tensor:
+    """BCE-with-logits for lower-body static contact on valid non-boundary frames."""
+    if inputs.pred_static_contact_logits is None or inputs.target_world_kp_3d is None:
+        return inputs.zero
+    logits = inputs.pred_static_contact_logits
+    target_kp = inputs.target_world_kp_3d
+    if target_kp.ndim != 4 or target_kp.shape[1] < 2:
+        return inputs.zero
+    frame_valid = _valid_pose_frames(target_kp, inputs.frame_mask)
+    valid_step = frame_valid[:, 1:] & frame_valid[:, :-1]
+    if not bool(valid_step.any().item()):
+        return inputs.zero
+    fps = _resolve_sequence_fps(
+        inputs.frame_rate_hz,
+        batch_size=target_kp.shape[0],
+        device=target_kp.device,
+        dtype=target_kp.dtype,
+    ).squeeze(-1)
+    contact_kp = _safe_masked_sequence(
+        target_kp[:, :, STATIC_CONTACT_JOINT_INDICES, :], frame_valid
+    )
+    step_speed = (
+        torch.linalg.vector_norm(contact_kp[:, 1:] - contact_kp[:, :-1], dim=-1) * fps
+    )
+    batch_size, seq_len = frame_valid.shape
+    num_c = len(STATIC_CONTACT_JOINT_INDICES)
+    speed_sum = torch.zeros(
+        (batch_size, seq_len, num_c), device=target_kp.device, dtype=target_kp.dtype
+    )
+    speed_cnt = torch.zeros(
+        (batch_size, seq_len, 1), device=target_kp.device, dtype=target_kp.dtype
+    )
+    step_w = valid_step.to(dtype=target_kp.dtype).unsqueeze(-1)
+    speed_sum[:, :-1] = speed_sum[:, :-1] + step_speed * step_w
+    speed_cnt[:, :-1] = speed_cnt[:, :-1] + step_w
+    speed_sum[:, 1:] = speed_sum[:, 1:] + step_speed * step_w
+    speed_cnt[:, 1:] = speed_cnt[:, 1:] + step_w
+
+    has_speed = frame_valid & (speed_cnt.squeeze(-1) > 0.0)
+    if not bool(has_speed.any().item()):
+        return inputs.zero
+    mean_speed = speed_sum / speed_cnt.clamp_min(1.0)
+    height_thresh = torch.tensor(
+        _STATIC_CONTACT_HEIGHT_THRESHOLDS_M,
+        device=target_kp.device,
+        dtype=target_kp.dtype,
+    ).view(1, 1, num_c)
+    contact_target = (
+        (mean_speed < _STATIC_CONTACT_SPEED_THRESHOLD_MPS)
+        & (contact_kp[..., 2] < height_thresh)
+    ).to(dtype=logits.dtype)
+    logits_safe = _safe_masked_sequence(logits, has_speed)
+    per_frame = nn.functional.binary_cross_entropy_with_logits(
+        logits_safe,
+        contact_target,
+        reduction="none",
+    ).mean(dim=-1)
+    return _masked_frame_mean(per_frame, has_speed)
+
+
 # Type of a single loss term: maps shared inputs to a scalar loss tensor.
 PLCSLossTerm = Callable[[PLCSLossInputs], Tensor]
 
@@ -680,6 +979,12 @@ DEFAULT_LOSS_TERMS: dict[str, PLCSLossTerm] = {
     "joint_angle_velocity": joint_angle_velocity_loss_term,
     "torsion_angle_velocity": torsion_angle_velocity_loss_term,
     "torso_twist_velocity": torso_twist_velocity_loss_term,
+    "world_kp_3d": world_kp_3d_loss_term,
+    "pva_velocity": pva_velocity_loss_term,
+    "pva_acceleration": pva_acceleration_loss_term,
+    "kinematic_velocity_consistency": kinematic_velocity_consistency_loss_term,
+    "kinematic_acceleration_consistency": kinematic_acceleration_consistency_loss_term,
+    "static_contact": static_contact_loss_term,
 }
 
 
@@ -799,6 +1104,34 @@ class PLCSLoss(nn.Module):
             and self.loss_weights["reprojection"] > 0.0
         )
 
+    def _requires_world_pose(self) -> bool:
+        return any(
+            name in self.loss_terms and self.loss_weights[name] > 0.0
+            for name in (
+                "world_kp_3d",
+                "kinematic_velocity_consistency",
+                "kinematic_acceleration_consistency",
+            )
+        )
+
+    def _requires_pva_velocity(self) -> bool:
+        return (
+            "pva_velocity" in self.loss_terms
+            and self.loss_weights["pva_velocity"] > 0.0
+        )
+
+    def _requires_pva_acceleration(self) -> bool:
+        return (
+            "pva_acceleration" in self.loss_terms
+            and self.loss_weights["pva_acceleration"] > 0.0
+        )
+
+    def _requires_static_contact(self) -> bool:
+        return (
+            "static_contact" in self.loss_terms
+            and self.loss_weights["static_contact"] > 0.0
+        )
+
     def prepare_inputs(
         self,
         pred_position: Tensor,
@@ -810,6 +1143,11 @@ class PLCSLoss(nn.Module):
         target_human_kp_3d: Tensor | None,
         padding_mask: Tensor | None,
         reprojection_target: PLCSReprojectionTarget | None = None,
+        pred_world_kp_3d: Tensor | None = None,
+        pred_vel_3d: Tensor | None = None,
+        pred_acc_3d: Tensor | None = None,
+        pred_static_contact_logits: Tensor | None = None,
+        frame_rate_hz: Tensor | None = None,
     ) -> PLCSPreparedLossTerms:
         """Validate inputs and compute named scalar terms before ``forward``."""
         frame_mask = None
@@ -820,16 +1158,50 @@ class PLCSLoss(nn.Module):
 
         canonical_required = self._requires_canonical_pose()
         reprojection_required = self._requires_reprojection()
-        if (
-            canonical_required or reprojection_required
-        ) and pred_canonical_pose is None:
+        world_required = self._requires_world_pose()
+        pva_v_required = self._requires_pva_velocity()
+        pva_a_required = self._requires_pva_acceleration()
+        contact_required = self._requires_static_contact()
+
+        if canonical_required and pred_canonical_pose is None:
             raise ValueError(
-                "pred_canonical_pose is required when canonical-dependent or "
+                "pred_canonical_pose is required when canonical-dependent "
+                "loss weight is > 0."
+            )
+        if reprojection_required and (
+            pred_canonical_pose is None and pred_world_kp_3d is None
+        ):
+            raise ValueError(
+                "pred_canonical_pose or pred_world_kp_3d is required when "
                 "reprojection loss weight is > 0."
             )
         if reprojection_required and reprojection_target is None:
             raise ValueError(
                 "reprojection_target is required when reprojection_weight is > 0."
+            )
+        if world_required and (
+            pred_world_kp_3d is None or target_human_kp_3d is None
+        ):
+            raise ValueError(
+                "pred_world_kp_3d and target_human_kp_3d are required when "
+                "world_kp_3d or kinematic consistency loss weight is > 0."
+            )
+        if pva_v_required and (pred_vel_3d is None or target_human_kp_3d is None):
+            raise ValueError(
+                "pred_vel_3d and target_human_kp_3d are required when "
+                "pva_velocity_weight is > 0."
+            )
+        if pva_a_required and (pred_acc_3d is None or target_human_kp_3d is None):
+            raise ValueError(
+                "pred_acc_3d and target_human_kp_3d are required when "
+                "pva_acceleration_weight is > 0."
+            )
+        if contact_required and (
+            pred_static_contact_logits is None or target_human_kp_3d is None
+        ):
+            raise ValueError(
+                "pred_static_contact_logits and target_human_kp_3d are required "
+                "when static_contact_weight is > 0."
             )
 
         target_canonical_pose: Tensor | None = None
@@ -857,6 +1229,12 @@ class PLCSLoss(nn.Module):
             pred_canonical_pose=pred_canonical_pose,
             target_canonical_pose=target_canonical_pose,
             reprojection_target=reprojection_target,
+            pred_world_kp_3d=pred_world_kp_3d,
+            target_world_kp_3d=target_human_kp_3d,
+            pred_vel_3d=pred_vel_3d,
+            pred_acc_3d=pred_acc_3d,
+            pred_static_contact_logits=pred_static_contact_logits,
+            frame_rate_hz=frame_rate_hz,
         )
         return PLCSPreparedLossTerms(
             terms=tuple(

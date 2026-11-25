@@ -31,6 +31,7 @@ class PLCSInputProfile(StrEnum):
     FRAME = "frame"
     SEQUENCE = "sequence"
     MULTIVIEW = "multiview"
+    MONOCULAR = "monocular"
     TRACK_QUERY = "track_query"
 
 
@@ -369,6 +370,8 @@ class PLCSPreparedBatch:
     reprojection_target: PLCSReprojectionTarget | None = None
     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
     reference_metadata: PLCSReferenceMetadata | None = None
+    frame_rate_hz: Tensor | None = None
+    frame_observed: Tensor | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -379,6 +382,11 @@ class PLCSDecodedPrediction:
     rotation: Tensor
     canonical_pose: Tensor | None = None
     auxiliary_position: Tensor | None = None
+    world_kp_3d: Tensor | None = None
+    pred_cam: Tensor | None = None
+    pred_vel_3d: Tensor | None = None
+    pred_acc_3d: Tensor | None = None
+    static_contact_logits: Tensor | None = None
     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
     reference_metadata: PLCSReferenceMetadata | None = None
 
@@ -393,6 +401,10 @@ class PLCSPhysicalPrediction:
     position_meters: Float32Array
     yaw_radians: Float32Array
     canonical_pose: Float32Array | None = None
+    world_kp_3d_meters: Float32Array | None = None
+    pred_vel_3d_mps: Float32Array | None = None
+    pred_acc_3d_mps2: Float32Array | None = None
+    static_contact_logits: Float32Array | None = None
     court_reference_provenance: tuple[CourtReferenceFrameProvenance, ...] | None = None
     reference_metadata: PLCSReferenceMetadata | None = None
 

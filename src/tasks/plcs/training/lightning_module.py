@@ -114,13 +114,18 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
         root = runtime.raw
         loss_cfg = PLCSLossConfig.from_dict(dict(root.loss))
         if loss_cfg.reprojection_weight > 0.0:
-            if adapter.profile is not PLCSInputProfile.MULTIVIEW:
+            if adapter.profile not in {
+                PLCSInputProfile.MULTIVIEW,
+                PLCSInputProfile.MONOCULAR,
+            }:
                 raise ValueError(
-                    "PLCS reprojection loss requires the multiview input profile."
+                    "PLCS reprojection loss requires the multiview or monocular "
+                    "input profile."
                 )
-            if not adapter.predict_canonical_pose:
+            if not (adapter.predict_canonical_pose or adapter.predict_world_pose):
                 raise ValueError(
-                    "PLCS reprojection loss requires model.predict_canonical_pose=true."
+                    "PLCS reprojection loss requires model.predict_canonical_pose=true "
+                    "or predict_world_pose=true."
                 )
         self.loss_fn = PLCSLoss(config=loss_cfg)
 
@@ -159,6 +164,7 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 position_threshold_m=position_threshold,
                 angle_threshold_deg=angle_threshold,
                 predict_canonical_pose=adapter.predict_canonical_pose,
+                predict_world_pose=adapter.predict_world_pose,
             )
 
         self.train_metrics = _build_metrics()
@@ -291,6 +297,11 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             target_human_kp_3d=prepared.target_human_kp_3d,
             padding_mask=padding_mask,
             reprojection_target=prepared.reprojection_target,
+            pred_world_kp_3d=outputs.world_kp_3d,
+            pred_vel_3d=outputs.pred_vel_3d,
+            pred_acc_3d=outputs.pred_acc_3d,
+            pred_static_contact_logits=outputs.static_contact_logits,
+            frame_rate_hz=prepared.frame_rate_hz,
         )
         losses = self.loss_fn(loss_inputs)
 
@@ -322,6 +333,15 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
             ),
             pred_canonical_pose=pred_canonical_pose,
             target_canonical_pose=target_canonical_pose,
+            pred_world_kp_3d=(
+                outputs.world_kp_3d if self.io_adapter.predict_world_pose else None
+            ),
+            target_world_kp_3d=(
+                prepared.target_human_kp_3d
+                if self.io_adapter.predict_world_pose
+                else None
+            ),
+            frame_rate_hz=prepared.frame_rate_hz,
         )
 
         return {
@@ -407,6 +427,19 @@ class PLCSLightningModule(ManualGANSupportMixin, BaseLightningModule):
                 target_position,
                 target_rotation,
             )
+        if outputs.world_kp_3d is not None:
+            if prepared.target_human_kp_3d is None:
+                raise ValueError(
+                    "World-pose test predictions require target_human_kp_3d."
+                )
+            payload["pred_world_kp_3d"] = outputs.world_kp_3d
+            payload["target_world_kp_3d"] = prepared.target_human_kp_3d
+            if outputs.pred_vel_3d is not None:
+                payload["pred_vel_3d"] = outputs.pred_vel_3d
+            if outputs.pred_acc_3d is not None:
+                payload["pred_acc_3d"] = outputs.pred_acc_3d
+            if outputs.static_contact_logits is not None:
+                payload["static_contact_logits"] = outputs.static_contact_logits
         if prepared.reference_metadata is not None:
             num_views_range = cast(
                 "list[int] | tuple[int, int]",

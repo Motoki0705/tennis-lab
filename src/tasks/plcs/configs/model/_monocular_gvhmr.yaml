@@ -1,0 +1,12 @@
+name: plcs_monocular_gvhmr
+io:
+  input_profile: monocular
+hidden_dim: 512
+num_layers: 12
+num_heads: 8
+mlp_ratio: 4.0
+dropout: 0.1
+max_seq_len: 4096
+sliding_window_len: 120
+enable_pva_heads: false
+predict_static_contact: false
