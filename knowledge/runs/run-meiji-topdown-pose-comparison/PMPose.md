@@ -36,7 +36,28 @@ OMP_NUM_THREADS=4 MKL_NUM_THREADS=4 .venv/bin/python -B "$run/pmpose_tools.py" e
 
 For the GPU commands use the shared training queue’s exclusive reservation. To build the TRT16 engine, pass the output directory from `export` to `pmpose_tools.py build`. Set `--opt-batch`, `--max-batch` and `--workspace-mib` for the chosen speed and accuracy workloads. Use `pmpose_tools.py inspect --batch N` to record TensorRT layer metadata on the same GPU. Use the engine directory as `--engine` for accuracy and speed. All forwards use the same input shape per model and two TTA branches. PT16 and TRT16 use FP16 weights and inputs with the stock Sparsemax projection in FP32. Flip restoration and DARK UDP use FP32 outputs. The model records an explicit failure when a required engine or upstream asset is unavailable.
 
-Use the [common accuracy runner](README.md#accuracy-command) with `--model pmpose-l` or `pmpose-h`, the matching checkpoint and SHA-256 from `pmpose_assets.py`, and `--source-root "$source_root"`. Record both the scores against the pinned #2495 bundle and coordinate differences from that model’s PT32 predictions.
+Use the [common accuracy runner](README.md#accuracy-command) with `--model pmpose-l` or `pmpose-h`, the matching checkpoint and SHA-256 from `pmpose_assets.py`, and `--source-root "$source_root"`. The historical accuracy records include both the scores against the pinned #2495 bundle and coordinate differences from that model’s PT32 predictions.
+
+## Synchronized speed protocol
+
+`pmpose_speed.py` uses the #2496 [fixed inputs and timing order](../run-person-model-speed-baseline/README.md) through the [shared timing harness](../../../src/utils/inference_benchmark.md). The cohort contains 384 BGR crop rows. The runner uses native `xyxy` boxes and the two official flip forwards per batch. Run PT16 and TRT16 for both models at batch 1, 4 and 8. Each condition uses 30 warmup iterations, then 3 blocks of 100 iterations on the dedicated CUDA stream. The synchronized measurements require a fresh output directory for each case. TRT16 reuses the plans from the accuracy runs.
+
+Use the repo’s training queue to run the following per-case command with an exclusive reservation. Use the shared fixed speed input directory as `inputs` and choose a new `output` for the series.
+
+```bash
+run=knowledge/runs/run-meiji-topdown-pose-comparison
+baseline=knowledge/runs/run-person-model-speed-baseline
+assets=outputs/pmpose
+repo=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+inputs="$repo/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs"
+output="$assets/speed-pt16-trt16-sync"
+PYTHONPATH="$PWD:$PWD/$run:$PWD/$baseline:$PWD/$assets/dependencies" \
+  OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
+  .venv/bin/python -B "$run/pmpose_speed.py" --inputs "$inputs" --assets "$assets" \
+  --output "$output" --model pmpose-l --backend PT16 --batch 1
+```
+
+Each `report.json` records the execution and harness commits, input pins, model artifacts, environment, synchronized timing samples and memory. `infeasible` reports carry the failure phase and message. The speed reports set `parity_not_evaluated_reason` to `PT32計測はスコープ外（ユーザー判断 2026-11-25）` under the November 25 scope. Use the saved pseudo-GT scores for accuracy and retain the earlier PT32 scores and numerical comparisons as historical results.
 
 ## CPU preflight
 
@@ -99,3 +120,5 @@ Use small CPU fixtures with no weight or GPU requirement. Compare the rectangle 
 For rescore verification, check every saved prediction hash, ordered row address and input BBox against the published cohort. Keep the original score files to compare with the canonical matcher. Use a small CPU case with an exchanged person order and a mismatched expected OKS to verify that the archive checks reject incorrect input assignments. The full six-condition run verifies the real queue receipts and engine artifacts.
 
 For the auxiliary-score diagnostic, reuse the common scorer’s PCK normalization and COCO sigmas. Check ROC AUC against a hand-counted set with a tied positive and negative score. Check the PCK success totals against the canonical scorer on both real PT32 archives. Evaluate the largest backend differences against the existing reference validity mask.
+
+For the speed runner, reuse the shared timing tests in `tests/unit/utils/test_inference_benchmark.py` and the input verification tests in `tests/unit/utils/test_inference_benchmark_inputs.py`. A CPU CLI test with two synthetic crop rows checks that the runner follows the pinned order, uses raw `xyxy` coordinates and passes only the requested adapter and the explicit parity reason to the shared harness. Check that the CLI rejects PT32 and that the adapter reports TensorRT context creation failures while preserving CUDA OOM. Check all real crop inputs and batch schedules on the CPU before queueing. Keep these tests independent of upstream dependencies, model weights and CUDA.

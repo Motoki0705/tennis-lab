@@ -5,6 +5,7 @@ from types import SimpleNamespace
 
 import cv2
 import numpy as np
+import pmpose
 import pytest
 import torch
 from evaluate import AccuracyStages
@@ -202,6 +203,38 @@ def test_unavailable_assets_are_reported_on_load(tmp_path, backend, source, reas
     with pytest.raises(ConditionUnavailable, match=reason) as error:
         adapter.load()
     assert error.value.status is Status.UNAVAILABLE
+
+
+@pytest.mark.parametrize(
+    "error_type", [RuntimeError, torch.OutOfMemoryError], ids=["context", "oom"]
+)
+def test_trt_startup_preserves_failure_reason(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, error_type: type[RuntimeError]
+) -> None:
+    monkeypatch.setattr(pmpose, "verify_checkpoint", lambda *_: None)
+    monkeypatch.setattr(pmpose, "load_official_pipeline", lambda *_: object())
+
+    def fail_to_load(*_: object) -> None:
+        raise error_type("Could not create TensorRT context")
+
+    monkeypatch.setattr(pmpose, "load_engine", fail_to_load)
+    adapter = make_adapter(
+        model_id="pmpose-l",
+        backend=Backend.TRT16,
+        checkpoint=tmp_path / "checkpoint.pth",
+        device="cuda:0",
+        source_root=tmp_path,
+        engine=tmp_path,
+    )
+    expected = (
+        torch.OutOfMemoryError
+        if error_type is torch.OutOfMemoryError
+        else ConditionUnavailable
+    )
+    with pytest.raises(expected, match="Could not create TensorRT context") as failure:
+        adapter.load()
+    if isinstance(failure.value, ConditionUnavailable):
+        assert failure.value.status is Status.UNAVAILABLE
 
 
 @pytest.mark.parametrize("broken", ["row order", "expected oks"])
