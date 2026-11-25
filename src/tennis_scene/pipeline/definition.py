@@ -6,6 +6,7 @@ from collections.abc import Callable, Mapping
 from functools import partial
 from typing import TYPE_CHECKING, Any
 
+from src.submodules.models.fasthmr.assets import require_checkpoint_sha256
 from src.submodules.smpl_assets import require_smpl_asset
 from src.tasks.court_side.hypothesis import PlayerCourtSideConfig
 from src.tasks.person_tracking.court_linking import LinkingConfig
@@ -187,7 +188,20 @@ def declared_model_identities(cfg: PipelineRuntimeConfig, stage: str, component:
             or stage == "pose_estimation" and not cfg.enabled["person_observations"]
             or not isinstance(component, InferenceComponent)):
         return {}
-    return dict(model_identities(component.model_specs(), cfg.court_kp.asset_catalog.file_identity))
+    specs = component.model_specs()
+    file_identity = cfg.court_kp.asset_catalog.file_identity
+    if cfg.fasthmr is None or stage not in {FASTHMR_RECIPE, "body_placement"}:
+        return dict(model_identities(specs, file_identity))
+    pins = {path: name for name, path in cfg.fasthmr.pinned_weights.items()}
+
+    def bind_pinned_asset(path: Path) -> dict[str, Any]:
+        identity: dict[str, Any] = file_identity(path)
+        name = pins.get(path)
+        if name is not None:
+            require_checkpoint_sha256(name, path, identity["sha256"])
+        return identity
+
+    return dict(model_identities(specs, bind_pinned_asset))
 
 
 def publication_model_identities(cfg: PipelineRuntimeConfig) -> dict[str, Any]:
@@ -295,7 +309,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
 
     def add(name: str, component: Any, assembler: Any, bindings: dict[str, str], settings: Callable[[], Any],
             *, camera: str | None = None, require_component: Callable[[], None] | None = None,
-            after_components: tuple[str, ...] = ()) -> None:
+            after_components: tuple[str, ...] = (), component_origin_only: bool = False) -> None:
         stage = name.split("/")[0]
         resolved: dict[str, Any]
         if name in overrides:
@@ -312,7 +326,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         mode = "load" if cfg.cache_source == "load" else cfg.component_sources[stage]
         nodes.append(ComponentNode(name, component, component.io, assembler, bindings,
             AssemblyContext(source, camera), json_value(resolved), code_identity, mode, require_component=require_component,
-            after_components=after_components))
+            after_components=after_components, component_origin_only=component_origin_only))
 
     people_enabled = cfg.enabled["person_observations"]
     selection = LinkingConfig(max_candidates=cfg.max_tracks_per_camera)
@@ -517,7 +531,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         recovery = "gvhmr"
     else:
         add(FASTHMR_RECIPE, components[FASTHMR_RECIPE], FastHMRInputAssembler(),
-            {"selection": "body_view_selection"}, lambda: {"recipe": cfg.recipe})
+            {"selection": "body_view_selection"}, lambda: {"recipe": cfg.recipe}, component_origin_only=True)
         recovery = FASTHMR_RECIPE
     if isinstance(overrides.get("body_placement"), SkeletonOnlyPlacementModule):
         placement_assembler: Any = SkeletonOnlyPlacementInputAssembler()

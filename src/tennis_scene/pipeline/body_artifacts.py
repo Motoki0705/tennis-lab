@@ -28,6 +28,7 @@ from src.tennis_scene.pipeline.storage.scene_index import (
 
 def require_current_body_artifacts(
     root: Path, scene_reference: Mapping[str, Any], *, recipe: RecipeName = STANDARD_RECIPE,
+    fasthmr_settings: Mapping[str, Any] | None = None,
 ) -> dict[str, Any]:
     """Follow this scene's body dependencies, including saved feature integrity.
 
@@ -52,6 +53,10 @@ def require_current_body_artifacts(
     recovered_ref = placement['dependencies'].get('recovered')
     if recipe == FASTHMR_RECIPE:
         recovered = read(FASTHMR_RECIPE, recovered_ref, 'body_parameters', 3)
+        if recovered['provenance'].get('origin') != 'component':
+            raise ValueError('Published FastHMR requires component origin')
+        if fasthmr_settings is None or recovered['identity'].get('settings') != fasthmr_settings:
+            raise ValueError('Published FastHMR differs from the declared execution settings')
         selection_ref = recovered['dependencies'].get('selection')
         selection = read('body_view_selection', selection_ref, 'body_view_selection', 1)
         body = ArtifactCodec(FastHMROutput).load(

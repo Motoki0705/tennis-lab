@@ -43,6 +43,8 @@ class ComponentNode:
     # Soft barriers across the selected component families, including cameras
     # and clips. They order execution without adding artifact inputs or targets.
     after_components: tuple[str, ...] = ()
+    # This node can only adopt artifacts with a component execution identity.
+    component_origin_only: bool = False
 
     def __post_init__(self) -> None:
         if self.source not in ("execute", "load"):
@@ -53,7 +55,7 @@ class ComponentNode:
             raise ValueError("Pinned external inputs must be load-only")
 
     def require_importable(self) -> None:
-        if self.require_component is not None:
+        if self.component_origin_only or self.require_component is not None:
             raise ValueError(f"{self.name} requires component origin")
 
     def validate_import_identity(self, identity: Mapping[str, Any], provenance: Mapping[str, Any]) -> None:
@@ -263,7 +265,7 @@ class ExecutionPlan:
         reference = clip.store.active(key[1])
         cache_hit = reference is not None and not clip.overwrite and reference.execution_key == document_digest(identity)
         action: Literal["execute", "load", "cached"] = "cached" if cache_hit else "execute"
-        if node.source == "load" or (cache_hit and node.require_component is not None):
+        if node.source == "load" or (cache_hit and (node.component_origin_only or node.require_component is not None)):
             if node.require_component is not None:
                 node.require_component()
             if reference is None:

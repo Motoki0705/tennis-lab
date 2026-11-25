@@ -35,7 +35,9 @@ body_models/SMPL_NEUTRAL.pkl
 body_models/J_regressor_h36m.npy
 ```
 
-CameraHMRの `cam_model_cleaned.ckpt`、`smpl_mean_params.npz`、`SMPL_NEUTRAL.pkl` は、利用者が2026-11-24に公式サイトで同意して取得した版を使う。取得済みの3ファイルのSHA-256を固定し、ロード前に照合する。利用は非商用研究に限り、再配布は禁止されている。[CameraHMRの配布元](https://camerahmr.is.tue.mpg.de/download.php)・[ライセンス](https://camerahmr.is.tue.mpg.de/license.html)
+CameraHMRの `cam_model_cleaned.ckpt`、`smpl_mean_params.npz`、`SMPL_NEUTRAL.pkl` は、利用者が2026-11-24に公式サイトで同意して取得した版を使う。利用は非商用研究に限り、再配布は禁止されている。[CameraHMRの配布元](https://camerahmr.is.tue.mpg.de/download.php)・[ライセンス](https://camerahmr.is.tue.mpg.de/license.html)
+
+上記8ファイルは、実行計画と公開用の構成を組む時点で固定SHA-256と照合する。推論リクエストが空でも同じ照合を行う。初期化時は再度照合し、VAEの重みをCPUに復元してからモデルを指定デバイスへ移す。
 
 | 公開資産 | 配布元と利用条件 |
 | --- | --- |
@@ -65,7 +67,7 @@ uv pip install --python .venv/bin/python --target outputs/fasthmr-setup/python -
 recipe=fasthmr '+fasthmr={repository:FastHMR,assets:fasthmr,backend:pt16,feature_batch_size:16,seed:0}'
 ```
 
-PT16は `backend:pt16` で選ぶ。CUDA autocastとYOLOのhalf推論を使い、カメラ変換とHybrIK、SMPL geometryはFP32を使う。PT32/PT16とも、RTX 5060 Tiで固定コホートのclip_003・選手0・cam0の8フレームから有限なSMPLメッシュを生成した。処理済みのFastHMR成果を選択的に読む場合は `+execution.fasthmr=load` を使う。
+PT16は `backend:pt16` で選ぶ。CUDA autocastとYOLOのhalf推論を使い、カメラ変換とHybrIK、SMPL geometryはFP32を使う。PT32/PT16とも、RTX 5060 Tiで固定コホートのclip_003・選手0・cam0の8フレームから有限なSMPLメッシュを生成した。`+execution.fasthmr=load` はFastHMRコンポーネントが生成し、同じ実行設定と入力の系譜を持つ成果を読む。公開時にも、コンポーネントの出自と精度を含むモデル設定を照合する。
 
 ## 固定入力と出力
 

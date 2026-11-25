@@ -12,9 +12,19 @@ from typing import Any
 import numpy as np
 import pytest
 
-from src.submodules.models.fasthmr.assets import FastHMRConfig
+from src.submodules.models.fasthmr.assets import CHECKPOINT_SHA256, FastHMRConfig
 from src.submodules.models.fasthmr.inference import FastHMRPrediction, SelectionRows
+from src.tennis_scene.configuration import PipelineRuntimeConfig
+from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.body_types import NativeSMPLParameters
+from src.tennis_scene.pipeline.clip_inputs import (
+    resolve_dataset_clip,
+    select_dataset_clips,
+)
+from src.tennis_scene.pipeline.components.body_view_selection import (
+    BodySelection,
+    BodyViewSelectionOutput,
+)
 from src.tennis_scene.pipeline.components.fasthmr import (
     FastHMRBody,
     FastHMROutput,
@@ -23,12 +33,23 @@ from src.tennis_scene.pipeline.components.fasthmr import (
 from src.tennis_scene.pipeline.components.player_reconstruction import (
     reconstruct_player_bodies,
 )
+from src.tennis_scene.pipeline.contracts import ClipSource, SourceVideo
+from src.tennis_scene.pipeline.dataset_publication import publish_annotation
 from src.tennis_scene.pipeline.definition import (
     enabled_model_assets,
     publication_model_identities,
+    standard_definition,
+)
+from src.tennis_scene.pipeline.imports.publish import (
+    BoundImport,
+    bind_import,
+    publish_import,
 )
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
+from src.tennis_scene.pipeline.runner import ComponentNode, ComponentRunner
 from src.tennis_scene.pipeline.source_identity import compatible_source_digests
+from src.tennis_scene.pipeline.storage.clip_store import ClipStore
+from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.video_batch import run_video_batch
 from src.utils.checksum import dual_sha256
 from src.utils.configuration import PathRole
@@ -49,6 +70,84 @@ FASTHMR = (
     "gvhmr.enabled=true",
     "+fasthmr={repository:FastHMR,assets:fasthmr,backend:pt32,feature_batch_size:2,seed:0}",
 )
+
+
+@pytest.fixture
+def fast_config(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> PipelineRuntimeConfig:
+    cfg = runtime(tmp_path, overrides=FASTHMR)
+    fast = cfg.fasthmr
+    assert fast is not None
+    source_code = fast.repository / "model.py"
+    materialize_assets((*enabled_model_assets(cfg).values(), fast.demo_config, source_code), tmp_path, court=cfg.court_kp)
+    monkeypatch.setattr(FastHMRConfig, "verify_repository", lambda _: {"source": source_code})
+    for name, path in {**fast.inference_weights, **fast.geometry_weights}.items():
+        if name in CHECKPOINT_SHA256:
+            monkeypatch.setitem(CHECKPOINT_SHA256, name, dual_sha256(path))
+    return cfg
+
+
+@pytest.fixture
+def selected_clip(tmp_path: Path) -> tuple[ClipSource, ClipStore]:
+    source = ClipSource("short", (SourceVideo("cam0", tmp_path / "cam0.mp4", "a" * 64, 1, 30., 64, 36),))
+    store = ClipStore(tmp_path / "fast", json_value(source))
+    # One selected person with a single observation has no recoverable segment.
+    selection = BodyViewSelectionOutput((BodySelection(0, "cam0", (), ()),))
+    store.publish("body_view_selection", selection, ArtifactCodec(BodyViewSelectionOutput),
+                  schema="body_view_selection", version=1, identity={"importer": "test-selection"},
+                  dependencies={}, provenance={"origin": "import"})
+    return source, store
+
+
+def _recovery_nodes(cfg: PipelineRuntimeConfig, source: ClipSource) -> tuple[ComponentNode, ...]:
+    nodes = {node.name: node for node in standard_definition(cfg, source, code_identity="test")}
+    selection = nodes["body_view_selection"]
+    # Start at the fixed selection to exercise the real FastHMR declaration and store.
+    return replace(selection, io=replace(selection.io, inputs={}), bindings={}, source="load"), nodes["fasthmr"]
+
+
+def test_fast_recipe_rejects_pt32_import_in_pt16_load(
+    fast_config: PipelineRuntimeConfig, selected_clip: tuple[ClipSource, ClipStore],
+) -> None:
+    source, store = selected_clip
+    runner = ComponentRunner(_recovery_nodes(fast_config, source), store)
+    runner.run(["fasthmr"])
+    pt32_output = runner.output("fasthmr")
+    selection = store.references()["body_view_selection"]
+    # Reproduce a pre-existing import without bypassing runner validation on read.
+    imported = store.publish("fasthmr", pt32_output, ArtifactCodec(FastHMROutput),
+                             schema="body_parameters", version=3,
+                             identity={"importer": "test-import", "backend": "pt32"},
+                             dependencies={"selection": selection}, provenance={"origin": "import"})
+    assert fast_config.fasthmr is not None
+    cfg = replace(fast_config, fasthmr=replace(fast_config.fasthmr, backend="pt16", device="cuda:1"),
+                  component_sources={**fast_config.component_sources, "fasthmr": "load"})
+    nodes = _recovery_nodes(cfg, source)
+    load = ComponentRunner(nodes, store)
+    with pytest.raises(ValueError, match="fasthmr requires component origin"):
+        load.run(["fasthmr"])
+    assert "fasthmr" not in load.references
+    with pytest.raises(ValueError, match="fasthmr requires component origin"):
+        bind_import(nodes, "fasthmr", store)
+    bound = BoundImport(nodes[-1], {"selection": selection}, {})
+    with pytest.raises(ValueError, match="fasthmr requires component origin"):
+        publish_import(bound, store, pt32_output, importer="test-import", version=1,
+                       identity={"backend": "pt32"}, provenance={})
+    assert store.active("fasthmr") == imported
+
+
+@pytest.mark.parametrize("entry", ["plan", "publication"])
+def test_fast_recipe_rejects_changed_weights_even_without_requests(
+    fast_config: PipelineRuntimeConfig, selected_clip: tuple[ClipSource, ClipStore], entry: str,
+) -> None:
+    source, store = selected_clip
+    assert fast_config.fasthmr is not None
+    fast_config.fasthmr.inference_weights["segmentor"].write_bytes(b"different segmentation checkpoint")
+    with pytest.raises(ValueError, match="FastHMR official segmentor SHA-256 mismatch"):
+        if entry == "plan":
+            ComponentRunner(_recovery_nodes(fast_config, source), store).run(["fasthmr"])
+        else:
+            publication_model_identities(fast_config)
+    assert store.active("fasthmr") is None
 
 
 def test_only_the_exact_standard_recipe_patch_preserves_previous_source_identity() -> None:
@@ -108,7 +207,7 @@ def test_native_pose_drives_placement_with_legacy_scene_shape() -> None:
 
 
 def test_fast_recipe_publishes_and_reuses_native_lineage(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, fast_config: PipelineRuntimeConfig,
 ) -> None:
     legacy, _, stages = setup_pipeline(tmp_path, monkeypatch)
     dataset = tmp_path / "dataset"
@@ -119,14 +218,10 @@ def test_fast_recipe_publishes_and_reuses_native_lineage(
     assert legacy_marker is not None
     legacy_bytes = legacy_marker.read_bytes()
 
-    cfg = runtime(tmp_path, overrides=FASTHMR)
+    cfg = fast_config
     assert cfg.fasthmr is not None
     assert cfg.output_path.parent == tmp_path / "run/recipes/fasthmr"
-    source_code = cfg.fasthmr.repository / "model.py"
-    assets = enabled_model_assets(cfg)
-    materialize_assets((*assets.values(), cfg.fasthmr.demo_config, source_code), tmp_path, court=cfg.court_kp)
     assert not cfg.people.hmr2_checkpoint.exists() and not cfg.people.gvhmr_checkpoint.exists()
-    monkeypatch.setattr(FastHMRConfig, "verify_repository", lambda _: {"source": source_code})
     calls: Counter[str] = Counter()
 
     class Mesh:
@@ -168,15 +263,22 @@ def test_fast_recipe_publishes_and_reuses_native_lineage(
     identity = fast.publication_identity()
     assert identity["recipe"] == "fasthmr" and identity["models"]["fasthmr"]["mesh"]["dtype"] == "float32"
     pt16 = replace(cfg, fasthmr=replace(cfg.fasthmr, backend="pt16"))
-    assert publication_model_identities(pt16)["fasthmr"]["mesh"]["dtype"] == "float16"
+    pt16_models = publication_model_identities(pt16)
+    assert pt16_models["fasthmr"]["mesh"]["dtype"] == "float16"
     again = run_video_batch(dataset, "video_000", fast, pipeline_config_yaml="recipe: fasthmr\n")
     assert again.outcomes[0].status == "skipped"
 
     fast.config = replace(cfg, cache_source="load")
-    fast.run(tuple(clip / f"cam{i}.mp4" for i in range(3)), video_role=PathRole.DATA,
-             camera_ids=("cam0", "cam1", "cam2"), store_root=legacy_marker.parent, clip_id="video_000/clip_000")
+    loaded = fast.run(tuple(clip / f"cam{i}.mp4" for i in range(3)), video_role=PathRole.DATA,
+                      camera_ids=("cam0", "cam1", "cam2"), store_root=legacy_marker.parent, clip_id="video_000/clip_000")
     assert fast.last_runner is not None and set(fast.last_runner.statuses.values()) == {"loaded"}
     assert calls == {"load": 1, "unload": 1, "predict": 1, "geometry_load": 1}
+    marker_bytes = marker.read_bytes()
+    record = select_dataset_clips(dataset, ("video_000/clip_000",))[0]
+    with pytest.raises(ValueError, match="Published FastHMR differs from the declared execution settings"):
+        publish_annotation(resolve_dataset_clip(dataset, record), loaded, pipeline_config_yaml="recipe: fasthmr\n",
+                           publication_identity={**identity, "models": pt16_models})
+    assert marker.read_bytes() == marker_bytes
     fast.config = replace(pt16, cache_source="load")
     with pytest.raises(ValueError, match="Loaded component identity changed: fasthmr"):
         fast.run(tuple(clip / f"cam{i}.mp4" for i in range(3)), video_role=PathRole.DATA,

@@ -19,6 +19,7 @@ from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.clip_inputs import DatasetClipInputs
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.recipes import (
+    FASTHMR_RECIPE,
     STANDARD_RECIPE,
     RecipeName,
     parse_recipe,
@@ -53,7 +54,8 @@ def _publication_recipe(identity: Mapping[str, object]) -> RecipeName:
 
 
 def annotation_root(clip_dir: Path, identity: Mapping[str, object]) -> Path:
-    return recipe_directory(clip_dir / ANNOTATION_RELATIVE_DIR, _publication_recipe(identity))
+    root: Path = recipe_directory(clip_dir / ANNOTATION_RELATIVE_DIR, _publication_recipe(identity))
+    return root
 
 
 def scene_array_manifest(result: SceneResult) -> dict[str, dict[str, object]]:
@@ -151,7 +153,14 @@ def _required_body_and_appearance_components(inputs: DatasetClipInputs, identity
     root = annotation_root(inputs.clip_dir, identity)
     document = json.loads((root / 'scene.json').read_text())
     reference = document['exports']['scene']['inputs']['scene_assembly']
-    required: dict[str, Any] = require_current_body_artifacts(root, reference, recipe=_publication_recipe(identity))
+    recipe = _publication_recipe(identity)
+    fasthmr_settings = None
+    if recipe == FASTHMR_RECIPE:
+        models, overrides = identity.get('models'), identity.get('component_overrides')
+        if not isinstance(models, Mapping) or recipe not in models or not isinstance(overrides, Mapping):
+            raise ValueError('FastHMR publication requires declared model settings')
+        fasthmr_settings = overrides.get(recipe, {'recipe': recipe, 'models': models[recipe]})
+    required: dict[str, Any] = require_current_body_artifacts(root, reference, recipe=recipe, fasthmr_settings=fasthmr_settings)
     if APPEARANCE_MEDIA in identity:
         node = "player_association"
         reference = document["artifacts"][node]
