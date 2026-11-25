@@ -149,6 +149,33 @@ The shared #2496 input `meiji_4cam/person-model-speed-v1` supplies predecoded na
 
 The 2026-11-25 scope uses PT16 and TRT16 with `parity_not_evaluated_reason` set to `PT32計測はスコープ外（ユーザー判断 2026-11-25）`. The comparison uses the previously recorded pseudo-GT accuracy and reports the parity label `PT32未計測` for these speed runs.
 
+### Synchronized measurements
+
+RTX 5060 Tiの排他queue 2件を同じ実行HEAD `645bf735dc4a183c46ce1a9448bbd8eee8d0ec30` で実行した。全12条件が `ok` で各300反復、計3,600反復。精度計測と同じ重み・engineのSHA-256、ViTPose-Hの基準runと同じGPU・driver・CUDA・PyTorch・TensorRT・電力上限、全反復のcrop ID順および各batchの2 forwardを照合した。最初の300 cropを計時するbatch 1には5 clipが含まれ、batch 4と8は全6 clipを含む。全条件のparityは `PT32未計測`。 [固定順と比較基準](../run-person-model-speed-low-precision/README.md) · [実行記録](rtmpose_speed.json)
+
+GPU時間は2 forwardのCUDA event時間の和。wall時間はcrop・転送・decode・バッチ末尾のCUDA同期を含む。表の時間は1人あたりで、persons/sは全反復の人物crop数をwall時間の合計で割った。VRAMはNVMLのデバイス全体のサンプル最大値。PyTorchのallocated・reserved peakとload・cold startは条件別記録にある。 [条件別の集計・環境](rtmpose_speed.json)
+
+| Model | Backend | Batch | GPU P50 / P95 (ms/person) | Wall P50 / P95 (ms/person) | Persons/s | NVML (MiB) |
+|---|---|---:|---:|---:|---:|---:|
+| M | PT16 | 1 | 27.601 / 38.824 | 31.035 / 42.979 | 30.9 | 528 |
+| M | PT16 | 4 | 6.852 / 13.120 | 8.680 / 15.264 | 106.8 | 572 |
+| M | PT16 | 8 | 3.251 / 6.701 | 4.729 / 8.305 | 192.9 | 660 |
+| M | TRT16 | 1 | 4.336 / 9.951 | 7.279 / 14.218 | 121.5 | 548 |
+| M | TRT16 | 4 | 1.190 / 1.666 | 2.710 / 3.600 | 359.4 | 570 |
+| M | TRT16 | 8 | 0.775 / 1.542 | 1.983 / 2.823 | 475.9 | 572 |
+| X | PT16 | 1 | 32.968 / 78.964 | 35.762 / 83.817 | 24.5 | 610 |
+| X | PT16 | 4 | 6.045 / 7.575 | 7.309 / 8.859 | 132.8 | 680 |
+| X | PT16 | 8 | 4.558 / 4.705 | 5.704 / 5.858 | 174.8 | 770 |
+| X | TRT16 | 1 | 6.525 / 9.348 | 9.015 / 12.107 | 105.8 | 698 |
+| X | TRT16 | 4 | 2.399 / 2.612 | 3.699 / 3.998 | 267.0 | 720 |
+| X | TRT16 | 8 | 1.904 / 1.940 | 3.048 / 3.157 | 326.9 | 722 |
+
+Batch 1のTRT16は、同backendのViTPose-H flipありに対して、wall P50がMで42.4%、Xで28.7%短く、NVMLピークが68.7%、60.2%低かった。Mのwall P95は基準より5.6%長かった。PT16のbatch 1はwall P50がMで40.0%、Xで61.3%長かった。固定疑似BBoxでのTRT16平均OKSはMが0.75181、Xが0.76826。共通の最大計測batchは8。 [ViTPose-H 基準値](../run-person-model-speed-low-precision/cases.csv) · [疑似GT採点値](rtmpose_accuracy.json)
+
+3,600反復のCSVは `batch_index` に固定入力の0始まりのバッチ順を持ち、各stageのwall時間は反復内で合算した。個別呼び出しを含む元の `report.json`、実際の再現コマンド、各ログと終了値の記録は、メインcheckoutからの相対パスとSHA-256で参照できる。 [M PT16](measurements/rtmpose-m-pt16.csv) · [M TRT16](measurements/rtmpose-m-trt16.csv) · [X PT16](measurements/rtmpose-x-pt16.csv) · [X TRT16](measurements/rtmpose-x-trt16.csv) · [元ファイルの参照](rtmpose_speed.json)
+
+### Queue history and reproduction
+
 On 2026-11-25, the parent cancelled the two original speed sweeps before execution while #2497 was being revised. Both queue entries ended as `cancelled` with no log, repro directory or measurements. [#2497 review](https://github.com/Motoki0705/tennis-lab/pull/2497#issuecomment-7138771687)
 
 - M job `0-8204471182921321101_2026-11-24T14-00-17-078678898Z_2310221_i2490-rtmpose-m-speed-sweep.job`
@@ -166,4 +193,13 @@ PYTHONPATH="$PWD/$speed:$PYTHONPATH" OMP_NUM_THREADS=4 OPENBLAS_NUM_THREADS=2 MK
   --input-sha256 "$speed_sha256" --model "$model" --backend PT16 --batch 1 \
   --checkpoint "$weight" --source-root "$source_root" --device cuda:0 \
   --output "$TENNIS_REPRO_DIR/measurements"
+```
+
+Resolve the verified report paths from the shared queue for the integrated comparison.
+
+```bash
+mapfile -t rtmpose_reports < <(
+  jq -r --arg root "$(dirname "$queue_dir")" \
+    '.conditions[].files.report.path | $root + "/" + .' "$run/rtmpose_speed.json"
+)
 ```
