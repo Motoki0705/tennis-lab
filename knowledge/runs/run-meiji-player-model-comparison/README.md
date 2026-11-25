@@ -51,11 +51,11 @@ env PYTHONPATH=. OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
 
 The [condition table](conditions.csv) covers the 30 candidate and six baseline conditions. Full-cohort results include RF-DETR-L at PT32/PT16/TRT16 and the four ECDet weights at PT32/PT16. ECDet-L O365 has 98.19% Recall@0.50 in both PyTorch conditions. The ECDet-L COCO TRT16 attempt has 74.68% Recall@0.50 and failed PT32 parity. At score 0.25, only 66.40% of boxes matched in both directions and absolute score error P95 was 0.313. The three RF-DETR-2XL rows record the user's license exclusion. The table keeps each model's inference-time cutoff and includes Recall@0.50 with a common extra cutoff of score 0.50.
 
-Current speed uses #2497's synchronized harness on 96 ordered native BGR images. All image IDs, native shapes and file hashes were checked against the fixed evaluation cohort. At image batch 1, DINO PT16 measured stage wall P50/P95 165.69/170.71 ms/image and 2,406 MiB of NVML peak increase. DINO TRT16 measured 94.79/101.53 ms/image and 984 MiB with the same plan used by the archived accuracy condition. Both report `PT32未計測` for parity. The 22 synchronized baseline cases include DINO, standalone ViTPose-H and body recovery. The joint DINO + ViTPose-H workloads remain pending for PT16 and TRT16. [Synchronized baseline records](../run-person-model-speed-low-precision/README.md)
+Current speed uses #2497's synchronized harness on 96 ordered native BGR images. All image IDs, native shapes and file hashes were checked against the fixed evaluation cohort. At image batch 1, DINO PT16 measured stage wall P50/P95 165.69/170.71 ms/image and 2,406 MiB of NVML peak increase. DINO TRT16 measured 94.79/101.53 ms/image and 984 MiB with the same plan used by the archived accuracy condition. Both report `PT32未計測` for parity. The 22 synchronized baseline cases include DINO, standalone ViTPose-H and body recovery. The additional joint run below measured DINO + ViTPose-H from the same image through both stages. [Synchronized baseline records](../run-person-model-speed-low-precision/README.md)
 
 The initial speed and parity results remain in the historical receipts. The initial PT32 stage wall P50 was 289.97 ms/image for DINO and 590.33 ms/image for DINO + ViTPose-H. The synchronized harness measures through device synchronization after the adapter returns. The provisional comparison uses timing under that boundary and records the earlier receipt hashes for traceability. [Initial baseline records](../run-person-model-speed-baseline/README.md)
 
-Pareto assessment minimizes batch-1 stage wall P50 and maximizes Recall@0.50 for detection or coverage-inclusive mean OKS for detection plus pose. So far the two DINO detection conditions have both a fixed-cohort score and a synchronized speed result. Candidate speed runs and the joint baseline are pending. The comparison command can render a plot per workload once the comparisons are ready. [Artifact, manifest and timing-schedule pins](comparison-evidence.json)
+Pareto assessment minimizes batch-1 stage wall P50 and maximizes Recall@0.50 for detection or coverage-inclusive mean OKS for detection plus pose. DINO and DINO + ViTPose-H now have both a fixed-cohort score and a synchronized speed result at PT16 and TRT16. The comparison and Pareto plots remain provisional while the candidate speed results and TensorRT quality diagnostics are collected. [Artifact, manifest and timing-schedule pins](comparison-evidence.json)
 
 The [RF-DETR-L accuracy record](../run-meiji-rfdetr-large-accuracy/results.json) contains the complete accuracy, candidate-versus-PT32 parity and box-margin sensitivity results. [RF-DETR licensing and reproduction](rfdetr.md) · [EdgeCrafter evidence](EDGECRAFTER.md) · [RT-DETRv4 evidence](rtdetrv4.md)
 
@@ -66,6 +66,17 @@ The five measured baseline and RF-DETR-L conditions were rescored from their pin
 The additional `suite joint` workload uses the synchronized #2497 harness merged at `59faa32a28d2f54e6492abdba2429846fa0397e3`. It runs PT16 and TRT16 with image batches 1 and 2 on the original ordered 96 BGR frames, using 30 warm-ups and 3 blocks of 100 measured repetitions. Each of the four conditions gets a fresh process. The report includes the full interval from DINO preprocessing through ViTPose decode and final device synchronization. The pinned scope decision sets parity to `PT32未計測`.
 
 DINO uses the standard full-frame settings, resizing with short side 800 and long-side cap 1,333 to produce 750×1,333 inputs. Every person row at score ≥0.30 goes to ViTPose in detection order. Duplicate merging is disabled. The standard square crop uses 1.2 times the box's longer side. ViTPose-H uses 256×192 input and the standard flip test. The inference batch is up to 8 person crops before flipping, as in the initial joint run and the archived TensorRT recipe. Both stages load the initial run's weights and TRT plans. The measured workload generates its own crops from the same backend's DINO output each time. [Initial baseline and fixed inputs](../run-person-model-speed-baseline/README.md)
+
+All four processes exited successfully with 300 measured repetitions over the same 96 images. The image order for each batch size matched the fixed timing schedule. The checkpoint and PT16 extension hashes matched the full-cohort accuracy run. The TRT16 plan hashes matched the archived accuracy artifacts and the initial timing run.
+
+| Backend | Image batch | Stage wall P50 (ms/image) | Stage wall P95 (ms/image) | Images/s | NVML peak increase (MiB) |
+|---|---:|---:|---:|---:|---:|
+| PT16 | 1 | 266.30 | 359.32 | 3.51 | 6,484 |
+| PT16 | 2 | 270.61 | 352.13 | 3.52 | 7,618 |
+| TRT16 | 1 | 148.58 | 194.14 | 6.41 | 2,292 |
+| TRT16 | 2 | 145.65 | 182.93 | 6.62 | 2,284 |
+
+At batch 2, per-image percentiles divide each batch duration by two. Throughput is total images divided by total measured wall time. NVML peak increase is relative to the pre-load reading. The [case summaries](joint-speed/cases.json) retain the model-only percentiles, environment, asset hashes and report digests. The [case table](joint-speed/cases.csv) and per-repetition timing CSVs for [PT16](joint-speed/measurements/dino-vitpose-pt16.csv) and [TRT16](joint-speed/measurements/dino-vitpose-trt16.csv) were generated from measurement commit `65d6349a5bb1b6c4f88f4fbbc894cc8e6f5b480a`. The [queue receipt and batch-1 report pins](comparison-evidence.json) connect these data to the comparison table.
 
 Run this command through the shared GPU queue with `--resource all`. Set `JOINT_SPEED_OUTPUT` to a fresh directory. The [baseline setup](../run-person-model-speed-baseline/README.md#再現) describes the pinned input and asset paths.
 
@@ -78,7 +89,12 @@ env PYTHONPATH=. OMP_NUM_THREADS=4 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 \
   --external-assets "$PERSON_EXTERNAL_ASSETS" suite joint
 ```
 
-`invocation-joint.json` records the measurement HEAD and inputs. `attempts-joint.json` tracks each subprocess. The raw `results/dino-vitpose/<backend>-b<batch>/report.json` contains per-repetition timing samples, model hashes, environment and VRAM. The same baseline bundle's `record.py --group joint` can verify and summarize this subset of reports.
+`invocation-joint.json` records the measurement HEAD and inputs. `attempts-joint.json` tracks each subprocess. The raw `results/dino-vitpose/<backend>-b<batch>/report.json` contains per-repetition timing samples, model hashes, environment and VRAM. Use the same baseline bundle's record command to verify the four reports and reproduce the tables. Set `JOINT_RECORD_OUTPUT` to a fresh directory.
+
+```bash
+.venv/bin/python -B knowledge/runs/run-person-model-speed-baseline/record.py \
+  "$JOINT_SPEED_OUTPUT" "$JOINT_RECORD_OUTPUT" --input-dir "$PERSON_FIXED_INPUTS" --group joint
+```
 
 ## Representative frames
 

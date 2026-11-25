@@ -83,7 +83,10 @@
         "sha256": "62c76164afad4a8e2181cdfc93f854b3e67e7dba3e7faee811bbfa4cd9aa3e2f"
       },
       "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
-      "speed_reason": "No joint workload in the synchronized #2497 run"
+      "timing": {
+        "path": "parent-2492-issue-2487-primary/person-model-speed-dino-vitpose-synchronized-v1/results/dino-vitpose/PT16-b1/report.json",
+        "sha256": "b4482efdc12eedc8a9dc68856a8e003834385936398cc68ef799425d023e404c"
+      }
     },
     {
       "model_id": "dino-swin-l-vitpose-h",
@@ -108,7 +111,10 @@
         "path": "parent-2492-issue-2496-primary/person-model-speed-baseline-v1/results/dino-vitpose/TRT16-b1/report.json",
         "sha256": "88c01b11b9ae94761e2df4f62cb39e8926c5129945a3126b43f6593a0cb3659a"
       },
-      "speed_reason": "No joint workload in the synchronized #2497 run"
+      "timing": {
+        "path": "parent-2492-issue-2487-primary/person-model-speed-dino-vitpose-synchronized-v1/results/dino-vitpose/TRT16-b1/report.json",
+        "sha256": "a998440b8b57f263f126564b1c445c3b6642e82c59ff9daf74b6a0727bf89b8d"
+      }
     },
     {
       "model_id": "ecdet-l-coco",
@@ -289,6 +295,26 @@
       "job_id": "0-8204468076511125596_2026-11-24T14-52-03-488874403Z_2687268_i2487-current-dino-vitpose-pt32-cohort.job",
       "status": "cancelled",
       "reason": "対象外（ユーザー判断 2026-11-25）"
+    }
+  },
+  "joint_speed_run": {
+    "measurement_commit": "65d6349a5bb1b6c4f88f4fbbc894cc8e6f5b480a",
+    "job_id": "0-8204398523191235973_2026-11-25T10-11-16-808764026Z_2693116_i2487-dino-vitpose-joint-synchronized.job",
+    "queue_repro": {
+      "path": ".training_queue/repro/0-8204398523191235973_2026-11-25T10-11-16-808764026Z_2693116_i2487-dino-vitpose-joint-synchronized/run.json",
+      "sha256": "b344d888760d4bc7e60499b8199b4060059804bf10314111c8f55b64f86f8354"
+    },
+    "queue_log": {
+      "path": ".training_queue/logs/0-8204398523191235973_2026-11-25T10-11-16-808764026Z_2693116_i2487-dino-vitpose-joint-synchronized.log",
+      "sha256": "70d8b528a05c83fe0fd53f942369df32e2920554b6590b20dfa91a05f40e9ba0"
+    },
+    "invocation": {
+      "path": "parent-2492-issue-2487-primary/person-model-speed-dino-vitpose-synchronized-v1/invocation-joint.json",
+      "sha256": "85f5ff2bdb81451ace8ac1650828fca3fdda46d7100807286cb7359098ba6c64"
+    },
+    "attempts": {
+      "path": "parent-2492-issue-2487-primary/person-model-speed-dino-vitpose-synchronized-v1/attempts-joint.json",
+      "sha256": "41b67541ddb2af92353116696dab8f0712e4b0a2ea0a90d510cb8d6109f97165"
     }
   }
 }
