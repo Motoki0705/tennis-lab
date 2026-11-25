@@ -74,6 +74,12 @@ def _stats(report: dict[str, Any]) -> dict[str, Any]:
     }
 
 
+def _copy_queue_log(source: Path, target: Path) -> None:
+    shutil.copyfile(source, target)
+    if dual_sha256(target) != dual_sha256(source):
+        raise ValueError("Queue log changed during retention")
+
+
 def _retained_copy(
     repro: Path, files: tuple[Path, ...], receipt: dict[str, Any], log: Path
 ) -> Path:
@@ -88,9 +94,7 @@ def _retained_copy(
             raise ValueError("Accuracy receipt changed during retention")
         for kind in ("predictions", "scores"):
             pinned_file(staging, receipt[kind])
-        shutil.copyfile(log, staging / "queue.log")
-        if dual_sha256(staging / "queue.log") != dual_sha256(log):
-            raise ValueError("Queue log changed during retention")
+        _copy_queue_log(log, staging / "queue.log")
         staging.rename(target)
     return target
 
@@ -132,13 +136,19 @@ def read_condition(
     scores_file = pinned_file(root, receipt["scores"])
     poses = load_predictions(predictions_file, expected)
     previous = read_json(scores_file)
-    log = queue / "logs" / f"{stem}.log"
-    if retain and root != retained:
-        root = _retained_copy(
-            repro, (receipt_file, predictions_file, scores_file), receipt, log
-        )
-    if (retained / "queue.log").is_file():
-        log = retained / "queue.log"
+    live_log = queue / "logs" / f"{stem}.log"
+    retained_log = retained / "queue.log"
+    if retain:
+        if root != retained:
+            root = _retained_copy(
+                repro, (receipt_file, predictions_file, scores_file), receipt, live_log
+            )
+        elif not retained_log.is_file():
+            with TemporaryDirectory(prefix=".retaining-log-", dir=retained) as scratch:
+                staged = Path(scratch) / "queue.log"
+                _copy_queue_log(live_log, staged)
+                retained_log.hardlink_to(staged)
+    log = retained_log if root == retained else live_log
     return (
         (model, backend),
         poses,

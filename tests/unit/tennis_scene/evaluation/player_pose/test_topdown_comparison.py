@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from importlib import import_module
@@ -15,7 +16,7 @@ from numpy.typing import NDArray
 
 from src.tennis_scene.evaluation.player_pose.bundle import MANIFEST_SCHEMA
 from src.tennis_scene.evaluation.player_pose.scoring import FrameKey, ReferenceFrame
-from src.utils.checksum import dual_sha256
+from src.utils.checksum import FileIntegrityError, dual_sha256
 from src.utils.inference_benchmark import Backend, ConditionUnavailable, Status
 from src.utils.io import write_json_atomic
 from src.utils.schema.player import COCO_KP_IDX, COCO_KP_NAMES
@@ -34,6 +35,32 @@ def run_modules(monkeypatch: pytest.MonkeyPatch) -> tuple[ModuleType, ...]:
     return tuple(
         import_module(name) for name in ("evaluate", "fixed_inputs", "pose_contract")
     )
+
+
+@pytest.fixture
+def compare_speed(monkeypatch: pytest.MonkeyPatch) -> ModuleType:
+    monkeypatch.syspath_prepend(str(RUN.parent / "run-person-model-speed-baseline"))
+    monkeypatch.syspath_prepend(str(RUN))
+    monkeypatch.setattr(sys, "dont_write_bytecode", True)
+    return import_module("compare_speed")
+
+
+@pytest.fixture
+def comparison_cli(
+    compare_speed: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> tuple[dict[str, Any], Path, Path]:
+    index = json.loads(compare_speed.COMPARISON_INPUTS.read_bytes())
+    index_path = tmp_path / "comparison_inputs.json"
+    output = tmp_path / "out"
+    monkeypatch.setattr(compare_speed, "COMPARISON_INPUTS", index_path)
+    # Exercise the CLI evidence checks without the local video and crop cache.
+    monkeypatch.setattr(compare_speed, "PinnedBenchmarkInputs", lambda *a, **k: None)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        ["compare_speed.py", "--inputs", str(tmp_path), "--output", str(output)],
+    )
+    return index, index_path, output
 
 
 def test_cohort_checks_the_published_source_video_record(
@@ -233,11 +260,13 @@ def test_accuracy_stages_reject_a_forward_declared_with_another_backend(
     assert error.value.status is Status.BACKEND_MISMATCH
 
 
+@pytest.mark.parametrize("model", ["vitpose-h", "rtmpose-m"])
 def test_replay_checks_fixed_rows_and_can_use_retained_queue_results(
-    run_modules: tuple[ModuleType, ...], tmp_path: Path
+    run_modules: tuple[ModuleType, ...], tmp_path: Path, model: str
 ) -> None:
     evaluate, fixed_inputs, contract = run_modules
     replay = import_module("replay_accuracy")
+    rtmpose = import_module("rtmpose_accuracy")
     key = FrameKey("video/clip", "cam2", 4)
     refs = {
         key: ReferenceFrame(
@@ -264,7 +293,11 @@ def test_replay_checks_fixed_rows_and_can_use_retained_queue_results(
     log.parent.mkdir()
     log.write_text("completed\n")
     artifact = evaluate.save_predictions(source, refs, keys, poses)
-    write_json_atomic(source / "scores.json", {"original": True})
+    scores = {
+        "overall": {"pose": {"with_detection_coverage": {"mean_oks": 0.25}}},
+        "finite_pairs": {"overall": {"mean_oks": 0.75}},
+    }
+    write_json_atomic(source / "scores.json", scores)
     write_json_atomic(
         source / "receipt.json",
         {
@@ -272,12 +305,16 @@ def test_replay_checks_fixed_rows_and_can_use_retained_queue_results(
             "status": "ok",
             "bundle_id": "cohort",
             "bundle_sha256": "b" * 64,
-            "model": "vitpose-h",
+            "model": model,
             "backend": "PT32",
             "rows": 2,
             "batch_size": 1,
             "joint_order": COCO_KP_NAMES,
-            "weights": {},
+            "weights": {
+                "checkpoint": {"sha256": rtmpose.MODELS[model].sha256, "bytes": 128}
+            }
+            if model == "rtmpose-m"
+            else {},
             "engines": {},
             "environment": {},
             "predictions": artifact,
@@ -296,15 +333,29 @@ def test_replay_checks_fixed_rows_and_can_use_retained_queue_results(
     case, retained, previous, record = replay.read_condition(
         *arguments, columns, retain=True
     )
-    assert case == ("vitpose-h", Backend.PT32)
-    assert previous == {"original": True}
+    assert case == (model, Backend.PT32)
+    assert previous == scores
     assert record["prediction_sha256"] == artifact["sha256"]
     np.testing.assert_array_equal(retained.keypoints_xyc, points)
+    if model == "rtmpose-m":
+        # RTMPose writes its prediction bundle directly into repro.
+        (repro / "predictions" / "queue.log").unlink()
+        with pytest.raises(FileIntegrityError, match="predictions/queue.log"):
+            replay.read_condition(*arguments, columns)
+        replay.read_condition(*arguments, columns, retain=True)
     (source / artifact["path"]).unlink()
     log.unlink()
     _, copied, _, copied_record = replay.read_condition(*arguments, columns)
     np.testing.assert_array_equal(copied.keypoints_xyc, points)
+    assert copied_record["log"]["path"] == f"repro/{stem}/predictions/queue.log"
     assert copied_record["log"]["sha256"] == record["log"]["sha256"]
+    if model == "rtmpose-m":
+        dedicated_case, dedicated_poses, dedicated_record = rtmpose.read_condition(
+            *arguments, columns
+        )
+        assert dedicated_case == case
+        np.testing.assert_array_equal(dedicated_poses, points)
+        assert dedicated_record["files"]["log"] == copied_record["log"]
 
 
 @pytest.mark.usefixtures("run_modules")
@@ -389,3 +440,130 @@ def test_difficulty_counts_missing_and_aligns_jitter_with_the_center_row(
     eye = result["by_joint"]["left_eye"]
     assert eye["eligible_temporal_triplets"] == 1
     assert eye["jitter_px"]["count"] == 0 and eye["coverage"] == 0.0
+
+
+def test_cli_rejects_replacement_of_only_the_report_summary(
+    compare_speed: ModuleType,
+    comparison_cli: tuple[dict[str, Any], Path, Path],
+    tmp_path: Path,
+) -> None:
+    index, index_path, output = comparison_cli
+    condition = {"model": "rtmpose-x", "backend": "TRT16", "batch_size": 1}
+    report = {
+        "case": {"name": condition["model"], "backend": "TRT16", "batch_size": 1},
+        "summary": {"stage_wall": {"p50_ms_per_item": 9.0}},
+    }
+    original = json.dumps(report).encode()
+    index["reports"] = [{**condition, "sha256": hashlib.sha256(original).hexdigest()}]
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+    path = tmp_path / "report.json"
+    path.write_bytes(original.replace(b"9.0", b"1.0"))
+    sys.argv.append(str(path))
+
+    with pytest.raises(ValueError, match="Report SHA-256 differs from the fixed"):
+        compare_speed.main()
+    assert not output.exists()
+
+
+@pytest.mark.parametrize(
+    ("log_text", "error"),
+    [
+        (None, "Terminal log does not exist"),
+        ("rtmpose-x/TRT16/B4 infeasible\n", "does not record a failure"),
+        ("rtmpose-x/TRT16/B1 ok\n", "does not record a failure"),
+    ],
+)
+def test_cli_rejects_omission_without_terminal_failure_for_that_case(
+    compare_speed: ModuleType,
+    comparison_cli: tuple[dict[str, Any], Path, Path],
+    tmp_path: Path,
+    log_text: str | None,
+    error: str,
+) -> None:
+    index, index_path, output = comparison_cli
+    log = tmp_path / "terminal.log"
+    if log_text is not None:
+        content = log_text.encode()
+        log.write_bytes(content)
+        index["jobs"].append(
+            {"state": "done", "log": {"sha256": hashlib.sha256(content).hexdigest()}}
+        )
+    index["reports"] = []
+    index_path.write_text(json.dumps(index), encoding="utf-8")
+    omissions = tmp_path / "omissions.json"
+    omissions.write_text(
+        json.dumps(
+            [
+                {
+                    "model": "rtmpose-x",
+                    "backend": "TRT16",
+                    "batch_size": 1,
+                    "reason": "Conversion failed",
+                    "evidence": str(log),
+                }
+            ]
+        ),
+        encoding="utf-8",
+    )
+    sys.argv.extend(("--omissions", str(omissions)))
+
+    with pytest.raises(ValueError, match=error):
+        compare_speed.main()
+    assert not output.exists()
+
+
+def test_terminal_log_covers_a_failed_adapter_without_a_report(
+    compare_speed: ModuleType, tmp_path: Path
+) -> None:
+    log = tmp_path / "terminal.log"
+    content = b"rtmpose-x/TRT16/B1 process exit 1, log case-logs/TRT16-b1.log\n"
+    log.write_bytes(content)
+    compare_speed._verify_omission(
+        ("rtmpose-x", "TRT16", 1), log, {hashlib.sha256(content).hexdigest()}
+    )
+
+
+def test_comparison_labels_both_batches_in_rows_and_plot(
+    compare_speed: ModuleType, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    from matplotlib.figure import Figure
+
+    model = ("vitpose-h", "TRT16")
+    assets = {"weights": {}, "engines": {}, "batch_size": 8}
+    score = {
+        "rows": "5",
+        "eligible_joints": "73",
+        "missing_joints": "2",
+        "oks": "0.76",
+        "pck_0_10": "0.68",
+        "pck_0_20": "0.91",
+        "p95_px": "9.0",
+        "evidence": "fixture.job",
+    }
+    speed = {
+        "speed_status": "ok",
+        "wall_p50_ms_person": 2.5,
+        "nvml_peak_mib": 100,
+        "persons_per_s": 400,
+        "record": {**assets, "nvml_device_peak_sampled_bytes": 100 * 2**20},
+    }
+    rows = compare_speed._compare(
+        {(*model, batch): speed for batch in (1, 4, 8)}, {model: score}, {model: assets}
+    )
+    assert [(row["speed_batch_size"], row["accuracy_batch_size"]) for row in rows] == [
+        (1, 8),
+        (4, 8),
+        (8, 8),
+    ]
+
+    def check_title(figure: Figure, path: Path, **kwargs: Any) -> None:
+        title = figure.get_suptitle()
+        assert "Speed and VRAM at batch 1" in title
+        assert "Accuracy from batch 8 predictions" in title
+        assert "batches 1 and 4 unmeasured" in title
+        path.touch()
+
+    monkeypatch.setattr(Figure, "savefig", check_title)
+    image = tmp_path / "pareto.png"
+    compare_speed._plot(rows, image)
+    assert image.is_file()

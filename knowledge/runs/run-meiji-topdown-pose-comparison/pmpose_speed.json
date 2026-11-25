@@ -2504,7 +2504,7 @@
         "sha256": "1cd2570b341d1928097e385023cf5eece876229785fcb0bc689f6563c6cab83c"
       },
       "log": {
-        "path": ".training_queue/logs/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync.log",
+        "path": ".training_queue/repro/0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync/comparison-evidence/queue.log",
         "sha256": "4b41392e79b9212c937b8667a24fc24e26b1c907531572c46ffe57c528d26ed9"
       },
       "measurements": {
@@ -2533,7 +2533,7 @@
         "sha256": "627be5f1b8f2d2c9d26214173e2ac7e8b96048bd85600a40a6d6df1b202ddf57"
       },
       "log": {
-        "path": ".training_queue/logs/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync.log",
+        "path": ".training_queue/repro/0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync/comparison-evidence/queue.log",
         "sha256": "53856123405c13114c91bae243ecf64cad64314eed6e3de23c172177aa3061af"
       },
       "measurements": {
@@ -2562,7 +2562,7 @@
         "sha256": "3bcbb662f8b14167c588b7af7b2a3fa43138f8e0c33a115729a20a834030d047"
       },
       "log": {
-        "path": ".training_queue/logs/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync.log",
+        "path": ".training_queue/repro/0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync/comparison-evidence/queue.log",
         "sha256": "c779c16118387123db4196ef8e2e96755035336358cbab7842adbdd5206ceadc"
       },
       "measurements": {
@@ -2591,7 +2591,7 @@
         "sha256": "d190bc4f75493c3803258c21550846377e3669e8b46689ec7ea16e59b21cf5e9"
       },
       "log": {
-        "path": ".training_queue/logs/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync.log",
+        "path": ".training_queue/repro/0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync/comparison-evidence/queue.log",
         "sha256": "229b93523d6fe366b92752b4e9af5212fbc09badb19bf7d48b0171af0a9f8698"
       },
       "measurements": {

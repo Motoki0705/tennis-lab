@@ -4,8 +4,10 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import json
 import math
+import re
 from collections.abc import Sequence
 from dataclasses import dataclass
 from itertools import product
@@ -19,15 +21,16 @@ from speed_inputs import (
     TIMING_PROTOCOL_SHA256,
 )
 
-from src.utils.checksum import dual_sha256
 from src.utils.inference_benchmark_inputs import PinnedBenchmarkInputs, TimingSchedule
 
 RUN = Path(__file__).parent
 BASELINE = RUN.parent / "run-person-model-speed-low-precision" / "cases.json"
+COMPARISON_INPUTS = RUN / "comparison_inputs.json"
 REFERENCE_MODEL = "vitpose-h"
 MODELS = (REFERENCE_MODEL, "rtmpose-m", "rtmpose-x", "pmpose-l", "pmpose-h")
 BACKENDS = ("PT16", "TRT16")
 BATCH_SIZES = (1, 4, 8)
+ACCURACY_BATCH_SIZE = 8
 PARITY_LABEL = "PT32未計測"
 HARNESS_MERGE = "59faa32a28d2f54e6492abdba2429846fa0397e3"
 ACCURACY_SHA256 = "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580"
@@ -95,8 +98,14 @@ def improvements(
     }
 
 
-def _load_json(path: Path) -> Any:
-    return json.loads(path.read_bytes())
+def _load_json(path: Path, *, expected_sha256: str | None = None) -> Any:
+    data = path.read_bytes()
+    if (
+        expected_sha256 is not None
+        and hashlib.sha256(data).hexdigest() != expected_sha256
+    ):
+        raise ValueError(f"SHA-256 differs from the fixed comparison index: {path}")
+    return json.loads(data)
 
 
 def validate_samples(
@@ -156,11 +165,18 @@ def _accuracy() -> tuple[
         raise ValueError("Expected all primary accuracy cases exactly once")
     for key, row in scores.items():
         record = records[key]
-        if row["status"] != "ok" or row["evidence"] != record["job_id"]:
-            raise ValueError(f"Missing pinned accuracy for {key}")
+        if (
+            row["status"] != "ok"
+            or row["evidence"] != record["job_id"]
+            or record["batch_size"] != ACCURACY_BATCH_SIZE
+        ):
+            raise ValueError(
+                f"Missing pinned batch {ACCURACY_BATCH_SIZE} accuracy for {key}"
+            )
         if "checkpoint" in record:
             trt = record.get("tensorrt")
             records[key] = {
+                "batch_size": record["batch_size"],
                 "weights": {"checkpoint": record["checkpoint"]},
                 "engines": {"plan": trt["plan"]} if trt else {},
             }
@@ -169,8 +185,8 @@ def _accuracy() -> tuple[
     return scores, records
 
 
-def _baseline() -> dict[CaseKey, tuple[dict[str, Any], Path, str]]:
-    doc = _load_json(BASELINE)
+def _baseline(expected_sha256: str) -> dict[CaseKey, tuple[dict[str, Any], Path, str]]:
+    doc = _load_json(BASELINE, expected_sha256=expected_sha256)
     cases = {}
     for record in doc["conditions"]:
         case = record["case"]
@@ -220,12 +236,57 @@ def _check_harness(
         )
 
 
+def _verify_omission(key: CaseKey, log: Path, terminal_log_hashes: set[str]) -> None:
+    if not log.is_file():
+        raise ValueError(f"Terminal log does not exist for {key}: {log}")
+    data = log.read_bytes()
+    if hashlib.sha256(data).hexdigest() not in terminal_log_hashes:
+        raise ValueError(
+            f"Terminal log is absent from the fixed comparison index: {log}"
+        )
+
+    model, backend, batch = key
+    prefix = f"{model}/{backend}/B{batch} "
+    statuses = {
+        line.removeprefix(prefix)
+        for line in data.decode("utf-8", errors="replace").splitlines()
+        if line.startswith(prefix)
+    }
+    # The adapters emit a case status. The RTMPose sweep also records the
+    # process exit when an adapter cannot produce a report.
+    failed = "infeasible" in statuses or any(
+        re.fullmatch(r"process exit [1-9][0-9]*, log .+", status) for status in statuses
+    )
+    if not failed or "ok" in statuses:
+        raise ValueError(f"Terminal log does not record a failure for {key}: {log}")
+
+
 def _speed_rows(
     fixed: PinnedBenchmarkInputs,
     reports: Sequence[Path],
     omissions: Sequence[dict[str, Any]],
 ) -> dict[CaseKey, dict[str, Any]]:
-    cases = _baseline()
+    index = _load_json(COMPARISON_INPUTS)
+    if (
+        index["schema_version"] != 1
+        or index["speed_input_manifest_sha256"] != INPUT_MANIFEST_SHA256
+        or index["timing_protocol_sha256"] != TIMING_PROTOCOL_SHA256
+    ):
+        raise ValueError(
+            "The comparison index does not describe the fixed input and schedule"
+        )
+    expected_reports = {
+        (item["model"], item["backend"], item["batch_size"]): item["sha256"]
+        for item in index["reports"]
+    }
+    if len(expected_reports) != len(index["reports"]):
+        raise ValueError("Duplicate report keys in the fixed comparison index")
+    cases = _baseline(index["baseline_cases"]["sha256"])
+    terminal_log_hashes = {
+        item["log"]["sha256"]
+        for item in index["jobs"]
+        if item["state"] in {"done", "failed", "cancelled"}
+    }
     omitted = {}
     for entry in omissions:
         key = entry["model"], entry["backend"], entry["batch_size"]
@@ -236,14 +297,23 @@ def _speed_rows(
             or not entry["evidence"].strip()
         ):
             raise ValueError(f"Invalid or duplicate omitted speed case {key}")
+        _verify_omission(key, Path(entry["evidence"]), terminal_log_hashes)
+        if key in expected_reports:
+            raise ValueError(f"Omission conflicts with a pinned speed report for {key}")
         omitted[key] = entry
     for path in reports:
-        record = _load_json(path)
+        data = path.read_bytes()
+        record = json.loads(data)
         case = record["case"]
         key = case["name"], case["backend"], case["batch_size"]
         if key in cases or key in omitted:
             raise ValueError(f"Duplicate speed evidence for {key}")
-        cases[key] = (record, path, dual_sha256(path))
+        digest = hashlib.sha256(data).hexdigest()
+        if digest != expected_reports.get(key):
+            raise ValueError(
+                f"Report SHA-256 differs from the fixed comparison index for {key}: {path}"
+            )
+        cases[key] = (record, path, digest)
 
     expected = set(product(MODELS, BACKENDS, BATCH_SIZES))
     available = set(cases) | set(omitted)
@@ -352,7 +422,8 @@ def _compare(
         row = {
             "model": model,
             "backend": backend,
-            "batch_size": batch,
+            "speed_batch_size": batch,
+            "accuracy_batch_size": accuracy_records[model, backend]["batch_size"],
             "accuracy_rows": int(score["rows"]),
             "eligible_joints": int(score["eligible_joints"]),
             "missing_joints": int(score["missing_joints"]),
@@ -389,13 +460,14 @@ def _plot(rows: Sequence[dict[str, Any]], output: Path) -> None:
 
     figure = Figure(figsize=(10, 4.2), layout="constrained")
     axes = figure.subplots(1, 2, sharey=True)
+    speed_batch_size = 1
     colors = dict(
         zip(
             MODELS, ("#38518A", "#148F77", "#58B496", "#AE632D", "#D75165"), strict=True
         )
     )
     for row in rows:
-        if row["batch_size"] != 1 or row["speed_status"] != "ok":
+        if row["speed_batch_size"] != speed_batch_size or row["speed_status"] != "ok":
             continue
         for ax, metric in zip(
             axes, ("wall_p50_ms_person", "nvml_peak_mib"), strict=True
@@ -418,10 +490,19 @@ def _plot(rows: Sequence[dict[str, Any]], output: Path) -> None:
     for ax in axes:
         ax.grid(alpha=0.22)
     figure.suptitle(
-        "Meiji 4cam pose at batch 1 · outline marks the three-metric Pareto frontier"
+        f"Meiji 4cam pose trade-offs · Speed and VRAM at batch {speed_batch_size}\n"
+        f"Accuracy from batch {ACCURACY_BATCH_SIZE} predictions · batches 1 and 4 unmeasured"
     )
     handles, labels = axes[0].get_legend_handles_labels()
-    figure.legend(handles, labels, loc="outside lower center", ncols=5, fontsize=8)
+    figure.legend(
+        handles,
+        labels,
+        loc="outside lower center",
+        ncols=5,
+        fontsize=8,
+        title="Outline marks the three-metric Pareto frontier",
+        title_fontsize=8,
+    )
     figure.savefig(output, dpi=150, facecolor="white")
 
 

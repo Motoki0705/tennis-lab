@@ -182,11 +182,9 @@ def _read_case(
             "accuracy_receipt": _artifact(receipt_path),
             "repro": _artifact(run_path),
             "command": _artifact(repro / "repro.sh"),
+            "log": _artifact(repro / "predictions" / "queue.log"),
         },
     }
-    log = queue / "logs" / f"{stem}.log"
-    if log.is_file():
-        record["files"]["log"] = _artifact(log)
     if backend is Backend.TRT16:
         record["tensorrt"] = _engine_evidence(assets, model, receipt)
     return (model, backend), array, scores, record

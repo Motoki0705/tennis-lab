@@ -133,7 +133,7 @@ TensorRTのbuildはM 55.12秒、X 64.74秒。planは30,040,084／102,454,292 byt
 
 2026-11-25にM/Xの6条件を、保存済みの予測各26,276行からCPUで再採点した。採点器は #2498 でマージされた `0d4bf0990f82ae0b8ebf2afe08d3209e583d2364` の版。OKS・PCK・pixel誤差、欠測および全層別集計が再採点前と一致した。固定BBoxの照合は全条件26,276/26,276件で、Recall@0.50とRecall@0.75はともに1.0だった。JSONに追加されたのは同一IoU時の正準順序を示す `candidate_order_for_iou_ties`。元の予測・採点ファイルと再採点ファイルのSHA-256を照合した。 [#2498](https://github.com/Motoki0705/tennis-lab/pull/2498) · [再採点記録](rtmpose_accuracy.json)
 
-再現には前述の`run`・`bundle`・`bundle_sha`と、共有queueのパス`queue_dir`を設定する。`--rescore-dir`には新規ディレクトリを渡し、完全な再採点ファイルを保存する。実行HEADは `920c9aaff24639e6b461c8985a254d80ba3a1385`。
+再現には前述の`run`・`bundle`・`bundle_sha`と、共有queueのパス`queue_dir`を設定する。`--rescore-dir`には新規ディレクトリを渡し、完全な再採点ファイルを保存する。実行HEADは `920c9aaff24639e6b461c8985a254d80ba3a1385`。6条件のログは `repro/<job>/predictions/queue.log` にあり、再採点はここを読む。新規計測のログは共通の `--retain` で保存する。 [保持手順](README.md#replay-retained-accuracy)
 
 ```bash
 mapfile -t jobs < <(jq -r '.conditions[][] | .job_id' "$run/rtmpose_accuracy.json")

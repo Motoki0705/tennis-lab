@@ -76,10 +76,10 @@ artifacts:
   comparison_inputs: knowledge/runs/run-meiji-topdown-pose-comparison/comparison_inputs.json
   speed_accuracy_comparison:
     path: knowledge/runs/run-meiji-topdown-pose-comparison/comparison.csv
-    sha256: 07ec9043a04343d6c81570220ec55282b202f8f48faa5874d5cdcf89b8d6e761
+    sha256: 8db41414d8a7935cd12a192a49365ec6c21bc4b7bf35b8feed8b9f9a5ec0980f
   pareto_batch_1:
     path: knowledge/runs/run-meiji-topdown-pose-comparison/pareto-batch1.png
-    sha256: 62906a8df14648b6455ef49bf2afbf325169550e12a6b3357807fa03057d13af
+    sha256: ec1663593986a1acbea4decd93b94fadb08e8322178cc2518675d99a78c6a34e
   sapiens2_conversion: knowledge/runs/run-meiji-topdown-pose-comparison/sapiens2_conversion.json
   sapiens2_attempts: knowledge/runs/run-meiji-topdown-pose-comparison/sapiens2_attempts.json
   difficulty_pt32: knowledge/runs/run-meiji-topdown-pose-comparison/difficulty_pt32.csv
@@ -154,7 +154,7 @@ RTX 5060 Ti上で、RTMPose-M/XとPMPose-L/HのPT16・TRT16、batch 1/4/8の計2
 
 各batchで、固定母数の平均OKSは大きい方、人物あたりのwall P50とNVMLデバイス使用量のサンプル最大値は小さい方を選ぶ3指標のParetoを算出した。batch 1/4/8の各10条件で、PMPose-H PT16が同モデルのTRT16に支配され、9条件がfrontierに残った。判定は数値の大小に基づくため、丸めで一致する程度のOKS差にも反応する。精度差の解釈にはclip別の結果と母数を使う。 [Batch 1のPareto図](../../runs/run-meiji-topdown-pose-comparison/pareto-batch1.png)
 
-| Batch 1 TRT16 | 平均OKS | OKS差 (pt) | wall P50 / P95 (ms/人) | 人物/s | NVML MiB |
+| TRT16 | 平均OKS (batch 8) | OKS差 (pt、batch 8) | wall P50 / P95 (ms/人、batch 1) | 人物/s (batch 1) | NVML MiB (batch 1) |
 | --- | ---: | ---: | ---: | ---: | ---: |
 | ViTPose-H flipあり | 0.77777 | 0.00 | 12.64 / 13.47 | 78.1 | 1,752 |
 | RTMPose-M | 0.75181 | −2.60 | 7.28 / 14.22 | 121.5 | 548 |

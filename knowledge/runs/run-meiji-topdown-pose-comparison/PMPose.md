@@ -97,7 +97,7 @@ The verified run used commit `0860ce5e12c953dc5520f02a502cc50cc2b3381b` and loca
 
 All six conditions produced 26,276 native-pixel COCO17 rows at batch 8 on the RTX 5060 Ti. Each array contained 446,692 finite joint predictions. The TensorRT plans used version `10.14.1.48.post1`, profile batches 1/4/8 and 1,536 MiB builder workspace. Build times were 85.092 s for L and 109.279 s for H. The batch-8 TensorRT inspector shows FP32 bindings on the Sparsemax sort, cumulative sum and threshold computation, and on portions of layer normalization. The original score files and the plan hashes are in the per-condition receipts under `outputs/pmpose/`.
 
-The canonical matcher reproduced every numeric score and count for all six conditions. The score files gained the `policy.candidate_order_for_iou_ties` field. PCK pools 437,714 scoreable joints, and mean OKS averages 25,811 scoreable people. The [accuracy record](pmpose_accuracy.json) pins the rescored files, raw predictions, execution commit, queue commands, engine manifests and layer inspector reports.
+The canonical matcher reproduced every numeric score and count for all six conditions. The score files gained the `policy.candidate_order_for_iou_ties` field. PCK pools 437,714 scoreable joints, and mean OKS averages 25,811 scoreable people. The accuracy record pins the rescored files, raw predictions, execution commit, queue commands, retained `predictions/queue.log` files, engine manifests and layer inspector reports. [Accuracy record](pmpose_accuracy.json) · [Log retention](README.md#replay-retained-accuracy)
 
 | Model | Backend | Mean OKS | PCK@0.10 | PCK@0.20 | Pixel error P95 |
 | --- | --- | ---: | ---: | ---: | ---: |

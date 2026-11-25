@@ -2596,7 +2596,7 @@
         },
         "job_log": {
           "bytes": 1626,
-          "path": ".training_queue/logs/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.log",
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/comparison-evidence/queue.log",
           "sha256": "9760124f8cec08bd8e5b6c3b8f5d0a31f3eea41b96d4769690db427fd3d80c68"
         },
         "metadata": {
@@ -2628,7 +2628,7 @@
         },
         "job_log": {
           "bytes": 1626,
-          "path": ".training_queue/logs/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.log",
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/comparison-evidence/queue.log",
           "sha256": "d2ba0a45becda9a3a384e28f71cca0336079b6a77de4147db966b6de2e4d4125"
         },
         "metadata": {

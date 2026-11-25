@@ -173,7 +173,7 @@ def read_condition(
             "receipt": _artifact(queue, predictions / "receipt.json"),
             "repro": _artifact(queue, repro / "run.json"),
             "command": _artifact(queue, repro / "repro.sh"),
-            "log": _artifact(queue, queue / "logs" / f"{stem}.log"),
+            "log": _artifact(queue, predictions / "queue.log"),
         },
         **_pose_summary(read_json(scores_path)),
     }
