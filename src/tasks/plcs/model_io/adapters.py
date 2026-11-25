@@ -37,6 +37,8 @@ from src.tasks.plcs.geometry.monocular_camera_bbox import (
     CAMERA_FEATURE_DIM,
     CLIFFCAM_DIM,
     SyntheticBBoxConfig,
+    _broadcast_camera_time,
+    _validate_extrinsics_and_intrinsics,
     compute_camera_features,
     compute_cliffcam_features,
     compute_synthetic_bbx_xys,
@@ -465,6 +467,45 @@ class PLCSModelIOAdapter:
             _finite(name, tensor)
         if camera_fy_in is not None:
             _finite("camera_fy_in", camera_fy_in)
+        fy_for_validation = camera_f_in if camera_fy_in is None else camera_fy_in
+        try:
+            _validate_extrinsics_and_intrinsics(
+                camera_R_in,
+                camera_C_in,
+                fx=camera_f_in,
+                fy=fy_for_validation,
+                cx0=camera_cx_in,
+                cy0=camera_cy_in,
+            )
+            _broadcast_camera_time(
+                camera_R_in,
+                batch_shape=(bsz,),
+                seq_len=frames,
+                trailing_dims=2,
+                name="camera_R_in",
+            )
+            _broadcast_camera_time(
+                camera_C_in,
+                batch_shape=(bsz,),
+                seq_len=frames,
+                trailing_dims=1,
+                name="camera_C_in",
+            )
+            for name, cam_scalar in (
+                ("camera_f_in", camera_f_in),
+                ("camera_fy_in", fy_for_validation),
+                ("camera_cx_in", camera_cx_in),
+                ("camera_cy_in", camera_cy_in),
+            ):
+                _broadcast_camera_time(
+                    cam_scalar,
+                    batch_shape=(bsz,),
+                    seq_len=frames,
+                    trailing_dims=0,
+                    name=name,
+                )
+        except ValueError as error:
+            raise ModelInputContractError(str(error)) from error
         if "court_keypoint_metadata" in batch or "court_reference_provenance" in batch:
             _court_context(batch, self.court_keypoint_contract, batch_size=bsz)
         kwargs: dict[str, object] = {

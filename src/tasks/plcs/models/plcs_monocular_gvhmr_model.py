@@ -31,16 +31,16 @@ from torch import Tensor
 from src.submodules.vendor.gvhmr.network.layer import zero_module
 from src.submodules.vendor.gvhmr.network.rotary_embedding import ROPE
 from src.tasks.plcs.geometry.monocular_camera_bbox import (
-    BBX_XYS_DIM,
     CAMERA_FEATURE_DIM,
     CLIFFCAM_DIM,
     LEFT_HIP_IDX,
     RIGHT_HIP_IDX,
+    _center_local_pose_on_hips_core,
+    _cliff_and_local_pose_to_world_coco17_core,
     center_local_pose_on_hips,
-    cliff_and_local_pose_to_world_coco17,
 )
 from src.utils.geometry.court_pose import world_pose_to_canonical_pose
-from src.utils.schema.court_normalization import normalize_court_position
+from src.utils.schema.court import COURT_COORD_SCALE_XYZ
 from src.utils.schema.player import NUM_HUMAN_KP
 
 if TYPE_CHECKING:
@@ -103,18 +103,11 @@ def build_monocular_sliding_padding_mask(
     - Inactive queries ``i`` attend solely to ``j == i`` so ``softmax`` never
       encounters an all-``-inf`` row (avoiding ``NaN`` forward/backward values).
     """
-    if padding_mask.ndim != 2 or padding_mask.dtype != torch.bool:
-        raise ValueError(
-            f"padding_mask must be bool of shape (B, L), got {tuple(padding_mask.shape)}."
-        )
-    if frame_observed is not None:
-        if frame_observed.shape != padding_mask.shape or frame_observed.dtype != torch.bool:
-            raise ValueError(
-                "frame_observed must be bool of shape (B, L) matching padding_mask."
-            )
-        inactive = padding_mask | (~frame_observed)
-    else:
-        inactive = padding_mask
+    inactive = (
+        padding_mask
+        if frame_observed is None
+        else (padding_mask | (~frame_observed))
+    )
 
     _, seq_len = padding_mask.shape
     device = padding_mask.device
@@ -368,22 +361,6 @@ class PLCSMonocularGVHMRModel(nn.Module):
             predict_static_contact=config.boolean("predict_static_contact"),
         )
 
-    @staticmethod
-    def _expand_cam_time(
-        param: Tensor, *, bsz: int, seq_len: int, trailing_dims: int
-    ) -> Tensor:
-        lead = param.shape if trailing_dims == 0 else param.shape[:-trailing_dims]
-        tail = () if trailing_dims == 0 else param.shape[-trailing_dims:]
-        if lead == (bsz, seq_len):
-            return param
-        if lead == (bsz,):
-            if trailing_dims == 0:
-                return param.unsqueeze(-1).expand(bsz, seq_len)
-            return param.reshape(bsz, 1, *tail).expand(bsz, seq_len, *tail)
-        raise ValueError(
-            f"Camera tensor leading shape {tuple(lead)} must be ({bsz},) or ({bsz}, {seq_len})."
-        )
-
     def forward(
         self,
         *,
@@ -401,19 +378,7 @@ class PLCSMonocularGVHMRModel(nn.Module):
         camera_fy_in: Tensor | None = None,
     ) -> dict[str, Tensor]:
         """Run monocular Early Fusion forward pass and lift to physical court 3D [m]."""
-        bsz, seq_len, n_joints, kp_dim = kp2d_norm.shape
-        if n_joints != NUM_HUMAN_KP or kp_dim != 3:
-            raise ValueError(
-                f"kp2d_norm must have shape (B, T, 17, 3), got {tuple(kp2d_norm.shape)}."
-            )
-        if seq_len > self.max_seq_len:
-            raise ValueError(
-                f"Input sequence length {seq_len} exceeds max_seq_len={self.max_seq_len}."
-            )
-        if bbx_xys.shape != (bsz, seq_len, BBX_XYS_DIM):
-            raise ValueError("bbx_xys must have shape (B, T, 3).")
-        if frame_observed.shape != (bsz, seq_len) or padding_mask.shape != (bsz, seq_len):
-            raise ValueError("frame_observed and padding_mask must have shape (B, T).")
+        bsz, seq_len = kp2d_norm.shape[:2]
 
         fy_in = camera_f_in if camera_fy_in is None else camera_fy_in
         valid_frame = ~padding_mask
@@ -471,29 +436,13 @@ class PLCSMonocularGVHMRModel(nn.Module):
             pred_ty = raw_cam_fp32[..., 2]
             pred_cam = torch.stack([pred_s, pred_tx, pred_ty], dim=-1)
 
-            camera_R_fp32 = camera_R_in.float()
-            camera_C_fp32 = camera_C_in.float()
-            camera_f_fp32 = camera_f_in.float()
-            fy_fp32 = fy_in.float()
-            camera_cx_fp32 = camera_cx_in.float()
-            camera_cy_fp32 = camera_cy_in.float()
+            fx_t = camera_f_in.float().reshape(bsz, -1).expand(bsz, seq_len)
+            fy_t = fy_in.float().reshape(bsz, -1).expand(bsz, seq_len)
+            cx0_t = camera_cx_in.float().reshape(bsz, -1).expand(bsz, seq_len)
+            cy0_t = camera_cy_in.float().reshape(bsz, -1).expand(bsz, seq_len)
+            R_t = camera_R_in.float().reshape(bsz, -1, 3, 3).expand(bsz, seq_len, 3, 3)
+            C_t = camera_C_in.float().reshape(bsz, -1, 3).expand(bsz, seq_len, 3)
             bbx_fp32 = bbx_xys.float()
-
-            fx_t = self._expand_cam_time(
-                camera_f_fp32, bsz=bsz, seq_len=seq_len, trailing_dims=0
-            )
-            fy_t = self._expand_cam_time(
-                fy_fp32, bsz=bsz, seq_len=seq_len, trailing_dims=0
-            )
-            cx0_t = self._expand_cam_time(
-                camera_cx_fp32, bsz=bsz, seq_len=seq_len, trailing_dims=0
-            )
-            cy0_t = self._expand_cam_time(
-                camera_cy_fp32, bsz=bsz, seq_len=seq_len, trailing_dims=0
-            )
-            R_t = self._expand_cam_time(
-                camera_R_fp32, bsz=bsz, seq_len=seq_len, trailing_dims=2
-            )
 
             # On unobserved/padded frames (where detector bbx_xys == 0), use the per-frame
             # principal-point reference box [cx0, cy0, 0.2 * sqrt(fx*fy)] so CLIFF maps
@@ -503,20 +452,20 @@ class PLCSMonocularGVHMRModel(nn.Module):
             use_det_box = obs_frame & (bbx_fp32[..., 2] > 1e-3)
             bbx_eff = torch.where(use_det_box.unsqueeze(-1), bbx_fp32, unobs_bbx)
 
-            local_pose_cam = center_local_pose_on_hips(
+            local_pose_cam = _center_local_pose_on_hips_core(
                 self.template_local_pose_cam.float().view(1, 1, NUM_HUMAN_KP, 3)
                 + delta_local.float()
             )
-            world_kp_3d = cliff_and_local_pose_to_world_coco17(
+            world_kp_3d = _cliff_and_local_pose_to_world_coco17_core(
                 pred_cam,
                 local_pose_cam,
                 bbx_eff,
-                R_w2c=camera_R_fp32,
-                C_w=camera_C_fp32,
-                fx=camera_f_fp32,
-                fy=fy_fp32,
-                cx0=camera_cx_fp32,
-                cy0=camera_cy_fp32,
+                R_t=R_t,
+                C_t=C_t,
+                fx_t=fx_t,
+                fy_t=fy_t,
+                cx0_t=cx0_t,
+                cy0_t=cy0_t,
             )
 
             # Derive court position, court heading (cos, sin), and canonical_pose consistently
@@ -527,7 +476,7 @@ class PLCSMonocularGVHMRModel(nn.Module):
                 "...ji,...j->...i", R_t, pelvis_delta_cam.float()
             )
             pelvis_world = mid_hip_world + pelvis_delta_world
-            position = normalize_court_position(pelvis_world)
+            position = pelvis_world / pelvis_world.new_tensor(COURT_COORD_SCALE_XYZ)
 
             v_trans = (
                 world_kp_3d[..., LEFT_HIP_IDX, :2] - world_kp_3d[..., RIGHT_HIP_IDX, :2]

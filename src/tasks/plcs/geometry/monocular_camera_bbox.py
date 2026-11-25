@@ -913,6 +913,27 @@ def perturb_camera_calibration(
     )
 
 
+def _cliff_to_camera_translation_core(
+    pred_cam: Tensor,
+    bbx_xys: Tensor,
+    *,
+    fx_t: Tensor,
+    fy_t: Tensor,
+    cx0_t: Tensor,
+    cy0_t: Tensor,
+) -> Tensor:
+    """Computation-only CLIFF ``[s, tx, ty]`` + ``bbx_xys`` -> camera translation."""
+    s = pred_cam[..., 0]
+    tx = pred_cam[..., 1]
+    ty = pred_cam[..., 2]
+    box_s = bbx_xys[..., 2]
+    f_eff = torch.sqrt(fx_t * fy_t)
+    tz = 2.0 * f_eff / (s * box_s)
+    cam_x = tx + tz * (bbx_xys[..., 0] - cx0_t) / fx_t
+    cam_y = ty + tz * (bbx_xys[..., 1] - cy0_t) / fy_t
+    return torch.stack([cam_x, cam_y, tz], dim=-1)
+
+
 def cliff_to_camera_translation(
     pred_cam: Tensor,
     bbx_xys: Tensor,
@@ -965,20 +986,20 @@ def cliff_to_camera_translation(
         )
 
         s = pred_cam_fp[..., 0]
-        tx = pred_cam_fp[..., 1]
-        ty = pred_cam_fp[..., 2]
         box_s = bbx_fp[..., 2]
         if bool((s <= 0).any()) or bool((box_s <= 0).any()):
             raise ValueError(
                 "cliff_to_camera_translation requires strictly positive scale s and bbx_xys[..., 2]."
             )
 
-        f_eff = torch.sqrt(fx_t * fy_t)
-        sb = s * box_s
-        tz = 2.0 * f_eff / sb
-        cam_x = tx + tz * (bbx_fp[..., 0] - cx0_t) / fx_t
-        cam_y = ty + tz * (bbx_fp[..., 1] - cy0_t) / fy_t
-        return torch.stack([cam_x, cam_y, tz], dim=-1)
+        return _cliff_to_camera_translation_core(
+            pred_cam_fp,
+            bbx_fp,
+            fx_t=fx_t,
+            fy_t=fy_t,
+            cx0_t=cx0_t,
+            cy0_t=cy0_t,
+        )
 
 
 def camera_translation_to_cliff(
@@ -1046,16 +1067,48 @@ def camera_translation_to_cliff(
         return torch.stack([s, tx, ty], dim=-1)
 
 
+def _center_local_pose_on_hips_core(local_pose_cam: Tensor) -> Tensor:
+    """Computation-only hip centering: subtract ``0.5 * (left_hip + right_hip)``."""
+    pelvis = 0.5 * (
+        local_pose_cam[..., LEFT_HIP_IDX, :] + local_pose_cam[..., RIGHT_HIP_IDX, :]
+    )
+    return local_pose_cam - pelvis.unsqueeze(-2)
+
+
 def center_local_pose_on_hips(local_pose_cam: Tensor) -> Tensor:
     """Subtract the mid-hip offset so ``0.5 * (left_hip + right_hip) == 0``."""
     if local_pose_cam.ndim < 2 or local_pose_cam.shape[-2:] != (NUM_HUMAN_KP, 3):
         raise ValueError(
             f"local_pose_cam must have shape (..., 17, 3), got {tuple(local_pose_cam.shape)}."
         )
-    pelvis = 0.5 * (
-        local_pose_cam[..., LEFT_HIP_IDX, :] + local_pose_cam[..., RIGHT_HIP_IDX, :]
+    return _center_local_pose_on_hips_core(local_pose_cam)
+
+
+def _cliff_and_local_pose_to_world_coco17_core(
+    pred_cam: Tensor,
+    local_pose_cam: Tensor,
+    bbx_xys: Tensor,
+    *,
+    R_t: Tensor,
+    C_t: Tensor,
+    fx_t: Tensor,
+    fy_t: Tensor,
+    cx0_t: Tensor,
+    cy0_t: Tensor,
+) -> Tensor:
+    """Computation-only CLIFF + hip-centered local pose -> court 3D COCO-17 [m]."""
+    root_cam = _cliff_to_camera_translation_core(
+        pred_cam,
+        bbx_xys,
+        fx_t=fx_t,
+        fy_t=fy_t,
+        cx0_t=cx0_t,
+        cy0_t=cy0_t,
     )
-    return local_pose_cam - pelvis.unsqueeze(-2)
+    centered_local = _center_local_pose_on_hips_core(local_pose_cam)
+    kp_cam = root_cam.unsqueeze(-2) + centered_local
+    # Since X_c = (X_w - C_w) @ R_w2c^T, the inverse is X_w = X_c @ R_w2c + C_w.
+    return torch.einsum("...ji,...kj->...ki", R_t, kp_cam) + C_t.unsqueeze(-2)
 
 
 def cliff_and_local_pose_to_world_coco17(
