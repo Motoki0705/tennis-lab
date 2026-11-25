@@ -7,7 +7,7 @@ import json
 import os
 import subprocess
 import sys
-from collections.abc import Callable, Iterable, Sequence
+from collections.abc import Callable, Sequence
 from dataclasses import asdict, dataclass
 from importlib import import_module
 from pathlib import Path
@@ -30,17 +30,17 @@ from src.tennis_scene.evaluation.player_pose.bundle import (
 from src.tennis_scene.evaluation.player_pose.scoring import (
     FrameKey,
     Predictions,
-    describe,
     score_players,
 )
 from src.utils.checksum import dual_sha256
-from src.utils.geometry.bbox import match_iou, pairwise_iou
 from src.utils.inference_benchmark import (
     Backend,
     BenchmarkAdapter,
+    BenchmarkCase,
     Conversion,
-    ParityResult,
+    ParityStatus,
     Stage,
+    benchmark,
     measure_conversion,
 )
 from src.utils.io import write_json_atomic
@@ -52,23 +52,20 @@ from src.utils.models.tensorrt_artifacts import (
 )
 from src.utils.models.tensorrt_build import build_bundle, export_bundle
 from src.utils.models.tensorrt_runtime import TensorRTRunner
-from src.utils.video.reader import RandomAccessVideoReader, read_video_frame
+from src.utils.video.reader import RandomAccessVideoReader
 
 UPSTREAM_COMMIT = "55fefaaed7efe2a5f72d0a18fd4e05965e35c292"
 IMAGE_SIDE = 640
 NUM_QUERIES = 300
 NUM_CLASSES = 80
 PERSON_LABEL = 0  # COCO category 1, before upstream's deploy-time category remap.
-PARITY_SCORE = 0.25
-PARITY_MATCH_IOU = 0.50
-PARITY_MIN_MATCHED_FRACTION = 0.99
-PARITY_MIN_IOU_P05 = 0.90
-PARITY_MAX_SCORE_ERROR_P95 = 0.025
+PT32_NOT_MEASURED = "PT32計測はスコープ外（ユーザー判断 2026-11-25）"
 WEIGHT_SHA256 = {
     "rtdetrv4-l": "935c691dbd4f282a6a4ba59a57d77f13ad6963411dbb1b29615a72af2452f6e1",
     "rtdetrv4-x": "2925ec2e53d48e6141db8601c8656566219e696cd63bf8d6955190cae6bfd3f9",
 }
 ONNX_OPSET = 19
+TRACE_BATCH = 2
 INPUT_NAME = "pixels"
 OUTPUT_NAMES = ("pred_logits", "pred_boxes")
 GIB = 1024**3
@@ -184,6 +181,15 @@ def _load_pt_model(assets: Assets, config: _UpstreamConfig) -> _RawDetector:
     return wrapper
 
 
+def _register_encoder_positions(encoder: nn.Module) -> None:
+    # Upstream caches the fixed spatial positions as plain CPU attributes.
+    for index in encoder.use_encoder_idx:
+        name = f"pos_embed{index}"
+        position = getattr(encoder, name)
+        delattr(encoder, name)
+        encoder.register_buffer(name, position, persistent=False)
+
+
 def preprocess(rows: Sequence[ImageBGR]) -> tuple[torch.Tensor, torch.Tensor]:
     """PIL bilinear stretch plus RGB [0,1], with native sizes ordered as W,H."""
     images, sizes = [], []
@@ -230,73 +236,32 @@ def person_predictions(
     return result
 
 
-def detection_parity(pairs: Iterable[tuple[Predictions, Predictions]]) -> ParityResult:
-    """Compare public detector rows with same-image PT32 rows after a fixed score cutoff."""
-    images = reference_count = candidate_count = 0
-    ious, edges, scores = [], [], []
-    for reference, candidate in pairs:
-        images += 1
-        ref_keep = reference.scores >= PARITY_SCORE
-        cand_keep = candidate.scores >= PARITY_SCORE
-        ref_boxes, cand_boxes = (
-            reference.boxes_xyxy[ref_keep],
-            candidate.boxes_xyxy[cand_keep],
-        )
-        reference_count += len(ref_boxes)
-        candidate_count += len(cand_boxes)
-        matrix = pairwise_iou(ref_boxes, cand_boxes)
-        i, j = match_iou(matrix, PARITY_MATCH_IOU)
-        ious.extend(matrix[i, j])
-        edges.extend(np.abs(ref_boxes[i] - cand_boxes[j]).ravel())
-        scores.extend(
-            np.abs(reference.scores[ref_keep][i] - candidate.scores[cand_keep][j])
-        )
-
-    matched = len(ious)
-    iou_p05 = float(np.quantile(ious, 0.05)) if matched else None
-    score_error = describe(np.asarray(scores))
-    score_p95 = score_error["p95"]
-    passed = (
-        bool(matched)
-        and matched
-        >= PARITY_MIN_MATCHED_FRACTION * max(reference_count, candidate_count)
-        and iou_p05 is not None
-        and iou_p05 >= PARITY_MIN_IOU_P05
-        and score_p95 is not None
-        and score_p95 <= PARITY_MAX_SCORE_ERROR_P95
-    )
-    return ParityResult(
-        passed,
-        {
-            "images": images,
-            "score_cutoff": PARITY_SCORE,
-            "matching_min_iou": PARITY_MATCH_IOU,
-            "gate": {
-                "matched_fraction_min": PARITY_MIN_MATCHED_FRACTION,
-                "iou_p05_min": PARITY_MIN_IOU_P05,
-                "score_abs_error_p95_max": PARITY_MAX_SCORE_ERROR_P95,
-            },
-            "reference_boxes": reference_count,
-            "candidate_boxes": candidate_count,
-            "matched": matched,
-            "missing": reference_count - matched,
-            "extra": candidate_count - matched,
-            "matched_iou": {**describe(np.asarray(ious)), "p05": iou_p05},
-            "xyxy_abs_error_px": describe(np.asarray(edges)),
-            "score_abs_error": score_error,
-        },
-        None
-        if passed
-        else "Score-filtered detector output exceeds the PT32 parity limits",
-    )
-
-
 @dataclass
 class Detector:
     backend: Backend
     device: torch.device
     model: Callable[[torch.Tensor], ModelOutputs]
     postprocessor: nn.Module
+
+    def forward(self, pixels: torch.Tensor) -> ModelOutputs:
+        with (
+            torch.no_grad(),
+            torch.autocast(
+                self.device.type,
+                dtype=torch.float16,
+                enabled=self.backend is Backend.PT16,
+            ),
+        ):
+            return self.model(pixels)
+
+    def decode(
+        self, output: ModelOutputs, sizes: torch.Tensor
+    ) -> tuple[torch.Tensor, torch.Tensor, torch.Tensor]:
+        logits, boxes = output
+        labels, xyxy, scores = self.postprocessor(
+            {"pred_logits": logits.float(), "pred_boxes": boxes.float()}, sizes
+        )
+        return labels, xyxy, scores
 
     def __call__(
         self, rows: Sequence[ImageBGR], stages: Stages = _DIRECT
@@ -306,24 +271,8 @@ class Detector:
             Stage.H2D, lambda: (pixels_cpu.to(self.device), sizes_cpu.to(self.device))
         )
 
-        def forward() -> ModelOutputs:
-            with (
-                torch.no_grad(),
-                torch.autocast(
-                    self.device.type,
-                    dtype=torch.float16,
-                    enabled=self.backend is Backend.PT16,
-                ),
-            ):
-                return self.model(pixels)
-
-        logits, boxes = stages.measure_forward(self.backend, forward)
-        decoded = stages.stage(
-            Stage.POSTPROCESS,
-            lambda: self.postprocessor(
-                {"pred_logits": logits.float(), "pred_boxes": boxes.float()}, sizes
-            ),
-        )
+        output = stages.measure_forward(self.backend, lambda: self.forward(pixels))
+        decoded = stages.stage(Stage.POSTPROCESS, lambda: self.decode(output, sizes))
         labels, boxes_cpu, scores = stages.stage(
             Stage.D2H, lambda: tuple(tensor.cpu().numpy() for tensor in decoded)
         )
@@ -338,6 +287,7 @@ def _export_settings() -> dict[str, JsonValue]:
         "upstream_commit": UPSTREAM_COMMIT,
         "mode": "official_deploy_raw",
         "opset": ONNX_OPSET,
+        "trace_batch": TRACE_BATCH,
         "input_hw": [IMAGE_SIDE, IMAGE_SIDE],
         "io_dtype": "float32",
     }
@@ -378,7 +328,9 @@ def load_detector(
         model = trt
     else:
         config, postprocessor = assets.config_and_postprocessor()
-        model = _load_pt_model(assets, config).to(device)
+        eager = _load_pt_model(assets, config)
+        _register_encoder_positions(eager.model.encoder)
+        model = eager.to(device)
     return Detector(backend, device, model, postprocessor.to(device))
 
 
@@ -417,7 +369,8 @@ def _export(assets: Assets, directory: Path) -> None:
                 with torch.no_grad():
                     torch.onnx.export(
                         wrapper,
-                        (torch.zeros(1, 3, IMAGE_SIDE, IMAGE_SIDE),),
+                        # Trace the upstream anchor repeat with a symbolic batch size.
+                        (torch.zeros(TRACE_BATCH, 3, IMAGE_SIDE, IMAGE_SIDE),),
                         str(fp32),
                         input_names=[INPUT_NAME],
                         output_names=list(OUTPUT_NAMES),
@@ -446,8 +399,8 @@ def _export(assets: Assets, directory: Path) -> None:
 
 
 def _build(args: argparse.Namespace, device: torch.device) -> None:
-    if not 1 <= args.opt_batch <= args.max_batch:
-        raise ValueError("Expected 1 <= --opt-batch <= --max-batch")
+    if not 1 <= args.opt_batch <= TRACE_BATCH or args.max_batch != TRACE_BATCH:
+        raise ValueError(f"Expected a profile covering batches 1 to {TRACE_BATCH}")
     chw = (3, IMAGE_SIDE, IMAGE_SIDE)
     build_bundle(
         args.engine_dir,
@@ -464,11 +417,12 @@ def _build(args: argparse.Namespace, device: torch.device) -> None:
 
 
 def _accuracy(args: argparse.Namespace, assets: Assets, device: torch.device) -> None:
-    from prediction_rows import PredictionHeader, read_predictions, write_predictions
+    from prediction_rows import PredictionHeader, write_predictions
 
-    if args.backend is not Backend.PT32 and args.pt32_dir is None:
-        raise ValueError(f"{args.backend} accuracy requires --pt32-dir")
-
+    path = args.output / "predictions.jsonl"
+    receipt = args.output / "accuracy.json"
+    if path.exists() or receipt.exists():
+        raise FileExistsError(f"Accuracy output already exists at {args.output}")
     manifest = load_manifest(args.benchmark, expected_sha256=args.manifest_sha256)
     pinned_file(
         args.source,
@@ -487,31 +441,6 @@ def _accuracy(args: argparse.Namespace, assets: Assets, device: torch.device) ->
         args.backend.value.lower(),
         False,
     )
-    reference_predictions = None
-    reference_sha256 = None
-    if args.backend is not Backend.PT32:
-        reference_header = header._replace(backend="pt32")
-        reference_receipt = json.loads((args.pt32_dir / "accuracy.json").read_bytes())
-        reference_path = pinned_file(
-            args.pt32_dir,
-            {
-                "path": "predictions.jsonl",
-                "sha256": reference_receipt["predictions_sha256"],
-            },
-        )
-        if (
-            reference_receipt["condition"] != reference_header.as_json()
-            or reference_receipt["weight_sha256"] != assets.weight_sha256
-            or reference_receipt["upstream_commit"] != UPSTREAM_COMMIT
-        ):
-            raise ValueError(
-                f"PT32 receipt disagrees with the accuracy condition: {args.pt32_dir}"
-            )
-        reference_predictions = read_predictions(
-            reference_path, reference_header, expected_frames=references
-        )
-        reference_sha256 = reference_receipt["predictions_sha256"]
-
     detector = load_detector(assets, args.backend, device, args.engine_dir)
     predictions = {}
     for clip in manifest["clips"]:
@@ -531,11 +460,10 @@ def _accuracy(args: argparse.Namespace, assets: Assets, device: torch.device) ->
                     (row,) = detector([image])
                     predictions[FrameKey(clip_id, camera, frame)] = row
 
-    path = args.output / "predictions.jsonl"
     write_predictions(path, header, predictions, expected_frames=references)
     predictions_sha256 = dual_sha256(path)
     write_json_atomic(
-        args.output / "accuracy.json",
+        receipt,
         {
             "condition": header.as_json(),
             "weight_sha256": assets.weight_sha256,
@@ -555,22 +483,70 @@ def _accuracy(args: argparse.Namespace, assets: Assets, device: torch.device) ->
                 else None
             ),
             "predictions_sha256": predictions_sha256,
+            "parity_status": ParityStatus.NOT_EVALUATED,
+            "parity_not_evaluated_reason": args.parity_not_evaluated_reason,
             "score": score_players(references, predictions),
         },
     )
-    if reference_predictions is not None:
-        comparison = detection_parity(
-            (reference_predictions[key], predictions[key]) for key in references
-        )
-        write_json_atomic(
-            args.output / "parity.json",
-            {
-                "condition": header.as_json(),
-                "reference_predictions_sha256": reference_sha256,
-                "predictions_sha256": predictions_sha256,
-                **asdict(comparison),
-            },
-        )
+
+
+def _speed(args: argparse.Namespace, assets: Assets, device: torch.device) -> None:
+    path = args.output / f"speed-b{args.batch_size}.json"
+    if path.exists():
+        raise FileExistsError(f"Speed output already exists at {path}")
+    # Use #2496's loader and batching, including the published input order and hashes.
+    baseline = import_module("run")
+    fixed = baseline.InputSet(args.inputs)
+    if fixed.sha256 != args.inputs_sha256:
+        raise ValueError(f"Speed manifest SHA-256 mismatch: {args.inputs}")
+    schedule = fixed.pins.schedule("frames", args.batch_size)
+    batches = baseline.inputs(fixed, "dino", schedule)
+    conversion = tuple(baseline.load_conversion(path) for path in args.conversion)
+    engine_profiles = {}
+    if args.backend is Backend.TRT16 and args.engine_dir is not None:
+        manifest = args.engine_dir / "engine.json"
+        if manifest.is_file():
+            engine_profiles = json.loads(manifest.read_bytes())["profiles"]
+    case = BenchmarkCase(
+        assets.model_id,
+        args.backend,
+        args.batch_size,
+        "image",
+        fixed.sha256,
+        {
+            "dataset_id": fixed.manifest["id"],
+            "input_decode": "predecoded BGR",
+            "input_hw": [IMAGE_SIDE, IMAGE_SIDE],
+            "cuda_stream": "non-default",
+            "timing_protocol_sha256": fixed.pins.timing_sha256,
+            "timed_input_ids_sha256": schedule.timed_ids_sha256,
+            "host_threads": torch.get_num_threads(),
+            "num_queries": NUM_QUERIES,
+            "postprocessor": "official PyTorch FP32 sigmoid/global top-k",
+            "pytorch_autocast_fp16": args.backend is Backend.PT16,
+            "engine_profiles": engine_profiles,
+            "upstream_commit": UPSTREAM_COMMIT,
+        },
+    )
+    adapter = benchmark_adapter(assets, args.backend, device, args.engine_dir)
+
+    report = benchmark(
+        case,
+        batches,
+        {args.backend: adapter},
+        device=device,
+        dedicated_stream=True,
+        protocol=schedule.protocol,
+        conversion=conversion,
+        parity_not_evaluated_reason=args.parity_not_evaluated_reason,
+    )
+    write_json_atomic(path, report.to_dict())
+    print(
+        f"{assets.model_id}/{args.backend}/B{args.batch_size} {report.status}",
+        flush=True,
+    )
+    if report.failure is not None:
+        raise SystemExit(report.failure.message)
 
 
 def _parser() -> argparse.ArgumentParser:
@@ -579,9 +555,6 @@ def _parser() -> argparse.ArgumentParser:
     parser.add_argument("--upstream", type=Path, required=True)
     parser.add_argument("--weights", type=Path, required=True)
     modes = parser.add_subparsers(dest="mode", required=True)
-    smoke = modes.add_parser("smoke")
-    smoke.add_argument("--video", required=True, type=Path)
-    smoke.add_argument("--frame", required=True, type=int)
     export = modes.add_parser("export")
     build = modes.add_parser("build")
     for conversion in (export, build):
@@ -595,12 +568,26 @@ def _parser() -> argparse.ArgumentParser:
     accuracy.add_argument("--manifest-sha256", required=True)
     accuracy.add_argument("--source", type=Path, required=True)
     accuracy.add_argument("--output", type=Path, required=True)
-    accuracy.add_argument(
-        "--backend", type=lambda value: Backend(value.upper()), required=True
-    )
-    accuracy.add_argument("--engine-dir", type=Path)
-    accuracy.add_argument("--pt32-dir", type=Path)
-    for cuda in (build, accuracy):
+    speed = modes.add_parser("speed")
+    speed.add_argument("--inputs", type=Path, required=True)
+    speed.add_argument("--inputs-sha256", required=True)
+    speed.add_argument("--batch-size", type=int, required=True)
+    speed.add_argument("--output", type=Path, required=True)
+    speed.add_argument("--conversion", type=Path, action="append", default=[])
+    for measurement in (accuracy, speed):
+        measurement.add_argument("--engine-dir", type=Path)
+        measurement.add_argument(
+            "--backend",
+            type=lambda value: Backend(value.upper()),
+            choices=(Backend.PT16, Backend.TRT16),
+            required=True,
+        )
+        measurement.add_argument(
+            "--parity-not-evaluated-reason",
+            choices=(PT32_NOT_MEASURED,),
+            required=True,
+        )
+    for cuda in (build, accuracy, speed):
         cuda.add_argument("--device", required=True, type=torch.device)
     return parser
 
@@ -609,18 +596,6 @@ def main() -> None:
     args = _parser().parse_args()
     assets = Assets(args.model_id, args.upstream, args.weights)
     assets.verify()
-    if args.mode == "smoke":
-        detector = load_detector(assets, Backend.PT32, torch.device("cpu"), None)
-        (row,) = detector([read_video_frame(args.video, args.frame).frame])
-        print(
-            {
-                "model_id": args.model_id,
-                "source_frame": args.frame,
-                "people": len(row.scores),
-                "scores_above_0.4": row.scores[row.scores > 0.4].tolist(),
-            }
-        )
-        return
     if args.mode == "export":
         result = measure_conversion(
             Conversion.ONNX_EXPORT, lambda: _export(assets, args.engine_dir)
@@ -628,6 +603,9 @@ def main() -> None:
     else:
         if args.device.type != "cuda" or not os.environ.get("TENNIS_RUN_ID"):
             raise ValueError("Run this CUDA command in the shared training queue")
+        if args.mode == "speed":
+            _speed(args, assets, args.device)
+            return
         if args.mode == "accuracy":
             torch.backends.cuda.matmul.fp32_precision = "ieee"
             torch.backends.cudnn.fp32_precision = "ieee"
