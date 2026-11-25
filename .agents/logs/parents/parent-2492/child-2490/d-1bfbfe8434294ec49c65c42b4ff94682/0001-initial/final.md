@@ -1,0 +1,7 @@
+RTMPose-M/X の COCO17 adapter と TensorRT 変換手順をコミットしました。統合用 branch は `codex/parent-2492-issue-2490-rtmpose`、commit は `e93bb058b2d0a28166188b16da59059decd26d27` です。
+
+両モデルとも Body7 学習・Halpe26 出力の公式 384×288 重みを使用し、SHA-256 と先頭17関節の対応を照合しました。全 backend で公式の水平 flip test を使い、1 batch あたり2回 forward します。固定疑似BBox 2件の CPU FP32 検証では、両モデルとも公式 MMPose と元画像座標・生スコアが一致しました。FP16 ONNX 検査、pytest 24件（新規3件）、pre-commit が通過しました。重み固有の商用配備・再配布条件は未確認です。[再現手順と検証記録](https://github.com/Motoki0705/tennis-lab/blob/e93bb058b2d0a28166188b16da59059decd26d27/knowledge/runs/run-meiji-topdown-pose-comparison/rtmpose.md)
+
+M/X × PT32・PT16・TRT16 の精度評価6件を共有 GPU queue に登録しました。TRT16 の2件には engine build も含みます。結果受領後に精度と PT32 からの出力差を集計します。速度・VRAM の計測は #2496 の固定速度入力の公開待ちです。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204479371993481292_2026-11-24T11-43-48-006518707Z_1190023_i2490-rtmpose-m-pt32-accuracy.job","0-8204479371629885537_2026-11-24T11-43-48-370114462Z_1190093_i2490-rtmpose-m-pt16-accuracy.job","0-8204479371298644878_2026-11-24T11-43-48-701355121Z_1190188_i2490-rtmpose-m-trt16-accuracy.job","0-8204479370898726033_2026-11-24T11-43-49-101273966Z_1190269_i2490-rtmpose-x-pt32-accuracy.job","0-8204479370537743155_2026-11-24T11-43-49-462256844Z_1190346_i2490-rtmpose-x-pt16-accuracy.job","0-8204479370187195038_2026-11-24T11-43-49-812804961Z_1190424_i2490-rtmpose-x-trt16-accuracy.job"]}}

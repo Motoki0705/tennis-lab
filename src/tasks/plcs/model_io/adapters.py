@@ -32,6 +32,18 @@ from src.tasks.plcs.court_keypoint_contract import (
     provenance_from_value,
     validate_provenance_contract,
 )
+from src.tasks.plcs.geometry.monocular_camera_bbox import (
+    BBX_XYS_DIM,
+    CAMERA_FEATURE_DIM,
+    CLIFFCAM_DIM,
+    SyntheticBBoxConfig,
+    _broadcast_camera_time,
+    _validate_extrinsics_and_intrinsics,
+    compute_camera_features,
+    compute_cliffcam_features,
+    compute_synthetic_bbx_xys,
+    normalize_kp2d_bbox,
+)
 from src.tasks.plcs.model_io.attention_masks import (
     prepare_axial_attention_masks,
 )
@@ -42,6 +54,7 @@ from src.tasks.plcs.model_io.contracts import (
     PLCSReprojectionTarget,
     plcs_reference_metadata_from_batch,
 )
+from src.tasks.plcs.models.plcs_monocular_gvhmr_model import NUM_STATIC_CONTACT_JOINTS
 from src.tasks.plcs.models.plcs_multiview_axial_model import PLCSMultiViewAxialModel
 from src.utils.schema.player import NUM_HUMAN_KP
 
@@ -227,6 +240,9 @@ class PLCSModelIOAdapter:
         output_rank: int,
         predict_canonical_pose: bool,
         predict_auxiliary_position: bool,
+        predict_world_pose: bool = False,
+        enable_pva_heads: bool = False,
+        predict_static_contact: bool = False,
         max_views: int | None = None,
         max_sequence_length: int | None = None,
         min_views: int = 1,
@@ -239,7 +255,11 @@ class PLCSModelIOAdapter:
                 "num_court_tokens/min_views must be positive and camera_index "
                 "must be non-negative."
             )
-        expected_output_rank = 3 if profile is PLCSInputProfile.MULTIVIEW else 2
+        expected_output_rank = (
+            3
+            if profile in {PLCSInputProfile.MULTIVIEW, PLCSInputProfile.MONOCULAR}
+            else 2
+        )
         if output_rank != expected_output_rank:
             raise ValueError(
                 f"PLCS {profile.value!r} profile requires output_rank="
@@ -258,6 +278,9 @@ class PLCSModelIOAdapter:
         self.output_rank = output_rank
         self.predict_canonical_pose = predict_canonical_pose
         self.predict_auxiliary_position = predict_auxiliary_position
+        self.predict_world_pose = predict_world_pose
+        self.enable_pva_heads = enable_pva_heads
+        self.predict_static_contact = predict_static_contact
         self.max_views = max_views
         self.max_sequence_length = max_sequence_length
         self.min_views = min_views
@@ -375,8 +398,137 @@ class PLCSModelIOAdapter:
         _binary_mask("padding_mask", padding_mask)
         return human_kp, court_kp, human_vis, padding_mask, court_vis
 
+    def _build_monocular_call(self, batch: Mapping[str, object]) -> ModelCall:
+        kp2d_norm = require_tensor(
+            batch,
+            "kp2d_norm",
+            spec=TensorSpec(shape=(None, None, NUM_HUMAN_KP, 3), dtypes=_FLOAT_DTYPES),
+        )
+        bsz, frames = int(kp2d_norm.shape[0]), int(kp2d_norm.shape[1])
+        if bsz == 0 or frames == 0:
+            raise ModelInputContractError("Monocular batch/time axes must be non-empty.")
+        if self.max_sequence_length is not None and frames > self.max_sequence_length:
+            raise ModelInputContractError(
+                f"Monocular input has {frames} frames, exceeding "
+                f"max_seq_len={self.max_sequence_length}."
+            )
+        cliffcam = require_tensor(
+            batch,
+            "cliffcam",
+            spec=TensorSpec(shape=(bsz, frames, CLIFFCAM_DIM), dtypes=_FLOAT_DTYPES),
+        )
+        cam_feat = require_tensor(
+            batch,
+            "cam_feat",
+            spec=TensorSpec(
+                shape=(bsz, frames, CAMERA_FEATURE_DIM), dtypes=_FLOAT_DTYPES
+            ),
+        )
+        bbx_xys = require_tensor(
+            batch,
+            "bbx_xys",
+            spec=TensorSpec(shape=(bsz, frames, BBX_XYS_DIM), dtypes=_FLOAT_DTYPES),
+        )
+        frame_observed = require_tensor(
+            batch,
+            "frame_observed",
+            spec=TensorSpec(shape=(bsz, frames), dtypes=frozenset({torch.bool})),
+        )
+        padding_mask = require_tensor(
+            batch,
+            "padding_mask",
+            spec=TensorSpec(shape=(bsz, frames), dtypes=frozenset({torch.bool})),
+        )
+        if bool(padding_mask.all(dim=1).any().item()):
+            raise ModelInputContractError(
+                "Every monocular sequence must contain at least one non-padding frame."
+            )
+        camera_R_in = require_tensor(batch, "camera_R_in")
+        camera_C_in = require_tensor(batch, "camera_C_in")
+        camera_f_in = require_tensor(batch, "camera_f_in")
+        camera_cx_in = require_tensor(batch, "camera_cx_in")
+        camera_cy_in = require_tensor(batch, "camera_cy_in")
+        camera_fy_in = (
+            require_tensor(batch, "camera_fy_in")
+            if "camera_fy_in" in batch and batch["camera_fy_in"] is not None
+            else None
+        )
+        for name, tensor in (
+            ("kp2d_norm", kp2d_norm),
+            ("cliffcam", cliffcam),
+            ("cam_feat", cam_feat),
+            ("bbx_xys", bbx_xys),
+            ("camera_R_in", camera_R_in),
+            ("camera_C_in", camera_C_in),
+            ("camera_f_in", camera_f_in),
+            ("camera_cx_in", camera_cx_in),
+            ("camera_cy_in", camera_cy_in),
+        ):
+            _finite(name, tensor)
+        if camera_fy_in is not None:
+            _finite("camera_fy_in", camera_fy_in)
+        fy_for_validation = camera_f_in if camera_fy_in is None else camera_fy_in
+        try:
+            _validate_extrinsics_and_intrinsics(
+                camera_R_in,
+                camera_C_in,
+                fx=camera_f_in,
+                fy=fy_for_validation,
+                cx0=camera_cx_in,
+                cy0=camera_cy_in,
+            )
+            _broadcast_camera_time(
+                camera_R_in,
+                batch_shape=(bsz,),
+                seq_len=frames,
+                trailing_dims=2,
+                name="camera_R_in",
+            )
+            _broadcast_camera_time(
+                camera_C_in,
+                batch_shape=(bsz,),
+                seq_len=frames,
+                trailing_dims=1,
+                name="camera_C_in",
+            )
+            for name, cam_scalar in (
+                ("camera_f_in", camera_f_in),
+                ("camera_fy_in", fy_for_validation),
+                ("camera_cx_in", camera_cx_in),
+                ("camera_cy_in", camera_cy_in),
+            ):
+                _broadcast_camera_time(
+                    cam_scalar,
+                    batch_shape=(bsz,),
+                    seq_len=frames,
+                    trailing_dims=0,
+                    name=name,
+                )
+        except ValueError as error:
+            raise ModelInputContractError(str(error)) from error
+        if "court_keypoint_metadata" in batch or "court_reference_provenance" in batch:
+            _court_context(batch, self.court_keypoint_contract, batch_size=bsz)
+        kwargs: dict[str, object] = {
+            "kp2d_norm": kp2d_norm,
+            "cliffcam": cliffcam,
+            "cam_feat": cam_feat,
+            "bbx_xys": bbx_xys,
+            "frame_observed": frame_observed,
+            "padding_mask": padding_mask,
+            "camera_R_in": camera_R_in,
+            "camera_C_in": camera_C_in,
+            "camera_f_in": camera_f_in,
+            "camera_cx_in": camera_cx_in,
+            "camera_cy_in": camera_cy_in,
+        }
+        if camera_fy_in is not None:
+            kwargs["camera_fy_in"] = camera_fy_in
+        return ModelCall(kwargs=kwargs)
+
     def build_call(self, batch: Mapping[str, object]) -> ModelCall:
         """Validate a model-ready batch and build one immutable model call."""
+        if self.profile is PLCSInputProfile.MONOCULAR:
+            return self._build_monocular_call(batch)
         human_kp, court_kp, human_vis, padding_mask, court_vis = (
             self._validate_ready_inputs(batch)
         )
@@ -516,6 +668,112 @@ class PLCSModelIOAdapter:
             raise ModelInputContractError(
                 f"adapter_camera_index={self.camera_index} is out of range for "
                 f"a batch with {views} views."
+            )
+        if self.profile is PLCSInputProfile.MONOCULAR:
+            idx = self.camera_index
+            mono_pad = padding_mask[:, idx]
+            if "kp2d_norm" in batch:
+                mono_ready: dict[str, object] = {
+                    "kp2d_norm": require_tensor(batch, "kp2d_norm")[:, idx],
+                    "cliffcam": require_tensor(batch, "cliffcam")[:, idx],
+                    "cam_feat": require_tensor(batch, "cam_feat")[:, idx],
+                    "bbx_xys": require_tensor(batch, "bbx_xys")[:, idx],
+                    "frame_observed": require_tensor(batch, "frame_observed")[:, idx],
+                    "padding_mask": mono_pad,
+                    "camera_R_in": require_tensor(batch, "camera_R_in")[:, idx],
+                    "camera_C_in": require_tensor(batch, "camera_C_in")[:, idx],
+                    "camera_f_in": require_tensor(batch, "camera_f_in")[:, idx],
+                    "camera_cx_in": require_tensor(batch, "camera_cx_in")[:, idx],
+                    "camera_cy_in": require_tensor(batch, "camera_cy_in")[:, idx],
+                    "court_keypoint_metadata": batch.get("court_keypoint_metadata"),
+                    "court_reference_provenance": batch.get(
+                        "court_reference_provenance"
+                    ),
+                }
+            else:
+                cam_R = require_tensor(batch, "camera_R")[:, idx]
+                cam_C = require_tensor(batch, "camera_C")[:, idx]
+                cam_f = require_tensor(batch, "camera_f")[:, idx]
+                cam_cx = require_tensor(batch, "camera_cx")[:, idx]
+                cam_cy = require_tensor(batch, "camera_cy")[:, idx]
+                cam_w = require_tensor(batch, "camera_w")[:, idx]
+                cam_h = require_tensor(batch, "camera_h")[:, idx]
+                wh = torch.stack([cam_w, cam_h], dim=-1)
+                kp2d_px = human_kp[:, idx] * wh[:, None, None, :]
+                bbx_xys, frame_obs = compute_synthetic_bbx_xys(
+                    kp2d_px, human_vis[:, idx].float()
+                )
+                frame_obs = frame_obs & (~mono_pad)
+                bbx_xys = torch.where(
+                    frame_obs.unsqueeze(-1), bbx_xys, torch.zeros_like(bbx_xys)
+                )
+                kp2d_norm, _ = normalize_kp2d_bbox(
+                    kp2d_px, human_vis[:, idx].float(), bbx_xys, frame_obs
+                )
+                cliffcam = compute_cliffcam_features(
+                    bbx_xys, frame_obs, fx=cam_f, fy=cam_f, cx0=cam_cx, cy0=cam_cy
+                )
+                cam_feat = compute_camera_features(
+                    cam_R,
+                    cam_C,
+                    fx=cam_f,
+                    fy=cam_f,
+                    cx0=cam_cx,
+                    cy0=cam_cy,
+                    image_w=cam_w,
+                    image_h=cam_h,
+                    seq_len=frames,
+                )
+                cam_feat = torch.where(
+                    (~mono_pad).unsqueeze(-1), cam_feat, torch.zeros_like(cam_feat)
+                )
+                mono_ready = {
+                    "kp2d_norm": kp2d_norm,
+                    "cliffcam": cliffcam,
+                    "cam_feat": cam_feat,
+                    "bbx_xys": bbx_xys,
+                    "frame_observed": frame_obs,
+                    "padding_mask": mono_pad,
+                    "camera_R_in": cam_R,
+                    "camera_C_in": cam_C,
+                    "camera_f_in": cam_f,
+                    "camera_cx_in": cam_cx,
+                    "camera_cy_in": cam_cy,
+                    "court_keypoint_metadata": batch.get("court_keypoint_metadata"),
+                    "court_reference_provenance": batch.get(
+                        "court_reference_provenance"
+                    ),
+                }
+            fps_tensor = (
+                require_tensor(batch, "frame_rate_hz")
+                if "frame_rate_hz" in batch
+                else None
+            )
+            mono_reproj = reprojection_target
+            if mono_reproj is not None and views > 1:
+                mono_reproj = PLCSReprojectionTarget(
+                    target_uv=mono_reproj.target_uv[:, idx : idx + 1],
+                    target_vis=mono_reproj.target_vis[:, idx : idx + 1],
+                    padding_mask=mono_reproj.padding_mask[:, idx : idx + 1],
+                    camera_R=mono_reproj.camera_R[:, idx : idx + 1],
+                    camera_C=mono_reproj.camera_C[:, idx : idx + 1],
+                    camera_f=mono_reproj.camera_f[:, idx : idx + 1],
+                    camera_cx=mono_reproj.camera_cx[:, idx : idx + 1],
+                    camera_cy=mono_reproj.camera_cy[:, idx : idx + 1],
+                    camera_w=mono_reproj.camera_w[:, idx : idx + 1],
+                    camera_h=mono_reproj.camera_h[:, idx : idx + 1],
+                )
+            return PLCSPreparedBatch(
+                call=self.build_call(mono_ready),
+                target_position=target_position,
+                target_rotation=target_rotation,
+                target_human_kp_3d=target_human_kp_3d,
+                target_padding_mask=mono_pad,
+                reprojection_target=mono_reproj,
+                court_reference_provenance=provenance,
+                reference_metadata=reference_metadata,
+                frame_rate_hz=fps_tensor,
+                frame_observed=cast(Tensor, mono_ready["frame_observed"]),
             )
         if self.profile is PLCSInputProfile.FRAME and frames != 1:
             raise ModelInputContractError(
@@ -697,6 +955,12 @@ class PLCSModelIOAdapter:
             expected.add("canonical_pose")
         if self.predict_auxiliary_position:
             expected.add("aux_position")
+        if self.predict_world_pose:
+            expected.update({"world_kp_3d", "pred_cam"})
+        if self.enable_pva_heads:
+            expected.update({"pred_vel_3d", "pred_acc_3d"})
+            if self.predict_static_contact:
+                expected.add("static_contact_logits")
         unknown = set(output) - expected
         missing = expected - set(output)
         if missing or unknown:
@@ -731,11 +995,57 @@ class PLCSModelIOAdapter:
                 raise ModelOutputContractError(
                     "PLCS aux_position must match position shape."
                 )
+        world_kp_3d = None
+        pred_cam = None
+        if self.predict_world_pose:
+            world_kp_3d = _required_output(
+                output, "world_kp_3d", shape=(*prefix, NUM_HUMAN_KP, 3)
+            )
+            pred_cam = _required_output(output, "pred_cam", shape=(*prefix, 3))
+            if (
+                world_kp_3d.shape[: self.output_rank - 1] != position.shape[:-1]
+                or pred_cam.shape[:-1] != position.shape[:-1]
+            ):
+                raise ModelOutputContractError(
+                    "PLCS world_kp_3d/pred_cam must share position leading axes."
+                )
+        pred_vel_3d = None
+        pred_acc_3d = None
+        static_contact_logits = None
+        if self.enable_pva_heads:
+            pred_vel_3d = _required_output(
+                output, "pred_vel_3d", shape=(*prefix, NUM_HUMAN_KP, 3)
+            )
+            pred_acc_3d = _required_output(
+                output, "pred_acc_3d", shape=(*prefix, NUM_HUMAN_KP, 3)
+            )
+            if (
+                pred_vel_3d.shape[: self.output_rank - 1] != position.shape[:-1]
+                or pred_acc_3d.shape[: self.output_rank - 1] != position.shape[:-1]
+            ):
+                raise ModelOutputContractError(
+                    "PLCS pred_vel_3d/pred_acc_3d must share position leading axes."
+                )
+            if self.predict_static_contact:
+                static_contact_logits = _required_output(
+                    output,
+                    "static_contact_logits",
+                    shape=(*prefix, NUM_STATIC_CONTACT_JOINTS),
+                )
+                if static_contact_logits.shape[:-1] != position.shape[:-1]:
+                    raise ModelOutputContractError(
+                        "PLCS static_contact_logits must share position leading axes."
+                    )
         return PLCSDecodedPrediction(
             position=position,
             rotation=rotation,
             canonical_pose=canonical_pose,
             auxiliary_position=auxiliary_position,
+            world_kp_3d=world_kp_3d,
+            pred_cam=pred_cam,
+            pred_vel_3d=pred_vel_3d,
+            pred_acc_3d=pred_acc_3d,
+            static_contact_logits=static_contact_logits,
         )
 
     def decode_prepared_output(
@@ -872,6 +1182,87 @@ class PLCSModelIOAdapter:
                 call=self.build_call(ready),
                 court_reference_provenance=(provenance,),
             )
+        if self.profile is PLCSInputProfile.MONOCULAR:
+            cam_obj = selected_scene_cameras[0]
+            cam_params = getattr(cam_obj, "params", None)
+            if cam_params is None:
+                cam_params = getattr(cam_obj, "camera_params", None)
+            if not isinstance(cam_params, Mapping):
+                raise ModelInputContractError(
+                    "Monocular PLCS scene inference requires calibrated camera params."
+                )
+            R_t = torch.as_tensor(cam_params["R"], dtype=torch.float32).unsqueeze(0)
+            C_t = torch.as_tensor(cam_params["C"], dtype=torch.float32).unsqueeze(0)
+            if "fx" in cam_params and "fy" in cam_params:
+                fx_val = float(cam_params["fx"])
+                fy_val = float(cam_params["fy"])
+            elif "f" in cam_params:
+                fx_val = float(cam_params["f"])
+                fy_val = fx_val
+            else:
+                raise ModelInputContractError(
+                    "Monocular PLCS camera params must provide 'f' or ('fx', 'fy')."
+                )
+            fx_t = torch.tensor([fx_val], dtype=torch.float32)
+            fy_t = torch.tensor([fy_val], dtype=torch.float32)
+            cx_t = torch.tensor([float(cam_params["cx"])], dtype=torch.float32)
+            cy_t = torch.tensor([float(cam_params["cy"])], dtype=torch.float32)
+            if "w" in cam_params and "h" in cam_params:
+                w_val = float(cam_params["w"])
+                h_val = float(cam_params["h"])
+            elif "image_size" in cam_params:
+                image_size = cam_params["image_size"]
+                w_val = float(image_size[0])
+                h_val = float(image_size[1])
+            else:
+                raise ModelInputContractError(
+                    "Monocular PLCS camera params must provide ('w', 'h') or 'image_size'."
+                )
+            w_t = torch.tensor([w_val], dtype=torch.float32)
+            h_t = torch.tensor([h_val], dtype=torch.float32)
+            wh = torch.stack([w_t, h_t], dim=-1)
+            kp2d_px = ready_human[:, 0] * wh[:, None, None, :]
+            bbx_xys, frame_obs = compute_synthetic_bbx_xys(
+                kp2d_px, ready_human_vis[:, 0].float()
+            )
+            kp2d_norm, _ = normalize_kp2d_bbox(
+                kp2d_px, ready_human_vis[:, 0].float(), bbx_xys, frame_obs
+            )
+            cliffcam = compute_cliffcam_features(
+                bbx_xys, frame_obs, fx=fx_t, fy=fy_t, cx0=cx_t, cy0=cy_t
+            )
+            cam_feat = compute_camera_features(
+                R_t,
+                C_t,
+                fx=fx_t,
+                fy=fy_t,
+                cx0=cx_t,
+                cy0=cy_t,
+                image_w=w_t,
+                image_h=h_t,
+                seq_len=frames,
+            )
+            mono_scene_ready: dict[str, object] = {
+                "kp2d_norm": kp2d_norm,
+                "cliffcam": cliffcam,
+                "cam_feat": cam_feat,
+                "bbx_xys": bbx_xys,
+                "frame_observed": frame_obs,
+                "padding_mask": ready_padding[:, 0],
+                "camera_R_in": R_t,
+                "camera_C_in": C_t,
+                "camera_f_in": fx_t,
+                "camera_fy_in": fy_t,
+                "camera_cx_in": cx_t,
+                "camera_cy_in": cy_t,
+                "court_keypoint_metadata": ready["court_keypoint_metadata"],
+                "court_reference_provenance": provenance,
+            }
+            return PLCSPreparedBatch(
+                call=self.build_call(mono_scene_ready),
+                court_reference_provenance=(provenance,),
+                frame_observed=frame_obs,
+            )
         flattened = {
             "human_kp": ready_human[:, 0].reshape(frames, NUM_HUMAN_KP, 2),
             "court_kp": ready_court[:, 0].reshape(frames, self.num_court_tokens, 2),
@@ -958,6 +1349,138 @@ class PLCSModelIOAdapter:
         return PLCSPreparedBatch(
             call=self.build_call(ready),
             court_reference_provenance=provenance,
+        )
+
+    def prepare_monocular_observations(
+        self,
+        *,
+        kp2d_px: np.ndarray | Tensor,
+        kp_vis: np.ndarray | Tensor,
+        bbx_xys: np.ndarray | Tensor | None,
+        frame_observed: np.ndarray | Tensor | None,
+        R_w2c: np.ndarray | Tensor,
+        C_w: np.ndarray | Tensor,
+        fx: float | np.ndarray | Tensor,
+        fy: float | np.ndarray | Tensor,
+        cx0: float | np.ndarray | Tensor,
+        cy0: float | np.ndarray | Tensor,
+        image_w: float | int,
+        image_h: float | int,
+        vis_threshold: float = 0.0,
+    ) -> PLCSPreparedBatch:
+        """Assemble one calibrated monocular track ``(T, 17, 2)`` or ``(B, T, 17, 2)``."""
+        self.require_profile(PLCSInputProfile.MONOCULAR)
+        kp_t = torch.as_tensor(kp2d_px, dtype=torch.float32)
+        vis_t = torch.as_tensor(kp_vis, dtype=torch.float32)
+        if kp_t.ndim == 3:
+            kp_t = kp_t.unsqueeze(0)
+            vis_t = vis_t.unsqueeze(0)
+        if kp_t.ndim != 4 or kp_t.shape[-2:] != (NUM_HUMAN_KP, 2):
+            raise ModelInputContractError(
+                f"kp2d_px must have shape (T, 17, 2) or (B, T, 17, 2), got {tuple(kp_t.shape)}."
+            )
+        bsz, frames = int(kp_t.shape[0]), int(kp_t.shape[1])
+        if vis_t.shape != (bsz, frames, NUM_HUMAN_KP):
+            raise ModelInputContractError("kp_vis must match kp2d_px[..., 0] shape.")
+
+        R_t = torch.as_tensor(R_w2c, dtype=torch.float32)
+        C_t = torch.as_tensor(C_w, dtype=torch.float32)
+        if R_t.ndim == 2:
+            R_t = R_t.unsqueeze(0).expand(bsz, 3, 3).clone()
+        elif R_t.ndim == 3 and bsz == 1 and R_t.shape[0] == frames and frames != 1:
+            R_t = R_t.unsqueeze(0)
+        if C_t.ndim == 1:
+            C_t = C_t.unsqueeze(0).expand(bsz, 3).clone()
+        elif C_t.ndim == 2 and bsz == 1 and C_t.shape[0] == frames and frames != 1:
+            C_t = C_t.unsqueeze(0)
+
+        def _scalar_cam(val: float | np.ndarray | Tensor) -> Tensor:
+            t = torch.as_tensor(val, dtype=torch.float32)
+            if t.ndim == 0:
+                return t.expand(bsz).clone()
+            if t.ndim == 1 and bsz == 1 and t.shape[0] == frames and frames != 1:
+                return t.unsqueeze(0)
+            return t
+
+        fx_t = _scalar_cam(fx)
+        fy_t = _scalar_cam(fy)
+        cx_t = _scalar_cam(cx0)
+        cy_t = _scalar_cam(cy0)
+        w_t = torch.full((bsz,), float(image_w), dtype=torch.float32)
+        h_t = torch.full((bsz,), float(image_h), dtype=torch.float32)
+
+        if bbx_xys is None:
+            bbx_t, obs_t = compute_synthetic_bbx_xys(
+                kp_t,
+                vis_t,
+                config=SyntheticBBoxConfig(vis_threshold=vis_threshold),
+            )
+            if frame_observed is not None:
+                explicit_obs = torch.as_tensor(frame_observed, dtype=torch.bool)
+                if explicit_obs.ndim == 1:
+                    explicit_obs = explicit_obs.unsqueeze(0)
+                if explicit_obs.shape != (bsz, frames):
+                    raise ModelInputContractError(
+                        f"frame_observed must have shape {(bsz, frames)}, got {tuple(explicit_obs.shape)}."
+                    )
+                obs_t = obs_t & explicit_obs
+                bbx_t = torch.where(obs_t.unsqueeze(-1), bbx_t, torch.zeros_like(bbx_t))
+        else:
+            bbx_t = torch.as_tensor(bbx_xys, dtype=torch.float32)
+            if bbx_t.ndim == 2:
+                bbx_t = bbx_t.unsqueeze(0)
+            if frame_observed is None:
+                raise ModelInputContractError(
+                    "Explicit bbx_xys requires explicit frame_observed mask."
+                )
+            obs_t = torch.as_tensor(frame_observed, dtype=torch.bool)
+            if obs_t.ndim == 1:
+                obs_t = obs_t.unsqueeze(0)
+            obs_t = obs_t & (bbx_t[..., 2] > 0.0)
+            bbx_t = torch.where(obs_t.unsqueeze(-1), bbx_t, torch.zeros_like(bbx_t))
+
+        kp2d_norm, _ = normalize_kp2d_bbox(
+            kp_t, vis_t, bbx_t, obs_t, vis_threshold=vis_threshold
+        )
+        cliffcam = compute_cliffcam_features(
+            bbx_t, obs_t, fx=fx_t, fy=fy_t, cx0=cx_t, cy0=cy_t
+        )
+        cam_feat = compute_camera_features(
+            R_t,
+            C_t,
+            fx=fx_t,
+            fy=fy_t,
+            cx0=cx_t,
+            cy0=cy_t,
+            image_w=w_t,
+            image_h=h_t,
+            seq_len=frames,
+            batch_shape=(bsz,),
+        )
+        padding_mask = torch.zeros((bsz, frames), dtype=torch.bool)
+        provenance = tuple(build_physical_court_provenance() for _ in range(bsz))
+        ready: dict[str, object] = {
+            "kp2d_norm": kp2d_norm,
+            "cliffcam": cliffcam,
+            "cam_feat": cam_feat,
+            "bbx_xys": bbx_t,
+            "frame_observed": obs_t,
+            "padding_mask": padding_mask,
+            "camera_R_in": R_t,
+            "camera_C_in": C_t,
+            "camera_f_in": fx_t,
+            "camera_fy_in": fy_t,
+            "camera_cx_in": cx_t,
+            "camera_cy_in": cy_t,
+            "court_keypoint_metadata": court_keypoint_contract_document(
+                self.court_keypoint_contract
+            ),
+            "court_reference_provenance": provenance,
+        }
+        return PLCSPreparedBatch(
+            call=self.build_call(ready),
+            court_reference_provenance=provenance,
+            frame_observed=obs_t,
         )
 
 

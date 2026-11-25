@@ -166,8 +166,10 @@ def _validate_camera(root: Mapping[str, object]) -> None:
     }
     camera = _reject_unknown(camera, camera_fields, path="camera")
     layout = cast("str", require_config_value(camera, "layout", str, path="camera"))
-    if layout != "fixed":
-        raise SemanticConfigurationError("camera.layout must be 'fixed'.")
+    if layout not in {"fixed", "broadcast", "mixed"}:
+        raise SemanticConfigurationError(
+            "camera.layout must be 'fixed', 'broadcast', or 'mixed'."
+        )
     image_size = _sequence(
         camera,
         "image_size",
@@ -192,9 +194,9 @@ def _validate_camera(root: Mapping[str, object]) -> None:
     candidates = camera_candidate_indices(
         camera.get("fixed_camera_indices"), capacity=6
     )
-    if candidates is not None and layout != "fixed":
+    if candidates is not None and layout not in {"fixed", "mixed"}:
         raise SemanticConfigurationError(
-            "camera.fixed_camera_indices requires layout=fixed."
+            "camera.fixed_camera_indices requires layout=fixed or mixed."
         )
     for key in camera_fields - {
         "layout",
