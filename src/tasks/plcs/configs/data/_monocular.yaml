@@ -1,0 +1,6 @@
+camera_mode: random
+num_views_range: [1, 1]
+batch_size: 16
+
+# Local indices in the persisted rig; null samples from all saved cameras.
+camera_candidates: null
