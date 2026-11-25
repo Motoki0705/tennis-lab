@@ -91,15 +91,32 @@ The four prediction sets each cover 6,844 images and 26,276 eligible SMPL-derive
 | Model | Backend | Recall@0.50 | Recall@0.75 | Stage P50 ms/image B1 | Stage P50 ms/image B2 | Comparison status |
 | --- | --- | ---: | ---: | ---: | ---: | --- |
 | L | PT16 | 98.12% | 45.57% | 52.52 | 38.48 | Measured |
-| L | TRT16 | 0.00% | 0.00% | 31.48 | 27.05 | Infeasible for comparison pending diagnosis |
+| L | TRT16 | 0.00% | 0.00% | 31.48 | 27.05 | Infeasible for comparison due to accuracy loss |
 | X | PT16 | 97.97% | 44.66% | 56.13 | 40.20 | Measured |
-| X | TRT16 | 0.03% | 0.00% | 32.48 | 29.16 | Infeasible for comparison pending diagnosis |
+| X | TRT16 | 0.03% | 0.00% | 32.48 | 29.16 | Infeasible for comparison due to accuracy loss |
 
 The [condition receipts](rtdetrv4-results.json) contain both queue IDs, raw report and prediction SHA-256 values, plans, conversion times, P50/P95 and throughput, and sampled NVML and allocator memory. The two suites ran at `88ec50e5f777cbecb1dfecf54f8c6353a60612f6` with an empty working-tree patch. The measured harness, input loader and timing protocol are byte-identical to main merge `59faa32a28d2f54e6492abdba2429846fa0397e3`. All 300 timed batch ID sequences and timing summaries in the eight speed reports were verified against the pinned schedule and raw samples. The `RTDETRV4_RESULTS` root is this worktree's `outputs/player-model-comparison/` on the run machine.
 
-Both TRT16 plans load and run, but their cohort recall drops by about 98 percentage points. On `clip_003/cam0` frame 0, the maximum person scores for L/X fall from 0.857/0.863 in PT16 to 0.088/0.020 in TRT16. The cause remains undetermined. These are diagnostic speed measurements for the affected engine builds.
+Both TRT16 plans execute. Against the fixed cohort, they match 0 and 8 of the 26,276 reference boxes at IoU 0.50 for L and X, respectively. That is a drop of about 98 percentage points from PT16. The speeds of these plans are retained as experimental evidence. Both conditions are excluded from the accuracy–speed trade-off plot.
 
-The [diagnostic entry point](rtdetrv4_diagnose.py) uses four checksummed speed images across clips 003 and 057. It sends the same prepared tensor to PT16, TRT16 and CPU ONNX Runtime with the exact exported graph, retaining raw logits and boxes before a shared FP32 postprocessor. It records batch 1 and 2, the tensor and engine hashes, and small-cohort recall. Run it through the shared GPU queue with the same Python path as the suite and a fresh diagnostic output directory.
+## Same-input TensorRT diagnosis
+
+The [diagnostic entry point](rtdetrv4_diagnose.py) ran on four checksummed speed images from clips 003 and 057. PT16, TRT16 and ONNX Runtime CPU all received the same prepared tensor and used the same FP32 postprocessor. ONNX Runtime read the exact graph used to build each TensorRT plan. The subset contains 16 eligible pseudo-GT boxes and each row below held at both batch sizes.
+
+| Model | Execution path | Matches at IoU 0.50 | Matches at IoU 0.75 |
+| --- | --- | ---: | ---: |
+| L | PT16 | 16/16 | 5/16 |
+| L | ONNX Runtime CPU | 16/16 | 5/16 |
+| L | TRT16 | 0/16 | 0/16 |
+| X | PT16 | 16/16 | 5/16 |
+| X | ONNX Runtime CPU | 16/16 | 6/16 |
+| X | TRT16 | 0/16 | 0/16 |
+
+The divergence is already present in the raw TensorRT outputs. Across the images and batch sizes, per-image maximum person logits were between 1.65 and 2.14 for PT16 and ONNX Runtime CPU. For TRT16 they were between −2.68 and −1.56 for L and between −4.65 and −2.61 for X. The raw L TensorRT boxes also show a wider range of normalized values, spanning −0.112 to 2.824 across both batch sizes. The evidence localizes the failure to the measured TensorRT engine path before shared box decoding. The responsible operation or builder tactic remains unknown (`原因未特定`).
+
+All 12 diagnostic cases produced finite logits and boxes. Recomputing the prepared tensor from the pinned frames gave byte-identical values for L and X. CPU decoding and re-scoring from the saved arrays reproduced all 12 recall results and per-image counts at score 0.25. The [diagnostic receipts](rtdetrv4-results.json) retain the two queue IDs, full execution HEAD `f409f60fab9681c92ee1ad2dc7883ec7dda1ff84`, artifact SHA-256 values and per-case results. The original `diagnosis.json`, `pixels-fp32.npy` and `raw-outputs.npz` files are under `$RTDETRV4_RESULTS/diagnostics/same-input-v1/<model-id>/`.
+
+Run the command below through the shared GPU queue with a fresh diagnostic output directory.
 
 ```bash
 PYTHONPATH=".:$assets/python-deps:knowledge/runs/run-person-model-speed-baseline" \
