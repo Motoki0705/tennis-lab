@@ -448,25 +448,47 @@ def reconstruct_players_monocular_plcs(
                 )
 
             obs_conf = np.where(kp_conf >= config.joint_confidence, kp_conf, 0.0)
-            frame_w = np.where(frame_obs, np.maximum(obs_conf.mean(axis=-1), 1e-3), 0.0)
-            fused_kp_sum += world_kp_np * frame_w[:, None, None]
+            valid_v = frame_obs & np.isfinite(world_kp_np).all(axis=(1, 2))
+            if pred.valid_frame_mask is not None:
+                pred_valid_raw = np.asarray(pred.valid_frame_mask, dtype=np.bool_)
+                pred_valid_v = (
+                    pred_valid_raw[0]
+                    if pred_valid_raw.ndim == 2 and pred_valid_raw.shape[0] == 1
+                    else pred_valid_raw
+                )
+                if pred_valid_v.shape != (frames,):
+                    raise ValueError(
+                        f"Monocular PLCS valid_frame_mask shape mismatch: expected "
+                        f"{(frames,)}, got {pred_valid_v.shape}."
+                    )
+                valid_v &= pred_valid_v
+
+            frame_w = np.where(valid_v, np.maximum(obs_conf.mean(axis=-1), 1e-3), 0.0)
+            safe_world_kp = np.where(valid_v[:, None, None], world_kp_np, 0.0)
+            fused_kp_sum += safe_world_kp * frame_w[:, None, None]
             weight_sum += frame_w
 
             if pred.pred_vel_3d_mps is not None:
                 vel_raw = np.asarray(pred.pred_vel_3d_mps, dtype=np.float64)
                 vel_np_v = vel_raw[0] if vel_raw.ndim == 4 and vel_raw.shape[0] == 1 else vel_raw
-                fused_vel_sum += vel_np_v * frame_w[:, None, None]
-                vel_weight_sum += frame_w
+                vel_ok = valid_v & np.isfinite(vel_np_v).all(axis=(1, 2))
+                vel_w = np.where(vel_ok, frame_w, 0.0)
+                fused_vel_sum += np.where(vel_ok[:, None, None], vel_np_v, 0.0) * vel_w[:, None, None]
+                vel_weight_sum += vel_w
             if pred.pred_acc_3d_mps2 is not None:
                 acc_raw = np.asarray(pred.pred_acc_3d_mps2, dtype=np.float64)
                 acc_np_v = acc_raw[0] if acc_raw.ndim == 4 and acc_raw.shape[0] == 1 else acc_raw
-                fused_acc_sum += acc_np_v * frame_w[:, None, None]
-                acc_weight_sum += frame_w
+                acc_ok = valid_v & np.isfinite(acc_np_v).all(axis=(1, 2))
+                acc_w = np.where(acc_ok, frame_w, 0.0)
+                fused_acc_sum += np.where(acc_ok[:, None, None], acc_np_v, 0.0) * acc_w[:, None, None]
+                acc_weight_sum += acc_w
             if pred.static_contact_logits is not None:
                 cnt_raw = np.asarray(pred.static_contact_logits, dtype=np.float64)
                 cnt_np_v = cnt_raw[0] if cnt_raw.ndim == 3 and cnt_raw.shape[0] == 1 else cnt_raw
-                fused_contact_sum += cnt_np_v * frame_w[:, None]
-                contact_weight_sum += frame_w
+                cnt_ok = valid_v & np.isfinite(cnt_np_v).all(axis=-1)
+                cnt_w = np.where(cnt_ok, frame_w, 0.0)
+                fused_contact_sum += np.where(cnt_ok[:, None], cnt_np_v, 0.0) * cnt_w[:, None]
+                contact_weight_sum += cnt_w
 
             refine_views.append(
                 HTDRefineCameraView(
@@ -487,9 +509,10 @@ def reconstruct_players_monocular_plcs(
             mean_c = float(obs_conf[frame_obs].mean()) if obs_count > 0 else 0.0
             view_scores.append((obs_count, mean_c, -v))
 
-        safe_w = np.where(any_obs, np.maximum(weight_sum, 1e-6), 1.0)
+        any_valid = any_obs & (weight_sum > 0.0)
+        safe_w = np.where(any_valid, np.maximum(weight_sum, 1e-6), 1.0)
         world_kp = np.where(
-            any_obs[:, None, None],
+            any_valid[:, None, None],
             fused_kp_sum / safe_w[:, None, None],
             0.0,
         ).astype(np.float32)
@@ -534,7 +557,7 @@ def reconstruct_players_monocular_plcs(
                 static_contact_logits=pred_contact_t,
                 views=selected_refine_views,
                 fps=float(fps),
-                valid_frame_mask=torch.from_numpy(any_obs),
+                valid_frame_mask=torch.from_numpy(any_valid),
             )
             world_kp = refined.world_kp_3d.detach().cpu().numpy().astype(np.float32)
 
@@ -542,7 +565,7 @@ def reconstruct_players_monocular_plcs(
         finite_frame = np.isfinite(world_kp).all(axis=(1, 2))
         in_xy = (np.abs(world_kp[..., :2]) <= config.max_abs_xy_m).all(axis=(1, 2))
         in_z = ((world_kp[..., 2] >= z_min) & (world_kp[..., 2] <= z_max)).all(axis=1)
-        frame_ok = any_obs & finite_frame & in_xy & in_z
+        frame_ok = any_valid & finite_frame & in_xy & in_z
 
         if bool(frame_ok.any()):
             valid_kp_t = torch.from_numpy(world_kp[frame_ok])
@@ -702,7 +725,7 @@ def reconstruct_single_view_monocular_scene(
         config=config,
         pixel_threshold_scale=source.pixel_threshold_scale,
     )
-    first = source.videos[0]
+    first = source.videos[local.source_index]
     has_people = bool(result.skeleton.valid.any())
     return assemble_automatic_scene(
         video_paths=source.paths,
@@ -779,9 +802,10 @@ class MonocularPLCSReconstructionModule(
         path_resolver: PathResolver | None = None,
         predictor: MonocularPLCSSequencePredictor | None = None,
     ) -> None:
-        if enabled and predictor is None and config.checkpoint is None:
+        if enabled and predictor is None and (config.checkpoint is None or path_resolver is None):
             raise ValueError(
-                "MonocularPLCSReconstructionModule requires config.checkpoint or an explicit predictor."
+                "MonocularPLCSReconstructionModule requires config.checkpoint and path_resolver "
+                "(or an explicit predictor)."
             )
         self.config = config
         self.enabled = enabled
@@ -811,6 +835,7 @@ class MonocularPLCSReconstructionModule(
         if not self.enabled or self._injected_predictor is not None:
             return {}
         assert self.config.checkpoint is not None
+        assert self.path_resolver is not None
         checkpoint = self.config.checkpoint
         device = self.config.device
         resolver = self.path_resolver
@@ -824,8 +849,8 @@ class MonocularPLCSReconstructionModule(
                 self.config.cache_identity(),
                 lambda: PLCSPredictor.load_from_checkpoint(
                     checkpoint,
+                    resolver=resolver,
                     device=device,
-                    path_resolver=resolver,
                 ),
             )
         }

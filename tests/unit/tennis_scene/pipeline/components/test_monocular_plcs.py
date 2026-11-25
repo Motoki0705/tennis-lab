@@ -473,12 +473,26 @@ class TestMonocularPLCSPipelineComponent:
             PlayerTriangulationOutput,
         )
         from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
+        from src.utils.configuration import PathResolver
+        from src.utils.configuration.paths import RuntimePathRoots
 
         fake_ckpt = tmp_path / "monocular_plcs.ckpt"
         fake_ckpt.write_bytes(b"placeholder")
+        fake_resolver = PathResolver(
+            roots=RuntimePathRoots(
+                project_root=tmp_path,
+                data_root=tmp_path,
+                checkpoint_root=tmp_path,
+                output_root=tmp_path,
+                artifact_root=tmp_path,
+                cache_root=tmp_path,
+                external_asset_root=tmp_path,
+            )
+        )
         mod = MonocularPLCSReconstructionModule(
             ("cam0",),
             MonocularPLCSConfig(checkpoint=fake_ckpt, htd_refine=False),
+            path_resolver=fake_resolver,
         )
         specs = mod.model_specs()
         assert list(specs.keys()) == ["plcs_monocular"]
@@ -530,3 +544,69 @@ class TestMonocularPLCSPipelineComponent:
         np.testing.assert_allclose(restored_place.players.position, place_out.players.position)
         assert restored_place.players.vertices_local is None
         assert not restored_place.players.smpl_valid.any()
+
+    def test_model_spec_loader_loads_real_monocular_checkpoint(
+        self, tmp_path: Path
+    ) -> None:
+        from hydra import compose, initialize_config_dir
+        from omegaconf import open_dict
+
+        from src.tasks.plcs.configuration import PLCSTrainingConfig
+        from src.tasks.plcs.model_io import (
+            build_plcs_model_io,
+            write_plcs_checkpoint_court_keypoints,
+        )
+        from src.utils.configuration import PathResolver
+        from src.utils.configuration.paths import RuntimePathRoots
+        from src.utils.schema.court_normalization import (
+            add_court_coordinate_normalization,
+        )
+
+        config_dir = Path("src/tasks/plcs/configs").resolve()
+        with initialize_config_dir(config_dir=str(config_dir), version_base="1.3"):
+            cfg = compose(
+                config_name="train",
+                overrides=[
+                    "model=monocular_gvhmr_htd",
+                    "data=monocular_sequence",
+                    "loss=monocular_htd",
+                ],
+            )
+        with open_dict(cfg):
+            cfg.model.hidden_dim = 32
+            cfg.model.num_layers = 1
+            cfg.model.num_heads = 4
+            cfg.model.mlp_ratio = 2.0
+
+        runtime = PLCSTrainingConfig.from_config(cfg)
+        bound = build_plcs_model_io(runtime)
+        ckpt_path = tmp_path / "monocular_plcs_real.ckpt"
+        payload: dict[str, object] = {
+            "state_dict": {f"model.{k}": v for k, v in bound.model.state_dict().items()},
+            "hyper_parameters": {"config": runtime.raw},
+        }
+        add_court_coordinate_normalization(payload, artifact="PLCS checkpoint")
+        write_plcs_checkpoint_court_keypoints(
+            payload, resolve_court_keypoint_contract("physical_v1")
+        )
+        torch.save(payload, ckpt_path)
+
+        resolver = PathResolver(
+            roots=RuntimePathRoots(
+                project_root=tmp_path,
+                data_root=tmp_path,
+                checkpoint_root=tmp_path,
+                output_root=tmp_path,
+                artifact_root=tmp_path,
+                cache_root=tmp_path,
+                external_asset_root=tmp_path,
+            )
+        )
+        mod = MonocularPLCSReconstructionModule(
+            ("cam0",),
+            MonocularPLCSConfig(checkpoint=ckpt_path, device="cpu", htd_refine=False),
+            path_resolver=resolver,
+        )
+        loaded = mod.model_specs()["plcs_monocular"].factory()
+        assert isinstance(loaded, PLCSPredictor)
+        assert loaded.input_profile is PLCSInputProfile.MONOCULAR
