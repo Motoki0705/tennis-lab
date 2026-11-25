@@ -1,0 +1,9 @@
+速度24条件を検証し、各300反復の入力順・集計・engine SHA-256 を照合しました。バッチ1のステージ全体 P50 は、ECDet が PT16 で52.52–64.87 ms/画像、元の TRT16 plan で32.79–35.41 ms/画像でした。ECPose L/X は PT16 で55.11/55.34 ms、TRT16 で33.49/34.53 msでした。TRT16 の値は原因調査中の plan にひも付けています。[全24条件の速度・VRAM](https://github.com/Motoki0705/tennis-lab/blob/9c5425765a81a1f939af165b59a5757a2cc7afeb/knowledge/runs/run-meiji-player-model-comparison/edgecrafter-speed.json)
+
+CUDA 診断は5重み分を回収しました。binding stride は一致し、観測した生出力に NaN/Inf はありませんでした。同じ2枚を逆順にした際、ECDet-L COCO の復号後BBoxは ONNX Runtime CPU で154/154件、TRT16 で124/241件が対応しました。CPU でも TopK 以降の query 順は変わるため、query 順の変化だけでは TRT16 の検出差を説明できません。[診断結果](https://github.com/Motoki0705/tennis-lab/blob/9c5425765a81a1f939af165b59a5757a2cc7afeb/knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt-cuda-diagnosis.json)
+
+ECDet-L O365 は同一プロセス内に残った X の YAML 設定で重み読込に失敗しました。新規プロセスで正しく読み込めることを確認し、この1重みを再投入しました。差が生じる段階を絞るため、ECDet-L COCO の中間出力10個を照合するジョブも登録しました。
+
+`codex/parent-2492-issue-2487-edgecrafter` に `9c5425765a81a1f939af165b59a5757a2cc7afeb` を push しました。pytest 87件、pre-commit、knowledge 検査が通過しました。[コミット](https://github.com/Motoki0705/tennis-lab/commit/9c5425765a81a1f939af165b59a5757a2cc7afeb) · [CI](https://github.com/Motoki0705/tennis-lab/actions/runs/45612706245) · [#2487 の検証記録](https://github.com/Motoki0705/tennis-lab/issues/2487#issuecomment-7162237308)
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204390767774361536_2026-11-25T12-20-32-225638463Z_3626498_i2487-ecdet-l-o365-trt16-diagnosis-v2.job","0-8204390767479041639_2026-11-25T12-20-32-520958360Z_3626566_i2487-ecdet-l-coco-trt16-intermediate-probe.job"]}}

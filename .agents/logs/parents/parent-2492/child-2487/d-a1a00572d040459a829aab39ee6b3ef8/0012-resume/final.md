@@ -1,0 +1,7 @@
+ECDet-L COCO の decoder self-attention の一部を FP32 にした診断で、保存済み PT16 と IoU 0.50 以上で対応したBBoxが、batch 1 で30/68件から56/68件、batch 2 で88/154件から134/154件に改善しました。同じ画像順での再実行は一致し、画像順を反転すると122/158件の対応でした。旧 ECDet 4重みと ECPose-X の TRT16 は「変換の不具合の疑い、原因未特定」と記録しました。新 plan の全コホート精度と速度は未計測です。[#2487の診断記録](https://github.com/Motoki0705/tennis-lab/issues/2487#issuecomment-7164316063)
+
+旧速度計測は PyTorch 2スレッドで、DINO 基準は4スレッドでした。PyTorch 4・OpenCV 1に揃え、PT16 の6重みを batch 1・2で再計測する6ジョブを投入しました。
+
+`codex/parent-2492-issue-2487-edgecrafter` の `60af57ee662aa7d307cd1f49ae069b45aaa65446` を push しました。pytest は追加1件を含む89件が成功し、pre-commit とナレッジ検証も通過しました。[起動したCI](https://github.com/Motoki0705/tennis-lab/actions/runs/45627321989)
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204385483118668058_2026-11-25T13-48-36-881331941Z_1163401_i2487-ecdet-l-coco-pt16-speed-threads4-1.job","0-8204385482836440906_2026-11-25T13-48-37-163559093Z_1163447_i2487-ecdet-x-coco-pt16-speed-threads4-1.job","0-8204385482505987943_2026-11-25T13-48-37-494012056Z_1163508_i2487-ecdet-l-o365-pt16-speed-threads4-1.job","0-8204385482195415864_2026-11-25T13-48-37-804584135Z_1163781_i2487-ecdet-x-o365-pt16-speed-threads4-1.job","0-8204385481889489464_2026-11-25T13-48-38-110510535Z_1163961_i2487-ecpose-l-o365-pt16-speed-threads4-1.job","0-8204385481606919777_2026-11-25T13-48-38-393080222Z_1164088_i2487-ecpose-x-o365-pt16-speed-threads4-1.job"]}}
