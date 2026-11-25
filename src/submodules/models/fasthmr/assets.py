@@ -32,6 +32,11 @@ MODEL_ARCHITECTURE = "fasthmr_camerahmr_eclm_mask_tome_diffusion"
 FastHMRBackend = Literal["pt32", "pt16"]
 
 
+def require_checkpoint_sha256(name: str, path: Path, digest: str) -> None:
+    if digest != CHECKPOINT_SHA256[name]:
+        raise ValueError(f"FastHMR official {name} SHA-256 mismatch: {path}")
+
+
 @dataclass(frozen=True)
 class FastHMRConfig:
     repository: Path
@@ -60,6 +65,11 @@ class FastHMRConfig:
             "vae": self.assets / "fasthmr_ckpts/vae.pth.tr",
             "mean_params": self.assets / "body_models/smpl_mean_params.npz",
         }
+
+    @property
+    def pinned_weights(self) -> dict[str, Path]:
+        geometry = self.geometry_weights
+        return {**self.inference_weights, "smpl": geometry["smpl"], "h36m": geometry["h36m"]}
 
     @property
     def demo_config(self) -> Path:

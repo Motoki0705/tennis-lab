@@ -16,9 +16,9 @@ from torch import Tensor
 from yaml import safe_load
 
 from src.submodules.models.fasthmr.assets import (
-    CHECKPOINT_SHA256,
     MERGE_RATIO,
     FastHMRConfig,
+    require_checkpoint_sha256,
 )
 from src.utils.checksum import dual_sha256
 from src.utils.models.loading.source_assets import validate_source_modules
@@ -30,8 +30,7 @@ _IMPORT_LOCK = RLock()
 def _require_pinned_asset(name: str, path: Path) -> None:
     if not path.is_file():
         raise FileNotFoundError(f"Required FastHMR asset is missing: {path}")
-    if dual_sha256(path) != CHECKPOINT_SHA256[name]:
-        raise ValueError(f"FastHMR official {name} SHA-256 mismatch: {path}")
+    require_checkpoint_sha256(name, path, dual_sha256(path))
 
 
 @contextmanager
@@ -103,7 +102,16 @@ def load_official_camera_models(config: FastHMRConfig) -> tuple[Any, Any, Any, A
         options = safe_load(config.demo_config.read_bytes())
         del options["model_type"]
         options["vae_ckpt_path"] = str(weights["vae"])
-        diffusion = diffusion_type(**options)
+
+        class FastHMRWithCPUWeights(diffusion_type):  # type: ignore[valid-type,misc]
+            def load_vae_weights(self, checkpoint_path: str) -> None:
+                # The release stores CUDA-tagged tensors. Restore them without
+                # allocating on the device recorded by the checkpoint.
+                checkpoint = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
+                self.vae.load_state_dict(checkpoint["model"], strict=True)
+
+        with torch.device("cpu"):
+            diffusion = FastHMRWithCPUWeights(**options)
         diffusion.load_state_dict(torch.load(weights["diffusion"], map_location="cpu", weights_only=True)["model"], strict=True)
 
     from ultralytics import YOLO
