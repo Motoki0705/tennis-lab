@@ -10,64 +10,50 @@ import subprocess
 import sys
 from dataclasses import asdict
 from pathlib import Path
-from tempfile import TemporaryDirectory
 from uuid import uuid4
 
 import cv2
 import torch
-from parity import compare, serialize
 from speed_inputs import (
     BENCHMARK,
     BODY_LENGTH,
-    CLIPS,
     INPUT_MANIFEST_SHA256,
     TIMING_PROTOCOL_SHA256,
     WORKLOAD_INDEX,
     InputSet,
-    publish,
     read_source,
-    require_sha,
-    write_crops,
-    write_frames,
 )
 from speed_models import (
     DEVICE,
     HMR2_CROP_BATCH,
-    POSE_CROP_BATCH,
     Body,
     Dino,
     Pose,
     classify_startup,
-    dino_eager,
     engine_paths,
     people_config,
     pose_groups,
-    two_stage,
 )
 
-from src.submodules.models import PersonDetectionRequest
 from src.tennis_scene.pipeline.model_resources import (
     dino_tensorrt,
     gvhmr_tensorrt,
     hmr2_tensorrt,
     vitpose_tensorrt,
 )
-from src.utils.checksum import FileIntegrityError, dual_sha256
 from src.utils.inference_benchmark import (
     Backend,
     Batch,
     BenchmarkAdapter,
     BenchmarkCase,
-    ConditionUnavailable,
     Conversion,
     ConversionResult,
     Failure,
-    ParityResult,
     Status,
     benchmark,
     measure_conversion,
 )
-from src.utils.inference_benchmark_inputs import TimingSchedule, read_pinned_json
+from src.utils.inference_benchmark_inputs import TimingSchedule
 from src.utils.io import json_value, write_json_atomic
 from src.utils.models.tensorrt_artifacts import (
     ENGINE_MANIFEST,
@@ -79,21 +65,21 @@ from src.utils.models.tensorrt_artifacts import (
 )
 from src.utils.models.tensorrt_build import build_bundle
 
+BACKENDS = (Backend.PT16, Backend.TRT16)
+PARITY_NOT_EVALUATED_REASON = "未判定（PT32計測はスコープ外、ユーザー判断 2026-11-25）"
 SWEEPS = {
     "dino": (1, 2),
     "vitpose-flip": (1, 4, 8),
     "vitpose": (1, 4, 8),
-    "dino-vitpose": (1, 2),
     "body": (1, 2, 4),
 }
 GROUPS = {
-    "detection": ("dino", "dino-vitpose"),
+    "detection": ("dino",),
     "pose": ("vitpose-flip", "vitpose"),
     "body": ("body",),
 }
 CASE_UNITS = {
     "dino": "image",
-    "dino-vitpose": "image",
     "vitpose-flip": "person-crop",
     "vitpose": "person-crop",
     "body": "person-frame",
@@ -119,6 +105,7 @@ def invocation_settings(args):
         "input_dir": str(args.input_dir.resolve()),
         "input_manifest_sha256": INPUT_MANIFEST_SHA256,
         "timing_protocol_sha256": TIMING_PROTOCOL_SHA256,
+        "parity_not_evaluated_reason": PARITY_NOT_EVALUATED_REASON,
         "trt_root": str(args.trt_root.resolve()),
         "external_assets": str(args.external_assets.resolve()),
         "dino_extension": os.environ.get("TENNIS_LAB_DINO_EXTENSION"),
@@ -187,63 +174,6 @@ def inspect(args) -> None:
             )
         print(name, exported.model, profiles)
     print("Source clips and existing engine descriptors verified")
-
-
-def prepare(args) -> None:
-    config = people_config(args.external_assets)
-    source = args.benchmark.resolve(strict=True)
-    destination = args.output / "inputs"
-    if destination.exists():
-        fixed = InputSet(destination)
-        for name in fixed.manifest["indexes"]:
-            fixed.rows(name)
-        print(f"Already prepared {fixed.manifest['id']} {fixed.sha256}")
-        return
-    clips = read_source(source)
-    with TemporaryDirectory(prefix=".inputs-", dir=args.output) as temporary:
-        stage = Path(temporary)
-        frames, extra, bodies = write_frames(source, stage, clips)
-        if len(frames) != len(CLIPS) * 4 * 4 or len(bodies) != len(CLIPS) * 4:
-            raise ValueError("Unexpected count of fixed full-frame or body rows")
-        torch.backends.cuda.matmul.fp32_precision = "ieee"
-        torch.backends.cudnn.fp32_precision = "ieee"
-        torch.backends.cudnn.conv.fp32_precision = "ieee"
-        model = dino_eager(config, Backend.PT32)
-        model.load()
-        crops = write_crops(
-            stage,
-            frames,
-            clips,
-            lambda image: model.predict(PersonDetectionRequest(image)),
-        )
-        manifest = publish(
-            stage,
-            frames,
-            extra,
-            bodies,
-            crops,
-            {
-                "model": "dino_4scale_swin_l",
-                "precision": "PT32",
-                "tf32": False,
-                "confidence": model.confidence,
-                "short_side": model.short_side,
-                "max_long_side": model.max_long_side,
-                "checkpoint_sha256": dual_sha256(model.checkpoint),
-                "extension_sha256": dual_sha256(
-                    Path(os.environ["TENNIS_LAB_DINO_EXTENSION"])
-                ),
-                "external_source_sha": subprocess.check_output(
-                    ["git", "-C", str(model.repository), "rev-parse", "HEAD"], text=True
-                ).strip(),
-            },
-        )
-        require_sha(manifest, INPUT_MANIFEST_SHA256)
-        stage.rename(destination)
-    print(
-        f"Prepared {len(frames)} frames, {len(crops)} crops and {len(bodies)} sequences at {destination}"
-    )
-    print(f"Input manifest SHA-256 {INPUT_MANIFEST_SHA256}")
 
 
 def build_pose_b1(args) -> int:
@@ -325,46 +255,10 @@ def result_directory(output, workload, backend, batch_size):
     return output / "results" / workload / f"{backend}-b{batch_size}"
 
 
-def reference_predictions(
-    directory: Path, case: BenchmarkCase, weights: dict[str, Path]
-):
-    try:
-        report = read_json(directory / "report.json")
-        referenced = report["case"]
-        if report["status"] != "ok" or (
-            referenced["name"],
-            referenced["backend"],
-            referenced["batch_size"],
-            referenced["input_manifest_sha256"],
-            referenced["settings"]["reference_identity"],
-        ) != (
-            case.name,
-            "PT32",
-            1,
-            case.input_manifest_sha256,
-            case.settings["reference_identity"],
-        ):
-            raise ValueError("PT32 reference identity or status differs")
-        if report["weights"].keys() != weights.keys():
-            raise ValueError("PT32 reference weight inventory differs")
-        for name, path in weights.items():
-            pinned = report["weights"][name]
-            if path.resolve() != Path(pinned["path"]).resolve():
-                raise ValueError(f"PT32 reference asset path differs for {name}")
-            if not path.is_file():
-                raise FileNotFoundError(path)
-            require_sha(path, pinned["sha256"])
-        return read_pinned_json(
-            directory / "predictions.json", report["predictions_sha256"]
-        )
-    except (OSError, ValueError, KeyError, FileIntegrityError) as error:
-        raise ConditionUnavailable(
-            Status.PARITY_UNAVAILABLE, f"PT32 B=1 reference at {directory}: {error}"
-        ) from error
-
-
 def one_case(args) -> None:
     workload, mode, batch_size = args.workload, Backend(args.backend), args.batch
+    if mode not in BACKENDS:
+        raise ValueError(f"{mode} is outside the baseline measurement scope")
     if batch_size not in SWEEPS[workload]:
         raise ValueError(f"Batch {batch_size} is outside {workload}'s frozen sweep")
     invocation = check_invocation(args)
@@ -383,9 +277,7 @@ def one_case(args) -> None:
             result = load_conversion(receipt)
             if args.pose_engine_run is None or result.failure is not None:
                 conversion = (result,)
-    includes_dino = workload in ("dino", "dino-vitpose")
-    includes_pose = workload in ("vitpose", "vitpose-flip", "dino-vitpose")
-    flip = workload in ("vitpose-flip", "dino-vitpose")
+    flip = workload == "vitpose-flip"
     settings = {
         "source_commit": invocation["source_commit"],
         "dataset_id": fixed.manifest["id"],
@@ -395,10 +287,14 @@ def one_case(args) -> None:
         "timing_protocol_sha256": fixed.pins.timing_sha256,
         "timed_input_ids_sha256": schedule.timed_ids_sha256,
     }
-    selected, weights, models = [], {}, {}
-    if includes_dino:
-        selected.append("dino")
-        weights["dino"] = config.dino_checkpoint
+    if workload == "dino":
+        selected = ("dino",)
+        weights = {"dino": config.dino_checkpoint}
+        if mode is Backend.PT16:
+            extension = invocation["dino_extension"]
+            weights["dino_msda_cuda"] = (
+                Path(extension) if extension else Path("<missing DINO extension>")
+            )
         settings.update(
             dino_hw=[750, 1333],
             dino_confidence=config.runtime.dino_detector.confidence,
@@ -410,57 +306,26 @@ def one_case(args) -> None:
             if mode is Backend.TRT16
             else "official CUDA FP32",
         )
-    if includes_pose:
-        selected.append("vitpose")
-        weights["vitpose"] = config.vitpose_checkpoint
-        settings.update(
-            vitpose_hw=[256, 192],
-            flip_test=flip,
-            pose_crop_batch=POSE_CROP_BATCH if includes_dino else batch_size,
-            pose_head=json_value(config.runtime.vitpose.head),
-        )
-    if workload == "body":
-        selected.extend(("hmr2", "gvhmr"))
-        weights.update(config.body_assets())
+    elif workload == "body":
+        selected = ("hmr2", "gvhmr")
+        weights = dict(config.body_assets())
         settings.update(
             body_window_frames=BODY_LENGTH,
             hmr2_crop_batch=HMR2_CROP_BATCH,
             body_coordinate_system="camera",
             gvhmr_decode_static_ik="PyTorch FP32",
         )
+    else:
+        selected = ("vitpose",)
+        weights = {"vitpose": config.vitpose_checkpoint}
+        settings.update(
+            vitpose_hw=[256, 192],
+            flip_test=flip,
+            pose_crop_batch=batch_size,
+            pose_head=json_value(config.runtime.vitpose.head),
+        )
     if mode is Backend.PT16:
         settings["pytorch_precision"] = "CUDA autocast FP16 with FP32 parameters"
-    settings["reference_identity"] = {
-        "suite_id": args.run_id,
-        "commit": invocation["source_commit"],
-        "timing": fixed.pins.timing_sha256,
-        "contract": {
-            key: settings[key]
-            for key in (
-                "dino_hw",
-                "dino_confidence",
-                "dino_resize",
-                "vitpose_hw",
-                "flip_test",
-                "pose_head",
-                "body_window_frames",
-                "hmr2_crop_batch",
-                "gvhmr_decode_static_ik",
-            )
-            if key in settings
-        },
-        "composed_pose_crop_batch": POSE_CROP_BATCH
-        if includes_dino and includes_pose
-        else None,
-    }
-    reference_weights = dict(weights)
-    if includes_dino:
-        extension = invocation["dino_extension"]
-        reference_weights["dino_msda_cuda"] = (
-            Path(extension) if extension else Path("<missing DINO extension>")
-        )
-        if mode is not Backend.TRT16:
-            weights["dino_msda_cuda"] = reference_weights["dino_msda_cuda"]
 
     def loader():
         with classify_startup(mode):
@@ -472,61 +337,11 @@ def one_case(args) -> None:
                     for name in selected
                 }
             if workload == "body":
-                models["body"] = Body(config, mode, stages, batch_size)
-                return models["body"]
-            dino = (
-                Dino(config, mode, stages["dino"], batch_size)
-                if includes_dino
-                else None
-            )
-            pose = (
-                Pose(
-                    config,
-                    mode,
-                    stages["vitpose"],
-                    flip=flip,
-                    batch=POSE_CROP_BATCH if includes_dino else batch_size,
-                )
-                if includes_pose
-                else None
-            )
-        if workload == "dino":
-            return dino
-        if workload == "dino-vitpose":
-            return lambda images, clock: two_stage(dino, pose, images, clock)
+                return Body(config, mode, stages, batch_size)
+            if workload == "dino":
+                return Dino(config, mode, stages["dino"], batch_size)
+            pose = Pose(config, mode, stages["vitpose"], flip=flip, batch=batch_size)
         return lambda rows, clock: pose(pose_groups(rows), clock)
-
-    def parity(predictions):
-        actual = {}
-        for batch, values in predictions:
-            if len(values) != len(batch.ids):
-                return ParityResult(
-                    False, {"invalid": True}, f"Output count differs for {batch.ids}"
-                )
-            for key, data, value in zip(batch.ids, batch.data, values, strict=True):
-                if key in actual:
-                    raise ValueError(f"Duplicate prediction ID: {key}")
-                actual[key] = serialize(
-                    workload,
-                    value,
-                    models.get("body"),
-                    frame_ids=data["source_frames"] if workload == "body" else None,
-                )
-        path = directory / "predictions.json"
-        write_json_atomic(path, actual)
-        reference = actual
-        if mode is not Backend.PT32 or batch_size != 1:
-            reference = reference_predictions(
-                result_directory(args.output, workload, Backend.PT32, 1),
-                case,
-                reference_weights,
-            )
-        try:
-            return compare(workload, reference, actual)
-        except (ValueError, TypeError, KeyError) as error:
-            return ParityResult(
-                False, {"invalid": True}, f"Invalid {workload} output: {error}"
-            )
 
     case = BenchmarkCase(
         workload, mode, batch_size, CASE_UNITS[workload], fixed.sha256, settings
@@ -545,13 +360,9 @@ def one_case(args) -> None:
         device=DEVICE,
         dedicated_stream=True,
         conversion=conversion,
-        check_parity=parity,
+        parity_not_evaluated_reason=invocation["parity_not_evaluated_reason"],
     )
-    result = report.to_dict()
-    predicted = directory / "predictions.json"
-    if predicted.is_file():
-        result["predictions_sha256"] = dual_sha256(predicted)
-    write_json_atomic(directory / "report.json", result)
+    write_json_atomic(directory / "report.json", report.to_dict())
     print(f"{workload}/{mode}/B{batch_size} {report.status}", flush=True)
     if report.failure:
         print(f"{report.failure.phase}: {report.failure.message}", flush=True)
@@ -596,7 +407,7 @@ def suite(args) -> int:
                 asdict(ConversionResult(Conversion.ENGINE_BUILD, None, failure)),
             )
     for workload in GROUPS[args.group]:
-        for backend in Backend:
+        for backend in BACKENDS:
             for batch_size in SWEEPS[workload]:
                 directory = result_directory(args.output, workload, backend, batch_size)
                 directory.mkdir(parents=True, exist_ok=False)
@@ -642,7 +453,7 @@ def main() -> int:
     parser.add_argument("--benchmark", type=Path, default=BENCHMARK)
     parser.add_argument("--trt-root", required=True, type=Path)
     parser.add_argument("--external-assets", required=True, type=Path)
-    parser.add_argument("--input-dir", type=Path)
+    parser.add_argument("--input-dir", required=True, type=Path)
     parser.add_argument(
         "--pose-engine-run",
         type=Path,
@@ -650,26 +461,22 @@ def main() -> int:
     )
     actions = parser.add_subparsers(dest="action", required=True)
     actions.add_parser("inspect")
-    actions.add_parser("prepare")
     actions.add_parser("build-pose-b1")
     sweep = actions.add_parser("suite")
     sweep.add_argument("group", choices=GROUPS)
     case = actions.add_parser("case")
     case.add_argument("workload", choices=SWEEPS)
-    case.add_argument("backend", choices=[mode.value for mode in Backend])
+    case.add_argument("backend", choices=BACKENDS)
     case.add_argument("batch", type=int)
     case.add_argument("run_id")
     args = parser.parse_args()
-    args.input_dir = args.input_dir or args.output / "inputs"
     torch.set_num_threads(4)
     cv2.setNumThreads(1)
     if args.action == "inspect":
         inspect(args)
         return 0
     location(args.output)
-    if args.action == "prepare":
-        prepare(args)
-    elif args.action == "build-pose-b1":
+    if args.action == "build-pose-b1":
         return build_pose_b1(args)
     elif args.action == "suite":
         return suite(args)

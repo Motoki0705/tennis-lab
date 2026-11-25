@@ -20,6 +20,7 @@ from src.utils.inference_benchmark import (
     ConditionUnavailable,
     Conversion,
     ParityResult,
+    ParityStatus,
     Stage,
     Status,
     benchmark,
@@ -183,6 +184,7 @@ def test_composite_stage_and_gpu_times_use_full_batch_counts(
     assert calls == [1, 1, 1, 3, 1, 3]  # cold, warm-up, two blocks, then parity
     assert cuda.event_count == 8  # one pair per measured forward
     assert report.status is Status.OK
+    assert report.parity_status is ParityStatus.PASSED
     assert report.setup_wall_ms == {"load": 8, "cold_start": 18}
     assert report.summary is not None
     assert [sample.block for sample in report.samples] == [1, 2]
@@ -269,6 +271,7 @@ def test_allocator_oom_stops_condition_and_keeps_completed_samples(
     assert report.failure is not None
     assert report.status is Status.INFEASIBLE
     assert report.failure.status is Status.OOM
+    assert report.parity_status is ParityStatus.NOT_RUN
     assert report.failure.phase == phase
     assert "allocation failed" in report.failure.message
     assert report.summary is None
@@ -367,9 +370,12 @@ def test_forward_cannot_recover_a_failed_trt_call_with_pt(
     assert report.summary is None and not report.samples
 
 
-@pytest.mark.parametrize("has_reference", [False, True])
+@pytest.mark.parametrize(
+    "reference", ["missing_callback", "missing_reference", "exceeds_limit"]
+)
 def test_parity_failure_retains_completed_speed_summary(
-    cuda: _Cuda, has_reference: bool
+    cuda: _Cuda,
+    reference: str,
 ) -> None:
     def infer(value: int, stages: BatchStages) -> int:
         return stages.measure_forward(Backend.PT16, lambda: forward(value))
@@ -379,6 +385,10 @@ def test_parity_failure_retains_completed_speed_summary(
         return value
 
     def check(predictions: Iterator[tuple[Batch[int], int]]) -> ParityResult:
+        if reference == "missing_reference":
+            raise ConditionUnavailable(
+                Status.PARITY_UNAVAILABLE, "Pinned PT32 predictions are missing"
+            )
         _, difference = next(predictions)
         return ParityResult(False, {"error_px": difference}, "P95 exceeds 1 px")
 
@@ -387,17 +397,80 @@ def test_parity_failure_retains_completed_speed_summary(
         [Batch(("a",), 5)],
         {Backend.PT16: BenchmarkAdapter(Backend.PT16, lambda: infer, {})},
         protocol=SHORT,
-        check_parity=check if has_reference else None,
+        check_parity=check if reference != "missing_callback" else None,
     )
+    has_reference = reference == "exceeds_limit"
     assert report.status is Status.PARITY_FAILED
     assert report.failure is not None and report.failure.phase == "parity"
     assert report.failure.status is (
         Status.PARITY_FAILED if has_reference else Status.PARITY_UNAVAILABLE
     )
+    assert report.parity_status is (
+        ParityStatus.FAILED if has_reference else ParityStatus.UNAVAILABLE
+    )
+    assert report.parity_not_evaluated_reason is None
     assert report.summary is not None and len(report.samples) == SHORT.blocks
     assert report.summary["model_gpu"].p50_ms == 1
     if has_reference:
         assert report.parity is not None and report.parity.metrics == {"error_px": 5}
+
+
+@pytest.mark.parametrize("backend", [Backend.PT16, Backend.TRT16])
+def test_explicit_parity_opt_out_records_speed_without_extra_inference(
+    cuda: _Cuda,
+    tmp_path: Path,
+    backend: Backend,
+) -> None:
+    engine = tmp_path / "engine.plan"
+    engine.write_bytes(b"engine")
+    calls: list[int] = []
+
+    def infer(value: int, stages: BatchStages) -> int:
+        calls.append(value)
+        stages.measure_forward(backend, lambda: cuda.step(2, 1))
+        return value
+
+    report = benchmark(
+        _case(backend),
+        [Batch(("a",), 1), Batch(("b",), 2)],
+        {
+            backend: BenchmarkAdapter(
+                backend,
+                lambda: infer,
+                {},
+                {"model": engine} if backend is Backend.TRT16 else {},
+            )
+        },
+        protocol=SHORT,
+        parity_not_evaluated_reason="PT32 is outside the comparison",
+    )
+
+    assert calls == [1, 1, 1, 2]  # Cold start, warm-up and two timed samples.
+    assert report.status is Status.OK and report.failure is None
+    assert report.parity_status is ParityStatus.NOT_EVALUATED and report.parity is None
+    assert report.summary is not None and report.summary["model_gpu"].p50_ms == 1
+    result = report.to_dict()
+    assert result["parity_status"] == "not_evaluated"
+    assert result["parity_not_evaluated_reason"] == "PT32 is outside the comparison"
+    assert "after_parity" not in report.nvml_used_bytes
+
+
+@pytest.mark.parametrize("has_callback", [False, True])
+def test_parity_opt_out_rejects_blank_reason_or_conflicting_callback(
+    has_callback: bool,
+) -> None:
+    def check(_: Iterator[tuple[Batch[int], int]]) -> ParityResult:
+        raise AssertionError("Unexpected parity check")
+
+    with pytest.raises(ValueError, match="requires a reason and no parity callback"):
+        benchmark(
+            _case(Backend.PT16),
+            [Batch(("a",), 1)],
+            {Backend.PT16: BenchmarkAdapter(Backend.PT16, _unexpected_load, {})},
+            protocol=SHORT,
+            check_parity=check if has_callback else None,
+            parity_not_evaluated_reason="outside scope" if has_callback else " ",
+        )
 
 
 def test_sweep_requires_batch_one_and_rejects_smaller_batches() -> None:

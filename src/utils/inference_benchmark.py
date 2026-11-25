@@ -33,6 +33,7 @@ __all__ = [
     "Conversion",
     "ConversionResult",
     "ParityResult",
+    "ParityStatus",
     "Stage",
     "Status",
     "benchmark",
@@ -74,6 +75,14 @@ class Status(StrEnum):
     CONVERSION_FAILED = "conversion_failed"
     BACKEND_MISMATCH = "backend_mismatch"
     PARITY_UNAVAILABLE = "parity_unavailable"
+
+
+class ParityStatus(StrEnum):
+    PASSED = "passed"
+    FAILED = "failed"
+    NOT_EVALUATED = "not_evaluated"
+    UNAVAILABLE = "unavailable"
+    NOT_RUN = "not_run"
 
 
 class ConditionUnavailable(RuntimeError):
@@ -233,6 +242,7 @@ class BenchmarkReport:
     parity: ParityResult | None = None
     failure: Failure | None = None
     summary: dict[str, TimingStats] | None = None
+    parity_not_evaluated_reason: str | None = None
 
     @property
     def status(self) -> Status:
@@ -242,12 +252,23 @@ class BenchmarkReport:
             return Status.PARITY_FAILED
         return Status.INFEASIBLE
 
+    @property
+    def parity_status(self) -> ParityStatus:
+        if self.parity is not None:
+            return ParityStatus.PASSED if self.parity.passed else ParityStatus.FAILED
+        if self.parity_not_evaluated_reason is not None:
+            return ParityStatus.NOT_EVALUATED
+        if self.failure is not None and self.failure.phase == "parity":
+            return ParityStatus.UNAVAILABLE
+        return ParityStatus.NOT_RUN
+
     def to_dict(self) -> dict[str, object]:
         peak = max(self.nvml_used_bytes.values(), default=None)
         initial = self.nvml_used_bytes.get("before_load")
         return {
-            "schema_version": 2,
+            "schema_version": 3,
             "status": self.status,
+            "parity_status": self.parity_status,
             **asdict(self),
             "nvml_device_peak_sampled_bytes": peak,
             "nvml_peak_minus_before_load_bytes": (
@@ -576,6 +597,7 @@ def benchmark(
     conversion: Sequence[ConversionResult] = (),
     check_parity: Callable[[Iterator[tuple[Batch[Input], Output]]], ParityResult]
     | None = None,
+    parity_not_evaluated_reason: str | None = None,
 ) -> BenchmarkReport:
     """Measure one backend and batch size on the supplied ordered, full batches."""
     batches = tuple(batches)
@@ -585,7 +607,16 @@ def benchmark(
         raise ValueError("Every batch must match the exact requested size")
     if len({result.phase for result in conversion}) != len(conversion):
         raise ValueError("Supply at most one result per conversion phase")
-    report = BenchmarkReport(case, protocol, tuple(conversion))
+    if parity_not_evaluated_reason is not None and (
+        not parity_not_evaluated_reason.strip() or check_parity is not None
+    ):
+        raise ValueError("Skipping parity requires a reason and no parity callback")
+    report = BenchmarkReport(
+        case,
+        protocol,
+        tuple(conversion),
+        parity_not_evaluated_reason=parity_not_evaluated_reason,
+    )
     for result in conversion:
         if result.failure is not None:
             report.failure = result.failure
@@ -685,6 +716,8 @@ def _run_case(
             report.nvml_used_bytes[f"block_{block}"] = cuda.memory_used_bytes()
 
         report.summary = _summarize(report.samples)
+        if report.parity_not_evaluated_reason is not None:
+            return
         phase = "parity"
         if check_parity is not None:
             observed = 0
