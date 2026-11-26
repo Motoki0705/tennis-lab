@@ -42,7 +42,6 @@ PARTITION_SHA256 = "4355b16613b7e53a5ca76e1db87c55f1a18ee6ce04d1209ea4447bbf3852
 QUOTAS = {"B00": (64, 64), "B01": (43, 43, 42), "B02": (128,), "B03": (128,)}
 MIN_VISIBLE_POINTS = 4
 FIT_VAL_PER_SCENE = 16
-DINO_CHECKPOINT = "dinov3/dinov3_vits16_pretrain_lvd1689m-08c60483.pth"
 
 
 @dataclass(frozen=True, slots=True)

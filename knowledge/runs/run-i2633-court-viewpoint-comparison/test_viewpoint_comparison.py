@@ -2,9 +2,11 @@
 
 import math
 from dataclasses import replace
+from types import SimpleNamespace
 
 import numpy as np
 import pytest
+import torch
 from prepare import View, matched_selection, select_cells
 from protocol import (
     CENTERED_COURT,
@@ -14,6 +16,10 @@ from protocol import (
     capture_match,
     score_prediction,
 )
+from train_and_evaluate import REAL_SPLIT_COUNTS, evaluate_split
+
+from src.synthetic_data_generation.dataset.court.scale.publication import read_json
+from src.tasks.court_detection.model_io.contracts import CourtKeypointPrediction
 
 
 def test_near_requires_one_captured_camera_to_pass_all_four_limits():
@@ -95,3 +101,55 @@ def test_homography_failure_and_wrong_geometry_remain_in_scoring():
     assert failure["h_status"] == "insufficient_points"
     assert failure["h_mean_error_diagonal"] is None
     assert failure["h_at_1pct"] is False
+
+
+def test_evaluation_restores_frozen_order_after_batching_by_shape(
+    tmp_path, monkeypatch
+):
+    gt = COURT * 8 + [250, 250]
+    records = tuple(
+        SimpleNamespace(
+            sample_id=f"video_{i}",
+            payload={"keypoints": gt, "width": width, "height": 500, "shift": i * 10},
+        )
+        for i, width in enumerate([512, 1024, 512])
+    )
+    ids = [r.sample_id for r in records]
+    source = SimpleNamespace(
+        registry={"splits": {"val": ids}},
+        records=lambda split: records,
+        load=lambda record: SimpleNamespace(image=record.payload),
+    )
+    batches = []
+
+    def predict(prepared, *, postprocess, heads):
+        assert (postprocess, heads) == ("none", ("kp",))
+        batches.append([row["shift"] for row in prepared])
+        return [
+            SimpleNamespace(
+                original_size_hw=(row["height"], row["width"]),
+                raw_heads={
+                    "kp": CourtKeypointPrediction(
+                        keypoints=torch.as_tensor(gt + [row["shift"], 0])[:, None],
+                        scores=torch.ones(14, 1),
+                        valid=torch.ones(14, 1, dtype=torch.bool),
+                        heatmaps=torch.empty(0),
+                    )
+                },
+            )
+            for row in prepared
+        ]
+
+    model = SimpleNamespace(
+        batch_image_size=lambda h, w: (h, w),
+        prepare_batch_image=lambda row: row,
+        predict_prepared=predict,
+    )
+    views = [{"sample_id": key, "video_id": "video", "strata": ["all"]} for key in ids]
+    monkeypatch.setitem(REAL_SPLIT_COUNTS, "val", (3, 1))
+    destination = tmp_path / "val.json"
+    evaluate_split(model, source, "val", views, destination)
+    rows = read_json(destination)["rows"]
+    assert batches == [[0, 20], [10]]
+    assert [row["sample_id"] for row in rows] == ids
+    assert [row["kp_errors_px512"] for row in rows] == [[0] * 14, [5] * 14, [20] * 14]
