@@ -58,11 +58,11 @@ def score_clip(
         truth = {
             frame: label
             for frame, label in labels.items()
-            if annotations.coverage[frame] and label.status != "uncertain"
+            if label.status != "uncertain"
         }
-        covered = proposed[annotations.coverage[proposed]]
+        # Explicit labels can resolve peaks even within unlabelable intervals.
         pairs = match_event_pairs(
-            covered, np.asarray(list(truth), dtype=np.int64), MATCH_TOLERANCE
+            proposed, np.asarray(list(truth), dtype=np.int64), MATCH_TOLERANCE
         )
         matched = {int(pred): int(label) for pred, label in pairs}
         counted_labels = set(matched.values())
@@ -98,15 +98,7 @@ def score_clip(
         for frame, event in labels.items():
             if frame in counted_labels:
                 continue
-            outcome = (
-                "fn"
-                if frame in truth
-                else (
-                    "uncertain_label"
-                    if event.status == "uncertain"
-                    else "uncovered_label"
-                )
-            )
+            outcome = "uncertain_label" if event.status == "uncertain" else "fn"
             decisions.append(
                 Decision(
                     kind,
@@ -170,9 +162,7 @@ def summary(
             "excluded_predictions": sum(
                 d.outcome in ("outside_coverage", "near_uncertain") for d in rows
             ),
-            "excluded_labels": sum(
-                d.outcome in ("uncertain_label", "uncovered_label") for d in rows
-            ),
+            "excluded_labels": sum(d.outcome == "uncertain_label" for d in rows),
         }
     f1 = [m["f1"] for m in by_class.values() if m["f1"] is not None]
     return {"by_class": by_class, "macro_f1": float(np.mean(f1)) if f1 else None}

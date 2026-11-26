@@ -143,8 +143,8 @@ Meiji `multiview-v3` の公開SceneResult v3を使う。事前学習済みの3�
 
 パスは絶対パス、出力は新規ディレクトリを指定する。`prepare` はmanifestの47/11/11分割、sceneと注釈のhash、元動画区間、FPS、選手IDを照合する。元動画区間の分割間重複はエラーになる。独立ラベルは #2542 のrun bundleの `inputs.json` と採点6本の `video_000/clip_NNN/labels.json` を指定する。`prepare` が出力する `inputs.json` のSHA-256が `PREPARED_SHA`。
 
-学習は1クリップ1更新で全長を使い、AdamW（既定12 epoch、lr 0.0003、weight decay 0.01、勾配norm上限1.0）。checkpointのGaussian幅でcertain・probableを教師にし、ポイント外の注釈も含める。coverage外は全クラス、uncertainの前後2フレームは該当クラスをBCEから除く。別の確定・有力ラベルが重なる場合はその正例中心を保持する。validationのmacro-F1、同点はvalidation BCE、さらに同点は先のepochで選ぶ。
+学習は1クリップ1更新で全長を使い、AdamW（既定12 epoch、lr 0.0003、weight decay 0.01、勾配norm上限1.0）。checkpointのGaussian幅を使い、certain・probableの全イベントを教師にする。coverage外の既知イベントもGaussianを生成し、coverage内にかかる裾を学習する。coverage外は全クラス、uncertainの前後2フレームは該当クラスをBCEから除く。uncertainの区間と重なる別の確定・有力ラベルは、coverage内の正例中心を保持する。validationのmacro-F1、同点はvalidation BCE、さらに同点は先のepochで選ぶ。
 
-testでは確率0.5以上・同クラス3フレーム間隔でピークを抽出し、クラスとクリップごとに元フレーム±2の1対1対応を最大化する。ポイント内はTP/FNをラベルで分類し、FPは連続するポイント内注釈の最初から最後までで判定する。ポイント外の注釈と次のサーブは区間の境界になるため、このFPは注釈からの推定に基づく。条件別の判定時刻はTP/FNがラベル時刻、FPが予測時刻。ネット付近は観測球の `abs(y) ≤ 1 m`、SMPL欠測は割当済みの選手に対するmaskを使う。ボレーは注釈subtypeごとの再現率・時刻誤差を報告する。正解イベントのない条件は指標を `null` とする。
+評価では確率0.5以上・同クラス3フレーム間隔でピークを抽出し、クラスとクリップごとに元フレーム±2の1対1対応を最大化する。coverageにかかわらず既知イベントを照合し、coverage外で未照合のピークはFP集計から除く。ポイント内はTP/FNをラベルで分類し、FPは連続するポイント内注釈の最初から最後までで判定する。ポイント外の注釈と次のサーブは区間の境界になるため、このFPは注釈からの推定に基づく。条件別の判定時刻はTP/FNがラベル時刻、FPが予測時刻。ネット付近は観測球の `abs(y) ≤ 1 m`、SMPL欠測は割当済みの選手に対するmaskを使う。ボレーは注釈subtypeごとの再現率・時刻誤差を報告する。正解イベントのない条件は指標を `null` とする。
 
 `run.json` と `history.json` に設定・入力hash・学習曲線を、`best.pt` に選択した融合重みと事前学習checkpointのhashを保存する。`predictions/` に元フレーム単位の予測、`matches.json` に照合内訳、`metrics.json` に両ラベル源の精度・追加パラメータ数・推論時間・CUDAピーク割当を保存する。計測は各クリップ1回のwarmup後に同期付きforwardを3回行い、入出力の転送と採点を計測から除く。

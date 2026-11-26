@@ -108,3 +108,24 @@ def test_per_player_encoders_duplicate_the_shared_architecture_without_tying_wei
     for encoder in (*b.encoders, *c.encoders):
         assert [value.shape for value in encoder.state_dict().values()] == expected
     assert len({p.data_ptr() for p in b.encoders.parameters()}) == 4 * len(expected)
+
+
+def test_set_attention_matches_a_set_without_the_missing_players() -> None:
+    torch.manual_seed(31)
+    width = 16
+    fusion = PlayerFusion("set-attention", width).eval()
+    interaction = fusion.interaction
+    assert interaction is not None
+    nn.init.eye_(interaction.output.weight)
+    nn.init.constant_(interaction.output.bias, 0.25)
+    ball = torch.randn(2, 3, width)
+    players = torch.randn(2, 3, 4, PLAYER_FEATURES)
+    present = torch.tensor([True, False, True, False])
+    valid = present.expand(2, 3, -1)
+
+    with torch.inference_mode():
+        encoded = fusion.encoders[0](players[:, :, present])
+        reduced = ball + interaction(ball, encoded, valid[:, :, present])
+        full = fusion(ball, players, valid)
+    assert not torch.allclose(reduced, ball)
+    torch.testing.assert_close(full, reduced, atol=1e-6, rtol=1e-6)

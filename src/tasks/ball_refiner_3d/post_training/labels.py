@@ -130,13 +130,13 @@ class Annotations:
         return ignored
 
     def targets(self, sigma: float) -> tuple[NDArray[np.float32], NDArray[np.bool_]]:
-        """Independent BCE masks. An explicit covered positive retains its center."""
+        """Render known events before masking frame/class pairs for BCE."""
         bits: NDArray[np.uint8] = np.zeros(len(self.coverage), dtype=np.uint8)
         valid = self.coverage[:, None] & ~self.ignored_near_uncertain()
         for event in self.events:
-            if event.status != "uncertain" and self.coverage[event.frame]:
+            if event.status != "uncertain":
                 bits[event.frame] |= EVENT_CLASS_BITS[event.channel]
-                valid[event.frame, event.channel] = True
+                valid[event.frame, event.channel] = self.coverage[event.frame]
         return gaussian_event_target(bits, sigma), valid
 
     def point_frames(self) -> NDArray[np.bool_]:
