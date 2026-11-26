@@ -57,6 +57,9 @@ def audit_run(
     run_info, metrics, matches = (
         read(run / name) for name in ("run.json", "metrics.json", "matches.json")
     )
+    assert (run_bundle / "metrics.json").read_bytes() == (
+        run / "metrics.json"
+    ).read_bytes()
     assert run_info["state"] == "complete" and run_info["code_commit"] == pins["head"]
     assert run_info["device"] == "cuda"
     assert run_info["picking"] == {"threshold": 0.5, "min_separation": 3}
@@ -75,12 +78,18 @@ def audit_run(
         "gradient_clip": 1.0,
     }
     selected = None
+    validation_range = None
     files = [run / name for name in ("run.json", "metrics.json", "matches.json")]
     if job["mode"] != "ball-only":
         history = read(run / "history.json")
+        assert (run_bundle / "history.json").read_bytes() == (
+            run / "history.json"
+        ).read_bytes()
         assert history["manifest_sha256"] == pins["manifest_sha256"]
         epochs = history["epochs"]
         assert [row["updates"] for row in epochs] == list(range(47, 565, 47))
+        f1_by_epoch = [row["val_macro_f1"] for row in epochs]
+        validation_range = {"min": min(f1_by_epoch), "max": max(f1_by_epoch)}
         selected = max(
             epochs,
             key=lambda row: (
@@ -156,6 +165,7 @@ def audit_run(
         "settings": settings,
         "environment": [run_info[k] for k in ("gpu", "torch", "cuda")],
         "selected_validation": selected,
+        "val_macro_f1_range": validation_range,
         "artifacts_sha256": artifacts,
     }
 
@@ -263,7 +273,7 @@ def main() -> None:
     pins = read(Path(__file__).with_name("pins.json"))
     identity = pins["identity"]
     prepared = PreparedDataset.load(
-        args.run_root / "prepared-e456f07c",
+        args.run_root / f"prepared-{identity['manifest_sha256'][:8]}",
         identity["prepared_sha256"],
         identity["manifest_sha256"],
     )
@@ -276,7 +286,7 @@ def main() -> None:
     verified, all_metrics, grouped = {}, {}, defaultdict(list)
     table = []
     for key, job in pins["jobs"].items():
-        run_bundle = Path(__file__).resolve().parents[1] / f"run-i2600-motion-{key}"
+        run_bundle = Path(__file__).resolve().parents[1] / f"run-i2600-motion-{key}-r2"
         metrics, row = audit_run(runs / key, run_bundle, job, identity, test)
         verified[key] = row
         all_metrics[key] = {
@@ -298,6 +308,7 @@ def main() -> None:
             "val_macro_f1": row["selected_validation"]["val_macro_f1"]
             if row["selected_validation"]
             else None,
+            "val_macro_f1_range": row["val_macro_f1_range"],
         }
         grouped[job["mode"]].append(all_metrics[key])
         for source, scope, kind, score in metric_rows(metrics):

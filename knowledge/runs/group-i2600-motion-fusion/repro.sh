@@ -4,8 +4,8 @@ set -euo pipefail
 bundle=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd -P)
 main=$(dirname -- "$(git -C "$bundle" rev-parse --path-format=absolute --git-common-dir)")
 implementation=${MOTION_IMPLEMENTATION:-"$main/.claude/worktrees/parent-1722-issue-2600-primary"}
-expected=${MOTION_REPORT_HEAD:-976a71056e562a19f6a646c8004c4f081282246a}
-saved=${MOTION_RUN_ROOT:-"$main/.worktree-outputs/parent-1722-issue-2600-primary/ball_refiner_3d/post_training"}
+expected=${MOTION_REPORT_HEAD:-3d8cec367e8a9fb2cb44788bdae3eb494e0aeb3f}
+saved=${MOTION_RUN_ROOT:-"$main/.worktree-outputs/parent-1722-issue-2600-primary/ball_refiner_3d/post_training/coverage-r2"}
 output=${1:?Supply an absolute path to a new report directory}
 if [[ "$output" != /* ]]; then
     exit 2

@@ -56,7 +56,7 @@
 - **方針**（2026-10-06）: 2Dで補完した点の誤差を三角測量に伝えず、観測の不足を3Dの欠損として保持して3D側で補完します。2D Refinerは同日に廃止しました。標準pipelineにはまだ入っていません。
 - **位置補完の基準**: [イベントヘッド付き回帰](nodes/ball_refiner_3d/000011-run-i1014-3d-eventhead-regression-eventonly-s42-20261006-v1.md)はtest RMSEが全体0.158 m・欠損0.428 mで、欠損の誤差は同じ入力の線形補間より約52%低くなりました。一方で正確な観測にも約6.8 cmの誤差を生み、欠損付近の速度振動が残ります。合成データ・単一seedの結果です。
 - **物理head**（#1032）: [比較](nodes/ball_refiner_3d/000015-group-i1032-physics-heads-s42.md)では座標だけを出すモデルが最良で、場・区間初期状態のheadと教師を足すと、座標・イベントF1・物理指標がいずれも悪化しました。物理headは既定にしません。
-- **3クラスイベント**　[ネット接触を含む合成学習](nodes/ball_refiner_3d/000016-run-i2567-net-contacts-s42.md)の固定test F1は打球0.932・バウンド0.986・ネット0.857。[明治4カメラの固定test](nodes/ball_refiner_3d/000027-group-i2600-motion-fusion.md)では、Set Attentionの全イベントmacro-F1は0.676、球のみは0.671、独立6本ではそれぞれ0.503と0.505。選手動作で打球の再現率は上がった。独立ラベルの全イベントでは球のみが上回った。追加検証候補はSet Attentionとし、置換は保留。
+- **3クラスイベント**　[ネット接触を含む合成学習](nodes/ball_refiner_3d/000016-run-i2567-net-contacts-s42.md)の固定test F1は打球0.932・バウンド0.986・ネット0.857。明治4カメラの固定testではSet Attentionの全イベントmacro-F1は0.679、球のみは0.669。独立6本はShared 0.570、球のみ0.501、Set Attention 0.487。追加学習の全9 runでv3打球F1が上がった。Set Attentionを追加検証候補とし、置換は保留。 [明治4カメラの固定test](nodes/ball_refiner_3d/000027-group-i2600-motion-fusion.md)
 - **次の実験**: loss係数、観測へのアンカー、区間分割の改善のどれを試すかはユーザーの判断待ちです。同じ入力・L1・GANなしで、イベント教師の有無も比べます。
 
 ## 人物（player_detection・person_tracking・player_association）

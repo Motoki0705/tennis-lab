@@ -2,7 +2,7 @@
   "clip": "video_000/clip_057",
   "fps": 59.94005994005994,
   "frames": 285,
-  "manifest_sha256": "e456f07c510b25ef4730336b18ae850090146c15cb1407c78d120ca53f4edea3",
+  "manifest_sha256": "790f05016e31ff4eb3fa8fc7d681d1a22ff0540928672e2a274a64543cd2a28a",
   "scene_archive_sha256": "07fd3fd7d249020dce92c34d44163cdcf5dab87a501505517ff1e2b5b83d052e",
   "checkpoint_sha256": "b0d4399c23bf77bac115f46027cee545f99a41e9957c4e605f0eeb73ed16bde0",
   "base_model_config": {
