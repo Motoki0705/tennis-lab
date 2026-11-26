@@ -3,8 +3,6 @@
 from __future__ import annotations
 
 import json
-import os
-import tempfile
 from dataclasses import dataclass
 from hashlib import sha256
 from io import BytesIO
@@ -27,9 +25,12 @@ from src.tennis_scene.pipeline.dataset_publication import (
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, clip_store_lock
 from src.tennis_scene.pipeline.storage.scene_export import write_scene_export
 from src.tennis_scene.pipeline.storage.scene_index import (
-    annotation_scene_path,
     read_component_descriptor,
     resolve_indexed_scene,
+)
+from src.tennis_scene.pipeline.storage.scene_pointers import (
+    read_pending_scene_update,
+    replace_scene_pointers,
 )
 from src.tennis_scene.pipeline.video_artifact import validate_digest
 from src.tennis_scene.schema import SceneResult
@@ -38,6 +39,12 @@ from src.utils.io import utc_now_iso
 
 PUBLICATION = "external_ball_publication"
 SCHEMA = "external_ball_publication_v1"
+_RECEIPT_DIRECTORY = Path("updates") / "external_ball"
+_RECOVERY = (
+    "re-run the original publish command at the same source revision, "
+    "or run '.venv/bin/python -m src.tennis_scene.scripts.import_external_ball "
+    "restore --dataset <dataset> --video <video> --clip <clip>'."
+)
 
 
 def _encode(document: dict[str, Any]) -> str:
@@ -46,27 +53,6 @@ def _encode(document: dict[str, Any]) -> str:
 
 def _digest(content: str | None) -> str | None:
     return None if content is None else sha256(content.encode("utf-8")).hexdigest()
-
-
-def _replace_text(path: Path, content: str | None) -> None:
-    if content is None:
-        path.unlink(missing_ok=True)
-        return
-    with tempfile.NamedTemporaryFile(
-        "wb", dir=path.parent, suffix=".partial", delete=False
-    ) as handle:
-        temporary = Path(handle.name)
-        try:
-            handle.write(content.encode("utf-8"))
-            handle.flush()
-            os.fsync(handle.fileno())
-        except BaseException:
-            temporary.unlink(missing_ok=True)
-            raise
-    try:
-        temporary.replace(path)
-    finally:
-        temporary.unlink(missing_ok=True)
 
 
 @dataclass(frozen=True)
@@ -117,12 +103,6 @@ class ScenePointers:
         ):
             raise ValueError("Saved scene index and annotation marker disagree")
         return path
-
-    def replace(self, root: Path, current: ScenePointers) -> None:
-        if self.scene != current.scene:
-            _replace_text(root / "scene.json", self.scene)
-        if self.annotation != current.annotation:
-            _replace_text(root / "annotation.json", self.annotation)
 
 
 @dataclass(frozen=True)
@@ -175,46 +155,66 @@ class PublicationReceipt:
 
     def activate(self, root: Path, current: ScenePointers) -> None:
         self.require_current(current)
-        path = self.after.verify(root)
-        marker = self.after.marker()
-        if marker is None or path is None:
+        if self.after.verify(root) is None:
             raise ValueError(
                 "External ball publication requires a complete scene and marker"
             )
-        self.after.replace(root, current)
-        saved = ScenePointers.read(root)
-        if saved != self.after or annotation_scene_path(root, marker) != path:
-            raise ValueError("External ball publication did not survive readback")
+        self._switch(root, self.after)
+
+    def restore(self, root: Path, current: ScenePointers) -> None:
+        self.require_current(current)
+        self.before.verify(root)
+        self._switch(root, self.before)
+
+    def _switch(self, root: Path, desired: ScenePointers) -> None:
+        revision = self.after.revision()
+        if revision is None:
+            raise ValueError(
+                "External ball publication receipt must identify its revision"
+            )
+        replace_scene_pointers(
+            root,
+            scene=desired.scene,
+            annotation=desired.annotation,
+            receipt=_receipt_path(root, revision),
+            recovery=_RECOVERY,
+        )
 
 
 def _receipt_path(root: Path, scene_id: str) -> Path:
-    return root / "updates" / "external_ball" / f"{validate_digest(scene_id)}.json"
+    return root / _RECEIPT_DIRECTORY / f"{validate_digest(scene_id)}.json"
+
+
+def _current_receipt(root: Path, current: ScenePointers) -> PublicationReceipt | None:
+    pending = read_pending_scene_update(root)
+    if pending is None:
+        revision = current.revision()
+    else:
+        if (
+            pending.receipt.parent != root.resolve() / _RECEIPT_DIRECTORY
+            or pending.receipt.suffix != ".json"
+        ):
+            raise pending.error()
+        revision = pending.receipt.stem
+    receipt = None if revision is None else PublicationReceipt.read(root, revision)
+    if receipt is not None:
+        receipt.require_current(current)
+    return receipt
 
 
 def current_publication(root: Path) -> tuple[ScenePointers, PublicationReceipt | None]:
     with clip_store_lock(root):
         current = ScenePointers.read(root)
-        revision = current.revision()
-        receipt = None if revision is None else PublicationReceipt.read(root, revision)
-        if receipt is not None:
-            receipt.require_current(current)
-        return current, receipt
+        return current, _current_receipt(root, current)
 
 
 def restore_publication(root: Path) -> bool:
     with clip_store_lock(root):
         current = ScenePointers.read(root)
-        scene_id = current.revision()
-        if scene_id is None:
+        receipt = _current_receipt(root, current)
+        if receipt is None:
             return False
-        receipt = PublicationReceipt.read(root, scene_id)
-        receipt.require_current(current)
-        receipt.before.verify(root)
-        receipt.before.replace(root, current)
-        if ScenePointers.read(root) != receipt.before:
-            raise ValueError(
-                "Restored scene pointers differ from the recorded originals"
-            )
+        receipt.restore(root, current)
         return True
 
 
@@ -237,6 +237,9 @@ def publish_scene_revision(
             raise ValueError(
                 "Clip pointers changed during external ball reconstruction"
             )
+        pending = read_pending_scene_update(root)
+        if pending is not None and pending.receipt != journal.resolve():
+            raise pending.error()
         input_files.assert_unchanged()
         if journal.exists():
             receipt = PublicationReceipt.read(root, scene_id)

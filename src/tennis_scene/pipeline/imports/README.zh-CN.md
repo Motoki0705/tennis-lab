@@ -127,6 +127,8 @@ result = runner.output("ball_triangulation")
 
 省略 `--clip` 会处理整个视频。切换前验证新产物，并将输入版本和切换前后的引用保存到
 `updates/external_ball/<scene_assembly ID>.json`。发生冲突的片段保留原引用，
-报告记录错误并返回失败。重复同一命令可恢复中断的切换。
+报告记录错误并返回失败。切换期间，`.scene-pointer-update.json` 指向恢复记录，
+scene index 和 SLCS 的读取会报错并给出恢复步骤。中断后可以在同一源码版本上重新执行
+`publish`，或运行上述 `restore` 命令。
 `restore` 按原始字节恢复引用，同时保留两个版本的不变产物。
 [Meiji 执行记录与复现命令](../../../../knowledge/runs/run-meiji-external-ball-20261124/README.md)

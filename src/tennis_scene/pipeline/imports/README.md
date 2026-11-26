@@ -168,7 +168,10 @@ The command stages and verifies the new component and export before switching
 `scene.json` and `annotation.json` by rename. A receipt at
 `updates/external_ball/<scene_assembly ID>.json` holds both versions of the
 pointers, the previous artifact/export references, and the pinned inputs.
-Repeat the same command after an interruption to finish the pointer switch.
+During a switch, `.scene-pointer-update.json` identifies the receipt. Scene
+index and SLCS readers raise an error with recovery instructions while the
+switch is pending. After an interruption, repeat the publish command at the
+same source revision to finish the switch, or run `restore` as shown below.
 
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.import_external_ball restore \

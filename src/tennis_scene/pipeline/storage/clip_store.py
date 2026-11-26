@@ -29,6 +29,9 @@ from src.tennis_scene.pipeline.storage.scene_index import (
     assert_current_component_lineage,
     read_component_descriptor,
 )
+from src.tennis_scene.pipeline.storage.scene_pointers import (
+    require_stable_scene_pointers,
+)
 from src.utils.checksum import FileIntegrityError, dual_sha256
 from src.utils.inference_recording import measured, span, temporary_directory
 
@@ -251,6 +254,8 @@ class ClipStore:
                 write_json_atomic(temporary / filename, document)
             destination = parent / artifact_id
             with self._lock():
+                if adopt:
+                    require_stable_scene_pointers(self.root)
                 if destination.exists():
                     if (destination / filename).read_bytes() != (temporary / filename).read_bytes():
                         raise ValueError("Artifact identity collision")
@@ -283,6 +288,7 @@ class ClipStore:
                       prepare: Callable[[], None] | None = None) -> None:
         """Prepare/validate files and adopt their checksums under one clip lock."""
         with self._lock():
+            require_stable_scene_pointers(self.root)
             index = self._index()
             for node, reference in inputs.items():
                 if index["artifacts"].get(node) != json_value(reference):

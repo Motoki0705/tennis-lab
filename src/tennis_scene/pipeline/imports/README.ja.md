@@ -137,6 +137,8 @@ sceneの `metadata.external_ball.status_codes` はcamera × frameの入力ステ
 `--clip` を省略すると動画全件を処理します。参照の切替前に成果物を検証し、
 `updates/external_ball/<scene_assembly ID>.json` に入力の版と切替前後の参照を保存します。
 矛盾したclipは切り替えず、reportへ理由を残して終了コードを1にします。
-切替中の中断は同じコマンドで再開できます。`restore` は元の参照をバイト単位で戻し、
+切替中は `.scene-pointer-update.json` に復旧用の記録を示し、scene indexとSLCSの読込は復旧手順付きのエラーを返します。
+中断後は同じソースの版で `publish` を再実行するか、上記の `restore` を実行します。
+`restore` は元の参照をバイト単位で戻し、
 元のannotationが無かったclipからは追加したmarkerを除去します。旧版・新版の不変成果物を保持します。
 [Meijiでの実行記録とコマンド](../../../../knowledge/runs/run-meiji-external-ball-20261124/README.md)

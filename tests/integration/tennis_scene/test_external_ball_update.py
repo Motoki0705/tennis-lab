@@ -8,8 +8,15 @@ from pathlib import Path
 import numpy as np
 import pytest
 
+from src.tasks.slcs.data.annotation import (
+    IncompleteAnnotationError,
+    has_slcs_annotation,
+    load_slcs_annotation,
+)
+from src.tasks.slcs.visualization.review.dataset_service import SLCSDatasetReviewService
 from src.tennis_scene.archive import load_scene_result
 from src.tennis_scene.generate_dataset.manifest import (
+    ClipManifest,
     DatasetClipRecord,
     DatasetManifest,
 )
@@ -25,9 +32,9 @@ from src.tennis_scene.pipeline.components.court_calibration import (
 )
 from src.tennis_scene.pipeline.dataset_publication import (
     ANNOTATION_RELATIVE_DIR,
+    completed_annotation,
     publish_annotation,
 )
-from src.tennis_scene.pipeline.imports import external_ball_publication
 from src.tennis_scene.pipeline.imports.external_ball_geometry import (
     SAVED_GEOMETRY,
     SHARED_GEOMETRY,
@@ -39,10 +46,15 @@ from src.tennis_scene.pipeline.imports.external_ball_publication import (
 )
 from src.tennis_scene.pipeline.imports.external_ball_update import update_clip
 from src.tennis_scene.pipeline.observation_types import GroupedObservations
+from src.tennis_scene.pipeline.storage import scene_pointers
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
-from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
+from src.tennis_scene.pipeline.storage.scene_index import (
+    annotation_scene_path,
+    indexed_scene_path,
+)
+from src.tennis_scene.pipeline.storage.scene_pointers import ScenePointerUpdateError
 from src.tennis_scene.schema import SceneResult
 from src.tennis_scene.scripts.import_external_ball import main
 from src.utils.configuration import PathContractError
@@ -249,33 +261,48 @@ def test_external_ball_swaps_both_pointers_and_reuses_the_saved_scene(
         assert not (store.root / "components/external_ball_positions").exists()
         return
 
-    if mode == "saved":
-        replace_text = external_ball_publication._replace_text
+    DatasetManifest("fixture", {record.clip_id: record}).save(dataset)
+    manifest = ClipManifest.load(dataset / record.path)
+    inputs = resolve_dataset_clip(dataset, record)
+    review = SLCSDatasetReviewService(dataset)
+    replace_text = scene_pointers._replace_text
 
-        def interrupt_annotation(path, content):
-            if path.name == "annotation.json":
-                raise OSError("simulated stop after index rename")
-            replace_text(path, content)
+    def interrupt_annotation(path, content):
+        if path.name == "annotation.json":
+            raise OSError("simulated stop after index rename")
+        replace_text(path, content)
 
-        with monkeypatch.context() as patch:
-            patch.setattr(
-                external_ball_publication, "_replace_text", interrupt_annotation
-            )
-            with pytest.raises(OSError, match="simulated stop"):
-                publish()
-        interrupted = ScenePointers.read(store.root)
-        assert (
-            interrupted.scene != before.scene
-            and interrupted.annotation == before.annotation
-        )
+    def assert_recovery_needed() -> None:
+        message = r"pending .*updates/external_ball/.*import_external_ball restore"
+        with pytest.raises(ScenePointerUpdateError, match=message):
+            indexed_scene_path(store.index_path)
+        with pytest.raises(ScenePointerUpdateError, match=message):
+            has_slcs_annotation(manifest.clip_dir)
+        with pytest.raises(ScenePointerUpdateError, match=message):
+            load_slcs_annotation(manifest)
+        with pytest.raises(ScenePointerUpdateError, match=message):
+            review.payload(record.video_id, record.clip_name)
+        with pytest.raises(ScenePointerUpdateError, match=message):
+            completed_annotation(inputs, {"schema": "fixture"})
+
+    with monkeypatch.context() as patch:
+        patch.setattr(scene_pointers, "_replace_text", interrupt_annotation)
+        with pytest.raises(OSError, match="simulated stop"):
+            publish()
+    interrupted = ScenePointers.read(store.root)
+    assert interrupted.scene != before.scene
+    assert interrupted.annotation == before.annotation
+    assert_recovery_needed()
 
     report = publish()
-    assert report["reused_publication"] == (mode == "saved")
+    assert report["reused_publication"]
     after = ScenePointers.read(store.root)
     marker = after.marker()
     assert marker is not None
     path = annotation_scene_path(store.root, marker)
-    scene = load_scene_result(path)
+    assert indexed_scene_path(store.index_path) == path
+    assert has_slcs_annotation(manifest.clip_dir)
+    scene = load_slcs_annotation(manifest)
     assert path.parent.name == store.active("scene_assembly").artifact_id
     assert report["valid_3d"] == record.num_frames - 1
     np.testing.assert_allclose(scene.ball_3d[0], truth, atol=2e-5)
@@ -303,10 +330,35 @@ def test_external_ball_swaps_both_pointers_and_reuses_the_saved_scene(
         assert (
             tmp_path / "hardlinked-annotation.json"
         ).read_text() == before.annotation
+        old_marker = before.marker()
+        assert old_marker is not None
+        with pytest.raises(ScenePointerUpdateError, match="disagree .*Retry the read"):
+            annotation_scene_path(store.root, old_marker)
     assert (tmp_path / "hardlinked-scene.json").read_text() == before.scene
+
+    with monkeypatch.context() as patch:
+        patch.setattr(scene_pointers, "_replace_text", interrupt_annotation)
+        with pytest.raises(OSError, match="simulated stop"):
+            restore_publication(store.root)
+    assert ScenePointers.read(store.root) == ScenePointers(
+        before.scene, after.annotation
+    )
+    assert_recovery_needed()
+
     assert restore_publication(store.root)
     assert ScenePointers.read(store.root) == before
-    assert path.is_file()
+    if player_scene is None:
+        assert not has_slcs_annotation(manifest.clip_dir)
+        with pytest.raises(IncompleteAnnotationError, match="no completion marker"):
+            load_slcs_annotation(manifest)
+        with pytest.raises(ScenePointerUpdateError, match="disagree .*Retry the read"):
+            annotation_scene_path(store.root, marker)
+    else:
+        assert has_slcs_annotation(manifest.clip_dir)
+        np.testing.assert_array_equal(
+            load_slcs_annotation(manifest).human_kp_2d, player_scene.human_kp_2d
+        )
+    np.testing.assert_array_equal(load_scene_result(path).ball_3d, scene.ball_3d)
     assert not restore_publication(store.root)
 
 

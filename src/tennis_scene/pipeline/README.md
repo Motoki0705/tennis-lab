@@ -17,6 +17,7 @@
 | `dataset_publication.py` | dataset完成markerの再利用判定、scene契約検証、`annotation.json`の原子的公開と失敗marker |
 | `storage/codec.py` | componentが宣言したOutput型をJSONと数値配列へ保存・復元。pickleや動的class importは使わない |
 | `storage/clip_store.py` | clipを正本とする永続store、原子的な成果物公開、`scene.json`、メモリcache |
+| `storage/scene_pointers.py` | 公開・復元時に `scene.json` と `annotation.json` を切り替え、保留中の読み込みを止める |
 | `storage/scene_export.py` | 統合sceneのimmutableなexportと`scene.json`への採用 |
 | `orchestrator.py` | 共通入力部品への動画束縛、標準recipeから1clipの計画を作成・実行・最終化、実行receipt |
 | `video_batch.py` | 同じvideoの固定clip群を1計画へ束縛し、失敗を分離してclip完成直後に公開する入口 |
@@ -556,6 +557,10 @@ camera scopeはnode名（例`ball_detection/cam0`）と実行identityに含む�
 `load_scene_result(scene.json)`またはstore directoryを指定すると、checksum検証後にその統合結果を読める。
 datasetの完成marker（`annotation.json`）は`dataset_publication.py`が公開し、
 [generate_dataset](../generate_dataset/README.md)がclipごとの呼出しと結果を管理する。
+既存の二つの参照を切り替える処理では、呼び出し側が切替前後の参照を記録・検証し、
+`clip_store_lock` 内で `replace_scene_pointers` を呼ぶ。
+`.scene-pointer-update.json` は切替開始から両参照の読み戻しが済むまで、復旧に使う記録と操作を示す。
+このファイルがある間はscene indexとannotationの読込が復旧手順付きのエラーを返す。
 標準pipelineのmarker発行・再利用では、公開するsceneの依存を`body_placement`から
 `body_parameters` v2、`hmr2_features` v1、共通の`body_view_selection`までたどり、
 採用参照・checksumとclip/人物/segment/frameの対応を検証する。旧身体成果物は明示的に拒否する。
