@@ -58,3 +58,48 @@ def save_json(path: Path, data: dict[str, Any]) -> None:
 
 
 PINS = read_json(Path(__file__).with_name("inputs.json"))
+
+
+def load_labels(labels_parent: Path, clip: dict[str, Any], role: str) -> dict[str, Any]:
+    key = clip["clip_id"]
+    name = key.rsplit("/", 1)[-1]
+    number = name.removeprefix("clip_")
+    path = (
+        labels_parent
+        / f"parent-1722-issue-2542-label-{number}"
+        / "tennis_scene/analyze/event-eval-labels"
+        / name
+        / "labels.json"
+    )
+    label = read_json(path, PINS["label_sha256"][key])
+    expected = {
+        "schema": "meiji_event_labels.v1",
+        "benchmark": "multiview-v2",
+        "clip_id": key,
+        "fps": clip["fps"],
+        "frames": clip["frames"],
+        "role": role,
+    }
+    if any(label.get(field) != value for field, value in expected.items()):
+        raise ValueError(f"Label provenance or frame grid mismatch: {key}")
+    seen = set()
+    for event in label["events"]:
+        if (
+            event["id"] in seen
+            or event["kind"] not in CLASSES
+            or type(event["frame"]) is not int
+            or not 0 <= event["frame"] < clip["frames"]
+            or event["status"] not in {"certain", "probable", "uncertain"}
+            or type(event["in_point"]) is not bool
+        ):
+            raise ValueError(f"Invalid label event: {key} {event}")
+        seen.add(event["id"])
+    for interval in label["unlabelable"]:
+        start, end = interval["start"], interval["end"]
+        if (
+            type(start) is not int
+            or type(end) is not int
+            or not 0 <= start <= end < clip["frames"]
+        ):
+            raise ValueError(f"Invalid unlabelable interval: {key} {interval}")
+    return label

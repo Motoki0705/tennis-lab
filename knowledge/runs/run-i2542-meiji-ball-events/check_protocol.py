@@ -2,7 +2,9 @@
 
 from itertools import combinations_with_replacement, permutations
 
+import torch
 from evaluate import pair_frames, report, score_events
+from predict import net_probability_window
 
 
 def brute_force(left, right, tolerance):
@@ -73,7 +75,29 @@ def check_exclusions():
     )
 
 
+def check_net_window():
+    probabilities = torch.zeros(13, 3)
+    probabilities[4, 0] = 0.75
+    probabilities[10, 1] = 0.625
+    probabilities[[0, 1, 11, 12], 2] = torch.tensor([0.875, 0.5, 0.5, 1.0])
+    middle = net_probability_window(probabilities, 6)
+    assert (middle["start_frame"], middle["end_frame"]) == (1, 11)
+    assert middle["maxima"] == {
+        "shot": {"frame": 4, "probability": 0.75},
+        "bounce": {"frame": 10, "probability": 0.625},
+        "net": {"frame": 1, "probability": 0.5},
+    }
+    assert middle["probabilities_by_frame"][-1] == [0, 0, 0.5]
+    start = net_probability_window(probabilities, 0)
+    assert (start["start_frame"], start["end_frame"]) == (0, 5)
+    assert start["maxima"]["net"] == {"frame": 0, "probability": 0.875}
+    end = net_probability_window(probabilities, 12)
+    assert (end["start_frame"], end["end_frame"]) == (7, 12)
+    assert end["maxima"]["net"] == {"frame": 12, "probability": 1.0}
+
+
 if __name__ == "__main__":
     check_optimum()
     check_exclusions()
-    print("Matching objective, one-to-one exclusions and metric denominators verified")
+    check_net_window()
+    print("Verified matching, exclusions, metric denominators and probability windows")

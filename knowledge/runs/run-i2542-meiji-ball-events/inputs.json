@@ -13,6 +13,6 @@
   },
   "refiner_commit": "e4438667dd41162c6f4972a92146eb9b59bbba54",
   "checkpoint_sha256": "b0d4399c23bf77bac115f46027cee545f99a41e9957c4e605f0eeb73ed16bde0",
-  "rule_commit": "aac549c1181e8e34105a00d54fabe8f93f8ed700",
-  "rule_progress_sha256": "65e5edab63d1f443dc2efab82878a52a2b67a7968486ee2cee6a578eabe5e7cb"
+  "rule_commit": "b682280df117b3018c50885a422642de03b72687",
+  "rule_progress_sha256": "326e9b8e8547376cf7779d122c9c388ccc2e1aac12f479ad8dcc1eac82794511"
 }

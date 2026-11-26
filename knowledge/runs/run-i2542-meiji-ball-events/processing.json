@@ -421,7 +421,7 @@
     "rule": {
       "events": {
         "bounce": 11,
-        "net": 3,
+        "net": 2,
         "shot": 10
       },
       "events_spanning_ball_gaps": 0,

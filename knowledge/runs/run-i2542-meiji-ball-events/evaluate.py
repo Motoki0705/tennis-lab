@@ -19,6 +19,7 @@ from protocol import (
     PINS,
     PRIMARY_TOLERANCE,
     TOLERANCES,
+    load_labels,
     read_json,
     save_json,
     sha256,
@@ -44,42 +45,6 @@ def pair_frames(
         for row, col in zip(rows, columns, strict=True)
         if distances[row, col] <= tolerance
     ]
-
-
-def load_labels(path: Path, clip: Row, role: str) -> Row:
-    key = clip["clip_id"]
-    label = read_json(path, PINS["label_sha256"][key])
-    expected = {
-        "schema": "meiji_event_labels.v1",
-        "benchmark": "multiview-v2",
-        "clip_id": key,
-        "fps": clip["fps"],
-        "frames": clip["frames"],
-        "role": role,
-    }
-    if any(label.get(field) != value for field, value in expected.items()):
-        raise ValueError(f"Label provenance or frame grid mismatch: {key}")
-    seen = set()
-    for event in label["events"]:
-        if (
-            event["id"] in seen
-            or event["kind"] not in CLASSES
-            or type(event["frame"]) is not int
-            or not 0 <= event["frame"] < clip["frames"]
-            or event["status"] not in {"certain", "probable", "uncertain"}
-            or type(event["in_point"]) is not bool
-        ):
-            raise ValueError(f"Invalid label event: {key} {event}")
-        seen.add(event["id"])
-    for interval in label["unlabelable"]:
-        start, end = interval["start"], interval["end"]
-        if (
-            type(start) is not int
-            or type(end) is not int
-            or not 0 <= start <= end < clip["frames"]
-        ):
-            raise ValueError(f"Invalid unlabelable interval: {key} {interval}")
-    return label
 
 
 def load_prediction(path: Path, clip: Row, progress: Row, method: str) -> Row:
@@ -472,16 +437,7 @@ def main() -> None:
     holdouts = {}
     for key, role in roles.items():
         clip = clips[key]
-        name = key.split("/")[-1]
-        number = name.removeprefix("clip_")
-        label_path = (
-            args.labels_parent
-            / f"parent-1722-issue-2542-label-{number}"
-            / "tennis_scene/analyze/event-eval-labels"
-            / name
-            / "labels.json"
-        )
-        label = load_labels(label_path, clip, role)
+        label = load_labels(args.labels_parent, clip, role)
         masked = label_mask(label)
         holdouts[key] = {
             "role": role,

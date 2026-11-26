@@ -77,26 +77,26 @@
     },
     "net": {
       "10": {
-        "dice_agreement": 0.76,
+        "dice_agreement": 0.7755102040816326,
         "fraction_of_events_matched": {
           "refiner3": 1.0,
-          "rule": 0.6129032258064516
+          "rule": 0.6333333333333333
         },
         "pairs": 19
       },
       "2": {
-        "dice_agreement": 0.6,
+        "dice_agreement": 0.6122448979591837,
         "fraction_of_events_matched": {
           "refiner3": 0.7894736842105263,
-          "rule": 0.4838709677419355
+          "rule": 0.5
         },
         "pairs": 15
       },
       "5": {
-        "dice_agreement": 0.76,
+        "dice_agreement": 0.7755102040816326,
         "fraction_of_events_matched": {
           "refiner3": 1.0,
-          "rule": 0.6129032258064516
+          "rule": 0.6333333333333333
         },
         "pairs": 19
       },
@@ -117,14 +117,13 @@
         },
         "rule": {
           "clips": 61,
-          "events": 31,
+          "events": 30,
           "histogram": {
             "0": 35,
             "1": 22,
-            "2": 3,
-            "3": 1
+            "2": 4
           },
-          "max": 3,
+          "max": 2,
           "median": 0,
           "min": 0,
           "p90": 1.0
@@ -602,7 +601,7 @@
           "5": 1
         },
         "refiner3": 1,
-        "rule": 3
+        "rule": 2
       },
       "shot": {
         "matches": {
