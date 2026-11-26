@@ -45,6 +45,7 @@ execution:
   gvhmr: execute
   body_placement: execute
   scene_assembly: execute
+  event_detection: execute
 court_kp:
   mode: clip
   video_shared:
@@ -302,6 +303,13 @@ ball_reconstruction:
   enabled: true
   reprojection_px: 20.0
   min_frames: 5
+event_detection:
+  method: null  # Explicitly select rule, refiner, or annotation.
+  annotation_directory: null  # DATA path for meiji_event_labels.v1
+  annotation_benchmark_manifest: null  # DATA path for the pinned Meiji multiview-v2 manifest.json
+  checkpoint: null  # CHECKPOINT path for a three-class refiner
+  checkpoint_sha256: null
+  fps_tolerance: null  # Explicit FPS difference allowed for the refiner, in Hz
 gvhmr:
   enabled: true
 cache:

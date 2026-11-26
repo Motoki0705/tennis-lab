@@ -1,5 +1,5 @@
 {
-  "baseline_commit": "fcb97df3a64e4445efee3d943e419dd5bd928201",
+  "baseline_commit": "264ac76a862ad7dc1dc411a0cd9a7f2749ceb17b",
   "files": {
     "tennis_scene/multiview_tracking/__init__.py": {
       "before": null,
@@ -38,12 +38,12 @@
       "after": "be74465e8846af2c1d3561fff2371993cc0a8be108b688c197ab227c8a3eeb1e"
     },
     "tennis_scene/pipeline/source_identity.py": {
-      "before": "1699f8ce7b61446fe14f33f3f223e8f843b4dca70e317d843172aa5bd170a046",
-      "after": "8f9bf565f0769e3207182ac463b160af78b94f4e0ce86669f5bd6b546989ef83"
+      "before": "2b21cc6ca7a5d12be35b47e9cd5bf80e267020327279c8d07138a7d3ed06f070",
+      "after": "cc125a863ebada0504e3de5c4ee063a05076563ede28c275588a53c20a323047"
     },
     "utils/configuration/inventory.py": {
-      "before": "b7522c16ce54dab728ec3cea161df35e99d6189e9e6203ba8398931ad6ff3da0",
-      "after": "4a0ec4773429fb6468e378d9b096e25bcedeed19ccba15d4ed6b5420e227e95e"
+      "before": "4a7cb470348ece8dd667b59f487addd6553b1a76d9dc0aac9256010361699685",
+      "after": "2781bb908cf27f7c954b71cda462103c0a7a55e26466a4782f521fbc7bdb0d19"
     }
   }
 }

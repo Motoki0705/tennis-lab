@@ -49,7 +49,7 @@ def runtime(repo: Path) -> PipelineRuntimeConfig:
         config = compose(config_name='pipeline', overrides=[f'paths.project_root={CODE_ROOT}',
             f'paths.data_root={repo / "data"}', f'paths.checkpoint_root={repo / "ckpt"}',
             f'paths.external_asset_root={repo / "third_party"}', 'device=cuda', 'people_models.runtime.vitpose.batch_size=4'])
-    return PipelineRuntimeConfig.from_config(config, bind_inputs=False)
+    return PipelineRuntimeConfig.from_config(config, bind_inputs=False, bind_event_detection=False)
 
 
 def checked_file(record: dict[str, Any]) -> Path:

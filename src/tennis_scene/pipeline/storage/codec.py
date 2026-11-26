@@ -34,7 +34,10 @@ from src.utils.checksum import dual_sha256
 ValueT = TypeVar("ValueT")
 
 
-def encode_value(value: Any, directory: Path, arrays: dict[str, Any]) -> Any:
+def encode_value(
+    value: Any, directory: Path, arrays: dict[str, Any],
+    linked_arrays: Mapping[int, Path] | None = None,
+) -> Any:
     if isinstance(value, torch.Tensor):
         return {"tensor": encode_value(value.detach().cpu().numpy(), directory, arrays)}
     if isinstance(value, np.ndarray):
@@ -42,7 +45,11 @@ def encode_value(value: Any, directory: Path, arrays: dict[str, Any]) -> Any:
             raise TypeError("Object arrays cannot be component artifacts")
         name = f"array_{len(arrays):04d}.npy"
         path = directory / name
-        np.save(path, value, allow_pickle=False)
+        source = None if linked_arrays is None else linked_arrays.get(id(value))
+        if source is None:
+            np.save(path, value, allow_pickle=False)
+        else:
+            path.hardlink_to(source)
         arrays[name] = {
             "shape": list(value.shape),
             "dtype": str(value.dtype),
@@ -51,8 +58,9 @@ def encode_value(value: Any, directory: Path, arrays: dict[str, Any]) -> Any:
         return {"array": name}
     if is_dataclass(value) and not isinstance(value, type):
         return {
-            f.name: encode_value(getattr(value, f.name), directory, arrays)
+            f.name: encode_value(getattr(value, f.name), directory, arrays, linked_arrays)
             for f in fields(value)
+            if not f.metadata.get("artifact_optional") or getattr(value, f.name) is not None
         }
     if isinstance(value, Path):
         return str(value)
@@ -61,9 +69,9 @@ def encode_value(value: Any, directory: Path, arrays: dict[str, Any]) -> Any:
     if isinstance(value, Mapping):
         if any(not isinstance(k, str) for k in value):
             raise TypeError("Artifact mapping keys must be strings")
-        return {k: encode_value(v, directory, arrays) for k, v in value.items()}
+        return {k: encode_value(v, directory, arrays, linked_arrays) for k, v in value.items()}
     if isinstance(value, (tuple, list)):
-        return [encode_value(v, directory, arrays) for v in value]
+        return [encode_value(v, directory, arrays, linked_arrays) for v in value]
     if value is None or type(value) in (str, int, bool):
         return value
     if isinstance(value, float) and math.isfinite(value):
@@ -127,9 +135,9 @@ def restore_type(value: Any, annotation: Any) -> Any:
             raise TypeError("Artifact schemas require unambiguous union members")
         return restore_type(value, candidates[0])
     if isinstance(annotation, type) and is_dataclass(annotation):
-        if not isinstance(value, dict) or set(value) != {
-            f.name for f in fields(annotation)
-        }:
+        declared = fields(annotation)
+        required = {f.name for f in declared if not f.metadata.get("artifact_optional")}
+        if not isinstance(value, dict) or not required <= value.keys() <= {f.name for f in declared}:
             raise ValueError(
                 f"Fields disagree with artifact schema {annotation.__name__}"
             )
@@ -176,14 +184,18 @@ def restore_type(value: Any, annotation: Any) -> Any:
 class ArtifactCodec(Generic[ValueT]):
     """A component owns its output schema; the store owns file publication."""
 
-    def __init__(self, output_type: type[ValueT]) -> None:
+    def __init__(
+        self, output_type: type[ValueT], *, linked_arrays: Mapping[int, Path] | None = None
+    ) -> None:
         self.output_type = output_type
+        # A fixed-input replay can share complete, already verified NPY files.
+        self.linked_arrays = linked_arrays
 
     def dump(self, value: ValueT, directory: Path) -> tuple[Any, dict[str, Any]]:
         if not isinstance(value, self.output_type):
             raise TypeError(f"Expected output {self.output_type.__name__}")
         arrays: dict[str, Any] = {}
-        return encode_value(value, directory, arrays), arrays
+        return encode_value(value, directory, arrays, self.linked_arrays), arrays
 
     def load(self, payload: Any, directory: Path, arrays: Mapping[str, Any]) -> ValueT:
         return cast(

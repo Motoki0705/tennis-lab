@@ -79,7 +79,7 @@ frame 0と全クラスのピークの和集合で区間を作り、
 新しい評価先・推論出力は既存ファイルを上書きしない。
 
 `inference.scene.predict_scene_events(predictor, scene_json, clip_id=..., checkpoint_sha256=..., seed=42, fps_tolerance=0.06)`
-は、SceneResult v2のコート座標 `ball_3d` をmのまま使い、`ball_3d_valid` の反転を欠損maskにする。
+は、SceneResult v2・v3のコート座標 `ball_3d` をmのまま使い、`ball_3d_valid` の反転を欠損maskにする。
 実測59.94005994 fpsと公称60 fpsの差を0.06 Hzまで明示的に許容する例。
 元frameをそのまま推論し、`ball_event_predictions.v1` のイベント時刻には実測fpsを使う。
 

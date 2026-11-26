@@ -36,6 +36,7 @@ from tests.support.tasks.slcs.dataset import (
 from tests.support.tennis_scene.annotations import (
     publish_dataset_annotations,
     publish_scene_to_clip_store,
+    with_fixture_ball_events,
 )
 
 
@@ -79,6 +80,22 @@ def test_annotation_roundtrip(synthetic_dataset: SLCSDataIndex) -> None:
     scene = load_slcs_annotation(manifest)
     assert scene.num_frames == manifest.num_frames
     assert scene.court_kp.shape[0] == len(manifest.camera_ids)
+
+
+def test_v3_annotation_roundtrip_preserves_the_reconstruction_masks(tmp_path: Path) -> None:
+    dataset = build_slcs_dataset_fixture(
+        tmp_path / "dataset", SLCSFixtureDatasetConfig(videos=("video_000",)),
+    )
+    manifest = ClipManifest.load(dataset.clip_dir(dataset.clips[0]))
+    scene = load_slcs_annotation(manifest)
+    publish_dataset_annotations(
+        dataset.root, {manifest.clip_id: with_fixture_ball_events(scene)}, overwrite=True,
+    )
+    updated = load_slcs_annotation(manifest)
+    assert updated.schema_version == 3
+    np.testing.assert_array_equal(updated.ball_event_frame, [scene.num_frames - 1])
+    np.testing.assert_array_equal(updated.player_valid, scene.player_valid)
+    np.testing.assert_array_equal(updated.ball_3d_valid, scene.ball_3d_valid)
 
 
 def test_fixture_publishes_through_the_component_store(
