@@ -47,7 +47,7 @@ PT32とPT16はどちらも8フレーム分の有限な69次元SMPL姿勢、6890�
 | SMPL頂点 | 55,120 | 15.78 | 45.19 |
 | カメラ並進 | 8 | 15.39 | 42.99 |
 
-このサンプルの関節差は、親 #2492 の基準値10 mmを上回った。次の代表6 clipでも生予測を保存し、#2496の共通parity判定で集計する。この試行は1選手の部分区間に限るため、配置の有効率、速度、VRAM、定性品質、採否は引き続き評価対象とする。標準pipelineの現行判断はこの確認で更新しない。 [照合したSHAと診断値](../../runs/run-fasthmr-camerahmr-smoke/observations.json)
+このサンプルの関節差は、親 #2492 の基準値10 mmを上回った。この試行は1選手の部分区間に限る。後続の代表6 clipでは同期比較用のPT16予測を保存し、PT32とのparityは未判定とした。置き換えの見送りは後続の速度計測に基づく。 [照合したSHAと診断値](../../runs/run-fasthmr-camerahmr-smoke/observations.json) [代表6 clipの記録](000094-run-fasthmr-camerahmr-pt16-review.md) [採否と速度](000095-run-fasthmr-camerahmr-pt16-speed.md)
 
 ## 再現
 
