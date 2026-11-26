@@ -23,7 +23,12 @@ from src.tennis_scene.clip_studio.sources import PreviewSource
 from src.tennis_scene.clip_studio.timeline import source_frame_index
 from src.tennis_scene.clip_studio.web.jobs import JobRequest, Jobs
 from src.tennis_scene.clip_studio.web.review import frame_correspondence, review_catalog
-from src.tennis_scene.clip_studio.web.service import Edit, Editor, RevisionConflict
+from src.tennis_scene.clip_studio.web.service import (
+    Edit,
+    Editor,
+    EditPreview,
+    RevisionConflict,
+)
 from src.tennis_scene.configuration import ClipStudioRuntimeConfig
 
 STATIC = Path(__file__).parent / "static"
@@ -169,7 +174,7 @@ def create_app(
     def edit(request: Edit) -> dict[str, Any]:
         return editor.edit(request)
 
-    def preview_edit(request: Edit) -> dict[str, int]:
+    def preview_edit(request: Edit) -> EditPreview:
         return editor.preview(request)
 
     def score_csv(revision: int) -> Response:

@@ -43,8 +43,10 @@ class ChainEntry:
     clip: Clip
     incoming: Position | None
     position: Position | None
-    linked: bool
     after: Position | None
+    chain_broken: bool
+    # Set when the saved server conflicts with the incoming order.
+    expected_server: Side | None
 
 
 def _position(
@@ -66,6 +68,19 @@ def _position(
     return Position(count, fallback_first) if fallback_first is not None else None
 
 
+def _anchor_position(
+    match: MatchSettings, before: ScoreCount, server: Side
+) -> Position:
+    # Games reset between hard-tennis sets. A later-set anchor carries the saved
+    # service order, even when a correction to a preceding set changes its parity.
+    first = (
+        match.first_server
+        if before.sets in (None, (0, 0))
+        else server_at(match.rules, before, server)
+    )
+    return Position(before, first)
+
+
 def _after(
     match: MatchSettings, position: Position, winner: Side | None
 ) -> Position | None:
@@ -85,24 +100,41 @@ def _entries(clips: Iterable[Clip], match: MatchSettings) -> Iterator[ChainEntry
     incoming: Position | None = None
     for clip in clips:
         score = clip.score
-        position = None
-        linked = False
-        after = None
-        outgoing = None
-        if score is not None:
-            if score.before is None:  # not_point
-                outgoing = incoming
-            else:
-                linked = incoming is not None and incoming.count == score.before
-                position = _position(
-                    match, score.before, incoming, observed_server=score.server
-                )
-                if position is not None:
-                    after = _after(match, position, score.winner)
-                if linked or score.before_source == "anchor":
-                    outgoing = after
-        yield ChainEntry(clip, incoming, position, linked, after)
-        incoming = outgoing
+        before = score.before if score is not None else None
+        if score is None or before is None:
+            yield ChainEntry(clip, incoming, None, None, False, None)
+            if score is None:  # not_point passes the incoming position through
+                incoming = None
+            continue
+
+        previous = (
+            incoming if incoming is not None and incoming.count == before else None
+        )
+        anchor = score.before_source == "anchor"
+        expected_server = None
+        if previous is not None and (anchor or score.server_source == "auto"):
+            server = previous.server(match)
+            if server != score.server:
+                expected_server = server
+        position = previous if expected_server is None else None
+        if anchor:
+            position = _anchor_position(match, before, score.server)
+        after = _after(match, position, score.winner) if position is not None else None
+        yield ChainEntry(
+            clip, incoming, position, after, position is None, expected_server
+        )
+        incoming = after
+
+
+def broken_chain_clip_names(project: ClipStudioProject) -> list[str]:
+    match = project.match
+    if match is None:
+        return []
+    return [
+        entry.clip.name
+        for entry in _entries(_timeline(project), match)
+        if entry.chain_broken
+    ]
 
 
 def score_views(project: ClipStudioProject) -> dict[str, dict[str, Any]]:
@@ -116,12 +148,16 @@ def score_views(project: ClipStudioProject) -> dict[str, dict[str, Any]]:
         before = entry.position.count if entry.position is not None else None
         after = entry.after
         views[entry.clip.name] = {
-            "chain_available": entry.incoming is not None
+            "chain_available": not entry.chain_broken
+            and entry.incoming is not None
             and not match_over(match.rules, entry.incoming.count),
+            "chain_broken": entry.chain_broken,
             "discontinuous": before is not None
             and score is not None
-            and not entry.linked
-            and (entry.incoming is not None or score.before_source == "chain"),
+            and score.before_source == "anchor"
+            and entry.incoming is not None
+            and entry.incoming.count != before,
+            "expected_server": entry.expected_server,
             "before_points": format_points(match.rules, before)
             if before is not None
             else None,
@@ -157,9 +193,9 @@ def _parse_edit(
                 raise ValueError(
                     "連鎖で入力する場合は before に null を指定してください。"
                 )
-            if incoming is None:
+            if entry.chain_broken or incoming is None:
                 raise ValueError(
-                    "直前の終了後カウントがありません。開始前を手入力してください。"
+                    "直前から連鎖できません。開始前カウントを手入力してください。"
                 )
             validate_before(match.rules, incoming.count)
             data["before"] = count_to_dict(incoming.count)
@@ -194,7 +230,10 @@ def _parse_edit(
                 "サーブ側を計算できません。A / B を手動で指定してください。"
             )
         data["server"] = position.server(match)
-    return ClipScore.from_dict(data), position
+    score = ClipScore.from_dict(data)
+    if score.before is not None and score.before_source == "anchor":
+        position = _anchor_position(match, score.before, score.server)
+    return score, position
 
 
 def _recalculate_following(
@@ -257,8 +296,6 @@ def set_clip_score(
         clip.score = score
         if score.before is not None and position is not None:
             position = _after(match, position, score.winner)
-        elif score.before is not None:
-            position = None
     if score.status in ("confirmed", "not_point"):
         _recalculate_following(timeline, match, position)
 
@@ -288,13 +325,17 @@ def set_match(project: ClipStudioProject, match: MatchSettings | None) -> None:
                 ):
                     clip.score = replace(score, server=incoming.server(match))
                 continue
-            linked = score.before_source == "chain" and entry.linked
+            anchor = score.before_source == "anchor"
+            linked = not anchor and not entry.chain_broken
             if linked and incoming is None:
                 raise ValueError("新しい設定で直前のカウントから連鎖できません。")
             count = incoming.count if linked and incoming is not None else score.before
             validate_before(match.rules, count)
-            first = entry.position.first_server if entry.position is not None else None
-            if first is not None and old_match.first_server != match.first_server:
+            saved_position = entry.position or _anchor_position(
+                old_match, score.before, score.server
+            )
+            first = saved_position.first_server
+            if old_match.first_server != match.first_server:
                 first = other_side(first)
             position = _position(
                 match,
@@ -314,8 +355,8 @@ def set_match(project: ClipStudioProject, match: MatchSettings | None) -> None:
                 if score.server_source == "auto"
                 else score.server,
             )
+            if anchor:
+                position = _anchor_position(match, count, clip.score.server)
             incoming = (
-                _after(match, position, score.winner)
-                if linked or score.before_source == "anchor"
-                else None
+                _after(match, position, score.winner) if linked or anchor else None
             )

@@ -29,6 +29,23 @@ def test_csv_round_trip_preserves_values_and_defines_import_sources(
         "A",
         '映像,「確認」\n"note"',
     )
+    project.clips.insert(
+        0,
+        Clip(
+            "first",
+            1,
+            2,
+            ClipScore(
+                "confirmed",
+                ScoreCount(games=(1, 0), points=(2, 1)),
+                "anchor",
+                "B",
+                "auto",
+                "A",
+                "",
+            ),
+        ),
+    )
     project.clips.extend(
         [
             Clip(
@@ -49,8 +66,8 @@ def test_csv_round_trip_preserves_values_and_defines_import_sources(
     assert export_scores(project) == text
     assert clip.score.note == '映像,「確認」\n"note"'
     assert (clip.score.before_source, clip.score.server_source) == ("anchor", "manual")
-    assert project.clips[1].score is not None and project.clips[1].score.before is None
-    assert project.clips[2].score is None
+    assert project.clips[2].score is not None and project.clips[2].score.before is None
+    assert project.clips[3].score is None
 
 
 @pytest.mark.parametrize(

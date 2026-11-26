@@ -10,6 +10,7 @@ from src.tennis_scene.clip_studio.score_chain import (
     set_clip_score,
     set_match,
 )
+from src.tennis_scene.clip_studio.score_csv import export_scores, import_scores
 from src.utils.tennis_scoring import ScoreCount, SoftTennisRules, TennisRules
 
 
@@ -80,7 +81,9 @@ def test_recompute_chronological_chain_up_to_stop(
         "映像2",
     )
     assert blocked.score == unchanged
-    assert score_views(project)["blocked"]["discontinuous"]
+    assert score_views(project)["blocked"]["chain_broken"]
+    with pytest.raises(ValueError, match="手入力"):
+        set_clip_score(project, blocked.name, score_edit(status=stop, note="判定保留"))
     assert next_clip.score is None
     with pytest.raises(ValueError, match="clip 'next'.*手入力"):
         set_clip_score(project, next_clip.name, score_edit(winner="A"))
@@ -115,7 +118,7 @@ def test_anchor_discontinuity_and_clearing_leave_saved_counts_in_place(
     saved_second = second.score
     set_clip_score(project, first.name, None)
     assert first.score is None and second.score == saved_second
-    assert score_views(project)["second"]["discontinuous"]
+    assert score_views(project)["second"]["chain_broken"]
     with pytest.raises(ValueError, match="手入力"):
         set_clip_score(project, second.name, score_edit(winner="B"))
 
@@ -170,3 +173,65 @@ def test_hard_disconnected_anchor_needs_observed_service_order(
         set_clip_score(project, first.name, score_edit(count, winner="A"))
     set_clip_score(project, first.name, score_edit(count, winner="A", server="A"))
     assert second.score is not None and second.score.server == "A"
+
+
+def test_hard_next_set_anchor_keeps_its_server_when_previous_set_parity_changes(
+    two_camera_project: ClipStudioProject,
+) -> None:
+    project = two_camera_project
+    project.match = MatchSettings("A", "B", TennisRules(3, False, "tie_break"), "A")
+    first = project.clips[0]
+    anchor, third = Clip("anchor", 4, 5), Clip("third", 5, 6)
+    project.clips.extend([anchor, third])
+    before = {"sets": [0, 0], "games": [5, 0], "points": [3, 1]}
+    start_next_set = {"sets": [1, 0], "games": [0, 0], "points": [0, 0]}
+    set_clip_score(project, first.name, score_edit(before, winner="A"))
+    set_clip_score(project, anchor.name, score_edit(start_next_set, winner="B"))
+    saved = anchor.score
+    assert saved is not None and saved.server == "A" and saved.server_source == "auto"
+    assert score_views(project)[anchor.name]["expected_server"] is None
+
+    set_clip_score(
+        project, first.name, score_edit({**before, "games": [5, 1]}, winner="A")
+    )
+    views = score_views(project)
+    assert anchor.score == saved
+    assert not views[anchor.name]["discontinuous"]
+    assert views[anchor.name]["expected_server"] == "B"
+    assert views[anchor.name]["after"]["points"] == [0, 1]
+    set_clip_score(project, third.name, score_edit(winner="B"))
+    assert project.clips[2].score is not None and project.clips[2].score.server == "A"
+    csv = export_scores(project)
+    assert "anchor,confirmed,1,0,0,0,0,0,A,B," in csv
+    assert "third,confirmed,1,0,0,0,0,1,A,B," in csv
+
+    import_scores(project, csv)
+    assert score_views(project)[anchor.name]["expected_server"] == "B"
+    set_clip_score(project, third.name, score_edit(winner="B"))
+    assert project.clips[2].score is not None and project.clips[2].score.server == "A"
+
+
+def test_soft_final_automatic_server_stays_known_at_the_same_normalised_count(
+    two_camera_project: ClipStudioProject,
+) -> None:
+    project = two_camera_project
+    project.match = MatchSettings("A", "B", SoftTennisRules(7), "A")
+    first = project.clips[0]
+    anchor, third = Clip("anchor", 4, 5), Clip("third", 5, 6)
+    project.clips.extend([anchor, third])
+    set_clip_score(
+        project, first.name, score_edit({"games": [3, 3], "points": [6, 5]}, winner="B")
+    )
+    deuce = {"games": [3, 3], "points": [6, 6]}
+    set_clip_score(project, anchor.name, score_edit(deuce, winner="B"))
+    saved = anchor.score
+    assert saved is not None and saved.server == "A"
+    # The two paths reach deuce with the same service phase after normalisation.
+    set_clip_score(
+        project, first.name, score_edit({"games": [3, 3], "points": [7, 8]}, winner="A")
+    )
+    assert anchor.score == saved
+    assert score_views(project)[anchor.name]["expected_server"] is None
+    set_clip_score(project, anchor.name, score_edit(deuce, winner="B", server="B"))
+    assert score_views(project)[anchor.name]["expected_server"] == "A"
+    assert third.score is not None and third.score.server == "A"

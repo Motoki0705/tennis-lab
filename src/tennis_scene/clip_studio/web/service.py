@@ -9,9 +9,11 @@ from pathlib import Path
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
+from typing_extensions import TypedDict
 
 from src.tennis_scene.clip_studio.project import Clip, ClipStudioProject, MatchSettings
 from src.tennis_scene.clip_studio.score_chain import (
+    broken_chain_clip_names,
     score_views,
     set_clip_score,
     set_match,
@@ -50,6 +52,12 @@ class Edit(BaseModel):
 
 class RevisionConflict(ValueError):
     """A stale browser must reload before changing the shared project."""
+
+
+class EditPreview(TypedDict):
+    revision: int
+    changed_clips: int
+    broken_chain_clips: list[str]
 
 
 class Editor:
@@ -183,20 +191,37 @@ class Editor:
             raise ValueError("; ".join(errors))
         return candidate
 
-    def preview(self, request: Edit) -> dict[str, int]:
+    def preview(self, request: Edit) -> EditPreview:
         with self.lock:
-            if request.action not in {"set_score", "set_match"}:
-                raise ValueError("カウントまたは試合設定の編集を指定してください。")
+            if request.action in {"offsets", "undo", "redo"}:
+                raise ValueError(
+                    "クリップ・カウント・試合設定の編集を指定してください。"
+                )
             candidate = self._candidate(request)
-            return {
-                "revision": self.revision,
-                "changed_clips": sum(
+            already_broken = set(broken_chain_clip_names(self.project))
+            if (
+                request.action == "update"
+                and request.name in already_broken
+                and request.new_name
+            ):
+                already_broken.add(request.new_name)
+            changed_clips = 0
+            if request.action in {"set_score", "set_match"}:
+                changed_clips = sum(
                     old.score != new.score
                     for old, new in zip(
                         self.project.clips, candidate.clips, strict=True
                     )
                     if request.action != "set_score" or old.name != request.name
-                ),
+                )
+            return {
+                "revision": self.revision,
+                "changed_clips": changed_clips,
+                "broken_chain_clips": [
+                    name
+                    for name in broken_chain_clip_names(candidate)
+                    if name not in already_broken
+                ],
             }
 
     def edit(self, request: Edit) -> dict[str, Any]:

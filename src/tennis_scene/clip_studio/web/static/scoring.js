@@ -16,7 +16,7 @@ function countLabel(count, points) {
 }
 
 export class Scoring {
-  constructor(bind, previewAndEdit, edit) {
+  constructor(bind, previewAndEdit) {
     this.previewAndEdit = previewAndEdit;
     bind('open-match', () => {
       $('match-settings').open = true;
@@ -35,8 +35,9 @@ export class Scoring {
       const file = $('score-csv-file').files[0];
       const revision = this.project.revision;
       const csvText = new TextDecoder('utf-8', {fatal: true}).decode(await file.arrayBuffer());
-      await edit({action: 'import_scores', csv_text: csvText}, revision);
-      $('score-csv-file').value = '';
+      if (await previewAndEdit({action: 'import_scores', csv_text: csvText}, revision)) {
+        $('score-csv-file').value = '';
+      }
     }, 'submit');
   }
 
@@ -61,7 +62,6 @@ export class Scoring {
     $('match-no-ad').checked = rules?.no_ad ?? false;
     $('match-final-set').value = rules?.final_set ?? 'tie_break';
     this.toggleMatchFields();
-    $('score-csv-download').href = `/api/score-csv?revision=${project.revision}`;
     $('score-csv-form').hidden = project.read_only || !match;
   }
 
@@ -103,9 +103,11 @@ export class Scoring {
       return label;
     }
     const parts = [statusLabels[score.status]];
-    if (score.before) parts.unshift(`開始前 ${countLabel(score.before, view.before_points)}`);
+    if (view.before_points !== null) parts.unshift(`開始前 ${countLabel(score.before, view.before_points)}`);
     if (score.winner) parts.push(`得点 ${this.side(score.winner)}`);
+    if (view.chain_broken) parts.push('連鎖切れ');
     if (view.discontinuous) parts.push('不連続');
+    if (view.expected_server) parts.push('サーブ順の矛盾');
     label.textContent = parts.join(' · ');
     return label;
   }
@@ -117,28 +119,34 @@ export class Scoring {
     const score = clip.score;
     const view = this.project.score_views[clip.name];
     $('score-current').textContent = this.row(clip).textContent;
-    if (score) {
+    if (score && (!view.chain_broken || score.server_source === 'manual')) {
       $('score-current').textContent += ` · サーブ ${this.side(score.server)}（${score.server_source === 'auto' ? '自動' : '手動'}）`;
     }
     $('score-after').hidden = !view?.after;
     $('score-after').textContent = view?.after ? `終了後 ${countLabel(view.after, view.after.points_label)}` : '';
     $('score-saved-note').hidden = !score?.note;
     $('score-saved-note').textContent = score?.note ?? '';
-    $('score-warning').hidden = !view?.discontinuous;
-    $('score-warning').textContent = score?.before_source === 'chain' && !view?.chain_available
-      ? '連鎖が途切れています。続けるには開始前カウントを手入力してください。'
-      : '直前の終了後カウントと一致しません。';
+    const warnings = [];
+    if (view?.chain_broken) warnings.push('連鎖切れ。開始前カウントを手入力してください。');
+    if (view?.discontinuous) warnings.push('開始前と直前の終了後カウントが一致しません。');
+    if (view?.expected_server) {
+      warnings.push(`サーブ順の矛盾。直前からの計算では ${this.side(view.expected_server)}、保存値は ${this.side(score.server)} です。`);
+    }
+    $('score-warning').hidden = !warnings.length;
+    $('score-warning').textContent = warnings.join(' ');
     $('open-match').hidden = this.project.read_only || !!this.project.match;
     $('score-form').hidden = this.project.read_only || !this.project.match;
     if ($('score-form').hidden) return;
     $('score-status').value = score?.status ?? 'auto';
-    $('before-source').value = score?.before_source ?? (view?.chain_available ? 'chain' : 'anchor');
+    const broken = view?.chain_broken;
+    $('before-source').value = broken ? 'anchor' : (score?.before_source ?? (view?.chain_available ? 'chain' : 'anchor'));
+    $('before-source').querySelector('option[value="chain"]').disabled = broken === true;
     $('score-server').value = score?.server_source === 'manual' ? score.server : 'auto';
     $('score-note').value = score?.note ?? '';
     $('score-clear').disabled = !score;
     for (const key of ['sets', 'games', 'points']) {
-      $('score-' + key + '-a').value = score?.before?.[key]?.[0] ?? 0;
-      $('score-' + key + '-b').value = score?.before?.[key]?.[1] ?? 0;
+      $('score-' + key + '-a').value = broken ? '' : (score?.before?.[key]?.[0] ?? 0);
+      $('score-' + key + '-b').value = broken ? '' : (score?.before?.[key]?.[1] ?? 0);
     }
     const hard = this.project.match.rules.type === 'tennis';
     document.querySelectorAll('.score-sets').forEach(element => {

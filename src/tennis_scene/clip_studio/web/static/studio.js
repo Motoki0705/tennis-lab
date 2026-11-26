@@ -4,14 +4,17 @@ import {Scoring} from './scoring.js';
 const $ = id => document.getElementById(id);
 let project, selected = null, markIn = null, markOut = null, saving = false, view = null, proposal = null;
 function status(message, error = false) { $('status').textContent = message; $('status').classList.toggle('error', error); }
-async function api(path, body) {
+async function request(path, body) {
   const response = await fetch(`/api/${path}`, body === undefined ? {} : {
     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
   });
-  const result = await response.json();
-  if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : JSON.stringify(result.detail));
-  return result;
+  if (!response.ok) {
+    const {detail} = await response.json();
+    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
+  }
+  return response;
 }
+async function api(path, body) { return (await request(path, body)).json(); }
 function bind(id, handler, event = 'click') {
   $(id).addEventListener(event, e => {
     if (event === 'submit') e.preventDefault();
@@ -25,7 +28,7 @@ function setSyncPanel(visible) {
   $('sync-panel').parentElement.classList.toggle('sync-visible', visible);
 }
 const review = new DatasetReview(status);
-const scoring = new Scoring(bind, previewAndEdit, mutate);
+const scoring = new Scoring(bind, previewAndEdit);
 const playback = new Playback($('viewers'), (time, playing) => {
   $('time').textContent = timecode(time); $('seek-time').value = time.toFixed(3);
   $('seek').value = time; $('play').textContent = playing ? 'Ⅱ 停止' : '▶ 再生';
@@ -130,14 +133,21 @@ function renderProject(initial = false, scoreOnly = false) {
   $('common').textContent = b > a ? `全カメラ共通 ${timecode(a)} – ${timecode(b)}` : '全カメラ共通の区間なし';
   renderClips(); renderOffsets(); marks();
 }
-async function previewAndEdit(operation) {
+async function previewAndEdit(operation, revision = project.revision) {
   if (saving) throw new Error('保存中です。完了を待って操作してください。');
-  const preview = await api('edit/preview', {revision: project.revision, ...operation});
+  const preview = await api('edit/preview', {revision, ...operation});
+  const messages = [];
   if (preview.changed_clips) {
     const scope = operation.name ? `${operation.name} の変更で、後続の` : '試合設定の変更で、';
-    if (!window.confirm(`${scope}${preview.changed_clips} クリップのカウントが変わります。保存しますか？`)) return;
+    messages.push(`${scope}${preview.changed_clips} クリップのカウントが変わります。`);
   }
+  if (preview.broken_chain_clips.length) {
+    const clips = preview.broken_chain_clips;
+    messages.push(`${clips.length} クリップで連鎖切れになります（${clips.join('、')}）。開始前カウントの手入力が必要です。`);
+  }
+  if (messages.length && !window.confirm([...messages, '保存しますか？'].join('\n'))) return false;
   await mutate(operation, preview.revision);
+  return true;
 }
 async function mutate(operation, revision = project.revision) {
   if (project.read_only) throw new Error('読取専用レビューでは変更できません。');
@@ -205,14 +215,26 @@ bind('mark-in', () => { markIn = playback.time; marks(); }); bind('mark-out', ()
 bind('clear', () => { markIn = markOut = null; marks(); });
 bind('create', async () => {
   if (markIn === null || markOut === null || markOut <= markIn) throw new Error('開始より後に終了を指定してください。');
-  await mutate({action:'create', start_sec:markIn, end_sec:markOut}); markIn = markOut = null; marks();
+  if (await previewAndEdit({action:'create', start_sec:markIn, end_sec:markOut})) {
+    markIn = markOut = null; marks();
+  }
 });
 bind('undo', () => mutate({action:'undo'})); bind('redo', () => mutate({action:'redo'}));
 bind('reload', async () => { if (saving) throw new Error('保存中です。'); project = await api('project'); clearLoop(); renderProject(); status('保存済みプロジェクトを再読込しました'); });
-bind('clip-editor', () => mutate({action:'update', name:selected, new_name:$('clip-name').value, start_sec:$('clip-start').valueAsNumber, end_sec:$('clip-end').valueAsNumber}), 'submit');
+bind('clip-editor', () => previewAndEdit({action:'update', name:selected, new_name:$('clip-name').value, start_sec:$('clip-start').valueAsNumber, end_sec:$('clip-end').valueAsNumber}), 'submit');
 bind('set-start', () => { $('clip-start').value = playback.time.toFixed(6); });
 bind('set-end', () => { $('clip-end').value = playback.time.toFixed(6); });
-bind('delete', () => mutate({action:'delete', name:selected}));
+bind('delete', () => previewAndEdit({action:'delete', name:selected}));
+bind('score-csv-download', async () => {
+  const {revision, video_id} = project;
+  const response = await request(`score-csv?revision=${revision}`);
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${video_id}-scores.csv`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+});
 bind('loop', () => {
   if (playback.loop) { clearLoop(); playback.pause(); return; }
   const clip = project.clips.find(c => c.name === selected); playback.loop = clip;

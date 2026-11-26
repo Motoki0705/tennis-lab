@@ -7,6 +7,7 @@ import io
 from typing import Any
 
 from src.tennis_scene.clip_studio.project import ClipScore, ClipStudioProject
+from src.tennis_scene.clip_studio.score_chain import broken_chain_clip_names
 from src.utils.tennis_scoring import TennisRules
 
 COLUMNS = (
@@ -88,6 +89,12 @@ def import_scores(project: ClipStudioProject, text: str) -> None:
 
 
 def export_scores(project: ClipStudioProject) -> str:
+    broken = broken_chain_clip_names(project)
+    if broken:
+        raise ValueError(
+            f"連鎖切れのクリップ（{'、'.join(broken)}）があります。"
+            "開始前カウントを手入力してからCSVを書き出してください。"
+        )
     output = io.StringIO(newline="")
     writer = csv.writer(output)
     writer.writerow(COLUMNS)
