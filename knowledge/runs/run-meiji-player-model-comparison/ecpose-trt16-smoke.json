@@ -1,0 +1,51 @@
+{
+  "model_id": "ecpose-l-o365",
+  "backend": "trt16",
+  "benchmark_id": "meiji_4cam/multiview-player-evaluation-v1",
+  "manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+  "clip_id": "video_000/clip_003",
+  "camera_id": "cam0",
+  "engine_plan": {
+    "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/trt16/engine/engine.plan",
+    "sha256": "c5b809420582dbf9116659fe0ae782e878f465c9107e94dbe519d657bfcf7426"
+  },
+  "export": {
+    "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/trt16/onnx-export.json",
+    "sha256": "689c67f10c8bc04f0708e0f3ab00dcdb798afaae26f74cb69683e253ca46ed4c"
+  },
+  "build": {
+    "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/trt16/engine-build.json",
+    "sha256": "faa763d16adf74d1b19bdcb6b934cd59c672087a5210e3f6fd290d162b70995c"
+  },
+  "smoke": [
+    {
+      "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/trt16/smoke-b1.json",
+      "sha256": "fe7e47cc112096ce128862701f7cbd88ee280f857e469b2589a51198e10ca908",
+      "image_batch_size": 1,
+      "rows": [
+        {
+          "source_frame": 0,
+          "person_queries": 56,
+          "score_at_least_0_30": 2
+        }
+      ]
+    },
+    {
+      "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/trt16/smoke-b2.json",
+      "sha256": "496587529c8ebac011cc59b5020bfe7acfef60bd2b3ccf36292c30cfa589b3b2",
+      "image_batch_size": 2,
+      "rows": [
+        {
+          "source_frame": 0,
+          "person_queries": 55,
+          "score_at_least_0_30": 0
+        },
+        {
+          "source_frame": 2,
+          "person_queries": 60,
+          "score_at_least_0_30": 4
+        }
+      ]
+    }
+  ]
+}

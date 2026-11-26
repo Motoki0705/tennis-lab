@@ -60,6 +60,7 @@
 
 - **現行**: 2D検出はCOCO事前学習のDINO（personクラス、全画面、閾値.30）で全人物の候補を出し、選手かどうかはコート座標での滞在で判定します（#964のユーザー判断）。追跡はStrongSORT++＋pose/CLIPで、重複boxの統合は既定でoffです（[run 11](nodes/person_tracking/000013-run-i964-default-merge-r11-20260930.md)）。camera間の対応は、box下端の足元距離とCLIP-ReIDの外観をMILPで統合し、無ラベルclipで再較正した候補Aを既定にしました（[run 14](nodes/player_association/000005-run-i964-recalibration-fit-r14-20261001.md)、[run 16](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)）。
 - **根拠と限界**: 追跡方式は指標ごとに優位が入れ替わり、一律の勝者はありません（[run 10](nodes/person_tracking/000012-run-i964-tracker-hybrids-r10-20260930.md)）。予約した未見3clipの一回採点はpair F1 .720（3clip中2clipで決定）で、side欠測のclipも母数に残しています。旧追跡でのMeiji 4clip評価（[pair F1 0.997](nodes/player_association/000002-run-i933-association-meiji.md)）は、旧検出・旧追跡に限った結果です。AFLinkの重みは、利用条件が一次資料で未確認のまま使っています（[LICENSES.md](../LICENSES.md)）。
+- **検出・統合姿勢の置換候補**　固定Meiji 4camの6 clipでRF-DETR-L TRT16はRecall@0.50が96.81%、計時P50が26.43 ms/画像でした。DINO TRT16は96.67%、94.79 ms/画像です。ECDet-X O365 PT16はRecall@0.50/0.75が97.97%/46.62%、計時P50は50.75 ms/画像でした。検出候補の実BBoxを使ったViTPose-Hと下流品質の確認が残ります。ECPoseは高速で、欠測込み平均OKSは大きく低下しました。 [比較と採用時の制約](nodes/player_detection/000011-run-meiji-player-model-comparison.md)
 - **次の実験**: clip_000の全pipelineでの品質確認と、ダブルスの実データでの検証。#937で学習した選手検出器は、明示的なcheckpoint指定のときだけ使います。
 
 ## コートside（court_side）

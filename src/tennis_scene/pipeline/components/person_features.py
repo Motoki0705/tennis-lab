@@ -122,7 +122,7 @@ class PersonPoseFeaturesOutput:
     camera_id: str
     frame_offsets: NDArray[np.int64]
     source_rows: NDArray[np.int64]
-    keypoints: NDArray[np.float32]  # N,17,3; source pixels and raw heatmap peaks
+    keypoints: NDArray[np.float32]  # N,17,3; source pixels and model-defined joint confidence
     model_identity: str
     preprocessing_identity: str
 
@@ -189,7 +189,7 @@ class PersonAppearanceFeaturesInput:
     expected_decoder: OpenCVDecodeIdentity | None = None
 
 
-def _frames(video: SourceVideo, expected_decoder: OpenCVDecodeIdentity | None = None
+def iter_source_frames(video: SourceVideo, expected_decoder: OpenCVDecodeIdentity | None = None
             ) -> Generator[tuple[int, NDArray[np.uint8]], None, None]:
     count = 0
     for packet in OpenCVVideoFrameReader(video.path, max_frames=video.num_frames, expected_decoder=expected_decoder):
@@ -239,7 +239,7 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
             # Only boxes/indices and numeric outputs span the camera. The model's
             # shared crop iterator retains one decoded image and one crop batch.
             indices: NDArray[np.int64] = np.repeat(np.arange(video.num_frames, dtype=np.int64), np.diff(detections.frame_offsets))
-            frames = _frames(video)
+            frames = iter_source_frames(video)
             model: ViTPosePose2D = models.borrow('pose')
             result = model.predict(Pose2DFrameSequenceRequest(frames, pose_boxes(detections.boxes_xyxy, self.config),
                                                             torch.from_numpy(indices)))
@@ -283,7 +283,7 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
             if (detections.boxes_xyxy[:, 2:] <= detections.boxes_xyxy[:, :2]).any():
                 raise ValueError('Feature boxes must have positive area')
             indices: NDArray[np.int64] = np.repeat(np.arange(video.num_frames, dtype=np.int64), np.diff(detections.frame_offsets))
-            frames = _frames(video)
+            frames = iter_source_frames(video)
             crops = iter_frame_person_crops(frames, pose_boxes(detections.boxes_xyxy, self.config),
                                             torch.from_numpy(indices), batch_size=1)
             with closing(frames), closing(crops):
@@ -420,7 +420,7 @@ class PersonAppearanceFeaturesModule(InferenceComponent[PersonAppearanceFeatures
                embeddings: NDArray[np.float32], valid: NDArray[np.bool_], frame_sha256: NDArray[np.uint8],
                encoder: UnpromptedEncoder) -> Generator[AppearanceCrop, None, None]:
         detections = inputs.detections
-        with closing(_frames(inputs.video, inputs.expected_decoder)) as frames:
+        with closing(iter_source_frames(inputs.video, inputs.expected_decoder)) as frames:
             for frame, image in frames:
                 start, end = detections.frame_offsets[frame:frame + 2]
                 DetectionFeatures(frame, rows[start:end], detections.boxes_xyxy[start:end], detections.confidence[start:end],
