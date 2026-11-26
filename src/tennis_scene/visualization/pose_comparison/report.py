@@ -39,7 +39,19 @@ def _summary(
         "populated_frames": int(np.count_nonzero(counts)),
         "count_histogram": histogram(counts),
         "core_count_histogram": histogram(core_counts),
-        "unused_view_reprojection": None,
+    }
+
+
+def _reprojection(
+    errors: NDArray[np.floating] | None, *, empty_reason: str
+) -> dict[str, int | float | str | None]:
+    if errors is None or not errors.size:
+        return {"points": 0, "median_px": None, "p95_px": None, "reason": empty_reason}
+    return {
+        "points": int(errors.size),
+        "median_px": float(np.median(errors)),
+        "p95_px": float(np.quantile(errors, 0.95)),
+        "reason": None,
     }
 
 
@@ -62,11 +74,27 @@ def clip_metrics(
         np.concatenate(candidates.row_rejection_codes), minlength=len(RowRejection)
     )
     stopped = plan.baseline_reason is not None and not old_counts.any()
+    old_errors = scene.unused_view_errors if scene is not None else None
+    if stopped:
+        old_reason = "pipeline_stopped"
+    elif not old_counts.any():
+        old_reason = "no_valid_3d"
+    elif old_errors is None:
+        old_reason = "inliers_unavailable"
+    else:
+        old_reason = "no_unused_observations"
+    new_errors = candidates.reprojection_px[
+        candidates.reprojection_valid & ~candidates.inlier_mask
+    ]
+    new_reason = "no_unused_observations" if new_counts.any() else "no_valid_3d"
     return {
         "source_frames": n,
         "ball_valid_frames": 0 if scene is None else int(scene.ball_valid.sum()),
         "legacy": {
             **_summary(old_counts, old_core),
+            "unused_view_reprojection": _reprojection(
+                old_errors, empty_reason=old_reason
+            ),
             "status": "stopped" if stopped else "complete",
             "baseline_stop_code": plan.baseline_reason,
             "baseline_stop_label": STOP_LABELS.get(
@@ -77,6 +105,9 @@ def clip_metrics(
         },
         "new": {
             **_summary(new_counts, new_core),
+            "unused_view_reprojection": _reprojection(
+                new_errors, empty_reason=new_reason
+            ),
             "status": "complete",
             "reconstruction_seconds": pose_seconds,
             "ambiguous_candidates": int(candidates.ambiguous.sum()),

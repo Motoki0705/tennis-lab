@@ -251,7 +251,7 @@ class TennisSceneRenderer:
         return verts_court
 
     def _get_players_kp_3d(self, scene: SceneResult) -> NDArray[np.float32]:
-        if scene.schema_version == 2:
+        if scene.schema_version >= 2:
             if scene.player_kp_3d is None:
                 raise ValueError("v2 scene requires triangulated COCO17 joints")
             return scene.player_kp_3d
@@ -471,7 +471,7 @@ class TennisSceneRenderer:
             )
 
     def _render_players(self, ax: Axes3D, scene: SceneResult, frame_idx: int) -> None:
-        if scene.schema_version == 2:
+        if scene.schema_version >= 2:
             self._render_players_v2(ax, scene, frame_idx)
             return
         track_ids = self._get_player_tracks(scene)

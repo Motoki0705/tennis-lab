@@ -15,6 +15,7 @@ from src.tennis_scene.multiview_tracking.slot_assignment import (
     FragmentLink,
     SlotAssignment,
     assign_slots,
+    reachable_fragments,
 )
 from src.utils.schema.player import COCO17_BONE_LENGTH_EDGES
 
@@ -154,33 +155,37 @@ def describe_fragments(
 
 
 def _cores(
-    side: int, selection: PlayerSelection, fragments: tuple[Fragment, ...]
+    options: list[Fragment],
+    selected: set[int],
+    players_per_side: int,
+    links: list[FragmentLink],
 ) -> tuple[int, ...]:
-    # A qualifying first-stage track already supplies measured coverage.
-    # Keep it as that slot's core, including when every slot is filled.
-    cores = [
-        index for index in selection.selected_track_ids if fragments[index].side == side
-    ]
-    if len(cores) == selection.players_per_side:
-        return tuple(cores)
-    choices = sorted(
-        (
-            f
-            for f in fragments
-            if f.eligible and f.side == side and f.index not in cores
-        ),
+    preferred = sorted(
+        (f for f in options if f.index in selected), key=lambda f: f.index
+    )
+    provisional = sorted(
+        (f for f in options if f.index not in selected),
         key=lambda f: (-f.rank, f.index),
     )
-    for fragment in choices:
-        if all(
-            max(fragment.start.frame, fragments[i].start.frame)
-            <= min(fragment.end.frame, fragments[i].end.frame)
-            for i in cores
+    first, *others = [*preferred, *provisional]
+    if players_per_side == 1:
+        return (first.index,)
+
+    # Another piece of an admissible path through the first core can join
+    # that player even if both pieces qualify on their own.
+    continuations = reachable_fragments(first.index, links)
+    first_path_options = [f for f in options if f.index in continuations]
+    for fragment in others:
+        if fragment.index not in continuations and (
+            fragment.index in selected
+            or any(
+                fragment.start.frame <= piece.end.frame
+                and piece.start.frame <= fragment.end.frame
+                for piece in first_path_options
+            )
         ):
-            cores.append(fragment.index)
-            if len(cores) == selection.players_per_side:
-                break
-    return tuple(cores)
+            return (first.index, fragment.index)
+    return (first.index,)
 
 
 def _link(
@@ -243,18 +248,14 @@ def player_slots(
     config: FragmentConfig,
 ) -> tuple[SlotAssignment, ...]:
     assignments: list[SlotAssignment] = []
+    selected = set(selection.selected_track_ids)
     for side in (-1, 1):
-        cores = _cores(side, selection, fragments)
-        if not cores:
-            continue
         options = sorted(
-            (
-                f
-                for f in fragments
-                if f.index in cores or (f.eligible and f.side == side)
-            ),
+            (f for f in fragments if f.side == side and (f.eligible or f.index in selected)),
             key=lambda f: (f.start.frame, f.index),
         )
+        if not options:
+            continue
         rewards = {
             f.index: (
                 min(1.0, f.residence_frames / (0.35 * fps))
@@ -274,5 +275,6 @@ def player_slots(
                 link = _link(before, after, fps, config)
                 if link is not None:
                     links.append(link)
+        cores = _cores(options, selected, selection.players_per_side, links)
         assignments.extend(assign_slots(cores, rewards, links))
     return tuple(assignments)

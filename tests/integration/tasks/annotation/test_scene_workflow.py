@@ -7,6 +7,7 @@ import sys
 from contextlib import redirect_stdout
 from io import StringIO
 from pathlib import Path
+from types import SimpleNamespace
 from unittest.mock import Mock, patch
 
 import pytest
@@ -18,9 +19,10 @@ from src.tasks.ball_detection.generate_dataset.frame_store.publishing.snapshot i
 from src.tasks.base.annotation.artifacts import read_document
 from src.tasks.base.annotation.contracts import ArtifactRef, PublicationReceipt
 from src.tennis_scene.configuration import PipelineRuntimeConfig
-from src.tennis_scene.pipeline import TennisSceneOrchestrator
+from src.tennis_scene.pipeline import TennisSceneOrchestrator, source_identity
 from src.utils.configuration import PathRole
 from src.utils.paths import PROJECT_ROOT
+from tests.support.module_process import isolated_module_command
 from tests.support.tennis_scene.direct_workflow import (
     complete_annotations,
     direct_fixture,
@@ -31,6 +33,19 @@ from tests.support.tennis_scene.direct_workflow import (
 def test_optional_publication_and_receipt_interruption_resume_only_publication(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, publish: bool
 ) -> None:
+    first_commit = checkout_commit = "a" * 40
+    monkeypatch.setattr(
+        source_identity, "subprocess",
+        SimpleNamespace(check_output=lambda *args, **kw: checkout_commit),
+    )
+    checkout = tmp_path / "checkout"
+    rules = Path("src/tennis_scene/ball_events/rules.py")
+    rules_source = checkout / rules
+    rules_source.parent.mkdir(parents=True)
+    original_rules = (PROJECT_ROOT / rules).read_bytes()
+    rules_source.write_bytes(original_rules)
+    monkeypatch.setattr("src.tennis_scene.pipeline.orchestrator.PROJECT_ROOT", checkout)
+
     fixture = direct_fixture(tmp_path, publish=publish)
     # Use valid CUDA settings without constructing a model for empty pose inputs.
     fixture.hydra_config.device = "cuda"
@@ -59,11 +74,12 @@ def test_optional_publication_and_receipt_interruption_resume_only_publication(
     forbidden = Mock(
         side_effect=AssertionError("Completed annotation restarted a worker")
     )
-    orchestrator = TennisSceneOrchestrator(
-        fixture.config,
-        annotation_layout=fixture.layout,
-        annotation_controller_factory=forbidden,
-    )
+    def application(config: PipelineRuntimeConfig) -> TennisSceneOrchestrator:
+        return TennisSceneOrchestrator(
+            config, annotation_layout=fixture.layout, annotation_controller_factory=forbidden,
+        )
+
+    orchestrator = application(fixture.config)
     args = dict(
         video_paths=fixture.config.video_paths,
         camera_ids=fixture.config.camera_ids,
@@ -102,7 +118,8 @@ def test_optional_publication_and_receipt_interruption_resume_only_publication(
     assert saved["person_precision"] == precision
     fixture.hydra_config.direct_annotation.resume = "publication"
     resumed = PipelineRuntimeConfig.from_config(fixture.hydra_config)
-    orchestrator.config = resumed
+    checkout_commit = "b" * 40
+    orchestrator = application(resumed)
     monkeypatch.setattr(
         "src.tennis_scene.pipeline.orchestrator.standard_definition",
         Mock(side_effect=AssertionError("Publication recovery rebuilt scene")),
@@ -120,8 +137,25 @@ def test_optional_publication_and_receipt_interruption_resume_only_publication(
         assert not (workflow.directory / "publication.json").exists()
         orchestrator.config = resumed
 
+        rules_source.write_bytes(original_rules + b"\n# simulate a new rule source revision\n")
+        changed = application(resumed)
+        assert changed.code_identity != orchestrator.code_identity
+        with pytest.raises(ValueError, match="Saved event_detection implementation differs"):
+            changed.run(**args)
+        assert not (workflow.directory / "publication.json").exists()
+        assert json.loads(completion.read_text()) == saved
+        rules_source.write_bytes(original_rules)
+
+        legacy_receipt = {**saved, "event_detection": {**saved["event_detection"], "code_commit": first_commit}}
+        completion.write_text(json.dumps(legacy_receipt))
+        with pytest.raises(ValueError, match="Saved scene completion differs"):
+            orchestrator.run(**args)
+        assert not (workflow.directory / "publication.json").exists()
+        completion.write_text(json.dumps(saved))
+
     scene = orchestrator.run(**args)
     assert scene.ball_3d_valid.tolist() == [True, True, True, False]
+    assert scene.metadata["ball_events"]["provenance"]["code_commit"] == first_commit
     status = orchestrator.last_receipt
     assert status["dataset"]["status"] == ("complete" if publish else "not_requested")
     assert status["learning"]["status"] == "not_requested"
@@ -154,12 +188,10 @@ def test_blank_cli_pins_policy_runs_isolated_condition_and_reports_without_publi
     # retaining the real scheduler and the fixed 1536 MiB budget.
     parent_pss = _process_pss()
     result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
+        isolated_module_command(
             "tests.integration.tasks.annotation.test_scene_workflow",
             str(tmp_path),
-        ],
+        ),
         cwd=PROJECT_ROOT,
         env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT)},
         capture_output=True,

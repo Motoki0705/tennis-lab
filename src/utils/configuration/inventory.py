@@ -550,12 +550,16 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "tennis_scene.multiview_scene",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
-    "src.tennis_scene.visualization.pose_comparison.__main__": (
-        "tennis_scene.pose_comparison",
-        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
-    ),
     "src.tennis_scene.ball_events.__main__": (
         "tennis_scene.rule_ball_events",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tennis_scene.scripts.build_meiji_event_benchmark": (
+        "tennis_scene.meiji_event_benchmark",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tennis_scene.visualization.pose_comparison.__main__": (
+        "tennis_scene.pose_comparison",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tennis_scene.visualization.player_view.__main__": (
@@ -818,13 +822,19 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         optional_policy="the tracks and candidate stores are required for prepare/run",
     ),
     _non_hydra_boundary(
-        "src.tennis_scene.visualization.pose_comparison.__main__",
+        "src.tennis_scene.ball_events.__main__",
         "main",
         domain="tennis_scene",
         executable_module=True,
     ),
     _non_hydra_boundary(
-        "src.tennis_scene.ball_events.__main__",
+        "src.tennis_scene.scripts.build_meiji_event_benchmark",
+        "main",
+        domain="tennis_scene",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tennis_scene.visualization.pose_comparison.__main__",
         "main",
         domain="tennis_scene",
         executable_module=True,

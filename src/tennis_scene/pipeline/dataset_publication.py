@@ -10,6 +10,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 
+from src.tennis_scene.ball_event_schema import BALL_EVENT_FIELDS
 from src.tennis_scene.pipeline.appearance_media import (
     APPEARANCE_MEDIA,
     appearance_media_identity,
@@ -17,6 +18,11 @@ from src.tennis_scene.pipeline.appearance_media import (
 )
 from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.clip_inputs import DatasetClipInputs
+from src.tennis_scene.pipeline.components.event_detection import (
+    EVENT_DETECTION,
+    annotation_assets,
+    annotation_digests,
+)
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.recipes import (
     ECPOSE_RECIPE,
@@ -82,7 +88,7 @@ def scene_array_manifest(result: SceneResult) -> dict[str, dict[str, object]]:
         "player_track_ids": result.player_track_ids,
         "player_kp_3d": result.player_kp_3d,
     }
-    arrays.update({name: getattr(result, name) for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS)})
+    arrays.update({name: getattr(result, name) for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS, *BALL_EVENT_FIELDS)})
     return {
         name: {"shape": list(array.shape), "dtype": str(array.dtype)}
         for name, array in arrays.items()
@@ -113,8 +119,8 @@ def validate_dataset_result(result: SceneResult, record: DatasetClipRecord) -> N
         "human_kp_2d": (None, expected_n, expected_t, 17, 2),
         "human_kp_vis": (None, expected_n, expected_t, 17),
     }
-    if result.schema_version != 2 or result.metadata.get("pipeline_contract") != DECLARED_PIPELINE_CONTRACT:
-        problems.append(f"only {DECLARED_PIPELINE_CONTRACT} scene v2 results are published, got "
+    if result.schema_version < 2 or result.metadata.get("pipeline_contract") != DECLARED_PIPELINE_CONTRACT:
+        problems.append(f"only {DECLARED_PIPELINE_CONTRACT} scene v2 and v3 results are published, got "
                         f"schema v{result.schema_version} / {result.metadata.get('pipeline_contract')!r}")
     # A v2 scene always carries ball arrays; disabled features are all-invalid masks.
     required_shapes.update({"ball_uv": (expected_n, expected_t, 2), "ball_vis": (expected_n, expected_t), "ball_3d": (expected_t, 3)})
@@ -153,7 +159,7 @@ def _required_publication_components(inputs: DatasetClipInputs, identity: Mappin
 
     root = annotation_root(inputs.clip_dir, identity)
     document = json.loads((root / 'scene.json').read_text())
-    reference = document['exports']['scene']['inputs']['scene_assembly']
+    reference = document['artifacts']['scene_assembly']
     recipe = _publication_recipe(identity)
     fasthmr_settings = None
     if recipe == FASTHMR_RECIPE:
@@ -162,6 +168,22 @@ def _required_publication_components(inputs: DatasetClipInputs, identity: Mappin
             raise ValueError('FastHMR publication requires declared model settings')
         fasthmr_settings = overrides.get(recipe, {'recipe': recipe, 'models': models[recipe]})
     required: dict[str, Any] = require_current_body_artifacts(root, reference, recipe=recipe, fasthmr_settings=fasthmr_settings)
+    required["scene_assembly"] = reference
+    event_settings = identity.get(EVENT_DETECTION)
+    if isinstance(event_settings, Mapping):
+        event_ref = document["exports"]["scene"]["inputs"].get(EVENT_DETECTION)
+        if not isinstance(event_ref, dict) or (event_ref["schema"], event_ref["version"]) != ("scene_result", 3):
+            raise ValueError("Publication requires an event_detection SceneResult v3 export")
+        event = read_component_descriptor(root, event_ref, node=EVENT_DETECTION, source_sha256=document["source_sha256"])
+        if event["identity"].get("implementation") != identity["code_sha256"]:
+            raise ValueError("Published event_detection implementation differs from its declared source identity")
+        actual = event["identity"]["settings"]
+        expected = {key: value for key, value in event_settings.items()
+                    if key not in {"annotation_directory", "annotation_benchmark_manifest"}}
+        if (event["dependencies"].get("scene") != reference
+                or {key: value for key, value in actual.items() if key != "models"} != expected):
+            raise ValueError("Published scene differs from its declared event_detection inputs or settings")
+        required[EVENT_DETECTION] = event_ref
     if recipe == ECPOSE_RECIPE:
         from src.tennis_scene.pipeline.ecpose_artifacts import (
             require_current_ecpose_artifacts,
@@ -216,6 +238,11 @@ def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str,
 
 
 def _clip_publication_identity(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> Mapping[str, object]:
+    event = identity.get(EVENT_DETECTION)
+    if isinstance(event, Mapping) and "annotation_directory" in event:
+        assets = annotation_assets(Path(event["annotation_directory"]), inputs.record.clip_id,
+                                   benchmark_manifest=Path(event["annotation_benchmark_manifest"]))
+        identity = {**identity, EVENT_DETECTION: {**event, **annotation_digests(assets)}}
     if identity.get("bind_appearance_media") is True:
         return {**identity, APPEARANCE_MEDIA: appearance_media_identity(inputs.camera_ids, inputs.video_paths)}
     return identity

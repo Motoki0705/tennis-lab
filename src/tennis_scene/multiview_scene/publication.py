@@ -12,7 +12,7 @@ from tempfile import NamedTemporaryFile, TemporaryDirectory
 from typing import TYPE_CHECKING, Any
 
 from src.tennis_scene.archive import load_scene_result
-from src.tennis_scene.multiview_scene.inputs import RECIPE
+from src.tennis_scene.multiview_scene.inputs import INPUT_NODE, RECIPE
 from src.tennis_scene.pipeline.artifacts import document_digest, write_json_atomic
 from src.tennis_scene.pipeline.dataset_publication import (
     ANNOTATION_RELATIVE_DIR,
@@ -33,10 +33,63 @@ if TYPE_CHECKING:
 
 POINTERS = ("scene.json", "annotation.json")
 PUBLICATION = "multiview_scene_publication"
+LEGACY_GENERATIONS = ("active", "before-multiview")
 
 
 def read_pointers(root: Path) -> dict[str, str]:
     return {name: (root / name).read_text(encoding="utf-8") for name in POINTERS}
+
+
+def open_legacy_store(root: Path, generation: str) -> StoreReader:
+    """Read the chosen legacy index in place, including its immutable generations."""
+    active = StoreReader(root / "scene.json")
+    if generation == "active":
+        if PUBLICATION in active.document or INPUT_NODE in active.references:
+            raise ValueError(
+                f"{root}: choose --legacy-generation before-multiview for the adopted multiview scene"
+            )
+        return active
+    if generation != "before-multiview":
+        raise ValueError(f"Unknown legacy generation: {generation}")
+
+    revision = active.document.get(PUBLICATION)
+    if (
+        not isinstance(revision, str)
+        or len(revision) != 64
+        or any(c not in "0123456789abcdef" for c in revision)
+    ):
+        raise ValueError(
+            f"{root}: no adopted multiview publication with a legacy generation"
+        )
+    journal = root / "updates" / "multiview_scene" / f"{revision}.json"
+    if not journal.is_file():
+        raise FileNotFoundError(f"Missing multiview publication receipt: {journal}")
+    receipt = json.loads(journal.read_text(encoding="utf-8"))
+    if receipt["revision"] != revision or receipt["after"] != read_pointers(root):
+        raise ValueError(
+            f"Multiview publication receipt disagrees with the adopted pointers: {journal}"
+        )
+
+    before = receipt["before"]["scene.json"]
+    marker = json.loads(receipt["before"]["annotation.json"])
+    frozen = active.descriptor(INPUT_NODE)
+    pins = frozen["identity"]["pins"]
+    legacy = StoreReader(root / "scene.json", document=json.loads(before))
+    if (
+        pins["recipe"] != RECIPE
+        or pins["legacy_index_sha256"] != sha256(before.encode("utf-8")).hexdigest()
+        or legacy.source_sha256 != active.source_sha256
+        or INPUT_NODE in legacy.references
+        or PUBLICATION in legacy.document
+        or marker.get("scene_index") != "scene.json"
+        or marker.get("scene_result")
+        != legacy.document["exports"]["scene"]["files"]["scene"]["path"]
+    ):
+        raise ValueError(
+            f"Invalid legacy generation in multiview publication receipt: {journal}"
+        )
+    active.assert_unchanged()
+    return legacy
 
 
 def require_known_pointers(
@@ -156,16 +209,22 @@ def change_publication(
             if revisions:
                 selected.append((root, None, revisions.pop()))
         else:
-            candidate = StoreReader(output / record.clip_id / "scene.json")
-            indexed_scene_path(candidate.index_path)
-            metadata = candidate.descriptor("scene_assembly")["payload"]["metadata"]
+            candidate_store = StoreReader(output / record.clip_id / "scene.json")
+            indexed_scene_path(candidate_store.index_path)
+            metadata = candidate_store.descriptor("scene_assembly")["payload"][
+                "metadata"
+            ]
             if (
                 metadata["player_reconstruction_method"] != RECIPE
                 or metadata["status"] != "ok"
             ):
                 raise ValueError(f"Multiview result is incomplete: {record.clip_id}")
             selected.append(
-                (root, candidate, candidate.references["scene_assembly"]["artifact_id"])
+                (
+                    root,
+                    candidate_store,
+                    candidate_store.references["scene_assembly"]["artifact_id"],
+                )
             )
     for root, candidate, revision in selected:
         if len(revision) != 64 or any(c not in "0123456789abcdef" for c in revision):

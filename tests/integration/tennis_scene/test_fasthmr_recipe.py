@@ -154,32 +154,35 @@ def test_only_the_exact_standard_recipe_patch_preserves_previous_source_identity
     manifest = PROJECT_ROOT / "src/tennis_scene/pipeline/standard_recipe_cache_compatibility.json"
     records = json.loads(manifest.read_text())["files"]
     people = json.loads(manifest.with_name("ecpose_recipe_cache_compatibility.json").read_text())["files"]
-    plcs_path = "tennis_scene/pipeline/components/monocular_plcs.py"
-    integration = json.loads(manifest.with_name("multiview_integration_cache_compatibility.json").read_text())["files"]
-    recipe_paths = records.keys() | people.keys() | {plcs_path}
-    current = {
-        path: dual_sha256(PROJECT_ROOT / "src" / path)
-        for path in recipe_paths | integration.keys()
+    pose = json.loads(manifest.with_name("multiview_pose_cache_compatibility.json").read_text())["files"]
+    outside_recipes = {
+        "tennis_scene/pipeline/components/monocular_plcs.py": "e" * 64,
+        **{path: entry["before"] for path, entry in pose.items()
+           if path not in records and path not in people and entry["before"] is not None},
     }
-    # Both model recipes must apply their own rules to the live integrated sources.
-    main_sources = compatible_source_digests(current, tensorrt=True)
-    assert {path: main_sources[path] for path in people} == {path: entry["after"] for path, entry in people.items()}
-    unchanged = {path: digest for path, digest in main_sources.items() if path not in recipe_paths}
-    outside_fast = {path: entry["before"] for path, entry in people.items()
-                    if path not in records and entry["before"] is not None}
-    outside_fast[plcs_path] = main_sources[plcs_path]
-    fast_sources = compatible_source_digests(current, standard_people=True, tensorrt=True)
-    assert fast_sources == {**unchanged, **outside_fast, **{path: entry["after"] for path, entry in records.items()}}
+    before_pose = {
+        **outside_recipes,
+        **{path: entry["after"] for path, entry in records.items()},
+        **{path: entry["after"] for path, entry in people.items()},
+    }
+    reviewed = before_pose | {path: entry["after"] for path, entry in pose.items()}
+    assert compatible_source_digests(reviewed, tensorrt=True) == before_pose
+    outside_fast = {
+        **outside_recipes,
+        **{path: entry["before"] for path, entry in people.items()
+           if path not in records and entry["before"] is not None},
+    }
+    fast_sources = compatible_source_digests(reviewed, standard_people=True, tensorrt=True)
+    assert fast_sources == {**outside_fast, **{path: entry["after"] for path, entry in records.items()}}
     baseline = {
-        **unchanged,
         **outside_fast,
         **{path: entry["before"] for path, entry in records.items() if entry["before"] is not None},
     }
-    assert compatible_source_digests(current, standard_recipe=True, tensorrt=True) == baseline
+    assert compatible_source_digests(reviewed, standard_recipe=True, tensorrt=True) == baseline
     local_edit = {**fast_sources, "tennis_scene/pipeline/definition.py": "a" * 64}
     assert compatible_source_digests(local_edit, standard_recipe=True, tensorrt=True) == local_edit
     people_edit = {"submodules/models/ecpose/runtime.py": "b" * 64}
-    assert compatible_source_digests(current | people_edit, standard_recipe=True, tensorrt=True) == main_sources | people_edit
+    assert compatible_source_digests(reviewed | people_edit, standard_recipe=True, tensorrt=True) == before_pose | people_edit
 
 
 @pytest.mark.parametrize("override,message", [

@@ -17,9 +17,11 @@ class StoreReader:
     from the returned descriptor; this reader never converts historical artifacts.
     """
 
-    def __init__(self, index: Path) -> None:
+    def __init__(self, index: Path, *, document: dict[str, Any] | None = None) -> None:
         self.index_path = index.resolve()
-        document = json.loads(self.index_path.read_text())
+        self._live = document is None
+        if document is None:
+            document = json.loads(self.index_path.read_text())
         self.document = document
         if document.get("schema") != "tennis_scene_index_v1":
             raise ValueError("Expected tennis_scene_index_v1 scene.json")
@@ -33,6 +35,11 @@ class StoreReader:
         self.references: dict[str, dict[str, Any]] = document["artifacts"]
         self._active_by_artifact = {reference["artifact_id"]: node for node, reference in self.references.items()}
         self._staleness: dict[str, tuple[str, ...]] = {}
+
+    def assert_unchanged(self) -> None:
+        """Verify that a live index was not replaced while reading its artifacts."""
+        if self._live and json.loads(self.index_path.read_text(encoding="utf-8")) != self.document:
+            raise ValueError(f"Scene index changed during loading: {self.index_path}")
 
     def descriptor(self, node: str) -> dict[str, Any]:
         """Return the descriptor after verifying its path, checksum and index entry."""

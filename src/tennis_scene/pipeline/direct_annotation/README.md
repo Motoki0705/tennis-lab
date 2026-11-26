@@ -66,6 +66,7 @@ The `clip_id` must equal the fixed bundle's manifest clip ID.
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   'video_paths=[samples/cam0.mp4,samples/cam1.mp4,samples/cam2.mp4]' \
   'camera_ids=[cam0,cam1,cam2]' 'clip_id=meiji_3cam/video_000/clip_000' \
+  event_detection.method=rule \
   ball_detection.method=gpt_annotation ball_detection.checkpoint=null \
   direct_annotation.request=chat_annotation/campaigns/scene-inputs/request.json \
   direct_annotation.request_sha256="$REQUEST_SHA256" \
@@ -109,6 +110,18 @@ This validates completed annotations and the saved scene export, then resumes
 the publisher without building scene stages or admitting a worker. Interruption
 after publisher commit but before the workflow receipt resolves to the original
 snapshot. A new output request never overwrites saved annotations.
+
+Publication recovery checks the adopted `event_detection` artifact against the
+current normalized source identity. When inputs, settings and source identity
+match across commits, recovery preserves the original computation commit in the
+event metadata. A source identity mismatch stops before publication.
+
+If the `event_detection` settings in an older `scene-completion.json` contain
+`code_commit`, rerun the same scene command and store with
+`direct_annotation.resume=workflow cache.source=execute execution.event_detection=execute`.
+This reuses the completed annotations and writes a new scene completion
+receipt. Use `direct_annotation.resume=publication` for subsequent
+publication-only recovery.
 
 ## Exploration trials and measurements
 

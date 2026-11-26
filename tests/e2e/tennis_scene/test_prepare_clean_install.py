@@ -62,4 +62,8 @@ def test_generated_commands_quote_paths_and_use_only_fresh_venv(tmp_path: Path) 
     assert "CUDA_VISIBLE_DEVICES=''" not in pipeline
     assert "CUDA_VISIBLE_DEVICES=''" in visualization
     assert "src.tennis_scene.scripts.run_pipeline" in tokens
+    preflight = _MODULE.preflight_command(repo)
+    assert preflight == [str(repo / ".venv/bin/python"), "-m", "src.tennis_scene.scripts.preflight",
+                         "event_detection.method=rule"]
+    assert [token for token in tokens if token.startswith("event_detection.")] == preflight[3:]
     assert "style.player_representation=smpl" in visualization

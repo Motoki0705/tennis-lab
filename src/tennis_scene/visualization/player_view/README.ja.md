@@ -2,7 +2,7 @@
 
 [English](README.md) · [简体中文](README.zh-CN.md)
 
-保存済みSceneResult v2をCPUで読み、Blenderと3DGSの選手視点描画で共通利用する
+保存済みSceneResult v2・v3をCPUで読み、Blenderと3DGSの選手視点描画で共通利用する
 bundleを書き出します。既存のmesh配置・PC2・コート幾何を再利用します。
 後述の頭部カメラexporterはこのbundleだけを読み、描画は後続で行います。
 

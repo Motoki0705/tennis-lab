@@ -17,9 +17,10 @@ from src.tennis_scene.multiview_tracking.schema import NODE as TRACKING_NODE
 from src.tennis_scene.multiview_tracking.schema import PoseTracks
 from src.tennis_scene.multiview_tracking.storage import read_tracks
 from src.tennis_scene.pipeline.artifacts import document_digest
+from src.tennis_scene.pipeline.components.event_detection import EVENT_DETECTION
 from src.tennis_scene.pipeline.contracts import ClipSource
 from src.tennis_scene.pipeline.storage.codec import restore_type, unpack_value
-from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
+from src.tennis_scene.pipeline.storage.scene_index import scene_path_from_index
 from src.tennis_scene.visualization.review.store import StoreReader
 from src.utils.checksum import dual_sha256
 from src.utils.geometry.triangulation import PinholeCamera
@@ -73,6 +74,8 @@ class AdoptedScene:
     ball_valid: NDArray[np.bool_]
     alignment_ref: dict[str, Any]
     ball_ref: dict[str, Any] | None
+    schema_version: int = 2
+    unused_view_errors: NDArray[np.float64] | None = None
 
 
 @dataclass(frozen=True)
@@ -277,6 +280,61 @@ def _tracks(store: StoreReader) -> tuple[TrackBoxes, ...]:
     return tuple(tracks)
 
 
+def _component_node(
+    store: StoreReader, reference: dict[str, Any], schema: str, version: int
+) -> str:
+    nodes: list[str] = [
+        node for node, current in store.references.items() if current == reference
+    ]
+    if len(nodes) != 1 or (reference["schema"], reference["version"]) != (
+        schema,
+        version,
+    ):
+        raise ValueError(
+            f"Expected an adopted {schema} v{version} in {store.index_path}"
+        )
+    return nodes[0]
+
+
+def _unused_view_errors(
+    cameras: tuple[PinholeCamera, ...],
+    xyz: NDArray[np.float32],
+    valid: NDArray[np.bool_],
+    skeleton: dict[str, Any],
+    points: NDArray[np.float32],
+    visibility: NDArray[np.float32],
+    size: tuple[int, int],
+) -> NDArray[np.float64]:
+    observed_shape = (len(xyz), len(cameras), *valid.shape[1:])
+    inliers = skeleton["inliers"]
+    if (
+        inliers.shape != observed_shape
+        or inliers.dtype != np.bool_
+        or not np.array_equal(skeleton["valid"], valid)
+        or not np.array_equal(skeleton["positions"], xyz)
+        or points.shape != (*observed_shape, 2)
+        or points.dtype != np.float32
+        or visibility.shape != observed_shape
+        or visibility.dtype != np.float32
+        or not np.isfinite(points).all()
+        or not np.isfinite(visibility).all()
+    ):
+        raise ValueError(
+            "Scene joints or observations disagree with the adopted skeleton axes"
+        )
+
+    scale = np.asarray(size, dtype=np.float32)
+    errors = []
+    for view, camera in enumerate(cameras):
+        projected, front = camera.project(xyz)
+        unused = valid & front & (visibility[:, view] > 0) & ~inliers[:, view]
+        errors.append(
+            np.linalg.norm(projected[unused] - points[:, view][unused] * scale, axis=-1)
+        )
+    result: NDArray[np.float64] = np.concatenate(errors)
+    return result
+
+
 def _read_scene(store: StoreReader, source: ClipSource) -> AdoptedScene | None:
     assembly = store.references.get("scene_assembly")
     export = store.document["exports"].get("scene")
@@ -286,29 +344,49 @@ def _read_scene(store: StoreReader, source: ClipSource) -> AdoptedScene | None:
         assembly is None
         or export is None
         or (assembly["schema"], assembly["version"]) != ("scene_result", 2)
-        or export["inputs"].get("scene_assembly") != assembly
     ):
         raise ValueError(
             f"The adopted scene and its export disagree: {store.index_path}"
         )
-    dependencies = store.descriptor("scene_assembly")["dependencies"]
-    alignment = dependencies["alignment"]
-    alignment_nodes = [
-        node for node, ref in store.references.items() if ref == alignment
-    ]
-    if len(alignment_nodes) != 1 or (alignment["schema"], alignment["version"]) != (
-        "aligned_cameras",
-        1,
+    events = store.references.get(EVENT_DETECTION)
+    if export["inputs"] == {"scene_assembly": assembly}:
+        version = 2
+    elif (
+        events is not None
+        and (events["schema"], events["version"]) == ("scene_result", 3)
+        and export["inputs"] == {EVENT_DETECTION: events}
+        and store.descriptor(EVENT_DETECTION)["dependencies"].get("scene") == assembly
     ):
+        version = 3
+    else:
         raise ValueError(
-            f"The scene must name an adopted aligned_cameras v1 component: {store.index_path}"
+            f"The adopted scene and its export disagree: {store.index_path}"
         )
-    alignment_node = alignment_nodes[0]
-    archive = indexed_scene_path(
-        store.index_path,
+
+    dependencies = store.descriptor("scene_assembly")["dependencies"]
+    tracked = dependencies.get("tracked")
+    if tracked is None:
+        alignment = dependencies["alignment"]
+        alignment_node = _component_node(store, alignment, "aligned_cameras", 1)
+        ball_ref = dependencies.get("ball")
+    else:
+        alignment = ball_ref = tracked
+        alignment_node = _component_node(store, tracked, "multiview_scene_inputs", 1)
+    archive = scene_path_from_index(
+        store.root, store.document,
         required_components={"scene_assembly": assembly, alignment_node: alignment},
     )
-    geometry = _payload_fields(store, alignment_node, ("geometry",))["geometry"]
+    skeleton = None
+    if tracked is None:
+        geometry = _payload_fields(store, alignment_node, ("geometry",))["geometry"]
+        skeleton_ref = dependencies.get("skeleton")
+        if skeleton_ref is not None:
+            node = _component_node(store, skeleton_ref, "player_skeletons", 1)
+            skeleton = _payload_fields(store, node, ("skeleton",))["skeleton"]
+    else:
+        frozen = _payload_fields(store, alignment_node, ("alignment", "people"))
+        geometry = frozen["alignment"]["geometry"]
+        skeleton = frozen["people"]["skeleton"]
     cameras = tuple(PinholeCamera(**entry) for entry in geometry["cameras"])
     metadata = json.loads(
         archive.with_suffix(".metadata.json").read_text(encoding="utf-8")
@@ -318,7 +396,7 @@ def _read_scene(store: StoreReader, source: ClipSource) -> AdoptedScene | None:
         tuple(camera.camera_id for camera in cameras) != source.camera_ids
         or tuple(metadata["camera_ids"]) != source.camera_ids
         or metadata["dataset_clip_id"] != source.clip_id
-        or metadata["scene_schema_version"] != 2
+        or metadata["scene_schema_version"] != version
         or len(set(ids)) != len(ids)
         or any(type(value) is not int for value in ids)
     ):
@@ -334,21 +412,32 @@ def _read_scene(store: StoreReader, source: ClipSource) -> AdoptedScene | None:
             raise ValueError(f"Legacy scene timeline mismatch: {archive}")
         xyz, valid = arrays["player_kp_3d"], arrays["player_kp_3d_vis"]
         ball, ball_valid = arrays["ball_3d"], arrays["ball_3d_valid"]
-    if (
-        xyz.dtype != np.float32
-        or xyz.shape != (len(ids), frames, 17, 3)
-        or not np.isfinite(xyz).all()
-        or valid.dtype != np.bool_
-        or valid.shape != xyz.shape[:-1]
-        or ball.dtype != np.float32
-        or ball.shape != (frames, 3)
-        or not np.isfinite(ball).all()
-        or ball_valid.dtype != np.bool_
-        or ball_valid.shape != (frames,)
-    ):
-        raise ValueError(f"Legacy scene has invalid 3D arrays or masks: {archive}")
+        if (
+            xyz.dtype != np.float32
+            or xyz.shape != (len(ids), frames, 17, 3)
+            or not np.isfinite(xyz).all()
+            or valid.dtype != np.bool_
+            or valid.shape != xyz.shape[:-1]
+            or ball.dtype != np.float32
+            or ball.shape != (frames, 3)
+            or not np.isfinite(ball).all()
+            or ball_valid.dtype != np.bool_
+            or ball_valid.shape != (frames,)
+        ):
+            raise ValueError(f"Legacy scene has invalid 3D arrays or masks: {archive}")
+        errors = None
+        if skeleton is not None and valid.any():
+            errors = _unused_view_errors(
+                cameras,
+                xyz,
+                valid,
+                skeleton,
+                arrays["human_kp_2d"],
+                arrays["human_kp_vis"],
+                source.size,
+            )
     return AdoptedScene(
-        cameras, ids, xyz, valid, ball, ball_valid, alignment, dependencies.get("ball")
+        cameras, ids, xyz, valid, ball, ball_valid, alignment, ball_ref, version, errors
     )
 
 
@@ -390,8 +479,7 @@ def load_comparison(
     tracks = _tracks(old) if scene is None or not scene.valid.any() else ()
     check_media(source)
     for store in (old, new):
-        if json.loads(store.index_path.read_text(encoding="utf-8")) != store.document:
-            raise ValueError(f"Scene index changed during loading: {store.index_path}")
+        store.assert_unchanged()
     return ComparisonInputs(
         source,
         scene,
@@ -402,6 +490,9 @@ def load_comparison(
         {
             "legacy_scene_assembly": old.references.get("scene_assembly"),
             "legacy_scene_export": old.document["exports"].get("scene"),
+            "legacy_scene_schema_version": scene.schema_version
+            if scene is not None
+            else None,
             "legacy_camera_alignment": scene.alignment_ref
             if scene is not None
             else None,
@@ -449,8 +540,7 @@ def load_tracking(
     ):
         raise ValueError(f"Tracking inputs or settings disagree for {clip_id}")
     tracks = read_tracks(store.root, expected_artifact_id=reference["artifact_id"])
-    if json.loads(store.index_path.read_text(encoding="utf-8")) != store.document:
-        raise ValueError(f"Scene index changed during loading: {store.index_path}")
+    store.assert_unchanged()
     return tracks, {
         **data.provenance,
         "tracking_artifact": reference,

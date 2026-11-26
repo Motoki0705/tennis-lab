@@ -20,7 +20,7 @@ def test_explicit_pipeline_preset_and_subset(tmp_path: Path, name: str, expected
             "dataset_directory=dataset", "video_id=video_000", f"pipeline_config={name}",
             "clip_ids=[video_000/clip_037]", "batching.enabled=true", "batching.sizes.dino=1",
             "batching.clips_per_pass=3", "record_cuda=true", "record_cuda_synchronize=false",
-            "record_sample_interval=0.25"])
+            "record_sample_interval=0.25", 'pipeline_overrides=["event_detection.method=rule"]'])
         parsed = parse_video_batch_config(cfg)
         _, pipeline = _compose_pipeline_config(parsed.generation, config_name=parsed.pipeline_config)
     assert parsed.video_id == "video_000" and parsed.generation.clip_ids == ("video_000/clip_037",)

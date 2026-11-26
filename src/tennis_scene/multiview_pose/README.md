@@ -4,7 +4,7 @@
 
 ## 実行
 
-入力clip storeの `scene.json` が指す `person_detections` v2、`person_pose_features` v2と `local_court_calibration` v1を使います。DINOは全画面・元行をすべて保持した版を使い、poseのcamera・`frame_offsets`・`source_rows` を検出と照合します。poseは同じ版の検出、校正は共有 `court_observations` v3から生成したものに限定します。上流に指定外の依存がある実行は停止します。
+入力clip storeの `scene.json` が指す `person_detections` v2、`person_pose_features` v2と `local_court_calibration` v1を使います。全カメラでDINOとViTPoseの保存設定に `enabled=true` が必要です。有効な観測の結果が空の場合は候補ゼロとして扱います。DINOは全画面・元行をすべて保持した版を使い、poseのcamera・`frame_offsets`・`source_rows` を検出と照合します。poseは同じ版の検出、校正は共有 `court_observations` v3から生成したものに限定します。上流に指定外の依存がある実行は停止します。
 
 `--side-digest` でボール由来の動画共有判定を指定します。判定からコート・driftのdigestを解決し、判定済みclipの集合・カメラ順・レイの基準となるカメラ行列・元動画の実ファイルSHA-256を照合します。検証済み動画内で単独判定が未決のclipは警告を残して進み、共有判定との矛盾、判定なし、digest・映像・校正の不一致では停止します。meiji_4cam の各storeは #2241 の記録から取得できます。 [保存済み共有判定とコートの配置](../../../knowledge/runs/run-court-side-video-shared-20261118/reproduce.md)
 

@@ -4,6 +4,7 @@ import pytest
 from pydantic import ValidationError
 
 from src.tennis_scene.clip_studio.project import ClipStudioProject
+from src.tennis_scene.clip_studio.score_csv import export_scores
 from src.tennis_scene.clip_studio.web.service import Edit, Editor, RevisionConflict
 
 
@@ -89,6 +90,218 @@ def test_new_edit_after_undo_discards_redo(editor):
     editor.edit(Edit(revision=2, action="offsets", offsets_sec=[0.5, -1]))
     assert not editor.snapshot()["can_redo"]
     assert editor.snapshot()["common"] == (1, 9)
+
+
+def _match_payload(*, no_ad=False):
+    return {
+        "sides": {"A": "青", "B": "赤"},
+        "rules": {
+            "type": "tennis",
+            "best_of": 3,
+            "no_ad": no_ad,
+            "final_set": "tie_break",
+        },
+        "first_server": "A",
+    }
+
+
+def _anchor_winner(*, before, winner):
+    return {
+        "status": "confirmed",
+        "before": before,
+        "before_source": "anchor",
+        "server": None,
+        "server_source": "auto",
+        "winner": winner,
+        "note": "",
+    }
+
+
+def _loaded(editor):
+    return ClipStudioProject.load(
+        editor.path,
+        editor.resolver,
+        dataset_id=editor.project.dataset_id,
+        video_id=editor.project.video_id,
+    )
+
+
+def test_score_and_rules_preview_save_and_undo_as_single_operations(editor):
+    editor.edit(Edit(revision=0, action="create", start_sec=5, end_sec=7))
+    editor.edit(Edit(revision=1, action="set_match", match=_match_payload()))
+    score = _anchor_winner(
+        before={"sets": [0, 0], "games": [0, 0], "points": [3, 3]}, winner="B"
+    )
+    operation = Edit(revision=2, action="set_score", name="clip_000", score=score)
+    before = editor.path.read_bytes()
+    assert editor.preview(operation) == {
+        "revision": 2,
+        "changed_clips": 1,
+        "broken_chain_clips": [],
+    }
+    assert editor.path.read_bytes() == before
+    assert all(clip.score is None for clip in editor.project.clips)
+    scored = editor.edit(operation)
+    assert scored["clips"][1]["score"]["before"]["points"] == [3, 4]
+    assert scored["score_views"]["clip_000"]["after"]["points_label"] == "AD B"
+    with pytest.raises(RevisionConflict):
+        editor.edit(operation)
+    with pytest.raises(RevisionConflict):
+        editor.preview(operation)
+
+    rule_edit = Edit(revision=3, action="set_match", match=_match_payload(no_ad=True))
+    assert editor.preview(rule_edit) == {
+        "revision": 3,
+        "changed_clips": 1,
+        "broken_chain_clips": [],
+    }
+    updated = editor.edit(rule_edit)
+    assert updated["clips"][1]["score"]["before"] == {
+        "sets": [0, 0],
+        "games": [0, 1],
+        "points": [0, 0],
+    }
+    assert updated["clips"][1]["score"]["server"] == "B"
+    assert _loaded(editor).clips == editor.project.clips
+    undone = editor.edit(Edit(revision=4, action="undo"))
+    assert undone["clips"] == scored["clips"] and undone["match"] == scored["match"]
+    redone = editor.edit(Edit(revision=5, action="redo"))
+    assert redone["clips"] == updated["clips"] and redone["match"] == updated["match"]
+
+
+def test_match_end_in_existing_chain_refuses_preview_and_apply(editor):
+    editor.edit(Edit(revision=0, action="create", start_sec=5, end_sec=7))
+    editor.edit(
+        Edit(
+            revision=1,
+            action="set_match",
+            match={
+                "sides": {"A": "A", "B": "B"},
+                "rules": {"type": "soft_tennis", "match_games": 7},
+                "first_server": "A",
+            },
+        )
+    )
+    before = {"games": [3, 0], "points": [3, 1]}
+    editor.edit(
+        Edit(
+            revision=2,
+            action="set_score",
+            name="clip_000",
+            score=_anchor_winner(before=before, winner="B"),
+        )
+    )
+    edit = Edit(
+        revision=3,
+        action="set_score",
+        name="clip_000",
+        score=_anchor_winner(before=before, winner="A"),
+    )
+    saved = editor.path.read_bytes()
+    for apply in (editor.preview, editor.edit):
+        with pytest.raises(ValueError, match="clip 'clip_001'.*試合終了後"):
+            apply(edit)
+        assert editor.path.read_bytes() == saved and editor.revision == 3
+    editor.edit(Edit(revision=3, action="set_score", name="clip_001", score=None))
+    terminal = editor.edit(edit.model_copy(update={"revision": 4}))
+    assert terminal["clips"][1]["score"] is None
+    assert terminal["score_views"]["clip_000"]["after"]["points_label"] == "試合終了"
+
+
+@pytest.mark.parametrize("stop", ["unknown", "multiple_points", None])
+def test_breaking_confirmed_chain_requires_a_new_anchor_before_export(editor, stop):
+    editor.edit(Edit(revision=0, action="create", start_sec=5, end_sec=7))
+    editor.edit(Edit(revision=1, action="set_match", match=_match_payload()))
+    before = {"sets": [0, 0], "games": [0, 0], "points": [2, 1]}
+    first = _anchor_winner(before=before, winner="A")
+    editor.edit(Edit(revision=2, action="set_score", name="clip_000", score=first))
+    second = {
+        **first,
+        "before": None,
+        "before_source": "chain",
+        "winner": "B",
+        "note": "映像で確認",
+    }
+    editor.edit(Edit(revision=3, action="set_score", name="clip_001", score=second))
+    linked = editor.edit(Edit(revision=4, action="create", start_sec=7, end_sec=8))
+    assert linked["score_views"]["clip_001"]["after"]["points"] == [3, 2]
+    assert linked["score_views"]["clip_002"]["chain_available"]
+    saved = editor.path.read_bytes()
+
+    replacement = (
+        {**first, "status": stop, "winner": None, "note": "判定保留"} if stop else None
+    )
+    edit = Edit(revision=5, action="set_score", name="clip_000", score=replacement)
+    assert editor.preview(edit) == {
+        "revision": 5,
+        "changed_clips": 0,
+        "broken_chain_clips": ["clip_001"],
+    }
+    assert editor.path.read_bytes() == saved and editor.revision == 5
+    broken = editor.edit(edit)
+    assert broken["clips"][1]["score"] == linked["clips"][1]["score"]
+    assert broken["score_views"]["clip_001"]["chain_broken"]
+    assert broken["score_views"]["clip_001"]["after"] is None
+    assert broken["score_views"]["clip_001"]["before_points"] is None
+    assert not broken["score_views"]["clip_002"]["chain_available"]
+    reloaded = _loaded(editor)
+    assert reloaded.clips[1].score.before_source == "chain"
+    with pytest.raises(ValueError, match="連鎖切れ.*clip_001"):
+        export_scores(reloaded)
+    with pytest.raises(ValueError, match="手入力"):
+        editor.edit(Edit(revision=6, action="set_score", name="clip_001", score=second))
+
+    fixed = editor.edit(
+        Edit(
+            revision=6,
+            action="set_score",
+            name="clip_001",
+            score={
+                **second,
+                "before_source": "anchor",
+                "before": {**before, "points": [3, 1]},
+            },
+        )
+    )
+    assert not fixed["score_views"]["clip_001"]["chain_broken"]
+    assert fixed["score_views"]["clip_001"]["after"]["points"] == [3, 2]
+    assert fixed["clips"][1]["score"]["note"] == "映像で確認"
+    assert fixed["clips"][2]["score"]["before"]["points"] == [3, 2]
+    assert "clip_001,confirmed," in export_scores(_loaded(editor))
+    assert editor.edit(Edit(revision=7, action="undo"))["score_views"]["clip_001"][
+        "chain_broken"
+    ]
+    restored = editor.edit(Edit(revision=8, action="undo"))
+    assert restored["score_views"]["clip_001"] == linked["score_views"]["clip_001"]
+    assert "clip_001,confirmed," in export_scores(_loaded(editor))
+
+
+def test_csv_import_undo_and_rename_move_delete_keep_clip_identity(editor):
+    editor.edit(Edit(revision=0, action="create", start_sec=5, end_sec=7))
+    editor.edit(Edit(revision=1, action="set_match", match=_match_payload()))
+    csv_text = export_scores(editor.project) + (
+        "clip_000,confirmed,0,0,0,0,1,0,A,A,first\r\n"
+        "clip_001,confirmed,0,0,0,0,2,0,A,B,second\r\n"
+    )
+    imported = editor.edit(Edit(revision=2, action="import_scores", csv_text=csv_text))
+    assert editor.edit(Edit(revision=3, action="undo"))["clips"][0]["score"] is None
+    assert all(clip.score is None for clip in editor.project.clips)
+    assert editor.edit(Edit(revision=4, action="redo"))["clips"] == imported["clips"]
+    renamed = editor.edit(
+        Edit(
+            revision=5,
+            action="update",
+            name="clip_000",
+            new_name="moved",
+            start_sec=7,
+            end_sec=9,
+        )
+    )
+    assert renamed["clips"][0]["score"] == imported["clips"][0]["score"]
+    assert renamed["clips"][1] == imported["clips"][1]
+    assert [clip.score.note for clip in _loaded(editor).clips] == ["first", "second"]
+    editor.edit(Edit(revision=6, action="delete", name="moved"))
+    assert editor.snapshot()["clips"] == [imported["clips"][1]]
 
 
 @pytest.mark.parametrize("value", [float("nan"), float("inf"), -float("inf")])

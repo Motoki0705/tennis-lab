@@ -13,6 +13,7 @@ from src.tasks.base.generate_dataset import extract_court_keypoint_contract_meta
 from src.tasks.base.model_io.court_keypoint_contract import (
     validate_neural_court_observation_order,
 )
+from src.tennis_scene.ball_event_schema import BALL_EVENT_FIELDS
 from src.tennis_scene.schema import (
     SCENE_MASK_FIELDS,
     SCENE_REASON_FIELDS,
@@ -99,7 +100,11 @@ def save_scene_result(result: SceneResult, path: str | Path) -> None:
     arrays.update(
         (name, value) for name, value in optional_arrays.items() if value is not None
     )
-    arrays.update({name: getattr(result, name) for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS) if getattr(result, name) is not None})
+    arrays.update({
+        name: getattr(result, name)
+        for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS, *BALL_EVENT_FIELDS)
+        if getattr(result, name) is not None
+    })
 
     np.savez_compressed(archive_path, **arrays)
     with _metadata_sidecar_path(archive_path).open("w", encoding="utf-8") as handle:
@@ -122,12 +127,15 @@ def load_scene_result(path: str | Path) -> SceneResult:
 
     _validate_observation_order(metadata)
     with np.load(archive_path, allow_pickle=False) as archive:
-        if metadata.get("scene_schema_version", 1) == 2:
+        if metadata.get("scene_schema_version", 1) in (2, 3):
             for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS):
                 expected = np.bool_ if name in SCENE_MASK_FIELDS else np.uint8
                 if name not in archive.files or archive[name].dtype != expected:
                     raise ValueError(f"v2 archive requires {name} with dtype {expected}")
-        validity: dict[str, Any] = {name: _optional_array(archive, name) for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS)}
+        extension: dict[str, Any] = {
+            name: _optional_array(archive, name)
+            for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS, *BALL_EVENT_FIELDS)
+        }
         result = SceneResult(
             num_frames=int(archive["num_frames"]),
             fps=float(archive["fps"]),
@@ -166,7 +174,7 @@ def load_scene_result(path: str | Path) -> SceneResult:
                 archive, "player_track_ids", dtype=np.int32
             ),
             player_kp_3d=_optional_array(archive, "player_kp_3d", dtype=np.float32),
-            **validity,
+            **extension,
             player_canonical_pose=_optional_array(
                 archive, "player_canonical_pose", dtype=np.float32
             ),

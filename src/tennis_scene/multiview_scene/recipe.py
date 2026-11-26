@@ -7,7 +7,7 @@ from dataclasses import dataclass, replace
 from pathlib import Path
 from typing import Any
 
-from src.tennis_scene.configuration import PipelineRuntimeConfig
+from src.tennis_scene.multiview_scene.configuration import MultiviewSceneConfig
 from src.tennis_scene.multiview_scene.inputs import INPUT_NODE, RECIPE, FrozenInputs
 from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.components.body_placement import (
@@ -35,13 +35,17 @@ from src.tennis_scene.pipeline.contracts import (
     ComponentIO,
     InputPort,
 )
-from src.tennis_scene.pipeline.definition import declared_model_identities
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.execution_plan import ClipExecution, ComponentNode
+from src.tennis_scene.pipeline.inference_runtime import (
+    InferenceComponent,
+    model_identities,
+)
 from src.tennis_scene.pipeline.input_assembly.body import (
     GVHMRInputAssembler,
     HMR2FeaturesInputAssembler,
 )
+from src.tennis_scene.pipeline.model_assets import file_identity
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.schema import SceneResult
@@ -203,7 +207,7 @@ def prepare_store(
 
 def make_clip_execution(
     clip: PreparedClip,
-    cfg: PipelineRuntimeConfig,
+    cfg: MultiviewSceneConfig,
     implementation: str,
     *,
     prepare_only: bool,
@@ -240,6 +244,9 @@ def make_clip_execution(
         after: tuple[str, ...] = (),
     ) -> None:
         stage = component.io.name
+        specs = (
+            component.model_specs() if isinstance(component, InferenceComponent) else {}
+        )
         nodes.append(
             ComponentNode(
                 stage,
@@ -252,7 +259,7 @@ def make_clip_execution(
                     {
                         **settings,
                         "recipe": RECIPE,
-                        "models": declared_model_identities(cfg, stage, component),
+                        "models": model_identities(specs, file_identity),
                     }
                 ),
                 implementation,
@@ -308,9 +315,9 @@ def make_clip_execution(
     return ClipExecution(clip.source.clip_id, nodes, clip.store)
 
 
-def adapter_settings(cfg: PipelineRuntimeConfig, implementation: str) -> dict[str, Any]:
+def adapter_settings(cfg: MultiviewSceneConfig, implementation: str) -> dict[str, Any]:
     return {
         "implementation": implementation,
         "human_threshold": cfg.human_vis_threshold,
-        "bbox_enlarge": cfg.people.runtime.tracking.bbox_enlarge,
+        "bbox_enlarge": cfg.crops.bbox_enlarge,
     }

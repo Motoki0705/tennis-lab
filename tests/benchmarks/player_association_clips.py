@@ -115,7 +115,7 @@ def compose_runtime(repo: Path, report: Path, device: str, overrides: list[str],
     with initialize_config_dir(version_base="1.3", config_dir=str(CONFIG_DIR)):
         config = compose(config_name="pipeline", overrides=applied)
     (report / f"{name}.pipeline_config.yaml").write_text(OmegaConf.to_yaml(config, resolve=True))
-    return PipelineRuntimeConfig.from_config(config, bind_inputs=False), applied
+    return PipelineRuntimeConfig.from_config(config, bind_inputs=False, bind_event_detection=False), applied
 
 
 def clip_source(clip: Path) -> tuple[ClipManifest, ClipSource]:

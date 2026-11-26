@@ -307,7 +307,7 @@ PY
 ```bash
 export PYTHONPATH="$PWD/outputs/dino_extension/lib"
 export TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so"
-CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
+CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight event_detection.method=rule
 ```
 
 预检必须返回 `status: ok` 和退出码 0。文件缺失、内容不匹配、读取失败和扩展不兼容等问题会**汇总在一起**
@@ -332,7 +332,7 @@ PYTHONPATH="$PWD/outputs/dino_extension/lib" \
   OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 \
   .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   output_directory=tennis_scene/generate/clean_install output_name=scene \
-  cache.directory=tennis_scene/cache/clean_install
+  cache.directory=tennis_scene/cache/clean_install event_detection.method=rule
 ```
 
 在本仓库的共用 GPU 上，请通过[训练队列](../../.agents/skills/training-queue/SKILL.md)运行。
@@ -341,7 +341,7 @@ PYTHONPATH="$PWD/outputs/dino_extension/lib" \
 这是公开示例中一个片段的参考值，不包含排队等待、进程启动、资产获取、构建和可视化时间。
 
 运行后会保存 `outputs/tennis_scene/generate/clean_install/scene.npz` 和 `scene.metadata.json`。
-请检查元数据中的 `scene_schema_version=2` 和 `status=ok`。
+请检查元数据中的 `scene_schema_version=3` 和 `status=ok`。
 还需通过标准读取器检查掩码、原因代码和坐标系。
 
 ```bash
