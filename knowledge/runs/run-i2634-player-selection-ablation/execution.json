@@ -1,0 +1,33 @@
+{
+  "replay_commit": "dfb03c0785c7a7a41850c5cd6909b1bb383a0b75",
+  "source_tree": "c1af2dc0e300054acfca15f94d0bd51f6c9d6cac",
+  "command": "bash knowledge/runs/run-i2634-player-selection-ablation/reproduce.sh outputs/i2634/full-replay --jobs 4",
+  "job_id": "20261126T114001Z_626be073a61f_i2634-player-selection",
+  "finished_at_utc": "2026-11-26T12:40:22.100616+00:00",
+  "exit_code": 0,
+  "job_wall_seconds": 3620.015,
+  "replay_wall_seconds": 3601.5351910049794,
+  "cpu_processes": 4,
+  "gpu_inference_jobs": 0,
+  "versions": {
+    "python": "3.11.15",
+    "numpy": "2.3.5",
+    "scipy": "1.17.1",
+    "torch": "2.13.0+cu130"
+  },
+  "output_sha256": {
+    "inputs.json": "c129cb6dafc953dc281bef313dfb2784eade948516109ccab8e2b99d74151704",
+    "meiji-3cam.json": "2dc70578dc52d8ee06d8172e9f4b7ab7111868618adf6705ffe2d4a7e57c14f7",
+    "meiji-4cam.json": "9d951fbd62f419d567515a1a064678f33d70daec3c94becedc03acc299906be9",
+    "historical-2d.csv": "5b6e68d75461c01b82ba70952621b7e2c8398c8f3f0cd38f9c05a213cf8bfda6"
+  },
+  "stdout_sha256": "3eca816d4da0ffdb0300c284ac43a561d0ab9998436087168acb2a0adefa98cb",
+  "checks": {
+    "conditions_per_clip": 4,
+    "labelled_clips": 7,
+    "doubles_clips": 69,
+    "archive_matched_camera_selection_masks": 276,
+    "archive_matched_clip_outcomes_and_joint_masks": 69,
+    "historical_table_rows": 13
+  }
+}
