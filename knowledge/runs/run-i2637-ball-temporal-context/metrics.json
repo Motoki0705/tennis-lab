@@ -1,0 +1,1257 @@
+{
+  "plan_sha256": "fd35c124f2ac4f9a12b8d7617fe60a729d43dc1b3958703d95fff88998a034d5",
+  "manifest_sha256": "af1773174bdbeed86ee5339846bb6f30ac42d86e26abd1e60c0c685b9c8b6fae",
+  "raw_shape_sha256": "d021f8158178dda0a85c8a522932d8c797f67c7cf7219e2efdf411b48b13127d",
+  "raw_temporal_sha256": "e5659d7e39a64bc98d9df43677d9bc2871f740369ce40e67a620cc3478941311",
+  "calibration_anchors": 120,
+  "evaluation_anchors": 144,
+  "torch": "2.13.0+cu130",
+  "opencv": "5.0.0",
+  "gpu": "NVIDIA GeForce RTX 5060 Ti",
+  "models": {
+    "x3d_t32": {
+      "checkpoint": {
+        "file": "x3d-csn-dpt-T32-common-u10000-scene.pt",
+        "sha256": "c46f724cd0e333d676ee35823b9526e6039e4aa471f97dc24e76871910814242",
+        "size": [
+          1280,
+          720
+        ],
+        "frames": 32,
+        "threshold": 0.5380124449729919,
+        "precision": "bf16"
+      },
+      "seconds": 203.78401417302666,
+      "peak_cuda_allocated_bytes": 3062703616,
+      "metrics": {
+        "ordered": {
+          "target_identity_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "teacher_identity_sha256": "7e8186b55e608dd67cf8f8fa2630416c027235a6f7066a8e1868adc61274786c",
+          "scored_frame_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "support": {
+            "frames": 144,
+            "scored_frames": 144,
+            "masked": 0,
+            "observed": 88,
+            "reviewed_empty": 32,
+            "out_of_frame": 24
+          },
+          "mean_error_px": 24.219687421132253,
+          "median_error_px": 8.00329549721167,
+          "p95_error_px": 66.3085256916532,
+          "within_distance_rate": 0.8636363636363636,
+          "distance_threshold_source_px": 20.0,
+          "false_negative": 13,
+          "observed_fnr": 0.14772727272727273,
+          "false_positive": 12,
+          "negative_fpr": 0.21428571428571427,
+          "by_negative_kind": {
+            "reviewed_empty": {
+              "support": 32,
+              "false_positive": 7,
+              "fpr": 0.21875,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            },
+            "out_of_frame": {
+              "support": 24,
+              "false_positive": 5,
+              "fpr": 0.20833333333333334,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            }
+          },
+          "calibration": {
+            "mode": "threshold",
+            "threshold": 0.5380124449729919
+          },
+          "by_source": {
+            "chat_annotation": {
+              "support": {
+                "frames": 96,
+                "scored_frames": 96,
+                "masked": 0,
+                "observed": 48,
+                "reviewed_empty": 24,
+                "out_of_frame": 24
+              },
+              "mean_error_px": 15.094651470989783,
+              "median_error_px": 9.672547174173637,
+              "p95_error_px": 34.17665308120049,
+              "within_distance_rate": 0.8958333333333334,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 7,
+              "observed_fnr": 0.14583333333333334,
+              "false_positive": 11,
+              "negative_fpr": 0.22916666666666666,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 24,
+                  "false_positive": 6,
+                  "fpr": 0.25,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 24,
+                  "false_positive": 5,
+                  "fpr": 0.20833333333333334,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "meiji": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 24,
+                "reviewed_empty": 0,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 53.848715507969025,
+              "median_error_px": 8.572596031121808,
+              "p95_error_px": 259.8500601666903,
+              "within_distance_rate": 0.75,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 6,
+              "observed_fnr": 0.25,
+              "false_positive": 0,
+              "negative_fpr": null,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "tracknet": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 16,
+                "reviewed_empty": 8,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 7.151253141304481,
+              "median_error_px": 5.842979151300236,
+              "p95_error_px": 16.884191443231103,
+              "within_distance_rate": 0.9375,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 0,
+              "observed_fnr": 0.0,
+              "false_positive": 1,
+              "negative_fpr": 0.125,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 8,
+                  "false_positive": 1,
+                  "fpr": 0.125,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            }
+          },
+          "score_min": 0.07696083933115005,
+          "score_max": 0.9005298018455505
+        },
+        "repeat_anchor": {
+          "target_identity_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "teacher_identity_sha256": "7e8186b55e608dd67cf8f8fa2630416c027235a6f7066a8e1868adc61274786c",
+          "scored_frame_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "support": {
+            "frames": 144,
+            "scored_frames": 144,
+            "masked": 0,
+            "observed": 88,
+            "reviewed_empty": 32,
+            "out_of_frame": 24
+          },
+          "mean_error_px": 253.85831813780243,
+          "median_error_px": 201.0787190810061,
+          "p95_error_px": 699.98490397654,
+          "within_distance_rate": 0.022727272727272728,
+          "distance_threshold_source_px": 20.0,
+          "false_negative": 88,
+          "observed_fnr": 1.0,
+          "false_positive": 0,
+          "negative_fpr": 0.0,
+          "by_negative_kind": {
+            "reviewed_empty": {
+              "support": 32,
+              "false_positive": 0,
+              "fpr": 0.0,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            },
+            "out_of_frame": {
+              "support": 24,
+              "false_positive": 0,
+              "fpr": 0.0,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            }
+          },
+          "calibration": {
+            "mode": "threshold",
+            "threshold": 0.5380124449729919
+          },
+          "by_source": {
+            "chat_annotation": {
+              "support": {
+                "frames": 96,
+                "scored_frames": 96,
+                "masked": 0,
+                "observed": 48,
+                "reviewed_empty": 24,
+                "out_of_frame": 24
+              },
+              "mean_error_px": 289.65469304712155,
+              "median_error_px": 222.85224064564073,
+              "p95_error_px": 818.258696222093,
+              "within_distance_rate": 0.041666666666666664,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 48,
+              "observed_fnr": 1.0,
+              "false_positive": 0,
+              "negative_fpr": 0.0,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 24,
+                  "false_positive": 0,
+                  "fpr": 0.0,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 24,
+                  "false_positive": 0,
+                  "fpr": 0.0,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "meiji": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 24,
+                "reviewed_empty": 0,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 195.7950318630457,
+              "median_error_px": 128.96172083062572,
+              "p95_error_px": 558.0851712592976,
+              "within_distance_rate": 0.0,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 24,
+              "observed_fnr": 1.0,
+              "false_positive": 0,
+              "negative_fpr": null,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "tracknet": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 16,
+                "reviewed_empty": 8,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 233.56412282198013,
+              "median_error_px": 250.0699487552796,
+              "p95_error_px": 418.898218051735,
+              "within_distance_rate": 0.0,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 16,
+              "observed_fnr": 1.0,
+              "false_positive": 0,
+              "negative_fpr": 0.0,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 8,
+                  "false_positive": 0,
+                  "fpr": 0.0,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            }
+          },
+          "score_min": 0.04084571450948715,
+          "score_max": 0.46295860409736633
+        },
+        "shuffle_context": {
+          "target_identity_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "teacher_identity_sha256": "7e8186b55e608dd67cf8f8fa2630416c027235a6f7066a8e1868adc61274786c",
+          "scored_frame_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "support": {
+            "frames": 144,
+            "scored_frames": 144,
+            "masked": 0,
+            "observed": 88,
+            "reviewed_empty": 32,
+            "out_of_frame": 24
+          },
+          "mean_error_px": 88.47736077077889,
+          "median_error_px": 14.963025354068579,
+          "p95_error_px": 510.1697288961694,
+          "within_distance_rate": 0.625,
+          "distance_threshold_source_px": 20.0,
+          "false_negative": 30,
+          "observed_fnr": 0.3409090909090909,
+          "false_positive": 10,
+          "negative_fpr": 0.17857142857142858,
+          "by_negative_kind": {
+            "reviewed_empty": {
+              "support": 32,
+              "false_positive": 7,
+              "fpr": 0.21875,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            },
+            "out_of_frame": {
+              "support": 24,
+              "false_positive": 3,
+              "fpr": 0.125,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            }
+          },
+          "calibration": {
+            "mode": "threshold",
+            "threshold": 0.5380124449729919
+          },
+          "by_source": {
+            "chat_annotation": {
+              "support": {
+                "frames": 96,
+                "scored_frames": 96,
+                "masked": 0,
+                "observed": 48,
+                "reviewed_empty": 24,
+                "out_of_frame": 24
+              },
+              "mean_error_px": 63.21558677733962,
+              "median_error_px": 14.479990135799538,
+              "p95_error_px": 165.45894019799925,
+              "within_distance_rate": 0.6875,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 16,
+              "observed_fnr": 0.3333333333333333,
+              "false_positive": 9,
+              "negative_fpr": 0.1875,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 24,
+                  "false_positive": 6,
+                  "fpr": 0.25,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 24,
+                  "false_positive": 3,
+                  "fpr": 0.125,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "meiji": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 24,
+                "reviewed_empty": 0,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 169.51274906077546,
+              "median_error_px": 20.860723326897507,
+              "p95_error_px": 773.273311785113,
+              "within_distance_rate": 0.5,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 9,
+              "observed_fnr": 0.375,
+              "false_positive": 0,
+              "negative_fpr": null,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "tracknet": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 16,
+                "reviewed_empty": 8,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 42.709600316101806,
+              "median_error_px": 9.355100559712067,
+              "p95_error_px": 149.59666575897745,
+              "within_distance_rate": 0.625,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 5,
+              "observed_fnr": 0.3125,
+              "false_positive": 1,
+              "negative_fpr": 0.125,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 8,
+                  "false_positive": 1,
+                  "fpr": 0.125,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            }
+          },
+          "score_min": 0.08151976019144058,
+          "score_max": 0.8791467547416687
+        }
+      },
+      "paired_hits_20_px": {
+        "repeat_anchor": {
+          "both": 2,
+          "ordered_only": 74,
+          "changed_only": 0,
+          "neither": 12
+        },
+        "shuffle_context": {
+          "both": 51,
+          "ordered_only": 25,
+          "changed_only": 4,
+          "neither": 8
+        }
+      }
+    },
+    "i935_t8": {
+      "checkpoint": {
+        "file": "i935-mixed-ft-s42-epoch09.ckpt",
+        "sha256": "37f4c59aead00062829280ad591b3874886978891104a290f704a2c33c3c1b36",
+        "size": [
+          512,
+          288
+        ],
+        "frames": 8,
+        "threshold": 0.5,
+        "precision": "fp32"
+      },
+      "seconds": 28.0202066199854,
+      "peak_cuda_allocated_bytes": 455684096,
+      "metrics": {
+        "ordered": {
+          "target_identity_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "teacher_identity_sha256": "7e8186b55e608dd67cf8f8fa2630416c027235a6f7066a8e1868adc61274786c",
+          "scored_frame_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "support": {
+            "frames": 144,
+            "scored_frames": 144,
+            "masked": 0,
+            "observed": 88,
+            "reviewed_empty": 32,
+            "out_of_frame": 24
+          },
+          "mean_error_px": 34.935367793158086,
+          "median_error_px": 5.6548701573458064,
+          "p95_error_px": 230.852914997433,
+          "within_distance_rate": 0.8295454545454546,
+          "distance_threshold_source_px": 20.0,
+          "false_negative": 15,
+          "observed_fnr": 0.17045454545454544,
+          "false_positive": 8,
+          "negative_fpr": 0.14285714285714285,
+          "by_negative_kind": {
+            "reviewed_empty": {
+              "support": 32,
+              "false_positive": 6,
+              "fpr": 0.1875,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            },
+            "out_of_frame": {
+              "support": 24,
+              "false_positive": 2,
+              "fpr": 0.08333333333333333,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            }
+          },
+          "calibration": {
+            "mode": "threshold",
+            "threshold": 0.5
+          },
+          "by_source": {
+            "chat_annotation": {
+              "support": {
+                "frames": 96,
+                "scored_frames": 96,
+                "masked": 0,
+                "observed": 48,
+                "reviewed_empty": 24,
+                "out_of_frame": 24
+              },
+              "mean_error_px": 24.73237187249327,
+              "median_error_px": 5.783818045728278,
+              "p95_error_px": 122.15219947463721,
+              "within_distance_rate": 0.8125,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 13,
+              "observed_fnr": 0.2708333333333333,
+              "false_positive": 7,
+              "negative_fpr": 0.14583333333333334,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 24,
+                  "false_positive": 5,
+                  "fpr": 0.20833333333333334,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 24,
+                  "false_positive": 2,
+                  "fpr": 0.08333333333333333,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "meiji": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 24,
+                "reviewed_empty": 0,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 75.70816659960383,
+              "median_error_px": 7.442002912277237,
+              "p95_error_px": 489.3681854040532,
+              "within_distance_rate": 0.75,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 2,
+              "observed_fnr": 0.08333333333333333,
+              "false_positive": 0,
+              "negative_fpr": null,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "tracknet": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 16,
+                "reviewed_empty": 8,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 4.3851573454839405,
+              "median_error_px": 3.6911906508702574,
+              "p95_error_px": 9.247421651666848,
+              "within_distance_rate": 1.0,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 0,
+              "observed_fnr": 0.0,
+              "false_positive": 1,
+              "negative_fpr": 0.125,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 8,
+                  "false_positive": 1,
+                  "fpr": 0.125,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            }
+          },
+          "score_min": 0.06635456532239914,
+          "score_max": 0.9630959630012512
+        },
+        "repeat_anchor": {
+          "target_identity_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "teacher_identity_sha256": "7e8186b55e608dd67cf8f8fa2630416c027235a6f7066a8e1868adc61274786c",
+          "scored_frame_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "support": {
+            "frames": 144,
+            "scored_frames": 144,
+            "masked": 0,
+            "observed": 88,
+            "reviewed_empty": 32,
+            "out_of_frame": 24
+          },
+          "mean_error_px": 233.15769480245572,
+          "median_error_px": 205.59720006627808,
+          "p95_error_px": 494.06885927377164,
+          "within_distance_rate": 0.0,
+          "distance_threshold_source_px": 20.0,
+          "false_negative": 88,
+          "observed_fnr": 1.0,
+          "false_positive": 0,
+          "negative_fpr": 0.0,
+          "by_negative_kind": {
+            "reviewed_empty": {
+              "support": 32,
+              "false_positive": 0,
+              "fpr": 0.0,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            },
+            "out_of_frame": {
+              "support": 24,
+              "false_positive": 0,
+              "fpr": 0.0,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            }
+          },
+          "calibration": {
+            "mode": "threshold",
+            "threshold": 0.5
+          },
+          "by_source": {
+            "chat_annotation": {
+              "support": {
+                "frames": 96,
+                "scored_frames": 96,
+                "masked": 0,
+                "observed": 48,
+                "reviewed_empty": 24,
+                "out_of_frame": 24
+              },
+              "mean_error_px": 232.12332968503878,
+              "median_error_px": 195.25870822905384,
+              "p95_error_px": 474.0131222110605,
+              "within_distance_rate": 0.0,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 48,
+              "observed_fnr": 1.0,
+              "false_positive": 0,
+              "negative_fpr": 0.0,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 24,
+                  "false_positive": 0,
+                  "fpr": 0.0,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 24,
+                  "false_positive": 0,
+                  "fpr": 0.0,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "meiji": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 24,
+                "reviewed_empty": 0,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 282.8117547854138,
+              "median_error_px": 268.0369908317687,
+              "p95_error_px": 641.5440289704037,
+              "within_distance_rate": 0.0,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 24,
+              "observed_fnr": 1.0,
+              "false_positive": 0,
+              "negative_fpr": null,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "tracknet": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 16,
+                "reviewed_empty": 8,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 161.7797001802693,
+              "median_error_px": 140.50330816253523,
+              "p95_error_px": 265.6712218165299,
+              "within_distance_rate": 0.0,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 16,
+              "observed_fnr": 1.0,
+              "false_positive": 0,
+              "negative_fpr": 0.0,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 8,
+                  "false_positive": 0,
+                  "fpr": 0.0,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            }
+          },
+          "score_min": 0.16653838753700256,
+          "score_max": 0.16653838753700256
+        },
+        "shuffle_context": {
+          "target_identity_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "teacher_identity_sha256": "7e8186b55e608dd67cf8f8fa2630416c027235a6f7066a8e1868adc61274786c",
+          "scored_frame_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "support": {
+            "frames": 144,
+            "scored_frames": 144,
+            "masked": 0,
+            "observed": 88,
+            "reviewed_empty": 32,
+            "out_of_frame": 24
+          },
+          "mean_error_px": 58.00983328527844,
+          "median_error_px": 9.14439386687307,
+          "p95_error_px": 302.58169185838216,
+          "within_distance_rate": 0.7613636363636364,
+          "distance_threshold_source_px": 20.0,
+          "false_negative": 32,
+          "observed_fnr": 0.36363636363636365,
+          "false_positive": 8,
+          "negative_fpr": 0.14285714285714285,
+          "by_negative_kind": {
+            "reviewed_empty": {
+              "support": 32,
+              "false_positive": 6,
+              "fpr": 0.1875,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            },
+            "out_of_frame": {
+              "support": 24,
+              "false_positive": 2,
+              "fpr": 0.08333333333333333,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            }
+          },
+          "calibration": {
+            "mode": "threshold",
+            "threshold": 0.5
+          },
+          "by_source": {
+            "chat_annotation": {
+              "support": {
+                "frames": 96,
+                "scored_frames": 96,
+                "masked": 0,
+                "observed": 48,
+                "reviewed_empty": 24,
+                "out_of_frame": 24
+              },
+              "mean_error_px": 85.9215454823701,
+              "median_error_px": 11.941612928737843,
+              "p95_error_px": 566.9854563186535,
+              "within_distance_rate": 0.6458333333333334,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 21,
+              "observed_fnr": 0.4375,
+              "false_positive": 7,
+              "negative_fpr": 0.14583333333333334,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 24,
+                  "false_positive": 5,
+                  "fpr": 0.20833333333333334,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 24,
+                  "false_positive": 2,
+                  "fpr": 0.08333333333333333,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "meiji": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 24,
+                "reviewed_empty": 0,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 35.79660560886823,
+              "median_error_px": 7.583236443488562,
+              "p95_error_px": 234.41178764378748,
+              "within_distance_rate": 0.8333333333333334,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 7,
+              "observed_fnr": 0.2916666666666667,
+              "false_positive": 0,
+              "negative_fpr": null,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "tracknet": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 16,
+                "reviewed_empty": 8,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 7.594538208618809,
+              "median_error_px": 6.104604754258655,
+              "p95_error_px": 14.70077545274515,
+              "within_distance_rate": 1.0,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 4,
+              "observed_fnr": 0.25,
+              "false_positive": 1,
+              "negative_fpr": 0.125,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 8,
+                  "false_positive": 1,
+                  "fpr": 0.125,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            }
+          },
+          "score_min": 0.0666869729757309,
+          "score_max": 0.9502660036087036
+        }
+      },
+      "paired_hits_20_px": {
+        "repeat_anchor": {
+          "both": 0,
+          "ordered_only": 73,
+          "changed_only": 0,
+          "neither": 15
+        },
+        "shuffle_context": {
+          "both": 65,
+          "ordered_only": 8,
+          "changed_only": 2,
+          "neither": 13
+        }
+      }
+    },
+    "shape_baseline": {
+      "metrics": {
+        "color_roundness_motion": {
+          "target_identity_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "teacher_identity_sha256": "7e8186b55e608dd67cf8f8fa2630416c027235a6f7066a8e1868adc61274786c",
+          "scored_frame_sha256": "6814cdd3486642c638a988f05e43af0c81d6f7edcd831a0060e1c1a4a86a9625",
+          "support": {
+            "frames": 144,
+            "scored_frames": 144,
+            "masked": 0,
+            "observed": 88,
+            "reviewed_empty": 32,
+            "out_of_frame": 24
+          },
+          "mean_error_px": 458.73498191089675,
+          "median_error_px": 387.68366277227165,
+          "p95_error_px": 987.1696352839778,
+          "within_distance_rate": 0.07954545454545454,
+          "distance_threshold_source_px": 20.0,
+          "false_negative": 36,
+          "observed_fnr": 0.4090909090909091,
+          "false_positive": 35,
+          "negative_fpr": 0.625,
+          "by_negative_kind": {
+            "reviewed_empty": {
+              "support": 32,
+              "false_positive": 16,
+              "fpr": 0.5,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            },
+            "out_of_frame": {
+              "support": 24,
+              "false_positive": 19,
+              "fpr": 0.7916666666666666,
+              "observed_fnr": null,
+              "mean_error_px": null,
+              "median_error_px": null,
+              "p95_error_px": null
+            }
+          },
+          "calibration": {
+            "mode": "threshold",
+            "threshold": 0.9966928958892822,
+            "method": "minimize_balanced_fpr_fnr; tie_lower_fpr_then_higher_threshold; tied_scores_indivisible",
+            "split": "val",
+            "balanced_error": 0.3923611111111111,
+            "observed": 48,
+            "negatives": 72,
+            "false_positive": 49,
+            "false_negative": 5,
+            "true_positive": 43,
+            "true_negative": 23
+          },
+          "by_source": {
+            "chat_annotation": {
+              "support": {
+                "frames": 96,
+                "scored_frames": 96,
+                "masked": 0,
+                "observed": 48,
+                "reviewed_empty": 24,
+                "out_of_frame": 24
+              },
+              "mean_error_px": 540.9619374634958,
+              "median_error_px": 467.93605416829735,
+              "p95_error_px": 1049.5289479100811,
+              "within_distance_rate": 0.10416666666666667,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 10,
+              "observed_fnr": 0.20833333333333334,
+              "false_positive": 35,
+              "negative_fpr": 0.7291666666666666,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 24,
+                  "false_positive": 16,
+                  "fpr": 0.6666666666666666,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 24,
+                  "false_positive": 19,
+                  "fpr": 0.7916666666666666,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "meiji": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 24,
+                "reviewed_empty": 0,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 444.27849721088205,
+              "median_error_px": 411.01140388582985,
+              "p95_error_px": 806.2120715438407,
+              "within_distance_rate": 0.041666666666666664,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 15,
+              "observed_fnr": 0.625,
+              "false_positive": 0,
+              "negative_fpr": null,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            },
+            "tracknet": {
+              "support": {
+                "frames": 24,
+                "scored_frames": 24,
+                "masked": 0,
+                "observed": 16,
+                "reviewed_empty": 8,
+                "out_of_frame": 0
+              },
+              "mean_error_px": 233.73884230312123,
+              "median_error_px": 161.97122321581145,
+              "p95_error_px": 713.1079929979625,
+              "within_distance_rate": 0.0625,
+              "distance_threshold_source_px": 20.0,
+              "false_negative": 11,
+              "observed_fnr": 0.6875,
+              "false_positive": 0,
+              "negative_fpr": 0.0,
+              "by_negative_kind": {
+                "reviewed_empty": {
+                  "support": 8,
+                  "false_positive": 0,
+                  "fpr": 0.0,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                },
+                "out_of_frame": {
+                  "support": 0,
+                  "false_positive": 0,
+                  "fpr": null,
+                  "observed_fnr": null,
+                  "mean_error_px": null,
+                  "median_error_px": null,
+                  "p95_error_px": null
+                }
+              }
+            }
+          },
+          "score_min": 0.42212796211242676,
+          "score_max": 0.9999994039535522
+        }
+      }
+    }
+  }
+}

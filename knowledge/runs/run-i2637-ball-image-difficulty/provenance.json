@@ -1,0 +1,457 @@
+{
+  "original": {
+    "folder": "clip_000-068_ball_positions",
+    "archive": "clip_000-068_ball_positions.zip",
+    "bytes": 3624873,
+    "archive_sha256": "c1a300c60a7706ea72e694ce207fbfad87fe4e774cce2619491cc76cc3980410",
+    "embedded_time_min": "2026-11-23T16:48:44+00:00",
+    "embedded_time_max": "2026-11-24T01:09:38+00:00",
+    "declared_model": null,
+    "recorded_execution": null,
+    "metadata_keys": [
+      "active_ball_switch_frame",
+      "approximate_camera_timing",
+      "ball_identity_switches",
+      "calibration_3d",
+      "camera_synchronization",
+      "confidence_definition",
+      "confidence_interpretation",
+      "confidence_note",
+      "coordinate_system",
+      "created_utc",
+      "cross_camera_timing",
+      "estimated_camera_frame_offsets_relative_to_cam0",
+      "estimation_note",
+      "estimation_notes",
+      "fps",
+      "frame_index_base",
+      "frame_indexing",
+      "frame_offset_interpretation",
+      "frames_per_camera",
+      "method",
+      "missing_position_records",
+      "notes",
+      "out_of_frame_intervals",
+      "output_file_note",
+      "output_note",
+      "processing_notes",
+      "status_counts_all_cameras",
+      "status_definitions",
+      "synchronization_note",
+      "target_definition",
+      "target_identity_switches",
+      "target_selection",
+      "target_switch_frame_per_camera",
+      "task",
+      "total_cameras",
+      "total_frame_records",
+      "total_status_counts",
+      "tracking_notes",
+      "visible_in_frame_definition",
+      "visible_in_frame_definitions",
+      "visible_in_frame_interpretation"
+    ],
+    "members": [
+      {
+        "file": "clip_000_ball_positions.json",
+        "sha256": "a6546405ff4ae9382dae938cfdd9a1f726318903d059700e0a67c3c9fd436c69",
+        "embedded_created_utc": "2026-11-23T23:40:28+00:00"
+      },
+      {
+        "file": "clip_001_ball_positions.json",
+        "sha256": "a62545440b394d6f0340b26646306eff232963ea529a0cedbc7c09420466d2af",
+        "embedded_created_utc": "2026-11-24T00:25:22+00:00"
+      },
+      {
+        "file": "clip_002_ball_positions.json",
+        "sha256": "ba75f54a2205af54d829616859ce1909811f29a15b5183dad6279449a5fecaef",
+        "embedded_created_utc": "2026-11-24T00:29:31+00:00"
+      },
+      {
+        "file": "clip_003_ball_positions.json",
+        "sha256": "10de3e05fc44503f652fabb5f1da0eaf85907f637b1c05066e6eaf90e4bd4b0e",
+        "embedded_created_utc": "2026-11-23T16:53:29+00:00"
+      },
+      {
+        "file": "clip_004_ball_positions.json",
+        "sha256": "584abeb1f0accf5f9c8ce5fa2f10c44543928cfc0483374c9a8577cc6a5ca7a9",
+        "embedded_created_utc": "2026-11-24T00:31:24+00:00"
+      },
+      {
+        "file": "clip_005_ball_positions.json",
+        "sha256": "7047d6124972f0710d5a4950e5939c73e65e46222254a0fd5ee4caa175513e18",
+        "embedded_created_utc": "2026-11-23T16:48:44+00:00"
+      },
+      {
+        "file": "clip_006_ball_positions.json",
+        "sha256": "e17405c16430e13d58712813589280d300d21d0c25e93f17550419541e740c34",
+        "embedded_created_utc": "2026-11-24T00:29:04+00:00"
+      },
+      {
+        "file": "clip_007_ball_positions.json",
+        "sha256": "3c214a48434211a47f67d029ca401c21dae494dba653c9e479bca659627ef06c",
+        "embedded_created_utc": "2026-11-24T00:25:58+00:00"
+      },
+      {
+        "file": "clip_008_ball_positions.json",
+        "sha256": "2990558039496199761b9f1b2a02efef25e7cae4924dbcbdad8a6a660ecd0f86",
+        "embedded_created_utc": "2026-11-24T00:31:13+00:00"
+      },
+      {
+        "file": "clip_009_ball_positions.json",
+        "sha256": "24e35228ee833e05219d0e2e17310b3623e1d440f3a3a2f7ac55043a2e129206",
+        "embedded_created_utc": "2026-11-23T16:59:00+00:00"
+      },
+      {
+        "file": "clip_010_ball_positions.json",
+        "sha256": "dd4fdc114f636fc78b0b39d5588d31eff04eeffa8ebd87c5ca645af036afd6ce",
+        "embedded_created_utc": "2026-11-23T17:01:26+00:00"
+      },
+      {
+        "file": "clip_011_ball_positions.json",
+        "sha256": "a45d5256d625adeae2bcbfb9518102dd5a88c6fa338e960b27ac20dbe174557f",
+        "embedded_created_utc": "2026-11-23T16:59:12+00:00"
+      },
+      {
+        "file": "clip_012_ball_positions.json",
+        "sha256": "233d2ebfbcb8d9651cd43840fb6b31a6b5730fe943feb052b9a369e825fbd32e",
+        "embedded_created_utc": "2026-11-24T00:32:10+00:00"
+      },
+      {
+        "file": "clip_013_ball_positions.json",
+        "sha256": "166d3c0a94604235dcbdb8f101acd92e651f392fd2dcf0da7f5c777edc7cdc3c",
+        "embedded_created_utc": "2026-11-24T00:26:58+00:00"
+      },
+      {
+        "file": "clip_014_ball_positions.json",
+        "sha256": "56dc2ad9797bdeef6074740be7d0c2962e2ad854712335562db25e5850bf9828",
+        "embedded_created_utc": "2026-11-23T16:54:45+00:00"
+      },
+      {
+        "file": "clip_015_ball_positions.json",
+        "sha256": "99b0743cbe47dd6f43cf467c854119fe89b1c2556895be5d85b7b10ee4ae4f69",
+        "embedded_created_utc": "2026-11-23T17:04:29+00:00"
+      },
+      {
+        "file": "clip_016_ball_positions.json",
+        "sha256": "10a75fbcfc4a20b0b94a338ad3ca0e14061a8a120bb4d7bb88abd2e3201975c3",
+        "embedded_created_utc": "2026-11-24T00:37:45+00:00"
+      },
+      {
+        "file": "clip_017_ball_positions.json",
+        "sha256": "6d0ac217add1afdbad88b0297f1dedc019c8e70f59cbdb0519c3d4157e607e56",
+        "embedded_created_utc": "2026-11-23T16:53:30+00:00"
+      },
+      {
+        "file": "clip_018_ball_positions.json",
+        "sha256": "812611da495beae0f44e244896f148c3ed711c35b5cc620f2a72f7a0ee6eca67",
+        "embedded_created_utc": "2026-11-24T00:21:22+00:00"
+      },
+      {
+        "file": "clip_019_ball_positions.json",
+        "sha256": "4968329d99a5b66110ca0f09aa2842352ff95db6060c38c008fc57365a3f394f",
+        "embedded_created_utc": "2026-11-23T16:58:09+00:00"
+      },
+      {
+        "file": "clip_020_ball_positions.json",
+        "sha256": "7042b3a9a61c706c234a5c95cb8fd81fae1d93e662be0d0f7ca29789df74fb87",
+        "embedded_created_utc": "2026-11-24T00:28:57+00:00"
+      },
+      {
+        "file": "clip_021_ball_positions.json",
+        "sha256": "c85428beb7f50edac733455db25b9bd05235e0c5b9ffe3ad48f858d5a0e4445b",
+        "embedded_created_utc": "2026-11-24T00:32:08+00:00"
+      },
+      {
+        "file": "clip_022_ball_positions.json",
+        "sha256": "e4dddeff6463d604e6d54ff0b195e843f2e89b5f7b70c62cdde2aeba42e2b100",
+        "embedded_created_utc": "2026-11-23T17:06:41+00:00"
+      },
+      {
+        "file": "clip_023_ball_positions.json",
+        "sha256": "dc319e55fc6cff2b67c6f518cd68359e1fe7bd5e3da260fecbc1c0ae505ae58c",
+        "embedded_created_utc": "2026-11-24T00:38:49+00:00"
+      },
+      {
+        "file": "clip_024_ball_positions.json",
+        "sha256": "22d8f0d945e68bbbb182d0819d2a46556c7f9997845f400f1f0c9b7ec3a5b366",
+        "embedded_created_utc": "2026-11-23T16:55:46+00:00"
+      },
+      {
+        "file": "clip_025_ball_positions.json",
+        "sha256": "15c4d3b478b2ef5a7e851d9d0d7a6430c9366a80eba0e5f2c55acbeb69ad32f0",
+        "embedded_created_utc": "2026-11-23T17:03:36+00:00"
+      },
+      {
+        "file": "clip_026_ball_positions.json",
+        "sha256": "8b3bf75bcad74b038f23653b884de83d5d148a3ab47992034fd35741e1869e91",
+        "embedded_created_utc": "2026-11-24T00:32:24+00:00"
+      },
+      {
+        "file": "clip_027_ball_positions.json",
+        "sha256": "973070e60346d7235ec1a8ea585bd9e0ab108ddfef3461706ab32f9b19e0bee4",
+        "embedded_created_utc": "2026-11-23T16:55:49+00:00"
+      },
+      {
+        "file": "clip_028_ball_positions.json",
+        "sha256": "893affa3e93f3f033c25dad7805f44d47332f0c1512720370a8f028a4f90e026",
+        "embedded_created_utc": "2026-11-24T00:32:59+00:00"
+      },
+      {
+        "file": "clip_029_ball_positions.json",
+        "sha256": "eb8685abe0bed1939c55837888699487aba419d0f1612f2a9b90391e49f5d515",
+        "embedded_created_utc": "2026-11-23T17:11:21+00:00"
+      },
+      {
+        "file": "clip_030_ball_positions.json",
+        "sha256": "8a6f07b8cfca29db6a7632873900ac71fdc0527eebab0934662c0bc554ca217b",
+        "embedded_created_utc": "2026-11-24T00:28:36+00:00"
+      },
+      {
+        "file": "clip_031_ball_positions.json",
+        "sha256": "79ea216dbde4c9193a33eabaed7868183811145c7aca6f8ea428dfa016c7e199",
+        "embedded_created_utc": "2026-11-23T16:55:05+00:00"
+      },
+      {
+        "file": "clip_032_ball_positions.json",
+        "sha256": "fdf7f9f37f4c7922a9ef211d67bad57448400ef5b505b84a5e2161a3fff46fa4",
+        "embedded_created_utc": "2026-11-23T17:06:58+00:00"
+      },
+      {
+        "file": "clip_033_ball_positions.json",
+        "sha256": "9557b175537179283f935ea96c3d25833154c280b762f74a2f3a5ae99c5fbc32",
+        "embedded_created_utc": "2026-11-23T17:07:59+00:00"
+      },
+      {
+        "file": "clip_034_ball_positions.json",
+        "sha256": "d85cd7cd26a222d598279c46c8b52317e95b2b827b0cec521ec9ba8d6b2b8965",
+        "embedded_created_utc": "2026-11-23T17:04:58+00:00"
+      },
+      {
+        "file": "clip_035_ball_positions.json",
+        "sha256": "7902cc574351874aeb77a7e3a2c1b65f4f21bcb5de16c5fad56f7fd8ae7cce5f",
+        "embedded_created_utc": "2026-11-23T17:09:47+00:00"
+      },
+      {
+        "file": "clip_036_ball_positions.json",
+        "sha256": "9a32c98f5190ee05af7d783357fecd9663cad2cdaaabe54402e30273685a64a6",
+        "embedded_created_utc": "2026-11-23T17:02:27+00:00"
+      },
+      {
+        "file": "clip_037_ball_positions.json",
+        "sha256": "0c70744f4e401fe84b9a0bc0ae2ce5bcca5e7e6c40b4a200c10ce2bcc6480c2a",
+        "embedded_created_utc": "2026-11-23T16:59:48+00:00"
+      },
+      {
+        "file": "clip_038_ball_positions.json",
+        "sha256": "2a15b2324eb1400a8b65e8d9a85c85961d2f41c39d519c8a0b0fe22be736db2b",
+        "embedded_created_utc": "2026-11-23T16:56:30+00:00"
+      },
+      {
+        "file": "clip_039_ball_positions.json",
+        "sha256": "914235f01382fc846ae04bab4c58e643fdaad9578554f06b6f7c2ad7037fa5e4",
+        "embedded_created_utc": "2026-11-23T17:19:08+00:00"
+      },
+      {
+        "file": "clip_040_ball_positions.json",
+        "sha256": "19956fda8ccde259d6f9ec01265952541d3c8ea4b5c22aa66011b87e155d9492",
+        "embedded_created_utc": "2026-11-23T17:05:02+00:00"
+      },
+      {
+        "file": "clip_041_ball_positions.json",
+        "sha256": "cc51714c44afdd6a9ab04746309a2fa56ebf2d1c61f425f31dc602f394fd3bad",
+        "embedded_created_utc": "2026-11-23T16:55:27+00:00"
+      },
+      {
+        "file": "clip_042_ball_positions.json",
+        "sha256": "0f9e0f924e520cede64fb2594a04056ef64cfb045f279f923ccbae4d86570d10",
+        "embedded_created_utc": "2026-11-23T16:59:11+00:00"
+      },
+      {
+        "file": "clip_043_ball_positions.json",
+        "sha256": "28653602b934b1a554932a1eac306599ec1cdda53d6f25fc1f15dbe572726a0a",
+        "embedded_created_utc": "2026-11-23T17:07:32+00:00"
+      },
+      {
+        "file": "clip_044_ball_positions.json",
+        "sha256": "be153420a64996370d29a0eaec5df0c5ec9047b726566ae9f70e1d2db9bc9258",
+        "embedded_created_utc": "2026-11-24T00:36:21+00:00"
+      },
+      {
+        "file": "clip_045_ball_positions.json",
+        "sha256": "3624389b55f16114dcd883576b49d0bf3fc3b21e13fbf1f9d8ac9ec019cccb56",
+        "embedded_created_utc": "2026-11-24T00:24:41+00:00"
+      },
+      {
+        "file": "clip_046_ball_positions.json",
+        "sha256": "9110e11438df76107a80d2b80fd6924a97d068ca455533bdfad18177cb067462",
+        "embedded_created_utc": "2026-11-23T16:54:44+00:00"
+      },
+      {
+        "file": "clip_047_ball_positions.json",
+        "sha256": "9959b56e7ba2fba760a98baecf5f00d332dcbb6be0a6da5eaad40c2773f7348f",
+        "embedded_created_utc": "2026-11-24T00:29:25+00:00"
+      },
+      {
+        "file": "clip_048_ball_positions.json",
+        "sha256": "9159715b627989c4db8dce14c7d715c1fc06c70bd96ba85ddcdbf9bb8f83dab3",
+        "embedded_created_utc": "2026-11-23T17:02:01+00:00"
+      },
+      {
+        "file": "clip_049_ball_positions.json",
+        "sha256": "5f784c577a0bb7e00d8ad0e057d689ac0418cb2a5826bb7f2a8d4b2636a33e71",
+        "embedded_created_utc": "2026-11-24T00:30:11+00:00"
+      },
+      {
+        "file": "clip_050_ball_positions.json",
+        "sha256": "9e34b0ccfbf11fda95036eab9cd17e7d6e50b4cee6e791b0d6fe5f5e95f54561",
+        "embedded_created_utc": "2026-11-23T17:13:43+00:00"
+      },
+      {
+        "file": "clip_051_ball_positions.json",
+        "sha256": "a09996f4f7fefa579306218741e0867390c9ea3343add69883bb5b0da1770fd8",
+        "embedded_created_utc": "2026-11-24T00:29:01+00:00"
+      },
+      {
+        "file": "clip_052_ball_positions.json",
+        "sha256": "d812b13706db0096ba913b6c45fcb48f47707267632abda114c8dc2bcd756038",
+        "embedded_created_utc": "2026-11-23T16:58:14+00:00"
+      },
+      {
+        "file": "clip_053_ball_positions.json",
+        "sha256": "7b009f5e5e0d147afeba294e9506af06c981864303cd7cef5788855b2affeb91",
+        "embedded_created_utc": "2026-11-23T17:01:04+00:00"
+      },
+      {
+        "file": "clip_054_ball_positions.json",
+        "sha256": "e7be0dcc0f7644375d5361d36278f2b3ac06aa7b88ba3c2888b2cafb1af78b86",
+        "embedded_created_utc": "2026-11-24T00:28:03+00:00"
+      },
+      {
+        "file": "clip_055_ball_positions.json",
+        "sha256": "b97892cdd58f37cf96934660d3396055501aa115beddce005d38778bd6e66b2e",
+        "embedded_created_utc": "2026-11-24T01:09:38+00:00"
+      },
+      {
+        "file": "clip_056_ball_positions.json",
+        "sha256": "c2f82bb4e259e1f35cd224834d64fb3f7958cbfc7747ae68ffc426c9495e81ef",
+        "embedded_created_utc": "2026-11-24T00:32:44+00:00"
+      },
+      {
+        "file": "clip_057_ball_positions.json",
+        "sha256": "e47e9f2fb9743103b1dbb208fa289618817f0007530bec211a3ded6120eba97d",
+        "embedded_created_utc": "2026-11-23T16:58:09+00:00"
+      },
+      {
+        "file": "clip_058_ball_positions.json",
+        "sha256": "6e979a90774aab119bc2611b2a9d7e66315db9dc365aa18140a06432a05655e1",
+        "embedded_created_utc": "2026-11-23T16:59:41+00:00"
+      },
+      {
+        "file": "clip_059_ball_positions.json",
+        "sha256": "1b6266db41ca1221c187f954cfe5c730dc09d421e7cce2aeb87c840ec4174b15",
+        "embedded_created_utc": "2026-11-23T17:10:33+00:00"
+      },
+      {
+        "file": "clip_060_ball_positions.json",
+        "sha256": "a47da3d99800cbbbf4d98740d11b860702c357a29049579b87dbd002ad82b98c",
+        "embedded_created_utc": "2026-11-23T16:59:44+00:00"
+      },
+      {
+        "file": "clip_061_ball_positions.json",
+        "sha256": "d70eb3bcd9e63981722e5622dee570ea3bc70c5175b1d103fa619fd0aad35435",
+        "embedded_created_utc": "2026-11-24T00:36:29+00:00"
+      },
+      {
+        "file": "clip_062_ball_positions.json",
+        "sha256": "f650fb967f1c75a0f109c923eaa22ff2f5b50256743b6c1495d8744c57a5e409",
+        "embedded_created_utc": "2026-11-23T16:55:49+00:00"
+      },
+      {
+        "file": "clip_063_ball_positions.json",
+        "sha256": "a642c92854db5c4a074be4a74d573f8dfb5bd5279a8aed5ab53b6a5994488b57",
+        "embedded_created_utc": "2026-11-23T16:54:56+00:00"
+      },
+      {
+        "file": "clip_064_ball_positions.json",
+        "sha256": "8c00f505bcedb9eeb629b3218b7eb91d2fdc68d2d867c27b7ef44c5a53be941e",
+        "embedded_created_utc": "2026-11-23T17:15:33+00:00"
+      },
+      {
+        "file": "clip_065_ball_positions.json",
+        "sha256": "cce3a1443198a206a246f782e45b816985fd318d4e77ef24d6f1bdf9c8f3abd4",
+        "embedded_created_utc": "2026-11-23T16:54:16+00:00"
+      },
+      {
+        "file": "clip_066_ball_positions.json",
+        "sha256": "90f558316e2f0514d5302c83871d5d7e66be2706e9a70744e394772d6e3cd50d",
+        "embedded_created_utc": "2026-11-24T00:35:48+00:00"
+      },
+      {
+        "file": "clip_067_ball_positions.json",
+        "sha256": "af0b4a167ff26b0852181f5a02f976dfe0383671d9ec7866bd7e668c3b2c0f0a",
+        "embedded_created_utc": "2026-11-24T00:45:49+00:00"
+      },
+      {
+        "file": "clip_068_ball_positions.json",
+        "sha256": "adc84882275b735b525e9cde62c82259fc9ec3c1a571e90650905a0ad1c55463",
+        "embedded_created_utc": "2026-11-23T16:59:35+00:00"
+      }
+    ]
+  },
+  "matching_download_records": [
+    {
+      "tab_host": "chatgpt.com",
+      "referrer_host": "chatgpt.com",
+      "start_utc": "2026-11-24T01:50:43.303491+00:00",
+      "bytes": 3624873
+    }
+  ],
+  "cli_revision": {
+    "campaign": "campaign-ball-reannot-20261124",
+    "launcher_sha256": "b9f596b5370b11441bc9f89d28f733a2114caa4bbf0f7f0e7a51930c7656b0b3",
+    "events_sha256": "929d30b7474ff6f26abc98b2a6f9c3b8f6e708887a8c7bd9797faeae3bfd6412",
+    "runs": [
+      {
+        "clip": "clip_012",
+        "start": "2026-11-24T20:27:47+09:00",
+        "finish": "2026-11-24T21:03:40+09:00",
+        "exit_code": 0,
+        "context_time_utc": "2026-11-24T11:27:50.362Z",
+        "effective_model": "gpt-6.2-sol",
+        "effort": "max",
+        "turn_context_line_sha256": "697df0d7eb5057fbefe4b9216fb5910d0e58346aeaa40d20897c2eb5054efa6e",
+        "codex_jsonl_sha256": "204d8af276bb808a5cef0f3824bc99dd52b1528b2c5bf69501f67a7e5ffaaed3",
+        "original_sha256": "233d2ebfbcb8d9651cd43840fb6b31a6b5730fe943feb052b9a369e825fbd32e",
+        "revised_sha256": "8645e8b19a3ccee277378d2a1478db349820b0f0b1fbb29822671db3f2a68089"
+      },
+      {
+        "clip": "clip_015",
+        "start": "2026-11-24T20:27:47+09:00",
+        "finish": "2026-11-24T21:05:52+09:00",
+        "exit_code": 0,
+        "context_time_utc": "2026-11-24T11:27:51.021Z",
+        "effective_model": "gpt-6.2-sol",
+        "effort": "max",
+        "turn_context_line_sha256": "9af87997fd23f8601148c5011cbe9be2e8122ed1324071c812d600b9cce3e3b2",
+        "codex_jsonl_sha256": "10650f69ce6e46f434502ba171f2d8aea63bdeb010ed7c779011ed25e5f075de",
+        "original_sha256": "99b0743cbe47dd6f43cf467c854119fe89b1c2556895be5d85b7b10ee4ae4f69",
+        "revised_sha256": "d46d8eb0c6d148fffea52dcbf9b933033c960e6fbeb4d3e2ba240874b7158550"
+      },
+      {
+        "clip": "clip_026",
+        "start": "2026-11-24T20:27:47+09:00",
+        "finish": "2026-11-24T21:03:19+09:00",
+        "exit_code": 0,
+        "context_time_utc": "2026-11-24T11:27:50.743Z",
+        "effective_model": "gpt-6.2-sol",
+        "effort": "max",
+        "turn_context_line_sha256": "a637182cfd24e831691915e8b1f7ab35982a6c62e10a1c45e525a7ffbf48f7b5",
+        "codex_jsonl_sha256": "70f2731c111c168b1ad7b6c9c87c50e7f90907515e05a868f966f448205dfdac",
+        "original_sha256": "8b3bf75bcad74b038f23653b884de83d5d148a3ab47992034fd35741e1869e91",
+        "revised_sha256": "7f8da20b7d48e4dcdc4219665ddb38394b949e83b6f8dc98bf702736dc9c332d"
+      }
+    ],
+    "publication_folder": "clip_000-068_ball_positions_rev1"
+  }
+}
