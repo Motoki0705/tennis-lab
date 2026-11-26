@@ -4,6 +4,7 @@
 選手の同一性に使う明示的なrecipeです。新経路の前段は
 [フレーム別の3D候補](../multiview_pose/README.md) と [時間追跡・選手枠統合](../multiview_tracking/README.md) にあります。
 既定recipeは [run_video_batch と run_pipeline](../README.md#標準経路) から選べます。
+`prepare` と `run` の `--progress` には、標準recipeで実行したバッチの記録を指定します。
 
 選手IDと元DINO行でカメラごとのcrop、ViTPose関節、実観測maskを組み立てます。
 `body_view_selection` はその観測で代表カメラと区間を決め、`hmr2_features`、`gvhmr`、

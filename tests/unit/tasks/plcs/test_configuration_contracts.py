@@ -173,3 +173,18 @@ def test_explicit_unavailable_generation_cuda_is_rejected(
 
     with pytest.raises(SemanticConfigurationError, match="not an available device"):
         PLCSGenerationConfig.from_config(config)
+
+
+@pytest.mark.parametrize("camera_preset", ["broadcast", "mixed"])
+def test_generation_components_accept_broadcast_and_mixed_camera_presets(
+    camera_preset: str,
+) -> None:
+    config_dir = PROJECT_ROOT / "src/tasks/plcs/configs"
+    with initialize_config_dir(version_base="1.3", config_dir=str(config_dir)):
+        cfg = compose(
+            config_name="generate_dataset", overrides=[f"camera={camera_preset}"]
+        )
+    components = configuration_contracts.PLCSGenerationComponents.from_config(cfg)
+    assert components.mode == "single_object"
+    assert cfg.camera.layout == camera_preset
+

@@ -1,0 +1,495 @@
+{
+  "images": 6844,
+  "inputs": "Stored ViTPose poses paired with their expanded observed joint envelopes as candidate boxes. Detection scores are max observed joint confidence. The smoke metrics do not evaluate DINO detection.",
+  "manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+  "overall": {
+    "detection": {
+      "average_precision": null,
+      "matched_at_iou_0_50": 25638,
+      "matched_iou": {
+        "count": 25638,
+        "mean": 0.8135101175586775,
+        "median": 0.8237366332412837,
+        "p95": 0.9305647857408297
+      },
+      "miss_rate_at_iou_0_50": 0.024280712437205053,
+      "precision": null,
+      "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+      "recall_by_iou": {
+        "0.50": 0.9757192875627949,
+        "0.75": 0.7770208555335667
+      },
+      "recall_by_min_score": {
+        "0.25": {
+          "0.50": 0.9757192875627949,
+          "0.75": 0.7770208555335667
+        },
+        "0.5": {
+          "0.50": 0.9756431724767849,
+          "0.75": 0.7770208555335667
+        },
+        "0.75": {
+          "0.50": 0.9510199421525346,
+          "0.75": 0.7660602831481199
+        }
+      },
+      "references": 26276,
+      "unmatched_predictions": 290,
+      "xyxy_error_px": {
+        "x_max": {
+          "absolute": {
+            "count": 25638,
+            "mean": 3.1827405559003403,
+            "median": 1.9800698907935157,
+            "p95": 10.318165207917904
+          },
+          "signed": {
+            "count": 25638,
+            "mean": 1.0432638599301198,
+            "median": 0.6038066434114739,
+            "p95": 8.848717993097841
+          }
+        },
+        "x_min": {
+          "absolute": {
+            "count": 25638,
+            "mean": 3.4372997573524784,
+            "median": 2.404731478752069,
+            "p95": 10.374572307222103
+          },
+          "signed": {
+            "count": 25638,
+            "mean": -1.7243574836224917,
+            "median": -1.4099197822545193,
+            "p95": 4.609551174915691
+          }
+        },
+        "y_max": {
+          "absolute": {
+            "count": 25638,
+            "mean": 2.924084442524867,
+            "median": 2.1290488835561234,
+            "p95": 8.207833275711298
+          },
+          "signed": {
+            "count": 25638,
+            "mean": 0.8084168888817075,
+            "median": 0.5595474152471809,
+            "p95": 7.464924322587764
+          }
+        },
+        "y_min": {
+          "absolute": {
+            "count": 25638,
+            "mean": 2.5988289144149697,
+            "median": 1.9624131358656314,
+            "p95": 7.044518794998816
+          },
+          "signed": {
+            "count": 25638,
+            "mean": 0.01916389399147017,
+            "median": -0.07748007074798124,
+            "p95": 5.6713254249309015
+          }
+        }
+      }
+    },
+    "pose": {
+      "matched_only": {
+        "by_joint": {
+          "left_ankle": {
+            "eligible": 25522,
+            "pixel_error_px": {
+              "count": 25519,
+              "mean": 5.515618079845553,
+              "median": 3.8974049370430803,
+              "p95": 15.754413077698167
+            }
+          },
+          "left_ear": {
+            "eligible": 25622,
+            "pixel_error_px": {
+              "count": 25622,
+              "mean": 3.656808563137046,
+              "median": 3.0257538007793205,
+              "p95": 8.982837906381524
+            }
+          },
+          "left_elbow": {
+            "eligible": 25607,
+            "pixel_error_px": {
+              "count": 25607,
+              "mean": 4.80434065521681,
+              "median": 3.567375947644896,
+              "p95": 13.260938371752511
+            }
+          },
+          "left_eye": {
+            "eligible": 25611,
+            "pixel_error_px": {
+              "count": 25611,
+              "mean": 3.825425881638397,
+              "median": 3.0819012212641335,
+              "p95": 9.530655367684023
+            }
+          },
+          "left_hip": {
+            "eligible": 25620,
+            "pixel_error_px": {
+              "count": 25620,
+              "mean": 3.7743326005903914,
+              "median": 3.070237093319614,
+              "p95": 9.060203246403113
+            }
+          },
+          "left_knee": {
+            "eligible": 25618,
+            "pixel_error_px": {
+              "count": 25616,
+              "mean": 4.572335900062087,
+              "median": 3.4701674793058634,
+              "p95": 12.326497917743062
+            }
+          },
+          "left_shoulder": {
+            "eligible": 25625,
+            "pixel_error_px": {
+              "count": 25625,
+              "mean": 3.913592079543487,
+              "median": 3.161144223373565,
+              "p95": 9.596598721463764
+            }
+          },
+          "left_wrist": {
+            "eligible": 25583,
+            "pixel_error_px": {
+              "count": 25582,
+              "mean": 6.179013131168419,
+              "median": 4.563351916386509,
+              "p95": 16.041341598301884
+            }
+          },
+          "nose": {
+            "eligible": 25606,
+            "pixel_error_px": {
+              "count": 25606,
+              "mean": 3.8965585511636056,
+              "median": 3.0959095199784654,
+              "p95": 9.835835232069186
+            }
+          },
+          "right_ankle": {
+            "eligible": 25495,
+            "pixel_error_px": {
+              "count": 25492,
+              "mean": 5.268751124549863,
+              "median": 3.784675734378124,
+              "p95": 14.762473049191337
+            }
+          },
+          "right_ear": {
+            "eligible": 25607,
+            "pixel_error_px": {
+              "count": 25607,
+              "mean": 3.75266086559754,
+              "median": 3.227294046810313,
+              "p95": 8.242358464966545
+            }
+          },
+          "right_elbow": {
+            "eligible": 25527,
+            "pixel_error_px": {
+              "count": 25527,
+              "mean": 5.119331343263059,
+              "median": 3.8146399147970445,
+              "p95": 14.251212050594678
+            }
+          },
+          "right_eye": {
+            "eligible": 25608,
+            "pixel_error_px": {
+              "count": 25608,
+              "mean": 3.7202710018511036,
+              "median": 2.9394042362897093,
+              "p95": 9.494926784790671
+            }
+          },
+          "right_hip": {
+            "eligible": 25587,
+            "pixel_error_px": {
+              "count": 25587,
+              "mean": 3.859599721206369,
+              "median": 3.090229535015718,
+              "p95": 9.525826144386178
+            }
+          },
+          "right_knee": {
+            "eligible": 25607,
+            "pixel_error_px": {
+              "count": 25605,
+              "mean": 4.644038078857727,
+              "median": 3.5108015734655056,
+              "p95": 12.322876828166155
+            }
+          },
+          "right_shoulder": {
+            "eligible": 25604,
+            "pixel_error_px": {
+              "count": 25604,
+              "mean": 4.1491202205258135,
+              "median": 3.336017113038368,
+              "p95": 10.27864184809362
+            }
+          },
+          "right_wrist": {
+            "eligible": 25508,
+            "pixel_error_px": {
+              "count": 25508,
+              "mean": 6.131218973212863,
+              "median": 4.326227107396318,
+              "p95": 17.108857851929713
+            }
+          }
+        },
+        "eligible_joints": 434957,
+        "oks": {
+          "count": 25635,
+          "mean": 0.7759421389423112,
+          "median": 0.7930249657077247,
+          "p95": 0.9441988801880326
+        },
+        "pck": {
+          "0.1": 0.7909034686187371,
+          "0.2": 0.964656276367549
+        },
+        "pixel_error_px": {
+          "count": 434946,
+          "mean": 4.515622926292217,
+          "median": 3.415848133806816,
+          "p95": 11.83208185136978
+        },
+        "pose_references": 25635,
+        "pose_references_with_prediction": 25635,
+        "predicted_joints": 434946,
+        "valid_joint_fraction": 0.9999747101437614
+      },
+      "with_detection_coverage": {
+        "by_joint": {
+          "left_ankle": {
+            "eligible": 25632,
+            "pixel_error_px": {
+              "count": 25519,
+              "mean": 5.515618079845553,
+              "median": 3.8974049370430803,
+              "p95": 15.754413077698167
+            }
+          },
+          "left_ear": {
+            "eligible": 25798,
+            "pixel_error_px": {
+              "count": 25622,
+              "mean": 3.656808563137046,
+              "median": 3.0257538007793205,
+              "p95": 8.982837906381524
+            }
+          },
+          "left_elbow": {
+            "eligible": 25783,
+            "pixel_error_px": {
+              "count": 25607,
+              "mean": 4.80434065521681,
+              "median": 3.567375947644896,
+              "p95": 13.260938371752511
+            }
+          },
+          "left_eye": {
+            "eligible": 25787,
+            "pixel_error_px": {
+              "count": 25611,
+              "mean": 3.825425881638397,
+              "median": 3.0819012212641335,
+              "p95": 9.530655367684023
+            }
+          },
+          "left_hip": {
+            "eligible": 25796,
+            "pixel_error_px": {
+              "count": 25620,
+              "mean": 3.7743326005903914,
+              "median": 3.070237093319614,
+              "p95": 9.060203246403113
+            }
+          },
+          "left_knee": {
+            "eligible": 25759,
+            "pixel_error_px": {
+              "count": 25616,
+              "mean": 4.572335900062087,
+              "median": 3.4701674793058634,
+              "p95": 12.326497917743062
+            }
+          },
+          "left_shoulder": {
+            "eligible": 25801,
+            "pixel_error_px": {
+              "count": 25625,
+              "mean": 3.913592079543487,
+              "median": 3.161144223373565,
+              "p95": 9.596598721463764
+            }
+          },
+          "left_wrist": {
+            "eligible": 25749,
+            "pixel_error_px": {
+              "count": 25582,
+              "mean": 6.179013131168419,
+              "median": 4.563351916386509,
+              "p95": 16.041341598301884
+            }
+          },
+          "nose": {
+            "eligible": 25780,
+            "pixel_error_px": {
+              "count": 25606,
+              "mean": 3.8965585511636056,
+              "median": 3.0959095199784654,
+              "p95": 9.835835232069186
+            }
+          },
+          "right_ankle": {
+            "eligible": 25604,
+            "pixel_error_px": {
+              "count": 25492,
+              "mean": 5.268751124549863,
+              "median": 3.784675734378124,
+              "p95": 14.762473049191337
+            }
+          },
+          "right_ear": {
+            "eligible": 25783,
+            "pixel_error_px": {
+              "count": 25607,
+              "mean": 3.75266086559754,
+              "median": 3.227294046810313,
+              "p95": 8.242358464966545
+            }
+          },
+          "right_elbow": {
+            "eligible": 25703,
+            "pixel_error_px": {
+              "count": 25527,
+              "mean": 5.119331343263059,
+              "median": 3.8146399147970445,
+              "p95": 14.251212050594678
+            }
+          },
+          "right_eye": {
+            "eligible": 25783,
+            "pixel_error_px": {
+              "count": 25608,
+              "mean": 3.7202710018511036,
+              "median": 2.9394042362897093,
+              "p95": 9.494926784790671
+            }
+          },
+          "right_hip": {
+            "eligible": 25763,
+            "pixel_error_px": {
+              "count": 25587,
+              "mean": 3.859599721206369,
+              "median": 3.090229535015718,
+              "p95": 9.525826144386178
+            }
+          },
+          "right_knee": {
+            "eligible": 25745,
+            "pixel_error_px": {
+              "count": 25605,
+              "mean": 4.644038078857727,
+              "median": 3.5108015734655056,
+              "p95": 12.322876828166155
+            }
+          },
+          "right_shoulder": {
+            "eligible": 25780,
+            "pixel_error_px": {
+              "count": 25604,
+              "mean": 4.1491202205258135,
+              "median": 3.336017113038368,
+              "p95": 10.27864184809362
+            }
+          },
+          "right_wrist": {
+            "eligible": 25668,
+            "pixel_error_px": {
+              "count": 25508,
+              "mean": 6.131218973212863,
+              "median": 4.326227107396318,
+              "p95": 17.108857851929713
+            }
+          }
+        },
+        "eligible_joints": 437714,
+        "oks": {
+          "count": 25811,
+          "mean": 0.7706511460922144,
+          "median": 0.7921901274705505,
+          "p95": 0.9440442077006275
+        },
+        "pck": {
+          "0.1": 0.7859218576513431,
+          "0.2": 0.9585802601698826
+        },
+        "pixel_error_px": {
+          "count": 434946,
+          "mean": 4.515622926292217,
+          "median": 3.415848133806816,
+          "p95": 11.83208185136978
+        },
+        "pose_references": 25811,
+        "pose_references_with_prediction": 25635,
+        "predicted_joints": 434946,
+        "valid_joint_fraction": 0.993676236081094
+      }
+    }
+  },
+  "policy": {
+    "association": "maximum cardinality above the IoU cutoff, then maximum summed IoU",
+    "height_cutoffs_px": [
+      80.0,
+      160.0
+    ],
+    "iou_cutoffs": [
+      0.5,
+      0.75
+    ],
+    "missing_pose_policy": "joint failures for PCK, zero contributions for OKS, no pixel measurement",
+    "oks_area": "pseudo_bbox_area_px2",
+    "oks_sigmas": [
+      0.026,
+      0.025,
+      0.025,
+      0.035,
+      0.035,
+      0.079,
+      0.079,
+      0.072,
+      0.072,
+      0.062,
+      0.062,
+      0.107,
+      0.107,
+      0.087,
+      0.087,
+      0.089,
+      0.089
+    ],
+    "pck_cutoffs": [
+      0.1,
+      0.2
+    ],
+    "pck_normalizer": "sqrt(pseudo_bbox_area_px2)",
+    "pose_confidence_exclusive_cutoff": 0.0,
+    "pose_match_iou": 0.5
+  }
+}

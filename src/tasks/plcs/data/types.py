@@ -46,6 +46,16 @@ class PLCSBatch(TypedDict):
     camera_cy: torch.Tensor
     camera_w: torch.Tensor
     camera_h: torch.Tensor
+    bbx_xys: NotRequired[torch.Tensor]
+    frame_observed: NotRequired[torch.Tensor]
+    kp2d_norm: NotRequired[torch.Tensor]
+    cliffcam: NotRequired[torch.Tensor]
+    cam_feat: NotRequired[torch.Tensor]
+    camera_R_in: NotRequired[torch.Tensor]
+    camera_C_in: NotRequired[torch.Tensor]
+    camera_f_in: NotRequired[torch.Tensor]
+    camera_cx_in: NotRequired[torch.Tensor]
+    camera_cy_in: NotRequired[torch.Tensor]
     frame_rate_hz: NotRequired[torch.Tensor]
     court_keypoint_metadata: NotRequired[tuple[Mapping[str, object], ...]]
     court_reference_provenance: NotRequired[tuple[CourtReferenceFrameProvenance, ...]]

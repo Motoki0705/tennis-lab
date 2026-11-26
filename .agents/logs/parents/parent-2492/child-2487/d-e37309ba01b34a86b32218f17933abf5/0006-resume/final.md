@@ -1,0 +1,5 @@
+`codex/parent-2492-issue-2487-rfdetr` に `247f70974ce8a5496dd0a421d5a5b935f32cdd88` を push しました。#2497 の同期済み harness で、RF-DETR-L の PT16・TRT16 を batch 1・2 で測る4ジョブを登録しました。parity は「PT32計測はスコープ外（ユーザー判断 2026-11-25）」と明示しています。[CI](https://github.com/Motoki0705/tennis-lab/actions/runs/45590018457)
+
+固定96画像と両batchの計時順、TRT16 batch 1 の既存planを照合しました。対象テスト62件、pre-commit、knowledge検証が通過し、既存の精度記録のSHA-256も一致しました。TRT16 batch 2 はONNX変換とengine構築が成功した場合に計測します。速度・VRAMの実測とDINO比較表への反映は、queue結果の受領後に行います。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204399434903962229_2026-11-25T09-56-05-096037770Z_2584847_i2487-rfdetr-l-pt16-b1-sync-speed.job","0-8204399434489752884_2026-11-25T09-56-05-510247115Z_2584915_i2487-rfdetr-l-pt16-b2-sync-speed.job","0-8204399434067289058_2026-11-25T09-56-05-932710941Z_2584997_i2487-rfdetr-l-trt16-b1-sync-speed.job","0-8204399433646321135_2026-11-25T09-56-06-353678864Z_2585088_i2487-rfdetr-l-trt16-b2-sync-speed.job"]}}

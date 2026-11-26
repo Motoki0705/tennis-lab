@@ -35,6 +35,20 @@ def test_matching_is_one_to_one_within_tolerance() -> None:
     assert report["segmentation_failure_rate"] == 1.0
 
 
+def test_matching_maximizes_count_before_minimizing_timing_error() -> None:
+    report = event_detection_report([np.array([4, 7])], [np.array([2, 5])], tolerance=2)
+    assert report["matched"] == 2
+    assert report["precision"] == report["recall"] == report["f1"] == 1
+    assert report["mean_abs_offset_frames"] == report["mean_offset_frames"] == 2
+    assert report["segmentation_failure_rate"] == 0
+
+
+def test_matching_minimizes_timing_error_among_equal_counts() -> None:
+    report = event_detection_report([np.array([3, 9])], [np.array([0, 4])], tolerance=9)
+    assert report["matched"] == 2
+    assert report["mean_abs_offset_frames"] == report["mean_offset_frames"] == 4
+
+
 def test_a_rally_is_segmented_only_when_all_events_match_one_to_one() -> None:
     report = event_detection_report(
         [np.array([10, 31]), np.array([4, 20]), np.array([7])],

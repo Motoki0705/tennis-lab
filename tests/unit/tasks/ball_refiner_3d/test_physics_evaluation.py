@@ -1,4 +1,4 @@
-"""``physics_eval.v1``: ground truth is physical, a straight-line fill is not."""
+"""Physical diagnostics and class-specific event matching."""
 
 from __future__ import annotations
 
@@ -8,6 +8,7 @@ import torch
 from numpy.typing import NDArray
 
 from src.tasks.ball_refiner_3d.data.schema import Rally
+from src.tasks.ball_refiner_3d.evaluation.events import event_report
 from src.tasks.ball_refiner_3d.evaluation.physics import (
     PROTOCOL,
     RallyPrediction,
@@ -40,8 +41,9 @@ def _rally(
 def _prediction(
     rally: Rally, coordinates: np.ndarray, missing: np.ndarray
 ) -> RallyPrediction:
-    probability = np.full(len(rally.xyz), 0.01)
-    probability[np.flatnonzero(rally.events)] = 0.9
+    probability = np.full((len(rally.xyz), 3), 0.01)
+    for column, bit in enumerate((1, 2, 4)):
+        probability[(rally.events & bit) != 0, column] = 0.9
     return RallyPrediction(rally, coordinates, missing, probability)
 
 
@@ -105,3 +107,20 @@ def test_rallies_must_share_one_output_rate(rallies: list[Rally]) -> None:
     ]
     with pytest.raises(ValueError, match="output FPS"):
         physics_report(predictions, torch.device("cpu"))
+
+
+def test_event_peaks_match_by_class_and_report_signed_time_errors() -> None:
+    bits: NDArray[np.uint8] = np.zeros(24, np.uint8)
+    bits[[4, 5, 12, 15]] = [1, 2 | 4, 8, 4]
+    probability = np.zeros((24, 3))
+    probability[5, :2] = [0.8, 0.9]
+    probability[[13, 19], 2] = [0.8, 0.9]
+    report = event_report([probability], [bits], 60)
+    shot, bounce, net = (report["by_kind"][kind] for kind in ("shot", "bounce", "net"))
+    assert report["true"] == 3 and net["true"] == 2
+    assert shot["mean_offset_s"] == pytest.approx(1 / 60)
+    assert bounce["f1"] == 1
+    assert net["matched"] == 1
+    assert net["precision"] == net["recall"] == net["f1"] == 0.5
+    assert net["mean_abs_offset_frames"] == 2
+    assert net["mean_offset_s"] == pytest.approx(-2 / 60)

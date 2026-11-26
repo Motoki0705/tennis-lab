@@ -22,6 +22,8 @@ OPS = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(OPS / "lib"))
 from opsproc import process_identity  # noqa: E402
 
+INSPECT_TIMEOUT = 60
+
 
 def load(path: Path) -> dict[str, Any]:
     value: dict[str, Any] = object_value(read_json(path.read_text(encoding="utf-8")))
@@ -83,7 +85,11 @@ class Runtime:
         return self.stopping
 
     def inspect(
-        self, directory: Path, *, stop: bool = False, timeout: float | None = 60
+        self,
+        directory: Path,
+        *,
+        stop: bool = False,
+        timeout: float | None = INSPECT_TIMEOUT,
     ) -> dict[str, Any]:
         before = load(directory / "result.json")
         proc = subprocess.run(

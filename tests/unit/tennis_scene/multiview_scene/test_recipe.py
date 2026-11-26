@@ -1,5 +1,6 @@
 """Contracts at the saved tracking, scene assembly and publication boundaries."""
 
+from argparse import Namespace
 from pathlib import Path
 from typing import Any
 
@@ -9,6 +10,7 @@ from numpy.typing import NDArray
 
 from src.tasks.person_tracking.features import FeatureConfig
 from src.tennis_scene.multiview_pose.schema import FramePoseCandidates, RowRejection
+from src.tennis_scene.multiview_scene.__main__ import run_recipe
 from src.tennis_scene.multiview_scene.inputs import assemble_players
 from src.tennis_scene.multiview_scene.publication import require_known_pointers
 from src.tennis_scene.multiview_scene.report import completion
@@ -164,3 +166,9 @@ def test_publication_resume_accepts_half_switch_and_rejects_concurrent_update() 
         require_known_pointers(
             {**half, "annotation.json": "unrelated change"}, before, after
         )
+
+
+@pytest.mark.parametrize("recipe", ["ecpose", "fasthmr"])
+def test_gvhmr_does_not_accept_progress_from_another_recipe(recipe: str) -> None:
+    with pytest.raises(ValueError, match="requires progress from recipe=standard"):
+        run_recipe(Namespace(), (), {"pipeline_config_yaml": f"recipe: {recipe}"}, prepare_only=True)

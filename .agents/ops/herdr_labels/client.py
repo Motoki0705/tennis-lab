@@ -6,7 +6,36 @@ import json
 import subprocess
 from collections.abc import Callable, Mapping
 from pathlib import Path
-from typing import Any
+from typing import Any, TypeGuard
+
+
+class HerdrError(ValueError):
+    """The Herdr CLI, connection, or response could not be verified."""
+
+
+def _valid_pane(row: object) -> TypeGuard[dict[str, Any]]:
+    if not isinstance(row, dict):
+        return False
+    tokens = row.get("tokens", {})
+    return (
+        all(
+            isinstance(row.get(key), str) and row[key]
+            for key in ("pane_id", "terminal_id")
+        )
+        and all(
+            row.get(key) is None or isinstance(row[key], str)
+            for key in ("agent", "display_agent")
+        )
+        and isinstance(tokens, dict)
+        and all(isinstance(value, str) for value in tokens.values())
+    )
+
+
+def _resolved_socket(path: str) -> str:
+    try:
+        return str(Path(path).resolve())
+    except (OSError, RuntimeError, ValueError):
+        raise HerdrError("cannot resolve a Herdr server socket") from None
 
 
 class Herdr:
@@ -18,42 +47,70 @@ class Herdr:
             self.prefix.extend(["--session", session])
 
     def call(self, *args: str) -> dict[str, Any]:
-        result = subprocess.run(
-            [*self.prefix, *args],
-            env=self.env,
-            text=True,
-            capture_output=True,
-            timeout=10,
-            check=False,
-        )
+        try:
+            result = subprocess.run(
+                [*self.prefix, *args],
+                env=self.env,
+                text=True,
+                capture_output=True,
+                timeout=10,
+                check=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise HerdrError("could not run the Herdr CLI") from exc
+        except UnicodeDecodeError as exc:
+            raise HerdrError("Herdr returned a response with invalid encoding") from exc
         if result.returncode:
             # CLI stderr can contain local session references. Keep it private.
-            raise ValueError(
+            raise HerdrError(
                 f"Herdr {args[0]} {args[1]} failed (exit {result.returncode})"
             )
         if not result.stdout.strip():
             return {}
-        value = json.loads(result.stdout)
+        try:
+            value = json.loads(result.stdout)
+        except (ValueError, RecursionError):
+            raise HerdrError("Herdr returned invalid JSON") from None
         if not isinstance(value, dict) or "error" in value:
-            raise ValueError("Herdr returned an invalid/error response")
+            raise HerdrError("Herdr returned an invalid/error response")
         data = value.get("result", value)
         if not isinstance(data, dict):
-            raise ValueError("Herdr response result is not an object")
+            raise HerdrError("Herdr response result is not an object")
         return data
+
+    def running_sessions(self) -> list[dict[str, Any]]:
+        sessions = self.call("session", "list", "--json").get("sessions")
+        if not isinstance(sessions, list):
+            raise HerdrError("invalid Herdr server list")
+        running = []
+        for row in sessions:
+            if not isinstance(row, dict) or type(row.get("running")) is not bool:
+                raise HerdrError("invalid Herdr server entry")
+            if not row["running"]:
+                continue
+            socket, name = row.get("socket_path"), row.get("name")
+            if (
+                not isinstance(socket, str)
+                or not Path(socket).is_absolute()
+                or not isinstance(name, str)
+                or not name
+                or type(row.get("default", False)) is not bool
+            ):
+                raise HerdrError("invalid Herdr server identity")
+            running.append({**row, "socket_path": _resolved_socket(socket)})
+        return running
 
     def socket_path(self) -> str:
         if self.session is None and self.env.get("HERDR_SOCKET_PATH"):
-            return str(Path(self.env["HERDR_SOCKET_PATH"]).resolve())
-        sessions = self.call("session", "list", "--json").get("sessions", [])
+            return _resolved_socket(self.env["HERDR_SOCKET_PATH"])
         selected = [
             row
-            for row in sessions
+            for row in self.running_sessions()
             if (row.get("name") == self.session if self.session else row.get("default"))
-            and row.get("running")
         ]
-        if len(selected) != 1 or not selected[0].get("socket_path"):
-            raise ValueError("cannot resolve the selected Herdr server socket")
-        return str(Path(selected[0]["socket_path"]).resolve())
+        if len(selected) != 1:
+            raise HerdrError("cannot resolve the selected Herdr server socket")
+        return str(selected[0]["socket_path"])
 
     def pane(self, pane_id: str | None = None) -> dict[str, Any]:
         result = (
@@ -62,11 +119,28 @@ class Herdr:
             else self.call("pane", "current", "--current")
         )
         pane = result.get("pane")
-        if not isinstance(pane, dict) or not all(
-            isinstance(pane.get(k), str) and pane[k] for k in ("pane_id", "terminal_id")
-        ):
-            raise ValueError("Herdr did not return a valid pane identity")
+        if not _valid_pane(pane):
+            raise HerdrError("Herdr returned invalid pane identity or metadata")
         return pane
+
+    def agents(self) -> list[dict[str, Any]]:
+        agents = self.call("agent", "list").get("agents")
+        if not isinstance(agents, list) or not all(_valid_pane(row) for row in agents):
+            raise HerdrError("invalid Herdr agent list")
+        return agents
+
+    def foreground_processes(self, pane_id: str) -> list[dict[str, Any]]:
+        info = self.call("pane", "process-info", "--pane", pane_id).get("process_info")
+        processes = info.get("foreground_processes") if isinstance(info, dict) else None
+        if not isinstance(processes, list) or not all(
+            isinstance(proc, dict)
+            and isinstance(proc.get("name"), str)
+            and type(proc.get("pid")) is int
+            and 0 < proc["pid"] <= 0xFFFF_FFFF
+            for proc in processes
+        ):
+            raise HerdrError("invalid Herdr foreground process information")
+        return processes
 
     def publish(
         self,

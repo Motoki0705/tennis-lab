@@ -3,13 +3,14 @@
 from __future__ import annotations
 
 import argparse
+import fcntl
 import json
 import os
 import signal
 import subprocess
 import sys
 import uuid
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -19,10 +20,13 @@ from lib.checkout_lock import (
     checkout_lock_holders,
     state_root,
 )
+from lib.windows_toast import ToastError, ToastNotSent, send_windows_toast
 from ops_control.systemd import ControlError
 
 from .git import Repository, Skip
 from .runtime import Maintenance
+
+SKIP_NOTICE_COUNT = 3
 
 
 class Journal:
@@ -55,17 +59,103 @@ class Journal:
             log.write(line + "\n")
         print(line, file=sys.stderr, flush=True)
 
-    def finish(self, outcome: str, reason: str, **details: Any) -> dict[str, Any]:
-        self.data.update(
-            outcome=outcome,
-            reason=reason,
-            finished_at=datetime.now(UTC).isoformat(),
-            **details,
-        )
+    def _save_status(self, path: Path) -> None:
         temporary = self.directory / f"status-{self.data['run_id']}.tmp"
         temporary.write_text(json.dumps(self.data, ensure_ascii=True, indent=2) + "\n")
-        temporary.replace(self.directory / "status.json")
-        self.event(reason, outcome=outcome, status=self.data)
+        temporary.replace(path)
+
+    def _skip_streak(self, path: Path, now: datetime) -> dict[str, Any]:
+        count, since, holders, notification = 0, now, [], "pending"
+        try:
+            previous = json.loads(path.read_text())
+            if (
+                previous["checkout"] == self.data["checkout"]
+                and previous["outcome"] == "skipped"
+                and (streak := previous.get("skip_streak")) is not None
+            ):
+                first = datetime.fromisoformat(streak["since"])
+                saved_holders = streak["last_lock_holders"]
+                if (
+                    first.tzinfo is None
+                    or type(streak["count"]) is not int
+                    or streak["count"] < 1
+                    or streak["notification"] not in {"pending", "sent", "uncertain"}
+                    or not isinstance(saved_holders, list)
+                    or any(
+                        not isinstance(holder, dict)
+                        or not isinstance(holder.get("entry"), str)
+                        or type(holder.get("pid")) is not int
+                        for holder in saved_holders
+                    )
+                ):
+                    raise ValueError("invalid consecutive-skip record")
+                count, since = streak["count"], first
+                holders, notification = saved_holders, streak["notification"]
+        except FileNotFoundError:
+            pass
+        except (OSError, ValueError, KeyError, TypeError) as exc:
+            self.event("skip_streak_history_unavailable", error=str(exc))
+        return {
+            "count": count + 1,
+            "since": since.isoformat(),
+            "elapsed_seconds": max(0, int((now - since).total_seconds())),
+            "last_lock_holders": self.data.get("lock_holders", holders),
+            "notification": notification,
+        }
+
+    def _notify_skip_streak(self, path: Path, streak: dict[str, Any]) -> None:
+        reason = self.data["reason"]
+        holders = []
+        for holder in streak["last_lock_holders"]:
+            parent = holder.get("parent_issue")
+            holders.append(
+                f"{holder['entry']} (PID {holder['pid']}"
+                + (f", parent #{parent}" if type(parent) is int else "")
+                + ")"
+            )
+        elapsed = timedelta(seconds=streak["elapsed_seconds"])
+        message = (
+            f"{streak['count']} consecutive skips over {elapsed}. Latest: {reason}.\n"
+            + "Last checkout lock holders: "
+            + (", ".join(holders) or "none observed")
+        )
+        # The attempt is ambiguous from this point through the external call.
+        streak["notification"] = "uncertain"
+        self._save_status(path)
+        try:
+            send_windows_toast("tennis-lab git-sync deferred", message)
+        except ToastNotSent as exc:
+            streak["notification"] = "pending"
+            self._save_status(path)
+            self.event("skip_streak_toast_not_sent", error=str(exc))
+        except ToastError as exc:
+            self.event("skip_streak_toast_uncertain", error=str(exc))
+        else:
+            streak["notification"] = "sent"
+            self.event("skip_streak_toast_sent")
+
+    def finish(self, outcome: str, reason: str, **details: Any) -> dict[str, Any]:
+        path = self.directory / "status.json"
+        # Serialize status and toast delivery even when manual runs overlap the timer.
+        # Both checkout locks have already been released.
+        with (self.directory / "status.lock").open("a", encoding="utf-8") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX)
+            now = datetime.now(UTC)
+            self.data.update(
+                outcome=outcome, reason=reason, finished_at=now.isoformat(), **details
+            )
+            if outcome == "skipped":
+                streak = self.data["skip_streak"] = self._skip_streak(path, now)
+                if (
+                    streak["count"] >= SKIP_NOTICE_COUNT
+                    and streak["notification"] == "pending"
+                ):
+                    # Retain a retryable streak while recording the threshold.
+                    self._save_status(path)
+                    self.event("consecutive_skips", last_reason=reason, **streak)
+                    self._notify_skip_streak(path, streak)
+            self._save_status(path)
+            self.event(reason, outcome=outcome, status=self.data)
         return self.data
 
 

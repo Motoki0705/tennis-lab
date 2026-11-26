@@ -10,8 +10,9 @@ from typing import Any
 
 import numpy as np
 
-# v2 adds the physics-head arrays of ``evaluation.evaluator.evaluate``.
-SCHEMA = "ball_refiner_3d.review_predictions.v2"
+from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
+
+SCHEMA = "ball_refiner_3d.review_predictions.v3"
 
 
 def sha256(path: Path) -> str:
@@ -71,7 +72,12 @@ def write_bundle(
         prefix=".preparing-", dir=directory.parent
     ) as temporary:
         staged = Path(temporary)
-        np.savez_compressed(staged / "pred_test.npz", allow_pickle=False, **predictions)
+        np.savez_compressed(
+            staged / "pred_test.npz",
+            allow_pickle=False,
+            event_classes=np.asarray(EVENT_CLASSES),
+            **predictions,
+        )
         if sha256(checkpoint) != checkpoint_hash:
             raise RuntimeError("予測生成中にcheckpointが変更されました")
         receipt = {

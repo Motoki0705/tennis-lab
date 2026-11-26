@@ -33,6 +33,7 @@ from src.tennis_scene.pipeline.clip_inputs import (
 from src.tennis_scene.pipeline.dataset_publication import ANNOTATION_RELATIVE_DIR
 from src.tennis_scene.pipeline.errors import is_clip_failure
 from src.tennis_scene.pipeline.execution_plan import ClipExecution, ExecutionPlan
+from src.tennis_scene.pipeline.recipes import STANDARD_RECIPE
 from src.tennis_scene.pipeline.runner import PlanExecutor
 from src.tennis_scene.pipeline.source_identity import source_digests
 from src.tennis_scene.pipeline.storage.clip_store import clip_store_lock
@@ -106,9 +107,10 @@ def run_recipe(
     *,
     prepare_only: bool,
 ) -> int:
-    cfg = PipelineRuntimeConfig.from_config(
-        OmegaConf.create(progress["pipeline_config_yaml"]), bind_inputs=False
-    )
+    config = OmegaConf.create(progress["pipeline_config_yaml"])
+    if OmegaConf.select(config, "recipe", default=STANDARD_RECIPE) != STANDARD_RECIPE:
+        raise ValueError("Multiview GVHMR requires progress from recipe=standard")
+    cfg = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
     implementation = document_digest(source_digests(PROJECT_ROOT / "src"))
     settings = adapter_settings(cfg, implementation)
     players_per_side = args.players_per_side

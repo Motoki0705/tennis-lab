@@ -1,0 +1,370 @@
+{
+  "purpose": "qualitative_visualization",
+  "cohort_id": "meiji_4cam/multiview-player-evaluation-v1",
+  "cohort_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+  "backend": "gvhmr-archive",
+  "feature_batch_size": null,
+  "seed": null,
+  "clips": [
+    {
+      "phase": "clip",
+      "status": "ok",
+      "backend": "gvhmr",
+      "clip_id": "video_000/clip_003",
+      "frames": 185,
+      "npz": "clip_003-gvhmr.npz",
+      "sha256": "097aed3c28a83149f49fe310e2d3af91102228a012d6475b455ed6f259e70ee0",
+      "placement": {
+        "data_sigma_m": 0.1,
+        "max_nfev": 200,
+        "max_reprojection_rms_px": 10.0,
+        "max_scale": 1.4,
+        "min_joints": 5,
+        "min_scale": 0.7,
+        "min_scale_pairs": 6,
+        "reprojection_weight_sigma_px": 5.0,
+        "root_acceleration_sigma": 10.0,
+        "temporal_weight": 0.05,
+        "yaw_acceleration_sigma": 20.0
+      },
+      "players": [
+        {
+          "id": 0,
+          "camera": "cam0",
+          "camera_mesh_frames": 185,
+          "court_mesh_frames": 185,
+          "court_mesh_frames_at_samples": 185,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 1,
+          "camera": "cam0",
+          "camera_mesh_frames": 185,
+          "court_mesh_frames": 185,
+          "court_mesh_frames_at_samples": 185,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 2,
+          "camera": "cam2",
+          "camera_mesh_frames": 185,
+          "court_mesh_frames": 185,
+          "court_mesh_frames_at_samples": 185,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 6,
+          "camera": "cam3",
+          "camera_mesh_frames": 185,
+          "court_mesh_frames": 185,
+          "court_mesh_frames_at_samples": 185,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        }
+      ]
+    },
+    {
+      "phase": "clip",
+      "status": "ok",
+      "backend": "gvhmr",
+      "clip_id": "video_000/clip_057",
+      "frames": 143,
+      "npz": "clip_057-gvhmr.npz",
+      "sha256": "036647442e8fb3a170469790e610a47e628c4dfe4e235c0c4f6bc933a0dde355",
+      "placement": {
+        "data_sigma_m": 0.1,
+        "max_nfev": 200,
+        "max_reprojection_rms_px": 10.0,
+        "max_scale": 1.4,
+        "min_joints": 5,
+        "min_scale": 0.7,
+        "min_scale_pairs": 6,
+        "reprojection_weight_sigma_px": 5.0,
+        "root_acceleration_sigma": 10.0,
+        "temporal_weight": 0.05,
+        "yaw_acceleration_sigma": 20.0
+      },
+      "players": [
+        {
+          "id": 0,
+          "camera": "cam1",
+          "camera_mesh_frames": 143,
+          "court_mesh_frames": 143,
+          "court_mesh_frames_at_samples": 143,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 2,
+          "camera": "cam0",
+          "camera_mesh_frames": 143,
+          "court_mesh_frames": 143,
+          "court_mesh_frames_at_samples": 143,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 3,
+          "camera": "cam1",
+          "camera_mesh_frames": 143,
+          "court_mesh_frames": 143,
+          "court_mesh_frames_at_samples": 143,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 4,
+          "camera": "cam2",
+          "camera_mesh_frames": 143,
+          "court_mesh_frames": 142,
+          "court_mesh_frames_at_samples": 142,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        }
+      ]
+    },
+    {
+      "phase": "clip",
+      "status": "ok",
+      "backend": "gvhmr",
+      "clip_id": "video_000/clip_004",
+      "frames": 294,
+      "npz": "clip_004-gvhmr.npz",
+      "sha256": "8d796ed31378a0f3ebbe203a72db1405ad0f6300bc111deb7daa4f6a62f7d248",
+      "placement": {
+        "data_sigma_m": 0.1,
+        "max_nfev": 200,
+        "max_reprojection_rms_px": 10.0,
+        "max_scale": 1.4,
+        "min_joints": 5,
+        "min_scale": 0.7,
+        "min_scale_pairs": 6,
+        "reprojection_weight_sigma_px": 5.0,
+        "root_acceleration_sigma": 10.0,
+        "temporal_weight": 0.05,
+        "yaw_acceleration_sigma": 20.0
+      },
+      "players": [
+        {
+          "id": 0,
+          "camera": "cam2",
+          "camera_mesh_frames": 292,
+          "court_mesh_frames": 292,
+          "court_mesh_frames_at_samples": 292,
+          "input_absent_frames": 2,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 1,
+          "camera": "cam0",
+          "camera_mesh_frames": 294,
+          "court_mesh_frames": 294,
+          "court_mesh_frames_at_samples": 294,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 4,
+          "camera": "cam1",
+          "camera_mesh_frames": 294,
+          "court_mesh_frames": 283,
+          "court_mesh_frames_at_samples": 283,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 22,
+          "camera": "cam2",
+          "camera_mesh_frames": 209,
+          "court_mesh_frames": 209,
+          "court_mesh_frames_at_samples": 209,
+          "input_absent_frames": 85,
+          "input_frames_with_interpolated_crop": 0
+        }
+      ]
+    },
+    {
+      "phase": "clip",
+      "status": "ok",
+      "backend": "gvhmr",
+      "clip_id": "video_000/clip_013",
+      "frames": 235,
+      "npz": "clip_013-gvhmr.npz",
+      "sha256": "344f4d5e2f4fbbcc24305f01004075231adfd941a220d2120c4d0e42f279d96f",
+      "placement": {
+        "data_sigma_m": 0.1,
+        "max_nfev": 200,
+        "max_reprojection_rms_px": 10.0,
+        "max_scale": 1.4,
+        "min_joints": 5,
+        "min_scale": 0.7,
+        "min_scale_pairs": 6,
+        "reprojection_weight_sigma_px": 5.0,
+        "root_acceleration_sigma": 10.0,
+        "temporal_weight": 0.05,
+        "yaw_acceleration_sigma": 20.0
+      },
+      "players": [
+        {
+          "id": 0,
+          "camera": "cam0",
+          "camera_mesh_frames": 235,
+          "court_mesh_frames": 235,
+          "court_mesh_frames_at_samples": 235,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 2,
+          "camera": "cam0",
+          "camera_mesh_frames": 235,
+          "court_mesh_frames": 228,
+          "court_mesh_frames_at_samples": 228,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 5,
+          "camera": "cam0",
+          "camera_mesh_frames": 127,
+          "court_mesh_frames": 127,
+          "court_mesh_frames_at_samples": 127,
+          "input_absent_frames": 108,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 10,
+          "camera": "cam0",
+          "camera_mesh_frames": 206,
+          "court_mesh_frames": 206,
+          "court_mesh_frames_at_samples": 206,
+          "input_absent_frames": 29,
+          "input_frames_with_interpolated_crop": 0
+        }
+      ]
+    },
+    {
+      "phase": "clip",
+      "status": "ok",
+      "backend": "gvhmr",
+      "clip_id": "video_000/clip_040",
+      "frames": 209,
+      "npz": "clip_040-gvhmr.npz",
+      "sha256": "472be6a7d1c0a3330a49b22f165b2465b103fa0d67ce39edff685c8535ee4e4c",
+      "placement": {
+        "data_sigma_m": 0.1,
+        "max_nfev": 200,
+        "max_reprojection_rms_px": 10.0,
+        "max_scale": 1.4,
+        "min_joints": 5,
+        "min_scale": 0.7,
+        "min_scale_pairs": 6,
+        "reprojection_weight_sigma_px": 5.0,
+        "root_acceleration_sigma": 10.0,
+        "temporal_weight": 0.05,
+        "yaw_acceleration_sigma": 20.0
+      },
+      "players": [
+        {
+          "id": 0,
+          "camera": "cam1",
+          "camera_mesh_frames": 209,
+          "court_mesh_frames": 209,
+          "court_mesh_frames_at_samples": 209,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 1,
+          "camera": "cam1",
+          "camera_mesh_frames": 209,
+          "court_mesh_frames": 209,
+          "court_mesh_frames_at_samples": 209,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 2,
+          "camera": "cam1",
+          "camera_mesh_frames": 208,
+          "court_mesh_frames": 208,
+          "court_mesh_frames_at_samples": 208,
+          "input_absent_frames": 1,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 4,
+          "camera": "cam3",
+          "camera_mesh_frames": 209,
+          "court_mesh_frames": 209,
+          "court_mesh_frames_at_samples": 209,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        }
+      ]
+    },
+    {
+      "phase": "clip",
+      "status": "ok",
+      "backend": "gvhmr",
+      "clip_id": "video_000/clip_028",
+      "frames": 645,
+      "npz": "clip_028-gvhmr.npz",
+      "sha256": "d5c0731406c867c82e09259635841ad80a7f286727e3f67f79849fb2751519d6",
+      "placement": {
+        "data_sigma_m": 0.1,
+        "max_nfev": 200,
+        "max_reprojection_rms_px": 10.0,
+        "max_scale": 1.4,
+        "min_joints": 5,
+        "min_scale": 0.7,
+        "min_scale_pairs": 6,
+        "reprojection_weight_sigma_px": 5.0,
+        "root_acceleration_sigma": 10.0,
+        "temporal_weight": 0.05,
+        "yaw_acceleration_sigma": 20.0
+      },
+      "players": [
+        {
+          "id": 0,
+          "camera": "cam3",
+          "camera_mesh_frames": 643,
+          "court_mesh_frames": 642,
+          "court_mesh_frames_at_samples": 642,
+          "input_absent_frames": 2,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 1,
+          "camera": "cam0",
+          "camera_mesh_frames": 645,
+          "court_mesh_frames": 645,
+          "court_mesh_frames_at_samples": 645,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 2,
+          "camera": "cam0",
+          "camera_mesh_frames": 645,
+          "court_mesh_frames": 645,
+          "court_mesh_frames_at_samples": 645,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        },
+        {
+          "id": 6,
+          "camera": "cam3",
+          "camera_mesh_frames": 645,
+          "court_mesh_frames": 645,
+          "court_mesh_frames_at_samples": 645,
+          "input_absent_frames": 0,
+          "input_frames_with_interpolated_crop": 0
+        }
+      ]
+    }
+  ]
+}

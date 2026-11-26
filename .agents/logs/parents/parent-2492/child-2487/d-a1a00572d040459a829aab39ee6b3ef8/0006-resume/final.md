@@ -1,0 +1,7 @@
+共通疑似GTでの精度ジョブを6件登録しました。ECPose L/X は PT16・TRT16、ECDet 4重みは batch 2 でトレースし直した TRT16 を評価します。ECDet の PT16 は保存済みの結果を使います。新規結果の parity は `PT32未計測` と記録します。
+
+ECDet v1 の PT32 は4重みとも、生予測・元の採点結果・再採点結果の SHA-256 が保存記録と一致しました。再採点前後の集計値も一致しています。TRT16 の再実行は、動的 batch 1–2 に対応するためです。
+
+`codex/parent-2492-issue-2487-edgecrafter` に push 済みです。pytest 72件（追加5件、10.38秒）、Ruff、mypy、pre-commit が通過しました。CI と精度ジョブの結果は未確認です。速度計測は #2497 の共通ハーネスが明示的な parity 省略に対応し、親から再投入指示が届いた時点で再開します。[コミット](https://github.com/Motoki0705/tennis-lab/commit/83507bdd57097ac5b37892b5b1d6db3af0666af2) · [CI](https://github.com/Motoki0705/tennis-lab/actions/runs/45543130155) · [#2487 の検証記録](https://github.com/Motoki0705/tennis-lab/issues/2487#issuecomment-7152354195)
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204421086015195752_2026-11-25T03-55-13-984804247Z_43984_i2487-ecpose-l-o365-cohort-accuracy-v3.job","0-8204421085699163410_2026-11-25T03-55-14-300836589Z_44065_i2487-ecpose-x-o365-cohort-accuracy-v3.job","0-8204421085375689640_2026-11-25T03-55-14-624310359Z_44137_i2487-ecdet-l-coco-cohort-accuracy-v3.job","0-8204421085039610681_2026-11-25T03-55-14-960389318Z_44206_i2487-ecdet-x-coco-cohort-accuracy-v3.job","0-8204421084654140811_2026-11-25T03-55-15-345859188Z_44284_i2487-ecdet-l-o365-cohort-accuracy-v3.job","0-8204421084319338709_2026-11-25T03-55-15-680661290Z_44417_i2487-ecdet-x-o365-cohort-accuracy-v3.job"]}}

@@ -26,6 +26,10 @@ if TYPE_CHECKING:
     from .github import GitHub
     from .state import Store
 
+REPAIR_LAUNCHER_OVERHEAD = 10
+REPAIR_TERMINATE_GRACE = 8
+REPAIR_KILL_GRACE = 2
+
 
 @dataclass(frozen=True)
 class ManualExecution:
@@ -33,6 +37,21 @@ class ManualExecution:
     spawned: bool
     reused: bool = False
     repair_claim: str | None = None
+
+
+def _stop_repair_launcher(process: subprocess.Popen[bytes]) -> None:
+    if process.poll() is None:
+        process.terminate()
+    try:
+        process.communicate(timeout=REPAIR_TERMINATE_GRACE)
+    except subprocess.TimeoutExpired:
+        process.kill()
+        try:
+            process.wait(timeout=REPAIR_KILL_GRACE)
+        finally:
+            for pipe in (process.stdin, process.stdout, process.stderr):
+                if pipe is not None:
+                    pipe.close()
 
 
 def execute_manual(
@@ -53,6 +72,7 @@ def execute_manual(
     commit_reservation: Callable[[bool], None],
 ) -> ManualExecution:
     from .manual_workers import (
+        MANUAL_REPAIR_TIMEOUT,
         RunnerEnvironmentUnavailable,
         WorkerCapacityUnavailable,
         current_task,
@@ -64,6 +84,11 @@ def execute_manual(
     directory = Path(command[command.index("--run-dir") + 1])
     process: subprocess.Popen[bytes] | None = None
     repair_claim = None
+    wait_limit = (
+        MANUAL_REPAIR_TIMEOUT + REPAIR_LAUNCHER_OVERHEAD
+        if "--repair-id" in command
+        else None
+    )
     try:
         with (
             store.operation(lock_key(gh.repo)),
@@ -163,7 +188,9 @@ def execute_manual(
             }
             session.row.pop("improvement_stop", None)
             store.save()
-        stdout, stderr = process.communicate(instruction.encode("utf-8"))
+        stdout, stderr = process.communicate(
+            instruction.encode("utf-8"), timeout=wait_limit
+        )
         return ManualExecution(
             subprocess.CompletedProcess(command, process.returncode, stdout, stderr),
             True,
@@ -174,9 +201,17 @@ def execute_manual(
     except (Exception, KeyboardInterrupt) as exc:
         if process is not None:
             # A failed post-spawn persistence is not a pre-start rejection.
-            if process.poll() is None:
-                process.terminate()
-            process.communicate()
+            if wait_limit is not None:
+                _stop_repair_launcher(process)
+                if isinstance(exc, subprocess.TimeoutExpired):
+                    raise ValueError(
+                        f"manual repair launcher exceeded {wait_limit}s; "
+                        "inspect its runtime and cleanup before retrying"
+                    ) from exc
+            else:
+                if process.poll() is None:
+                    process.terminate()
+                process.communicate()
             raise ValueError(
                 "manual launcher started but admission persistence failed; inspect its runtime and cleanup before retrying"
             ) from exc

@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8204434740687790252_2026-11-25T00-07-39-312209747Z_2393387_i2491-fasthmr-trt16-export",
+  "name": "i2491-fasthmr-trt16-export",
+  "command": "sha256sum -c outputs/fasthmr-setup/evaluation/source.sha256 && bash outputs/fasthmr-setup/evaluation/run.sh trt-export",
+  "provider": "codex",
+  "session": "01a20d45-575e-7a53-90c5-48b09053fa2b",
+  "issue": "2491",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "97cabfef23bdab3e1097af32a2cdd96cf754b9dd",
+  "branch": "codex/parent-2492-issue-2491-primary",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2492-issue-2491-primary",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2492-issue-2491-primary",
+  "captured_at": "2026-11-25T13:19:51+09:00"
+}

@@ -11,7 +11,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
-from dispatcher.runtime import Runtime, alive
+from dispatcher.runtime import INSPECT_TIMEOUT, Runtime, alive
+from lib.checkout_lock import checkout_wait
 
 from . import manual_workers, worker_followup, worker_slots
 from .policy import object_value
@@ -211,6 +212,10 @@ def wait_worker(
     proof: dict[str, Any] | None = None
     current = pinned
 
+    def pause(remaining: float | None) -> None:
+        with checkout_wait():
+            sleep(1.0 if remaining is None else min(1.0, remaining))
+
     def read_bound() -> Target:
         observed = target(
             store,
@@ -270,7 +275,7 @@ def wait_worker(
             return 124, response("timeout", "wait_timeout")
         directory = pinned.directory
         if directory is None:
-            sleep(1.0 if remaining is None else min(1.0, remaining))
+            pause(remaining)
             continue
         if not (directory / "result.json").exists():
             followup = current.followup
@@ -296,7 +301,7 @@ def wait_worker(
                         if followup
                         else "repair_runtime_unconfirmed",
                     )
-                sleep(1.0 if remaining is None else min(1.0, remaining))
+                pause(remaining)
                 continue
         # While the CLI monitors a job, the recovered runtime cannot change.
         # Inspect again only if the current turn is still live or a resume
@@ -311,7 +316,12 @@ def wait_worker(
                 remaining = None if deadline is None else deadline - clock()
                 if remaining is not None and remaining <= 0:
                     return 124, response("timeout", "wait_timeout")
-                observed = runtime.inspect(directory, timeout=remaining)
+                observed = runtime.inspect(
+                    directory,
+                    timeout=INSPECT_TIMEOUT
+                    if remaining is None
+                    else min(remaining, INSPECT_TIMEOUT),
+                )
                 record = observed["record"]
                 validate_evidence(record)
                 if pinned.job:
@@ -323,7 +333,10 @@ def wait_worker(
                 if run_id is not None and record["run_id"] != run_id:
                     raise ValueError("runner run ID changed during wait")
             except subprocess.TimeoutExpired:
-                return 124, response("timeout", "wait_timeout")
+                if remaining is not None and remaining <= INSPECT_TIMEOUT:
+                    return 124, response("timeout", "wait_timeout")
+                proof = None
+                return 2, response("liveness_unknown", "runner_status_timed_out")
             except (OSError, ValueError, KeyError, TypeError, OverflowError):
                 proof = None
                 return 2, response(
@@ -357,4 +370,4 @@ def wait_worker(
         remaining = None if deadline is None else deadline - clock()
         if remaining is not None and remaining <= 0:
             return 124, response("timeout", "wait_timeout")
-        sleep(1.0 if remaining is None else min(1.0, remaining))
+        pause(remaining)

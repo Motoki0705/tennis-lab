@@ -17,8 +17,8 @@ train/val/test分割はrally単位で固定する。
 （ラリー全長まで、上限 `max_length`）を一様に選ぶ。batch内は最長の窓へpaddingし、paddingは欠損かつ教師なしとする。
 物理教師（`physics/targets.py`）は全frameの区間ラベルと状態、ラリーの場とsurfaceで、窓ごとに区間を0から振り直す。
 
-`targets/events.py` はイベント種別を区別せず、各イベントframeで1となるGaussian教師を作る。
-重なる教師はmaxで合成する。ラリー全体で生成してから `sampling.py` が窓を切り出すので、窓外イベントの裾も保持する。
+`targets/events.py` はショット・バウンド・ネット接触の順に、各イベントframeで1となるGaussian教師を作る。
+同じクラスで重なる教師はmaxで合成する。ラリー全体で生成してから `sampling.py` が窓を切り出すので、窓外イベントの裾も保持する。
 モデルへ渡す入力は座標・欠損maskだけ。GT座標とイベント教師はloss専用。
 
 `datamodule.py` はLightningへ接続する。学習の拡張を `evaluate_every` 更新ごとに作り直し、
