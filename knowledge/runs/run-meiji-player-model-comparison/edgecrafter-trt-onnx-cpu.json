@@ -1,0 +1,118 @@
+{
+  "checkout_commit": "ab3e094929f2fa29ce24e39971f5ad30622ca5f5",
+  "decode": {
+    "confidence_exclusive": 0.0,
+    "ecpose_box_margin": 0.1
+  },
+  "frames": {
+    "video_000/clip_003/cam0/frame_000148": {
+      "pixel_tensor_sha256": "a4d9f10629a15a028286f4b02874b4873dd4f2313787fb4aaeccd26eadbc8f3f",
+      "source_image_sha256": "b42c3c7d5106d4d6799c02a20f3f5c1a187df8dcab078043a44ad12cba0eda12",
+      "width_height": [
+        1920.0,
+        1080.0
+      ]
+    },
+    "video_000/clip_013/cam0/frame_000096": {
+      "pixel_tensor_sha256": "39154f9736f8d0c3998b5e053c02a465649305ec75f8d0d55fe80e4098487440",
+      "source_image_sha256": "6430a8472922dd157e194fd923693356a7347f372c5ffb4976325146e252d359",
+      "width_height": [
+        1920.0,
+        1080.0
+      ]
+    },
+    "video_000/clip_028/cam3/frame_000513": {
+      "pixel_tensor_sha256": "15e7b0e4eb1bb68732e08b62b61d796421c779e1d8eb9af4c81ea550d53526fb",
+      "source_image_sha256": "19f326095d28b79cf1526623c8a0488321d65c875b228d8897a2befce6acc5dd",
+      "width_height": [
+        1920.0,
+        1080.0
+      ]
+    },
+    "video_000/clip_057/cam3/frame_000114": {
+      "pixel_tensor_sha256": "8164638fe612b36be3679ca5c336642ca2bb65570174c334f4603883b0cf8c64",
+      "source_image_sha256": "47fb4704c0d5e19ffd0736fa631087537c67d295d5332ba084bc78e524955d39",
+      "width_height": [
+        1920.0,
+        1080.0
+      ]
+    }
+  },
+  "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+  "models": {
+    "ecdet-l-coco": {
+      "engine_sha256": "22ef7679387090d5bec8346f2b070ce389062f0a22d9c63e3fbf2d3ce8e6de21",
+      "frame": "video_000/clip_028/cam3/frame_000513",
+      "input_tensor_sha256": "15e7b0e4eb1bb68732e08b62b61d796421c779e1d8eb9af4c81ea550d53526fb",
+      "onnx_sha256": "fa8b643c82da715aee5df2dc556a19ecdf73b9729af1aba938607c564a484c2a",
+      "onnxruntime_version": "1.30.0",
+      "providers": [
+        "CPUExecutionProvider"
+      ],
+      "vs_saved_b1": {
+        "pt16": {
+          "candidate_rows": 68,
+          "matched_iou_p05": 0.9929548821482344,
+          "matches_at_iou_0_50": 68,
+          "reference_rows": 68
+        },
+        "trt16-trace2": {
+          "candidate_rows": 112,
+          "matched_iou_p05": 0.5266209334462515,
+          "matches_at_iou_0_50": 30,
+          "reference_rows": 68
+        }
+      }
+    },
+    "ecpose-l-o365": {
+      "engine_sha256": "f601d900dba10a8e3eba087ed7dd78ddad0e39f838e7a8bf6c7202447dcef3b8",
+      "frame": "video_000/clip_028/cam3/frame_000513",
+      "input_tensor_sha256": "15e7b0e4eb1bb68732e08b62b61d796421c779e1d8eb9af4c81ea550d53526fb",
+      "onnx_sha256": "2bac47a53ab2c4a8be0a0fc1393cfab2e025206c105989d35ac0d15638923732",
+      "onnxruntime_version": "1.30.0",
+      "providers": [
+        "CPUExecutionProvider"
+      ],
+      "vs_saved_b1": {
+        "pt16": {
+          "candidate_rows": 60,
+          "matched_iou_p05": 0.7942395247071145,
+          "matches_at_iou_0_50": 60,
+          "reference_rows": 60
+        },
+        "trt16-trace2": {
+          "candidate_rows": 55,
+          "matched_iou_p05": 0.6808432128707376,
+          "matches_at_iou_0_50": 51,
+          "reference_rows": 60
+        }
+      }
+    },
+    "ecpose-x-o365": {
+      "engine_sha256": "c878bc92ee859de02efc62daa5cefb97e8b49a44cad0e386207a5320baf8559e",
+      "frame": "video_000/clip_028/cam3/frame_000513",
+      "input_tensor_sha256": "15e7b0e4eb1bb68732e08b62b61d796421c779e1d8eb9af4c81ea550d53526fb",
+      "onnx_sha256": "597ff7b61c45670508b14aca85f6d469e7b996e6b9cb38c0ca7489d1ce0383ee",
+      "onnxruntime_version": "1.30.0",
+      "providers": [
+        "CPUExecutionProvider"
+      ],
+      "vs_saved_b1": {
+        "pt16": {
+          "candidate_rows": 60,
+          "matched_iou_p05": 0.7511446347384696,
+          "matches_at_iou_0_50": 60,
+          "reference_rows": 60
+        },
+        "trt16-trace2": {
+          "candidate_rows": 18,
+          "matched_iou_p05": 0.6076065259241231,
+          "matches_at_iou_0_50": 11,
+          "reference_rows": 60
+        }
+      }
+    }
+  },
+  "script_sha256": "139c1cbb5da929c3cb496d39c642cb8bc15219f4a203d194b206ff899baf9150",
+  "torch_version": "2.13.0+cu130"
+}

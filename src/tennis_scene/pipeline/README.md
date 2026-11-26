@@ -61,6 +61,15 @@ dataset入口は`select_dataset_clips`・`resolve_dataset_clip`で選択・manif
 同じ単一clip入口を呼ぶ。完成markerの呼出し順序と失敗継続は
 [generate_dataset](../generate_dataset/README.md)を参照する。共通関数は複数clip入口からも個別に呼び出せる。
 
+## 経路の選択
+
+`recipe` は `definition.py` のノード・依存bindingを選ぶ。省略時と `recipe=standard` は従来の宣言を使う。component override は選択した経路にあるノードへ適用する。
+
+別経路では、component store、dataset publication、単体実行の出力がそれぞれ従来の保存先の `recipes/<recipe>` に入る。モデル・実装・前処理の設定は該当ノードの成果の識別に使われ、下流は依存成果のdigestを参照する。
+
+`recipe=fasthmr` の入力、必要な資産、実行可能条件は [FastHMR](FASTHMR.md) を参照。
+`recipe=ecpose` の人物検出・COCO17出力の契約と設定は [ECPose](ECPOSE.md) を参照。
+
 ## 横断バッチの設定
 
 `run_video_batch`の`batching.enabled=true`で、推論componentが`batch_adapter()`を宣言したstageに横断バッチを使う。

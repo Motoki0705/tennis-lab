@@ -9,6 +9,7 @@ import shutil
 import subprocess
 import sys
 from dataclasses import asdict
+from functools import partial
 from pathlib import Path
 from uuid import uuid4
 
@@ -31,8 +32,9 @@ from speed_models import (
     Pose,
     classify_startup,
     engine_paths,
-    people_config,
+    pipeline_config,
     pose_groups,
+    two_stage,
 )
 
 from src.tennis_scene.pipeline.model_resources import (
@@ -67,8 +69,10 @@ from src.utils.models.tensorrt_build import build_bundle
 
 BACKENDS = (Backend.PT16, Backend.TRT16)
 PARITY_NOT_EVALUATED_REASON = "未判定（PT32計測はスコープ外、ユーザー判断 2026-11-25）"
+JOINT_POSE_CROP_BATCH = 8
 SWEEPS = {
     "dino": (1, 2),
+    "dino-vitpose": (1, 2),
     "vitpose-flip": (1, 4, 8),
     "vitpose": (1, 4, 8),
     "body": (1, 2, 4),
@@ -77,9 +81,11 @@ GROUPS = {
     "detection": ("dino",),
     "pose": ("vitpose-flip", "vitpose"),
     "body": ("body",),
+    "joint": ("dino-vitpose",),
 }
 CASE_UNITS = {
     "dino": "image",
+    "dino-vitpose": "image",
     "vitpose-flip": "person-crop",
     "vitpose": "person-crop",
     "body": "person-frame",
@@ -137,7 +143,7 @@ def check_invocation(args):
 
 
 def inspect(args) -> None:
-    config = people_config(args.external_assets)
+    config = pipeline_config(args.external_assets).people
     for clip in read_source(args.benchmark):
         print(
             clip.clip_id,
@@ -262,7 +268,8 @@ def one_case(args) -> None:
     if batch_size not in SWEEPS[workload]:
         raise ValueError(f"Batch {batch_size} is outside {workload}'s frozen sweep")
     invocation = check_invocation(args)
-    config = people_config(args.external_assets)
+    pipeline = pipeline_config(args.external_assets)
+    config = pipeline.people
     fixed = InputSet(args.input_dir)
     schedule = fixed.pins.schedule(WORKLOAD_INDEX[workload], batch_size)
     directory = result_directory(args.output, workload, mode, batch_size)
@@ -277,7 +284,11 @@ def one_case(args) -> None:
             result = load_conversion(receipt)
             if args.pose_engine_run is None or result.failure is not None:
                 conversion = (result,)
-    flip = workload == "vitpose-flip"
+    joint = workload == "dino-vitpose"
+    uses_dino = workload == "dino" or joint
+    uses_pose = workload in {"vitpose", "vitpose-flip"} or joint
+    flip = config.runtime.vitpose.flip_test if joint else workload == "vitpose-flip"
+    crop_batch = JOINT_POSE_CROP_BATCH if joint else batch_size
     settings = {
         "source_commit": invocation["source_commit"],
         "dataset_id": fixed.manifest["id"],
@@ -287,9 +298,11 @@ def one_case(args) -> None:
         "timing_protocol_sha256": fixed.pins.timing_sha256,
         "timed_input_ids_sha256": schedule.timed_ids_sha256,
     }
-    if workload == "dino":
-        selected = ("dino",)
-        weights = {"dino": config.dino_checkpoint}
+    selected: list[str] = []
+    weights: dict[str, Path] = {}
+    if uses_dino:
+        selected.append("dino")
+        weights["dino"] = config.dino_checkpoint
         if mode is Backend.PT16:
             extension = invocation["dino_extension"]
             weights["dino_msda_cuda"] = (
@@ -306,23 +319,34 @@ def one_case(args) -> None:
             if mode is Backend.TRT16
             else "official CUDA FP32",
         )
-    elif workload == "body":
-        selected = ("hmr2", "gvhmr")
-        weights = dict(config.body_assets())
+    if workload == "body":
+        selected.extend(("hmr2", "gvhmr"))
+        weights.update(config.body_assets())
         settings.update(
             body_window_frames=BODY_LENGTH,
             hmr2_crop_batch=HMR2_CROP_BATCH,
             body_coordinate_system="camera",
             gvhmr_decode_static_ik="PyTorch FP32",
         )
-    else:
-        selected = ("vitpose",)
-        weights = {"vitpose": config.vitpose_checkpoint}
+    if uses_pose:
+        selected.append("vitpose")
+        weights["vitpose"] = config.vitpose_checkpoint
         settings.update(
             vitpose_hw=[256, 192],
             flip_test=flip,
-            pose_crop_batch=batch_size,
+            pose_crop_batch=crop_batch,
             pose_head=json_value(config.runtime.vitpose.head),
+        )
+    if joint:
+        if pipeline.merge_duplicate_person_boxes:
+            raise ValueError(
+                "The joint comparison requires the original unmerged DINO rows"
+            )
+        settings.update(
+            merge_duplicate_person_boxes=False,
+            pose_box_enlarge=pipeline.tracking.features.bbox_enlarge,
+            pose_person_policy="every accepted DINO row",
+            pose_people_per_image_limit=None,
         )
     if mode is Backend.PT16:
         settings["pytorch_precision"] = "CUDA autocast FP16 with FP32 parameters"
@@ -340,7 +364,19 @@ def one_case(args) -> None:
                 return Body(config, mode, stages, batch_size)
             if workload == "dino":
                 return Dino(config, mode, stages["dino"], batch_size)
-            pose = Pose(config, mode, stages["vitpose"], flip=flip, batch=batch_size)
+            if joint:
+                dino = Dino(config, mode, stages["dino"], batch_size)
+                pose = Pose(
+                    config, mode, stages["vitpose"], flip=flip, batch=crop_batch
+                )
+                return partial(
+                    two_stage,
+                    dino,
+                    pose,
+                    crop_batch=crop_batch,
+                    features=pipeline.tracking.features,
+                )
+            pose = Pose(config, mode, stages["vitpose"], flip=flip, batch=crop_batch)
         return lambda rows, clock: pose(pose_groups(rows), clock)
 
     case = BenchmarkCase(

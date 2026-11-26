@@ -9,7 +9,7 @@ SCRIPT_DIR="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" && pwd)"
 DETECTOR_CHECKOUT="$(realpath -- "$1")"
 DATASET_ROOT="$(realpath -- "$2")"
 METRICS_OUTPUT="$(realpath -m -- "$3")"
-DETECTOR_COMMIT=aac549c1181e8e34105a00d54fabe8f93f8ed700
+DETECTOR_COMMIT=b682280df117b3018c50885a422642de03b72687
 
 cd -- "$DETECTOR_CHECKOUT"
 if [[ "$(git rev-parse HEAD)" != "$DETECTOR_COMMIT" ]] || [[ -n "$(git status --porcelain -- src/)" ]]; then
