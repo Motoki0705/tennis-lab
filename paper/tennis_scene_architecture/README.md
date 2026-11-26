@@ -27,3 +27,22 @@ bash paper/tennis_scene_architecture/build.sh
 PDF と最終ログは `paper/tennis_scene_architecture/build/main.pdf` と `build/main.log` に出力します。スクリプトは latexmk で参考文献と相互参照を解決し、最終ログに未解決の参照・引用、文字欠落、はみ出しがある場合は失敗します。成功時は PDF のページ数を表示します。雛形は見出しだけで組版でき、実験データや参考にした DINOv3 のソースの配置を要しません。
 
 最終版の組版と目視確認は [制作手順](../../.agents/skills/paper-writing/SKILL.md#5-ビルドと最終確認) に従い、`evidence/build.md` に記録します。
+
+## Gitへの登録
+
+worktree が共有する `.git/info/exclude` に `/paper` があるため、追跡する新規ファイルは個別のパスを指定して `git add -f` で登録します。以下は図版・表・ビルド記録を追加した場合の例です。
+
+```bash
+git add -f -- paper/tennis_scene_architecture/figures/overview.png \
+    paper/tennis_scene_architecture/tables/metrics.tex \
+    paper/tennis_scene_architecture/evidence/build.md
+git diff --cached --name-only
+```
+
+ステージ済み一覧で、その差分に必要な図表・根拠資料・生成スクリプトが揃い、`build/` の中間生成物と PDF が含まれていないことを確認します。
+
+登録後は以下のコマンドで組版し、latexmk が列挙したリポジトリ内の入力を Git インデックスと照合できます。Git と `realpath` を使います。未登録の入力があれば、パスを表示して失敗します。
+
+```bash
+bash paper/tennis_scene_architecture/build.sh --check-tracked
+```
