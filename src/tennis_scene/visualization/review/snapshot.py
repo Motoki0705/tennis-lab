@@ -8,6 +8,7 @@ import cv2
 import numpy as np
 
 from src.tennis_scene.motion_alignment.temporal import PlacementRejection
+from src.tennis_scene.pipeline.components.event_detection import EVENT_DETECTION
 from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
 from src.tennis_scene.schema import SceneResult, validate_scene_result_arrays
 from src.tennis_scene.visualization.review.trajectory import mask_intervals
@@ -22,10 +23,10 @@ if TYPE_CHECKING:
 
 def scene_snapshot(value: dict[str, Any]) -> dict[str, Any]:
     """Serialize observations/masks, excluding large meshes and model parameters."""
-    scene = SceneResult(**value)
+    scene = SceneResult(**{key: item for key, item in value.items() if key != "event_evidence"})
     validate_scene_result_arrays(scene)
-    if scene.schema_version != 2:
-        raise ValueError("Frame inspection requires SceneResult v2 validity masks")
+    if scene.schema_version < 2:
+        raise ValueError("Frame inspection requires SceneResult v2 or v3 validity masks")
     fields = (
         "player_position", "player_yaw", "player_observed", "player_valid",
         "player_heading_valid", "player_smpl_valid", "player_rejection_code",
@@ -42,7 +43,7 @@ def scene_snapshot(value: dict[str, Any]) -> dict[str, Any]:
     for row, name in [(np.asarray(value["ball_3d_valid"]), "ball 3D"),
                       *((mask, f"player {player_ids[i]} root") for i, mask in enumerate(np.asarray(value["player_valid"])) )]:
         gaps.extend({"name": name, "start": a, "end": b} for a, b in mask_intervals(~row))
-    return {"arrays": arrays, "player_ids": player_ids, "status": scene.metadata["status"],
+    return {"arrays": arrays, "player_ids": player_ids, "status": scene.metadata["status"], "schema_version": scene.schema_version,
             "camera_ids": scene.metadata["camera_ids"], "reference": scene.metadata["court_reference"],
             "rejection_labels": rejection_labels, "gaps": gaps,
             "skeleton": COCO17_SKELETON}
@@ -64,10 +65,12 @@ def build_snapshot(review: Review, components: dict[str, Any], *, online: bool) 
 
     scene = None
     scene_reason = "scene_assembly 未生成。3D・品質mask・棄却理由は未保存です。"
-    if "scene_assembly" in components:
-        entry = components["scene_assembly"]
+    event_entry = components.get(EVENT_DETECTION)
+    node = EVENT_DETECTION if event_entry and event_entry["status"] == "rendered" else "scene_assembly"
+    if node in components:
+        entry = components[node]
         if entry["status"] == "rendered":
-            value, _ = review.payload("scene_assembly")
+            value, _ = review.payload(node)
             if value["num_frames"] != review.frame_count or (value["width"], value["height"]) != review.size or abs(value["fps"] - sources[0]["fps"]) > 1e-3:
                 raise ValueError("Scene timeline/image metadata disagrees with its source")
             scene = scene_snapshot(value)

@@ -67,7 +67,7 @@ def main() -> None:
         "--input",
         required=True,
         type=Path,
-        help="SceneResult v2 NPZ, store directory, or scene.json",
+        help="SceneResult v2 or v3 NPZ, store directory, or scene.json",
     )
     parser.add_argument(
         "--output", required=True, type=Path, help="New bundle directory"

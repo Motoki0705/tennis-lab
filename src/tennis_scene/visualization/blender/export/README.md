@@ -1,6 +1,6 @@
 # Blender export・撮影
 
-保存済みSceneResult v2と元動画から、Blenderで「入力映像 → グリッド → コート → 選手・ボール」へ
+保存済みSceneResult v2・v3と元動画から、Blenderで「入力映像 → グリッド → コート → 選手・ボール」へ
 切り替わり、最後にカメラが移動するアニメーションを生成します。
 
 ![Meiji cam1の再構成プレビュー](../../../../../assets/tennis_scene/blender_reveal_meiji_cam1.gif)

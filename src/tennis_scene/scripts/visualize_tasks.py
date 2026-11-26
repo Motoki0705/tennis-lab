@@ -250,7 +250,7 @@ def _render_gvhmr_pose(
                 )
         cv2.putText(
             frame,
-            f"{'person observations' if scene.schema_version == 2 else 'gvhmr 2D pose'}  frame {t}",
+            f"{'person observations' if scene.schema_version >= 2 else 'gvhmr 2D pose'}  frame {t}",
             (8, 20),
             cv2.FONT_HERSHEY_SIMPLEX,
             0.5,
@@ -334,7 +334,7 @@ def _render_plcs(
                     zorder=6,
                 )
             ax.text(x + 0.3, y + 0.3, f"P{track_ids[p]}", color=rgb, fontsize=9)
-        ax.set_title(f"{'player reconstruction' if scene.schema_version == 2 else 'plcs (position + yaw)'}  frame {t}")
+        ax.set_title(f"{'player reconstruction' if scene.schema_version >= 2 else 'plcs (position + yaw)'}  frame {t}")
         ax.set_xlabel("court x [m]")
         ax.set_ylabel("court y [m]")
         return []
@@ -607,7 +607,7 @@ def _render_blcs(
                 edgecolors="k",
             )
 
-        ax_top.set_title(f"{'ball reconstruction' if scene.schema_version == 2 else 'blcs'} top view (x-y)  frame {t}")
+        ax_top.set_title(f"{'ball reconstruction' if scene.schema_version >= 2 else 'blcs'} top view (x-y)  frame {t}")
         ax_top.set_xlabel("court x [m]")
         ax_top.set_ylabel("court y [m]")
         ax_side.set_title("blcs side view (y-z, height)")

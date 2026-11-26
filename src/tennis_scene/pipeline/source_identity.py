@@ -3,9 +3,18 @@
 from __future__ import annotations
 
 import json
+import subprocess
 from pathlib import Path
 
 from src.utils.checksum import dual_sha256
+from src.utils.paths import PROJECT_ROOT
+
+
+def source_commit() -> str:
+    """Complete revision of the checkout that supplies the pipeline code."""
+    return subprocess.check_output(
+        ["git", "rev-parse", "HEAD"], cwd=PROJECT_ROOT, text=True,
+    ).strip()
 
 
 def source_digests(source: Path) -> dict[str, str]:

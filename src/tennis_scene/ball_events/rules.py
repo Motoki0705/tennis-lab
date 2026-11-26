@@ -374,6 +374,18 @@ def detect_ball_events(
     thresholds: RuleThresholds = DEFAULT_THRESHOLDS,
 ) -> list[BallEvent]:
     """Return time-ordered contact candidates on the input's zero-based timeline."""
+    return analyze_ball_events(ball_3d, valid, fps, players=players, thresholds=thresholds)[0]
+
+
+def analyze_ball_events(
+    ball_3d: NDArray[np.float32],
+    valid: NDArray[np.bool_],
+    fps: float,
+    *,
+    players: PlayerEvidence | None = None,
+    thresholds: RuleThresholds = DEFAULT_THRESHOLDS,
+) -> tuple[list[BallEvent], NDArray[np.bool_]]:
+    """Return candidates and frames where the rules evaluated supported motion."""
     xyz = np.asarray(ball_3d, dtype=np.float64)
     if (
         xyz.ndim != 2
@@ -402,8 +414,9 @@ def detect_ball_events(
             raise ValueError(
                 "Invalid player landmark positions, validity mask, or track IDs"
             )
+    coverage = np.zeros_like(valid)
     if np.count_nonzero(valid) < 3:
-        return []
+        return [], coverage
 
     incoming, outgoing = _side_velocities(
         xyz, valid, fps, max(1, round(thresholds.velocity_window_s * fps))
@@ -435,6 +448,7 @@ def detect_ball_events(
     for motion in motions:
         if motion.position[2] < -thresholds.max_below_ground_m:
             continue
+        coverage[motion.frame] = True
         event = (
             _bounce(motion, fps, thresholds)
             if motion.gap_frames or motion.frame in minima
@@ -458,7 +472,8 @@ def detect_ball_events(
         for shot in candidates["shot"]
         if all(abs(shot.frame - contact.frame) > conflict for contact in contacts)
     ]
-    return sorted(
+    events = sorted(
         contacts + _separated(shots, separation),
         key=lambda event: (event.frame, event.kind),
     )
+    return events, coverage

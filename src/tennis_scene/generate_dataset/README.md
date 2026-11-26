@@ -1,6 +1,6 @@
 # 構造化clipへの疑似アノテーション
 
-clip_studioの同期clipを標準TennisSceneOrchestratorへ渡し、SceneResult v2と品質maskを
+clip_studioの同期clipを標準TennisSceneOrchestratorへ渡し、SceneResult v3と品質maskを
 保存します。モデル・座標・欠測契約は[tennis_scene README](../README.md)が正本です。
 `generate_pseudo_annotations`は対象clipの列挙、runnerの呼出し、成功/skip/失敗の集約、
 `continue_on_error`による継続を担当します。実行計画・cache/load・scene exportと
@@ -13,7 +13,8 @@ clip_studioの同期clipを標準TennisSceneOrchestratorへ渡し、SceneResult 
 # GPU実行は共有training queueへ登録する。
 .venv/bin/python -m src.tennis_scene.scripts.generate_dataset \
   dataset_directory=tennis_multiview/processed/meiji_3cam/dataset \
-  'clip_ids=[video_000/clip_000]'
+  'clip_ids=[video_000/clip_000]' \
+  'pipeline_overrides=["event_detection.method=rule"]'
 ```
 
 checkpoint変更はpipeline_overridesで指定します。Court・人物対応・sideの手動入力は不要です
@@ -22,7 +23,7 @@ checkpoint変更はpipeline_overridesで指定します。Court・人物対応�
 成果物はclip内の`annotations/tennis_scene/`に保存します。
 component成果物と統合exportの配置は[pipeline仕様](../pipeline/README.md#成果物)を参照してください。
 `annotation.json`はdataset向けの完成markerで、`scene_result`に採用したimmutableなNPZ exportを記録します。
-公開するのはdeclared pipelineのscene v2だけです。scene schema、shape/dtype、status、有効frame数、
+declared pipelineのscene v3を公開します。scene schema、shape/dtype、status、有効frame数、
 clip.json・動画・設定/重みの識別情報（publication identity）を検証します。
 展開済みpipeline設定は`configs/<SHA-256>.yaml`に内容アドレスで保存し、exportには書き込みません。
 同一入力・同一設定の完成結果だけをskipし、変更時や識別情報の無い旧markerではoverwrite=trueが必要です。
@@ -32,7 +33,7 @@ mediaとmanifestのhashを固定します。実mediaの同期条件はorchestrat
 `completed_annotation`で再利用を判定し、実行後に`publish_annotation`がscene契約と入力の未改変を
 確認してから完成markerを公開します。公開成功時に同じclipの失敗markerを削除し、
 例外時は`record_annotation_failure`がそのclipだけに失敗を記録します。
-datasetのreader（SLCS・SLCS review・PLCS residual）は`scene_index`を持つこのlayoutのscene v2だけを読みます。
+datasetのreader（SLCS・SLCS review・PLCS residual）は`scene_index`を持つこのlayoutのscene v2・v3を読みます。
 markerが`scene.npz`を直接指す旧layout（v1）は読めないため、この入口で新しい出力先へ再生成してください。
 
 partialやemptyもmaskとともに保存します。教師に使える範囲は下流が3D validityで判定します。

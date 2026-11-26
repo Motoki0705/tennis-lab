@@ -196,6 +196,7 @@ def direct_fixture(root: Path, *, publish: bool = True) -> DirectWorkflowFixture
                 "output_directory=run",
                 "cache.directory=stages",
                 "ball_detection.method=gpt_annotation",
+                "event_detection.method=rule",
                 "ball_detection.checkpoint=null",
                 f"video_paths=[{','.join(Path(v.path).relative_to(root).as_posix() for v in videos)}]",
                 f"camera_ids=[{','.join(source.camera_ids)}]",

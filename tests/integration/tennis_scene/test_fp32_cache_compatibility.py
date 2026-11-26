@@ -262,11 +262,13 @@ def test_exact_multiview_pose_patch_preserves_the_standard_recipe_identity() -> 
     manifest = Path(source_identity.__file__).with_name("multiview_pose_cache_compatibility.json")
     files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
     current = source_identity.source_digests(PROJECT_ROOT / "src")
-    baseline = {path: digest for path, digest in current.items() if path not in files}
-    baseline.update({path: pair["before"] for path, pair in files.items() if pair["before"] is not None})
-    assert source_identity.compatible_source_digests(current, tensorrt=True) == baseline
+    outside_patch = {path: digest for path, digest in current.items() if path not in files}
+    # Test the reviewed snapshot even when this checkout changes a patch file.
+    reviewed = outside_patch | {path: pair["after"] for path, pair in files.items()}
+    baseline = outside_patch | {path: pair["before"] for path, pair in files.items() if pair["before"] is not None}
+    assert source_identity.compatible_source_digests(reviewed, tensorrt=True) == baseline
     for path in ("utils/configuration/inventory.py", "tennis_scene/pipeline/video_court_side/artifact.py"):
-        changed = {**current, path: "0" * 64}
+        changed = {**reviewed, path: "0" * 64}
         assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
 
 

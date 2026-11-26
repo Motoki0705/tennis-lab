@@ -54,8 +54,8 @@ class MultiviewSceneRenderer:
         *,
         width: int = 960,
     ) -> None:
-        if scene.schema_version != 2:
-            raise ValueError("Multiview rendering requires SceneResult v2 masks")
+        if scene.schema_version < 2:
+            raise ValueError("Multiview rendering requires SceneResult v2 or v3 masks")
         camera_ids = scene.metadata.get("camera_ids")
         if (
             not isinstance(camera_ids, list)
@@ -103,7 +103,7 @@ class MultiviewSceneRenderer:
         self.clock = self.figure.text(.015, 12 / self.height, "", color="#BAC6CE", size=10)
 
         self.images = []
-        blank = np.zeros((self.panel_height, self.panel_width, 3), np.uint8)
+        blank: NDArray[np.uint8] = np.zeros((self.panel_height, self.panel_width, 3), np.uint8)
         for row, camera in enumerate(camera_ids):
             bottom = (32 + body_height - (row + 1) * self.panel_height) / self.height
             axis = self.figure.add_axes((0, bottom, 1 / 3, self.panel_height / self.height))

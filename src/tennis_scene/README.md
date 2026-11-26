@@ -33,6 +33,7 @@ DINO binaryの選択は[導入案内](../../docs/installation/README.ja.md#dino-
 # GPU実行は、このコマンドを共有training queueへ登録する。
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   'video_paths=[match/cam0.mp4,match/cam1.mp4,match/cam2.mp4]' \
+  event_detection.method=rule \
   'camera_ids=[cam0,cam1,cam2]'
 ```
 
@@ -87,7 +88,7 @@ meiji_4camの例です。
   video_id=video_000 \
   batching.enabled=true \
   pipeline_config=pipeline \
-  'pipeline_overrides=["court_kp.mode=clip","court_side.mode=clip","court_side.evidence=player","ball_detection.enabled=false","ball_reconstruction.enabled=false","player_association.players_per_side=2"]'
+  'pipeline_overrides=["event_detection.method=rule","court_kp.mode=clip","court_side.mode=clip","court_side.evidence=player","ball_detection.enabled=false","ball_reconstruction.enabled=false","player_association.players_per_side=2"]'
 ```
 
 `court_kp.mode=video_shared`では、計画を組む前に`prepare_video_court`でvideo全体の
@@ -99,7 +100,7 @@ ARTIFACT rootの`tennis_scene/court_shared/meiji_4cam`からloadする例です�
 .venv/bin/python -m src.tennis_scene.scripts.run_video_batch \
   dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
   video_id=video_000 batching.enabled=true pipeline_config=pipeline \
-  "pipeline_overrides=[\"court_kp.mode=video_shared\",\"court_kp.video_shared.action=load\",\"court_kp.video_shared.directory=tennis_scene/court_shared/meiji_4cam\",\"court_kp.video_shared.dataset_id=meiji_4cam\",\"court_kp.video_shared.video_id=video_000\",\"court_kp.video_shared.artifact_digest=$VIDEO_COURT_ARTIFACT_DIGEST\",\"court_side.mode=clip\",\"court_side.evidence=player\",\"ball_detection.enabled=false\",\"ball_reconstruction.enabled=false\",\"player_association.players_per_side=2\"]"
+  "pipeline_overrides=[\"event_detection.method=rule\",\"court_kp.mode=video_shared\",\"court_kp.video_shared.action=load\",\"court_kp.video_shared.directory=tennis_scene/court_shared/meiji_4cam\",\"court_kp.video_shared.dataset_id=meiji_4cam\",\"court_kp.video_shared.video_id=video_000\",\"court_kp.video_shared.artifact_digest=$VIDEO_COURT_ARTIFACT_DIGEST\",\"court_side.mode=clip\",\"court_side.evidence=player\",\"ball_detection.enabled=false\",\"ball_reconstruction.enabled=false\",\"player_association.players_per_side=2\"]"
 ```
 
 dataset/videoのscopeと各clipのmediaを共有成果物へ照合します。build用request、診断成果物の
@@ -167,9 +168,9 @@ sideはball観測だけで決め、最低evidence、referenceとの接続性、�
 
 [schema.py](schema.py)と[archive.py](archive.py)がスキーマ・I/Oを所有します。
 
-`metadata.scene_schema_version=2` のsceneは、再構成の有効性を次のmaskで明示します。
+`metadata.scene_schema_version=2` と `3` のsceneは、再構成の有効性を次のmaskで明示します。
 versionのない旧archiveはv1で、maskを持ちません（v1にmaskがあれば拒否します）。
-v2でmaskや理由コードが欠けた・矛盾したarchiveは保存・読込とも拒否します。
+maskや理由コードが欠けた・矛盾したarchiveは保存・読込とも拒否します。
 
 | mask | shape | 意味 | 理由コード |
 |---|---|---|---|
@@ -188,18 +189,52 @@ rendererはmaskに従い、mesh不足frameでは有効COCO17を描画し、軌�
 SLCSの教師maskは `player_valid AND player_heading_valid` と `ball_3d_valid` を必ずANDし、
 2D可視性で無効な3Dのweightを復活させません。
 
+## SceneResult v3
+
+v2の配列に、元フレーム軸の疎なイベント表を加えます。Eはイベント数、Tは元フレーム数です。
+
+| 配列 | shape / dtype | 対象 |
+|---|---|---|
+| `ball_event_frame` | E / int32 | 全方式。0始まり |
+| `ball_event_kind` | E / uint8 | 全方式。0 打球、1 バウンド、2 ネット接触 |
+| `ball_event_coverage` | T / bool | 全方式。イベントの有無を判定できたフレーム |
+| `ball_event_score` | E / float32 | rule・refiner。0〜1 |
+| `ball_event_status` | E / uint8 | annotation。certain、probable、uncertain の順 |
+| `ball_event_frame_uncertainty` | E / uint8 | annotation。中心フレームからの±幅 |
+| `ball_event_in_point` | E / bool | annotation。ポイント内の接触 |
+| `ball_event_subtype` | E / uint8 | annotation。serve、groundstroke、volley、smash、let_cord、net_fault、other、未確定の順 |
+| `ball_event_side` | E / int8 | annotation。打者のコート側。−1 は y<0、+1 は y>0、0 は不明または打球以外 |
+
+`metadata.ball_events` にイベント項目の版、`source`、列挙順、出どころ別の来歴と実行commitを保存します。
+各方式の配列列は表の対象に従います。行はフレーム順に並べ、同じフレームと種別の重複を拒否します。
+判定不能フレームにも既知の注釈イベントがあり得ます。既知イベントとcoverageの両方を保存します。
+方式の設定と実行入口は[パイプライン](pipeline/README.md#ボールイベントの設定)を参照してください。
+
+### 明治4カメラのイベント注釈版
+
+固定したmultiview-v2と69クリップの注釈からCPUで派生版を作ります。
+動画、既存のコンポーネント、既存のexportはhard linkで共有し、クリップごとのscene indexで新しいexportを採用します。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.build_meiji_event_benchmark
+```
+
+`data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v3` に、注釈・基準入力・
+ハッシュ・集計・train/val/testのclip IDを記したmanifestと `SHA256SUMS` を保存します。
+同じcommitと入力で既存の派生版を再検証できます。`--output` で新しい同一ファイルシステム上の出力先を指定できます。
+
 ## 同期入力と3Dの並列表示
 
 [`MultiviewSceneRenderer`](visualization/rendering/multiview.py)は、3〜5台の同期済み入力を左、
 既存rendererの3D表示を右に並べ、全パネルを同じ元frame番号で描画します。
 camera IDと動画を明示的に対応付け、sceneと動画の解像度・FPS・frame数が異なる場合は拒否します。
-同期推定や欠測の補間は行わず、SceneResult v2の有効性maskを既存rendererへそのまま渡します。
+SceneResult v2・v3の有効性maskを既存rendererへそのまま渡します。
 README用GIFのCPU生成コマンド・入力hash・目視確認結果は
 [LOESS導入後の再生成・比較記録](../../knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照してください。
 
 ## Blenderアニメーション
 
-保存済みSceneResult v2と元動画から、入力映像がコート・選手・ボールの3Dシーンへ
+保存済みSceneResult v2・v3と元動画から、入力映像がコート・選手・ボールの3Dシーンへ
 切り替わるアニメーションを生成できます。書き出し・Blenderでの撮影・動画化は
 [visualization/blender/export](visualization/blender/export/README.md)を参照してください。
 
@@ -208,7 +243,7 @@ README用GIFのCPU生成コマンド・入力hash・目視確認結果は
 - [multiview_pose](multiview_pose/README.md): 全人物のDINO・ViTPoseと固定した動画共有sideから、フレーム別3D骨格と排他的な観測割当を作るCPU入口。
 - [player_view](visualization/player_view/README.ja.md): 元動画なしで保存済みv2の人物・球・時刻・mask・頭部姿勢用資産を共通bundleへ書き出す。
 - [evaluation](evaluation/README.md): 固定入力でのball 3D CPU replay・LOVO採点・比較可視化。
-- [ball_events](ball_events/README.md): 保存済みSceneResult v2から打球・バウンド・ネット接触を規則で検出。
+- [ball_events](ball_events/README.md): 保存済みSceneResult v2・v3から打球・バウンド・ネット接触を規則で検出。
 - [player pose evaluation](evaluation/player_pose/README.md): 固定SMPL再射影データによる人物検出・2D pose採点。
 - [ground_truth](ground_truth/README.md): 人間提供の評価用正解の厳格な reader（再構成入力への接続なし）。
 - [generate_dataset](generate_dataset/README.md): 構造化clipへの増分疑似アノテーション。

@@ -69,7 +69,7 @@ def test_dataset_cli_passes_data_videos_with_separate_artifact_root(
                 f"paths.data_root={structured_dataset.parent}",
                 f"paths.artifact_root={structured_dataset.parent / 'artifacts'}",
                 "dataset_directory=dataset",
-                'pipeline_overrides=[]',
+                'pipeline_overrides=["event_detection.method=rule"]',
             ],
         )
         assert inspect.unwrap(main)(cfg) == 0
@@ -106,7 +106,7 @@ with patch.object(TennisSceneOrchestrator, "from_runtime_config",
             f"paths.data_root={structured_dataset.parent}",
             f"paths.output_root={structured_dataset.parent / 'logs'}",
             "dataset_directory=dataset",
-            'pipeline_overrides=[]',
+            'pipeline_overrides=["event_detection.method=rule"]',
         ],
         cwd=PROJECT_ROOT,
         env={**os.environ, "CUDA_VISIBLE_DEVICES": ""},

@@ -4,13 +4,16 @@ from __future__ import annotations
 
 import importlib
 import json
+from dataclasses import replace
 from pathlib import Path
+from typing import Any
 
 import numpy as np
 import pytest
 
 import src.tennis_scene as tennis_scene_package
 from src.tennis_scene.archive import load_scene_result, save_scene_result
+from src.tennis_scene.ball_event_schema import BALL_EVENT_FIELDS, EventSource
 from src.tennis_scene.schema import (
     SCENE_MASK_FIELDS,
     SCENE_REASON_FIELDS,
@@ -255,6 +258,132 @@ def test_v2_save_rejects_inconsistent_validity(tmp_path: Path, v2_scene: SceneRe
         save_scene_result(v2_scene, path)
     assert not path.exists()
     assert not path.with_suffix(".metadata.json").exists()
+
+
+def _v3(scene: SceneResult, source: EventSource) -> SceneResult:
+    provenance: dict[str, Any] = {"code_commit": "a" * 40}
+    columns = {}
+    if source == "annotation":
+        provenance.update(annotation_sha256="b" * 64, labeler="chatgpt", labeler_original="ChatGPT")
+        columns = {
+            "ball_event_status": np.array([0, 2], np.uint8),
+            "ball_event_frame_uncertainty": np.array([3, 255], np.uint8),
+            "ball_event_in_point": np.array([True, False]),
+            "ball_event_subtype": np.array([0, 5], np.uint8),
+            "ball_event_side": np.array([-1, 0], np.int8),
+        }
+    else:
+        provenance.update({"thresholds": {"separation_s": .1}} if source == "rule" else {"checkpoint_sha256": "c" * 64})
+        columns["ball_event_score"] = np.array([.7, .2], np.float32)
+    return replace(scene,
+        metadata={**scene.metadata, "scene_schema_version": 3, "ball_events": {
+            "version": 1, "source": source, "classes": ["shot", "bounce", "net"],
+            "statuses": ["certain", "probable", "uncertain"],
+            "subtypes": ["serve", "groundstroke", "volley", "smash", "let_cord", "net_fault", "other", None],
+            "provenance": provenance,
+        }},
+        ball_event_frame=np.array([0, 2], np.int32),
+        ball_event_kind=np.array([0, 2], np.uint8),
+        ball_event_coverage=np.array([True, True, False]),
+        **columns,
+    )
+
+
+@pytest.mark.parametrize("source", ["annotation", "rule", "refiner"])
+def test_v3_roundtrip_preserves_source_columns_and_array_types(
+    source: EventSource, tmp_path: Path, v2_scene: SceneResult,
+) -> None:
+    expected = _v3(v2_scene, source)
+    path = tmp_path / "scene.npz"
+    save_scene_result(expected, path)
+    actual = load_scene_result(path)
+    assert actual.schema_version == 3
+    assert actual.metadata == expected.metadata
+    with np.load(path) as archive:
+        assert ("ball_event_score" in archive.files) == (source != "annotation")
+        for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS, *BALL_EVENT_FIELDS):
+            value = getattr(actual, name)
+            if getattr(expected, name) is None:
+                assert value is None and name not in archive.files
+            else:
+                assert value.dtype == getattr(expected, name).dtype
+                np.testing.assert_array_equal(value, getattr(expected, name))
+
+
+@pytest.mark.parametrize(("field", "value", "message"), [
+    ("ball_event_frame", np.array([-1, 2], np.int32), "outside the scene"),
+    ("ball_event_frame", np.array([0, 3], np.int32), "outside the scene"),
+    ("ball_event_frame", np.array([2, 0], np.int32), "frame order"),
+    ("ball_event_frame", np.array([0, 2], np.int64), "int32"),
+    ("ball_event_kind", np.array([0, 7], np.uint8), "kind"),
+    ("ball_event_status", np.array([0, 3], np.uint8), "status"),
+    ("ball_event_subtype", np.array([0, 9], np.uint8), "subtype"),
+    ("ball_event_side", np.array([2, 0], np.int8), "side"),
+    ("ball_event_in_point", np.array([0, 1], np.uint8), "bool"),
+    ("ball_event_status", np.array([0], np.uint8), "length 2"),
+    ("ball_event_coverage", np.array([True, False]), "length 3"),
+    ("ball_event_score", np.empty(0, np.float32), "columns disagree"),
+    ("ball_event_frame_uncertainty", None, "columns disagree"),
+])
+def test_v3_save_and_load_reject_invalid_event_columns(
+    field: str, value: Any, message: str, tmp_path: Path, v2_scene: SceneResult,
+) -> None:
+    path = tmp_path / "scene.npz"
+    scene = _v3(v2_scene, "annotation")
+    save_scene_result(scene, path)
+    with pytest.raises(ValueError, match=message):
+        save_scene_result(replace(scene, **{field: value}), path)
+    with np.load(path) as archive:
+        arrays = dict(archive)
+    if value is None:
+        del arrays[field]
+    else:
+        arrays[field] = value
+    np.savez_compressed(path, **arrays)
+    with pytest.raises(ValueError, match=message):
+        load_scene_result(path)
+
+
+def test_v3_rejects_duplicate_kind_and_frame_but_allows_two_kinds_at_one_frame(
+    tmp_path: Path, v2_scene: SceneResult,
+) -> None:
+    path = tmp_path / "scene.npz"
+    scene = replace(_v3(v2_scene, "annotation"), ball_event_frame=np.array([1, 1], np.int32))
+    save_scene_result(scene, path)
+    bad: np.ndarray = np.zeros(2, dtype=np.uint8)
+    with pytest.raises(ValueError, match="Duplicate"):
+        save_scene_result(replace(scene, ball_event_kind=bad), path)
+    with np.load(path) as archive:
+        arrays = {**archive, "ball_event_kind": bad}
+    np.savez_compressed(path, **arrays)
+    with pytest.raises(ValueError, match="Duplicate"):
+        load_scene_result(path)
+
+
+@pytest.mark.parametrize("version", [1, 2])
+def test_legacy_archive_cannot_carry_event_columns(tmp_path: Path, v2_scene: SceneResult, version: int) -> None:
+    path = tmp_path / "scene.npz"
+    old = _scene() if version == 1 else v2_scene
+    field = np.array([0], np.int32)
+    with pytest.raises(ValueError, match="require SceneResult v3"):
+        save_scene_result(replace(old, ball_event_frame=field), path)
+    save_scene_result(old, path)
+    with np.load(path) as archive:
+        arrays = {**archive, "ball_event_frame": field}
+    np.savez_compressed(path, **arrays)
+    with pytest.raises(ValueError, match="require SceneResult v3"):
+        load_scene_result(path)
+
+
+def test_v3_preserves_original_validity_contract(tmp_path: Path, v2_scene: SceneResult) -> None:
+    path = tmp_path / "scene.npz"
+    scene = _v3(v2_scene, "rule")
+    save_scene_result(scene, path)
+    with np.load(path) as archive:
+        arrays = {**archive, "ball_3d_valid": archive["ball_3d_valid"].astype(np.uint8)}
+    np.savez_compressed(path, **arrays)
+    with pytest.raises(ValueError, match="ball_3d_valid"):
+        load_scene_result(path)
 
 
 def test_v2_load_rejects_archive_without_a_mask(tmp_path: Path, v2_scene: SceneResult) -> None:
