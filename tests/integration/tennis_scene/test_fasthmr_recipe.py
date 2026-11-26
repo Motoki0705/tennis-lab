@@ -47,7 +47,10 @@ from src.tennis_scene.pipeline.imports.publish import (
 )
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import ComponentNode, ComponentRunner
-from src.tennis_scene.pipeline.source_identity import compatible_source_digests
+from src.tennis_scene.pipeline.source_identity import (
+    compatible_source_digests,
+    source_digests,
+)
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.video_batch import run_video_batch
@@ -154,12 +157,9 @@ def test_only_the_exact_standard_recipe_patch_preserves_previous_source_identity
     manifest = PROJECT_ROOT / "src/tennis_scene/pipeline/standard_recipe_cache_compatibility.json"
     records = json.loads(manifest.read_text())["files"]
     people = json.loads(manifest.with_name("ecpose_recipe_cache_compatibility.json").read_text())["files"]
-    pose = json.loads(manifest.with_name("multiview_pose_cache_compatibility.json").read_text())["files"]
     plcs_path = "tennis_scene/pipeline/components/monocular_plcs.py"
-    current = {
-        path: dual_sha256(PROJECT_ROOT / "src" / path)
-        for path in records.keys() | people.keys() | pose.keys() | {plcs_path}
-    }
+    # Earlier compatibility patches require every file in their manifests.
+    current = source_digests(PROJECT_ROOT / "src")
     main_sources = compatible_source_digests(current, tensorrt=True)
     assert {path: main_sources[path] for path in people} == {path: entry["after"] for path, entry in people.items()}
     outside_fast = {
