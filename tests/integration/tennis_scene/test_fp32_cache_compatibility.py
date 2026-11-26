@@ -262,8 +262,13 @@ def pose_comparison_sources() -> tuple[dict[str, str], dict[str, str]]:
 
     manifest = Path(source_identity.__file__).with_name("pose_comparison_cache_compatibility.json")
     files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
-    current = source_identity.source_digests(PROJECT_ROOT / "src")
+    live = source_identity.source_digests(PROJECT_ROOT / "src")
+    # The comparison manifest records the combined sources before the event-cache change.
+    current = source_identity._compatible_patch(live, "event_detection_cache_compatibility.json")
     assert {path: current.get(path) for path in files} == {path: pair["after"] for path, pair in files.items()}
+    assert source_identity.compatible_source_digests(live, tensorrt=True) == source_identity.compatible_source_digests(
+        current, tensorrt=True,
+    )
     tracking = {path: digest for path, digest in current.items() if path not in files}
     tracking.update({path: pair["before"] for path, pair in files.items() if pair["before"] is not None})
     return current, tracking
@@ -304,6 +309,24 @@ def test_exact_multiview_pose_patch_preserves_the_standard_recipe_identity() -> 
     ):
         changed = {**reviewed, path: "0" * 64}
         assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
+
+
+def test_event_detection_compatibility_preserves_only_the_exact_patch() -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    manifest = Path(source_identity.__file__).with_name("event_detection_cache_compatibility.json")
+    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    schema = {"tennis_scene/ball_event_schema.py": "a" * 64}
+    baseline = schema | {path: versions["before"] for path, versions in files.items()}
+    reviewed = schema | {path: versions["after"] for path, versions in files.items()}
+    assert source_identity.compatible_source_digests(reviewed, standard_recipe=True) == baseline
+    for path in files:
+        edited = reviewed | {path: "0" * 64}
+        assert source_identity.compatible_source_digests(edited, standard_recipe=True) == edited
+    changed_schema = {"tennis_scene/ball_event_schema.py": "b" * 64}
+    assert source_identity.compatible_source_digests(
+        reviewed | changed_schema, standard_recipe=True,
+    ) == baseline | changed_schema
 
 
 def test_exact_multiview_tracking_patch_preserves_the_standard_recipe_identity(

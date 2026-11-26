@@ -175,6 +175,8 @@ def _required_publication_components(inputs: DatasetClipInputs, identity: Mappin
         if not isinstance(event_ref, dict) or (event_ref["schema"], event_ref["version"]) != ("scene_result", 3):
             raise ValueError("Publication requires an event_detection SceneResult v3 export")
         event = read_component_descriptor(root, event_ref, node=EVENT_DETECTION, source_sha256=document["source_sha256"])
+        if event["identity"].get("implementation") != identity["code_sha256"]:
+            raise ValueError("Published event_detection implementation differs from its declared source identity")
         actual = event["identity"]["settings"]
         expected = {key: value for key, value in event_settings.items()
                     if key not in {"annotation_directory", "annotation_benchmark_manifest"}}

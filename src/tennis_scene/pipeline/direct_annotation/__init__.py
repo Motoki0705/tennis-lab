@@ -124,6 +124,7 @@ def saved_scene(
     people_runtime: SubmoduleRuntimeConfig,
     model_identity: str | None = None,
     event_settings: Mapping[str, Any] | None = None,
+    code_identity: str | None = None,
 ) -> tuple[SceneResult, dict[str, object]]:
     receipt = json.loads((store.root / "scene-completion.json").read_text())
     references = store.references()
@@ -152,6 +153,10 @@ def saved_scene(
         )
     if receipt.get("model_identity") != model_identity:
         raise ValueError("Saved scene model identity differs from the selected workflow")
+    if event_settings is not None:
+        event_identity = store.descriptor(references[node])["identity"]
+        if code_identity is None or event_identity.get("implementation") != code_identity:
+            raise ValueError("Saved event_detection implementation differs from the current source identity")
     archive = Path(receipt["archive"])
     required = require_current_body_artifacts(store.root, json_value(references["scene_assembly"]))
     required[node] = json_value(references[node])
