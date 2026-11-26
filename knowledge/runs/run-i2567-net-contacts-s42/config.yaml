@@ -1,0 +1,154 @@
+data:
+  dataset: ball_refiner/single_object_net_v1
+  evaluation_event_probability: 0.5
+  evaluation_seed: 20991
+  num_workers: 0
+  pin_memory: false
+  window:
+    length: 128
+    long_probability: 0.25
+    max_length: 1024
+augmentation:
+  event_probability: 0.5
+  isolated_probability: 0.0
+  gap_min: 3
+  gap_max: 10
+  noise_p95_px: 0.0
+  jitter_sigma_px: 0.0
+  outlier_probability: 0.0
+  triangulation_steps: 3
+model:
+  dimensions: 3
+  width: 256
+  layers: 8
+  heads: 4
+  dropout: 0.05
+  flow_steps: 16
+  ffn_dim: 704
+  ffn_type: swiglu
+  rope_dim: 64
+  rope_theta: 10000.0
+  physics_heads: false
+  architecture: regression
+loss:
+  event:
+    weight: 1.0
+    sigma_frames: 2.0
+  reconstruction:
+    enabled: false
+    initial_weight: 1.0
+    final_weight: 1.0
+    start_step: 0
+    decay_steps: 1
+  physics:
+    field_weight: 0.0
+    segment_weight: 0.0
+    reconstruction_weight: 0.0
+    consistency_weight: 0.0
+    consistency_gradient: direct
+training:
+  steps: 4000
+  batch_size: 32
+  learning_rate: 0.0003
+  weight_decay: 0.01
+  gradient_clip: 1.0
+  evaluate_every: 500
+  log_every: 100
+  cpu_threads: 2
+  trainer:
+    max_epochs: 8
+    gradient_clip_val: null
+    deterministic: true
+    precision: 32-true
+    log_every_n_steps: 100
+    check_val_every_n_epoch: 1
+    accumulate_grad_batches: 1
+    reload_dataloaders_every_n_epochs: 1
+    enable_progress_bar: false
+    enable_model_summary: true
+    benchmark: false
+  warmup_steps: 0
+  warmup_epochs: null
+  min_lr: 1.5e-05
+  steps_per_epoch: 500
+  optimizer:
+    betas:
+    - 0.9
+    - 0.999
+  compile:
+    enabled: false
+    backend: inductor
+    mode: default
+    fullgraph: false
+    dynamic: false
+  checkpoint:
+    enabled: true
+    filename: best
+    monitor: val/rmse
+    mode: min
+    save_top_k: 1
+    save_last: true
+  early_stopping:
+    enabled: false
+    monitor: val/rmse
+    mode: min
+    patience: 10
+    min_delta: 0.0
+    check_on_train_epoch_end: false
+  lr_monitor:
+    enabled: true
+    interval: step
+  qualitative_logging:
+    enabled: false
+    every_n_epochs: 1
+    num_samples: 1
+    selection_mode: random
+    selected_indices: null
+  matmul_precision: highest
+  allow_tf32: false
+  gan:
+    enabled: false
+    schedule_enabled: false
+    target_weight: 1.0
+    transition:
+      start_step: 500
+      start_epoch: 1
+    warmup_steps: 1000
+    discriminator:
+      name: trajectory_transformer
+      hidden_dim: 256
+      num_layers: 4
+      num_heads: 4
+      ffn_dim: 704
+      ffn_type: swiglu
+      dropout: 0.1
+      rope_dim: 64
+      rope_theta: 10000.0
+      max_seq_len: 1024
+      invalid_init_std: 0.02
+      cls_init_std: 0.02
+    generator_gradient_clip_val: 1.0
+    discriminator_gradient_clip_val: 1.0
+    warmup_epochs: 2
+run:
+  output_dir: ball_refiner_3d/train/regression/net-contacts-s42-v1
+  seed: 42
+  gpus: 1
+  resume: null
+  init_weights: null
+  fast_dev_run: false
+  dry_run: false
+  test_after_fit: true
+  artifact_store:
+    mode: local
+    remote: null
+    remote_root: null
+    sync_interval_seconds: null
+paths:
+  project_root: /home/kamimura/projects/tennis-lab/.claude/worktrees/parent-1722-issue-2567-primary
+  data_root: /home/kamimura/projects/tennis-lab/data
+  checkpoint_root: /home/kamimura/projects/tennis-lab/ckpt
+  artifact_root: /mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-1722-issue-2567-primary
+  output_root: /mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-1722-issue-2567-primary
+  cache_root: /home/kamimura/projects/tennis-lab/data
+  external_asset_root: /home/kamimura/projects/tennis-lab/.claude/worktrees/parent-1722-issue-2567-primary/third_party
