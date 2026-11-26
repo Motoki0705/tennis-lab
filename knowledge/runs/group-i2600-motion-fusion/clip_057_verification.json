@@ -1,0 +1,73 @@
+{
+  "clip": "video_000/clip_057",
+  "fps": 59.94005994005994,
+  "frames": 285,
+  "manifest_sha256": "e456f07c510b25ef4730336b18ae850090146c15cb1407c78d120ca53f4edea3",
+  "scene_archive_sha256": "07fd3fd7d249020dce92c34d44163cdcf5dab87a501505517ff1e2b5b83d052e",
+  "checkpoint_sha256": "b0d4399c23bf77bac115f46027cee545f99a41e9957c4e605f0eeb73ed16bde0",
+  "base_model_config": {
+    "dimensions": 3,
+    "architecture": "regression",
+    "width": 256,
+    "layers": 8,
+    "heads": 4,
+    "dropout": 0.05,
+    "flow_steps": 16,
+    "ffn_dim": 704,
+    "rope_dim": 64,
+    "rope_theta": 10000.0,
+    "ffn_type": "swiglu",
+    "physics_heads": false
+  },
+  "gaussian_sigma_frames": 2.0,
+  "smplx_sha256": "376021446ddc86e99acacd795182bbef903e61d33b76b9d8b359c2b0865bd992",
+  "slots": [
+    0,
+    2,
+    3,
+    4
+  ],
+  "root_valid_frames": [
+    285,
+    285,
+    285,
+    285
+  ],
+  "smpl_valid_frames": [
+    285,
+    285,
+    285,
+    283
+  ],
+  "wrist_velocity_valid_frames": [
+    284,
+    284,
+    284,
+    281
+  ],
+  "root_valid_smpl_missing_frames": [
+    [
+      187,
+      3
+    ],
+    [
+      188,
+      3
+    ]
+  ],
+  "wrist_velocity_max_abs_error_mps": 4.76837158203125e-07,
+  "rendered_wrist_pairs": 192,
+  "median_fk_root_wrist_m": 0.309603750705719,
+  "median_mesh_root_wrist_m": 0.30877888202667236,
+  "fk_vs_mesh_median_m": 0.02347894012928009,
+  "fk_vs_mesh_p95_m": 0.03883073851466179,
+  "fk_vs_mesh_median_angle_degrees": 1.9226431846618652,
+  "fk_vs_mesh_p95_angle_degrees": 5.26235818862915,
+  "base_parameters": 6429958,
+  "fusion_parameters": {
+    "shared": 53888,
+    "per-player": 215552,
+    "set-attention": 779136
+  },
+  "initial_bit_identity": true
+}
