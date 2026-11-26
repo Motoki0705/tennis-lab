@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import importlib
 import json
@@ -26,23 +27,27 @@ ROOT = Path(__file__).resolve().parents[3]
 OPS = ROOT / ".agents/ops"
 
 FAKE_HERDR = r"""
-import json, os, sys
+import fcntl, json, os, sys
 from pathlib import Path
 args = sys.argv[1:]
 path = Path(os.environ['LABEL_FAKE_STATE'])
-state = json.loads(path.read_text())
-state['calls'].append(args)
+original_args = args
 session = 'default'
 if args[:1] == ['--session']: session, args = args[1], args[2:]
+if args == ['agent', 'list'] and os.environ.get('LABEL_PREPARE_ENTERED'):
+    # The coordination test needs other CLI calls to progress during this gate.
+    import time
+    Path(os.environ['LABEL_PREPARE_ENTERED']).touch()
+    deadline = time.monotonic() + 10
+    while not Path(os.environ['LABEL_PREPARE_RELEASE']).exists():
+        if time.monotonic() > deadline: raise SystemExit('test release timed out')
+        time.sleep(.01)
+# Concurrent requests share the mock's state and append to the same call log.
+guard = path.with_suffix('.lock').open('a')
+fcntl.flock(guard, fcntl.LOCK_EX)
+state = json.loads(path.read_text())
+state['calls'].append(original_args)
 if args == ['agent', 'list']:
-    # Label preparation sits between the registry snapshot and the write.
-    if os.environ.get('LABEL_PREPARE_ENTERED'):
-        import time
-        Path(os.environ['LABEL_PREPARE_ENTERED']).touch()
-        deadline = time.monotonic() + 10
-        while not Path(os.environ['LABEL_PREPARE_RELEASE']).exists():
-            if time.monotonic() > deadline: raise SystemExit('test release timed out')
-            time.sleep(.01)
     if os.environ.get('LABEL_PREPARE_RACE') == 'process': state['pid'] = os.getppid()
     elif os.environ.get('LABEL_PREPARE_RACE'):
         state['panes']['w1:p1'].update(display_agent='#99 · 親', tokens={'tl_owner': 'new-owner'})
@@ -103,10 +108,14 @@ class Labels:
     registry: Path
 
     def read(self) -> dict[str, Any]:
-        return json.loads(self.state.read_text())  # type: ignore[no-any-return]
+        with self.state.with_suffix(".lock").open("a") as guard:
+            fcntl.flock(guard, fcntl.LOCK_SH)
+            return json.loads(self.state.read_text())  # type: ignore[no-any-return]
 
     def write(self, state: dict[str, Any]) -> None:
-        self.state.write_text(json.dumps(state))
+        with self.state.with_suffix(".lock").open("a") as guard:
+            fcntl.flock(guard, fcntl.LOCK_EX)
+            self.state.write_text(json.dumps(state))
 
     def set_registry(self, parents: dict[str, Any]) -> None:
         self.registry.parent.mkdir(parents=True, exist_ok=True)
