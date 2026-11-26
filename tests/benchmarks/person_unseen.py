@@ -158,7 +158,7 @@ def plan(freeze: Path, commit: str, report: Path, *, addendum: Path | None = Non
         if dual_sha256(metadata_path) != reserved['manifest_sha256']:
             raise ValueError('Reserved clip metadata changed')
         config = clip_config(frozen, clip_root)
-        runtime = PipelineRuntimeConfig.from_config(config, bind_inputs=True)
+        runtime = PipelineRuntimeConfig.from_config(config, bind_event_detection=False)
         source = build_clip_source(runtime.video_paths, runtime.camera_ids, clip_id=clip)
         if source.camera_ids != CAMERAS or source.num_frames != reserved['num_frames'] \
                 or not np.isclose(source.fps, reserved['fps'], rtol=0., atol=1e-6) or source.num_frames != metadata['num_frames']:
@@ -368,7 +368,7 @@ def execute(report: Path) -> None:
         for record in plan_doc['records']:
             clip = record['clip']
             checked(record['metadata'])
-            cfg = PipelineRuntimeConfig.from_config(OmegaConf.load(checked(record['config'])), bind_inputs=True)
+            cfg = PipelineRuntimeConfig.from_config(OmegaConf.load(checked(record['config'])), bind_event_detection=False)
             source = build_clip_source(cfg.video_paths, cfg.camera_ids, clip_id=clip)
             if json_value(source) != record['source']:
                 raise ValueError('Source changed after plan')

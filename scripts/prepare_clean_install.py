@@ -19,6 +19,8 @@ import time
 from pathlib import Path
 from typing import Any
 
+SAMPLE_PIPELINE_OVERRIDES = ("event_detection.method=rule",)
+
 
 def file_hash(path: Path) -> str:
     with path.open("rb") as stream:
@@ -63,6 +65,10 @@ def copy_local_assets(source_root: Path, destination_root: Path, assets: list[di
     return records
 
 
+def preflight_command(repo: Path) -> list[str]:
+    return [str(repo / ".venv/bin/python"), "-m", "src.tennis_scene.scripts.preflight", *SAMPLE_PIPELINE_OVERRIDES]
+
+
 def gpu_commands(repo: Path, build: Path) -> tuple[str, str]:
     """Return shell-safe, explicit commands for the sample and its visualization."""
     prefix = f"cd {shlex.quote(str(repo))} && "
@@ -72,7 +78,7 @@ def gpu_commands(repo: Path, build: Path) -> tuple[str, str]:
                 "OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 "
                 f"{python} -m src.tennis_scene.scripts.run_pipeline "
                 "output_directory=tennis_scene/generate/clean_install output_name=scene "
-                "cache.directory=tennis_scene/cache/clean_install event_detection.method=rule")
+                f"cache.directory=tennis_scene/cache/clean_install {shlex.join(SAMPLE_PIPELINE_OVERRIDES)}")
     visualization = (f"{prefix}CUDA_VISIBLE_DEVICES='' MPLBACKEND=Agg {python} "
                      "-m src.tennis_scene.scripts.visualization "
                      "input=tennis_scene/generate/clean_install/scene.npz "
@@ -146,7 +152,7 @@ def prepare(args: argparse.Namespace) -> None:
         run("download-sample", [python, "-m", "src.utils.sample_dataset", "--data-root", str(repo / "data")], cwd=repo)
         env["PYTHONPATH"] = str(build / "lib")
         env["TENNIS_LAB_DINO_EXTENSION"] = str(build / "lib/MultiScaleDeformableAttention.so")
-        run("preflight", [python, "-m", "src.tennis_scene.scripts.preflight"], cwd=repo)
+        run("preflight", preflight_command(repo), cwd=repo)
         run("git-status", ["git", "status", "--short", "--untracked-files=all"], cwd=repo)
         pipeline, visualization = gpu_commands(repo, build)
         for filename, command in (("run_pipeline.sh", pipeline), ("visualize.sh", visualization)):

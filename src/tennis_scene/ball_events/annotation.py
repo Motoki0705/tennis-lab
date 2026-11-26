@@ -21,6 +21,7 @@ from src.utils.geometry.triangulation import PinholeCamera
 
 ANNOTATION_SCHEMA_FILENAME = "meiji_event_labels.v1.schema.json"
 ANNOTATION_CLIP_ID = re.compile(r"video_[0-9]{3}/clip_[0-9]{3}")
+MEIJI_V2_MANIFEST_SHA256 = "0d11010fa2a10d73ba4b03ba01f107c90641868fbb8dd86978503cc761d4ac44"
 _HINT_REFERENCE = re.compile(
     r"(?:player_hint|near\s*/\s*far|基準視点)[^。\n]{0,64}?cam\s*([0-9]+)",
     re.IGNORECASE,
@@ -62,6 +63,20 @@ def _read_pinned_json(asset: Mapping[str, str]) -> dict[str, Any]:
     return document
 
 
+def meiji_v2_manifest_asset(path: Path) -> dict[str, str]:
+    """Bind the manifest that supplies the annotated video identities."""
+    return {"path": str(path), "sha256": MEIJI_V2_MANIFEST_SHA256}
+
+
+def read_meiji_v2_manifest(asset: Mapping[str, str]) -> dict[str, Any]:
+    if asset["sha256"] != MEIJI_V2_MANIFEST_SHA256:
+        raise ValueError("Event annotation requires the fixed Meiji multiview-v2 manifest SHA-256")
+    document = _read_pinned_json(asset)
+    if document["benchmark_id"] != "meiji_4cam/multiview-v2":
+        raise ValueError("Expected the Meiji multiview-v2 benchmark")
+    return document
+
+
 @dataclass(frozen=True)
 class BallAnnotations:
     events: list[dict[str, Any]]
@@ -73,7 +88,7 @@ class BallAnnotations:
 
 def read_ball_annotations(
     scene: SceneResult, source: ClipSource, *,
-    annotation: Mapping[str, str], schema: Mapping[str, str],
+    annotation: Mapping[str, str], schema: Mapping[str, str], benchmark_manifest: Mapping[str, str],
 ) -> BallAnnotations:
     """Validate structure and scene correspondence before encoding any labels."""
     document = _read_pinned_json(annotation)
@@ -88,8 +103,19 @@ def read_ball_annotations(
     if document["schema"] != "meiji_event_labels.v1" or document["benchmark"] != "multiview-v2":
         raise ValueError("Unsupported event annotation schema or benchmark")
 
-    notes = document.get("notes", "")
     camera_hashes = {video.camera_id: video.sha256 for video in source.videos}
+    benchmark = read_meiji_v2_manifest(benchmark_manifest)
+    matches = [row for row in benchmark["clips"] if row["clip_id"] == source.clip_id]
+    if len(matches) != 1:
+        raise ValueError(f"Annotation clip must be present once in the pinned Meiji multiview-v2 manifest: {source.clip_id}")
+    row = matches[0]
+    expected_hashes = {camera["camera_id"]: camera["sha256"] for camera in row["cameras"]}
+    if camera_hashes != expected_hashes:
+        raise ValueError(f"Annotation video SHA-256 or camera set disagrees with the pinned Meiji multiview-v2 manifest: {source.clip_id}")
+    if (source.fps, source.num_frames) != (row["fps"], row["frames"]):
+        raise ValueError(f"Annotation timeline disagrees with the pinned Meiji multiview-v2 manifest: {source.clip_id}")
+
+    notes = document.get("notes", "")
     if any(camera_hashes.get(camera) != digest for camera, digest in _CAMERA_DIGEST.findall(notes)):
         raise ValueError(f"Annotation video SHA-256 disagrees with the scene: {source.clip_id}")
     events = sorted(document["events"], key=lambda row: (row["frame"], row["kind"]))

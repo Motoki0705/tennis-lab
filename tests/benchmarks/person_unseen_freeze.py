@@ -34,7 +34,7 @@ def configuration(repo: Path, report: Path) -> DictConfig:
             f'paths.project_root={CODE}', f'paths.data_root={repo / "data"}',
             f'paths.checkpoint_root={repo / "ckpt"}', f'paths.external_asset_root={repo / "third_party"}',
             f'paths.output_root={report}', f'paths.artifact_root={report}',
-            f'paths.cache_root={report / "cache"}', 'output_directory=run', 'device=cuda', 'event_detection.method=rule',
+            f'paths.cache_root={report / "cache"}', 'output_directory=run', 'device=cuda',
             'people_models.runtime.vitpose.batch_size=4', 'people_models.runtime.hmr2.batch_size=4',
         ])
     return cfg
@@ -54,7 +54,7 @@ def freeze(repo: Path, report: Path, target: Path) -> None:
     if target.exists():
         raise FileExistsError('A freeze manifest is immutable')
     cfg = configuration(repo, report)
-    runtime = PipelineRuntimeConfig.from_config(cfg, bind_inputs=False)
+    runtime = PipelineRuntimeConfig.from_config(cfg, bind_inputs=False, bind_event_detection=False)
     reservation = repo / 'data/tennis_multiview/processed/meiji_3cam/dataset/annotations/player_association/unseen_protocol.json'
     reserved = json.loads(reservation.read_text())  # metadata only, never a reserved clip
     if set(reserved['clips']) != set(CLIPS) or reserved['evaluation_attempts'] != 0:

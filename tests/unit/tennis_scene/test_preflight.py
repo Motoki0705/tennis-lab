@@ -145,16 +145,24 @@ def test_standard_inventory_covers_recipe_source_sample_and_visualization(tmp_pa
         assert requirement.size_bytes is not None
 
 
-@pytest.mark.parametrize("profile", ["standard", "no_body", "no_people"])
+@pytest.mark.parametrize("profile", ["standard", "no_body", "no_people", "annotation"])
 def test_diagnostic_inventory_matches_typed_runtime(installation_config: DictConfig, profile: str) -> None:
-    if profile != "standard":
+    if profile in {"no_body", "no_people"}:
         installation_config.gvhmr.enabled = False
     if profile == "no_people":
         installation_config.person_observations.enabled = False
         installation_config.player_reconstruction.enabled = False
+    if profile == "annotation":
+        installation_config.event_detection.method = "annotation"
+        installation_config.event_detection.annotation_directory = "events"
+        installation_config.event_detection.annotation_benchmark_manifest = "benchmarks/v2/manifest.json"
     runtime = PipelineRuntimeConfig.from_config(installation_config)
     diagnostic = preflight.configured_requirements(installation_config)
     assert {item.name: item for item in diagnostic} == {item.name: item for item in standard_requirements(runtime)}
+    if profile == "annotation":
+        benchmark = next(item for item in diagnostic if item.name == "ball_event_annotation_benchmark")
+        assert benchmark.path == runtime.roots.data_root / "benchmarks/v2/manifest.json"
+        assert benchmark.sha256 == "0d11010fa2a10d73ba4b03ba01f107c90641868fbb8dd86978503cc761d4ac44"
 
 
 def test_fasthmr_inventory_uses_native_assets(installation_config: DictConfig) -> None:

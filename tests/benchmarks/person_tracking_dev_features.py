@@ -48,8 +48,8 @@ def runtime(repo: Path) -> PipelineRuntimeConfig:
     with initialize_config_dir(version_base='1.3', config_dir=str(CODE_ROOT / 'src/tennis_scene/configs')):
         config = compose(config_name='pipeline', overrides=[f'paths.project_root={CODE_ROOT}',
             f'paths.data_root={repo / "data"}', f'paths.checkpoint_root={repo / "ckpt"}',
-            f'paths.external_asset_root={repo / "third_party"}', 'device=cuda', 'event_detection.method=rule', 'people_models.runtime.vitpose.batch_size=4'])
-    return PipelineRuntimeConfig.from_config(config, bind_inputs=False)
+            f'paths.external_asset_root={repo / "third_party"}', 'device=cuda', 'people_models.runtime.vitpose.batch_size=4'])
+    return PipelineRuntimeConfig.from_config(config, bind_inputs=False, bind_event_detection=False)
 
 
 def checked_file(record: dict[str, Any]) -> Path:

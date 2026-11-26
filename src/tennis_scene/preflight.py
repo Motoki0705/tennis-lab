@@ -18,6 +18,7 @@ from src.tasks.player_association.association.config import (
     DEFAULT_CONFIG,
     load_association_config,
 )
+from src.tennis_scene.ball_events.annotation import MEIJI_V2_MANIFEST_SHA256
 from src.tennis_scene.configuration import (
     PipelineRuntimeConfig,
     pipeline_asset_configuration,
@@ -98,6 +99,9 @@ def configured_requirements(cfg: DictConfig) -> tuple[AssetRequirement, ...]:
     if event["method"] == "refiner" and isinstance(event.get("checkpoint"), str):
         add("ball_event_refiner", PathRole.CHECKPOINT, cast(str, event["checkpoint"]),
             digest=cast(str | None, event.get("checkpoint_sha256")))
+    if event["method"] == "annotation" and isinstance(event.get("annotation_benchmark_manifest"), str):
+        add("ball_event_annotation_benchmark", PathRole.DATA, cast(str, event["annotation_benchmark_manifest"]),
+            digest=MEIJI_V2_MANIFEST_SHA256)
     if section("person_observations")["enabled"]:
         if recipe == ECPOSE_RECIPE:
             ecpose = section("ecpose")
@@ -197,10 +201,14 @@ def standard_requirements(cfg: PipelineRuntimeConfig) -> tuple[AssetRequirement,
             release = cfg.ecpose.release
             requirements.append(AssetRequirement(name, path, release.sha256, size_bytes=release.size))
         elif name == "ball_event_refiner":
-            requirements.append(AssetRequirement(name, path, cfg.event_detection.checkpoint_sha256))
+            requirements.append(AssetRequirement(name, path, cfg.require_event_detection().checkpoint_sha256))
         else:
             pin = pins[name]
             requirements.append(AssetRequirement(name, path, pin.sha256, size_bytes=pin.size_bytes))
+    events = cfg.event_detection
+    if events is not None and events.annotation_benchmark_manifest is not None:
+        requirements.append(AssetRequirement("ball_event_annotation_benchmark", events.annotation_benchmark_manifest,
+                                             MEIJI_V2_MANIFEST_SHA256))
     if cfg.fasthmr is not None:
         requirements.append(AssetRequirement("fasthmr_demo_config", cfg.fasthmr.demo_config))
     if cfg.ecpose is not None:

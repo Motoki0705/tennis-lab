@@ -47,7 +47,10 @@ from src.tennis_scene.pipeline.components.court_kp import (
     CourtKPConfig,
     CourtKPPostprocessConfig,
 )
-from src.tennis_scene.pipeline.components.event_detection import EventDetectionConfig
+from src.tennis_scene.pipeline.components.event_detection import (
+    EVENT_DETECTION,
+    EventDetectionConfig,
+)
 from src.tennis_scene.pipeline.contracts import STANDARD_COMPONENTS
 from src.tennis_scene.pipeline.direct_annotation import DirectAnnotationConfig
 from src.tennis_scene.pipeline.feature_flags import (
@@ -307,13 +310,14 @@ _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconst
 _EVENT_DETECTION_SCHEMA = StrictConfigSchema(name="tennis_scene.event_detection", fields={
     "method": ConfigField.of(str, type(None)),
     "annotation_directory": ConfigField.of(str, type(None), required=False),
+    "annotation_benchmark_manifest": ConfigField.of(str, type(None), required=False),
     "checkpoint": ConfigField.of(str, type(None), required=False),
     "checkpoint_sha256": ConfigField.of(str, type(None), required=False),
     "fps_tolerance": ConfigField.of(float, int, type(None), required=False),
 })
 _CACHE_SCHEMA = StrictConfigSchema(name="tennis_scene.cache", fields={"directory": ConfigField.of(str), "source": ConfigField.of(str), "overwrite": ConfigField.of(bool)})
 _EXECUTION_SCHEMA = StrictConfigSchema(name="tennis_scene.execution", fields={
-    **{name: ConfigField.of(str) for name in STANDARD_COMPONENTS},
+    **{name: ConfigField.of(str, required=name != EVENT_DETECTION) for name in STANDARD_COMPONENTS},
     FASTHMR_RECIPE: ConfigField.of(str, required=False),
     ECPOSE_RECIPE: ConfigField.of(str, required=False),
 })
@@ -352,20 +356,24 @@ _PIPELINE_SCHEMA = StrictConfigSchema(name="tennis_scene.pipeline", fields={
     "frame_sampling": ConfigField.mapping(_FRAME_SAMPLING_SCHEMA), "camera_geometry": ConfigField.mapping(_GEOMETRY_SCHEMA),
     "court_side": ConfigField.mapping(_COURT_SIDE_SCHEMA), "player_association": ConfigField.mapping(_PLAYER_ASSOCIATION_SCHEMA),
     "player_reconstruction": ConfigField.mapping(_PLAYER_RECONSTRUCTION_SCHEMA), "ball_reconstruction": ConfigField.mapping(_BALL_RECONSTRUCTION_SCHEMA),
-    "event_detection": ConfigField.mapping(_EVENT_DETECTION_SCHEMA),
+    "event_detection": ConfigField.mapping(_EVENT_DETECTION_SCHEMA, required=False),
     "gvhmr": ConfigField.mapping(_FLAG_SCHEMA), "cache": ConfigField.mapping(_CACHE_SCHEMA),
 })
 
 
 def pipeline_asset_configuration(
-    cfg: DictConfig,
+    cfg: DictConfig, *, bind_event_detection: bool = True,
 ) -> tuple[Mapping[str, object], RuntimePathRoots, PathResolver]:
     """Validate structure and root authorities without resolving asset children.
 
     Installation diagnostics must be able to reject each child independently.
     This does not construct an executable runtime configuration.
     """
+    if not bind_event_detection:
+        cfg = OmegaConf.masked_copy(cfg, [key for key in cfg if key != EVENT_DETECTION])
     value = _PIPELINE_SCHEMA.validate(_plain(cfg))
+    if bind_event_detection and EVENT_DETECTION not in value:
+        raise MissingConfigurationKeyError("Missing event_detection.method for scene reconstruction")
     roots, resolver = _roots(value["paths"])
     return value, roots, resolver
 
@@ -457,7 +465,7 @@ class PipelineRuntimeConfig:
     recipe: RecipeName
     fasthmr: FastHMRConfig | None
     ecpose: ECPoseConfig | None
-    event_detection: EventDetectionConfig
+    event_detection: EventDetectionConfig | None
 
     def __post_init__(self) -> None:
         parse_recipe(self.recipe)
@@ -491,9 +499,17 @@ class PipelineRuntimeConfig:
     def omit_ball_components(self) -> bool:
         return self.court_side_evidence == "player" and not self.enabled["ball_detection"]
 
+    def require_event_detection(self) -> EventDetectionConfig:
+        if self.event_detection is None:
+            raise SemanticConfigurationError("Scene reconstruction requires a bound event_detection.method")
+        return self.event_detection
+
     @classmethod
-    def from_config(cls, cfg: DictConfig, *, bind_inputs: bool = True) -> PipelineRuntimeConfig:
-        value, roots, resolver = pipeline_asset_configuration(cfg)
+    def from_config(
+        cls, cfg: DictConfig, *, bind_inputs: bool = True, bind_event_detection: bool = True,
+    ) -> PipelineRuntimeConfig:
+        """Bind reconstruction settings, or explicitly omit events for stage-only use."""
+        value, roots, resolver = pipeline_asset_configuration(cfg, bind_event_detection=bind_event_detection)
         recipe = parse_recipe(value.get("recipe", STANDARD_RECIPE))
         raw_videos = _sequence(value["video_paths"], name="video_paths") if bind_inputs else ()
         raw_cameras = _sequence(value["camera_ids"], name="camera_ids") if bind_inputs else ()
@@ -645,6 +661,10 @@ class PipelineRuntimeConfig:
         enabled = {key: cast(bool, _mapping(value[key], name=key)["enabled"]) for key in OPTIONAL_FEATURES}
         validate_requested_features(enabled)
         component_sources = {name: str(mode) for name, mode in _mapping(value["execution"], name="execution").items()}
+        if bind_event_detection and EVENT_DETECTION not in component_sources:
+            raise MissingConfigurationKeyError("Missing execution.event_detection for scene reconstruction")
+        if not bind_event_detection:
+            component_sources.pop(EVENT_DETECTION, None)
         if any(mode not in {"execute", "load"} for mode in component_sources.values()):
             raise SemanticConfigurationError("Component execution modes must be execute/load")
         fasthmr = None
@@ -707,18 +727,22 @@ class PipelineRuntimeConfig:
             if direct_config is not None or ball_method == 'gpt_annotation':
                 raise SemanticConfigurationError('video_shared does not support direct_annotation/fixed geometry import')
             settings['court_kp'] = {'mode': 'video_shared', 'unobservable_policy': unobservable_policy}
-        event = _mapping(value["event_detection"], name="event_detection")
-        annotation_directory = cast(str | None, event.get("annotation_directory"))
-        event_checkpoint = cast(str | None, event.get("checkpoint"))
-        tolerance = cast(float | int | None, event.get("fps_tolerance"))
-        event_detection = EventDetectionConfig(
-            cast(EventSource, event["method"]),
-            annotation_directory=None if annotation_directory is None else resolver.resolve(PathRole.DATA, annotation_directory),
-            checkpoint=None if event_checkpoint is None else resolver.resolve(PathRole.CHECKPOINT, event_checkpoint),
-            checkpoint_sha256=cast(str | None, event.get("checkpoint_sha256")),
-            fps_tolerance=None if tolerance is None else float(tolerance),
-            device=device,
-        )
+        event_detection = None
+        if bind_event_detection:
+            event = _mapping(value[EVENT_DETECTION], name=EVENT_DETECTION)
+            annotation_directory = cast(str | None, event.get("annotation_directory"))
+            benchmark_manifest = cast(str | None, event.get("annotation_benchmark_manifest"))
+            event_checkpoint = cast(str | None, event.get("checkpoint"))
+            tolerance = cast(float | int | None, event.get("fps_tolerance"))
+            event_detection = EventDetectionConfig(
+                cast(EventSource, event["method"]),
+                annotation_directory=None if annotation_directory is None else resolver.resolve(PathRole.DATA, annotation_directory),
+                annotation_benchmark_manifest=None if benchmark_manifest is None else resolver.resolve(PathRole.DATA, benchmark_manifest),
+                checkpoint=None if event_checkpoint is None else resolver.resolve(PathRole.CHECKPOINT, event_checkpoint),
+                checkpoint_sha256=cast(str | None, event.get("checkpoint_sha256")),
+                fps_tolerance=None if tolerance is None else float(tolerance),
+                device=device,
+            )
         return cls(roots, resolver, video_paths, camera_ids, output_path, device, max_frames, court_config, people, ball_config,
             sampling_max_frames, geometry, court_side, association, reuse_clip_embeddings, association_weights, visibility, margins, max_tracks, player_error, joint_confidence, placement, ball_error, cast(int, ball["min_frames"]),
             cache_directory, cache_source, cast(bool, cache["overwrite"]), enabled, settings, component_sources,

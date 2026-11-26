@@ -31,17 +31,22 @@ component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.
 
 `scene_assembly` が作るSceneResult v2を `event_detection` が受け取り、
 [SceneResult v3](../README.md#sceneresult-v3) を `exports.scene` へ渡す。
-全recipeで `event_detection.method` を明示する。
+シーンを生成・採用する全recipeで `event_detection.method` を明示する。
+TensorRTのモデルexportではイベント方式の指定は不要。
 
 | method | 設定と判定可能フレーム |
 |---|---|
 | `rule` | [コート座標の規則](../ball_events/README.md)を使う。規則が前後の速度を照合できたフレームと、短い欠測で接触位置を推定できたフレームが判定可能。 |
 | `refiner` | `checkpoint` はCHECKPOINT root相対、`checkpoint_sha256` は完全ハッシュ、`fps_tolerance` は許容差Hz。3クラスのRefinerが確率を返した全フレームが判定可能。 |
-| `annotation` | `annotation_directory` はDATA root相対。配下の `clip_NNN_ball_events.json` と同梱の `meiji_event_labels.v1.schema.json` を読む。明示した `clip_id` と元FPS・全フレーム数をsceneに照合し、`unlabelable` の両端を含む範囲を判定不能とする。 |
+| `annotation` | `annotation_directory` と `annotation_benchmark_manifest` はDATA root相対。注釈JSONと同梱のschemaを読み、固定版 `meiji_4cam/multiview-v2` のmanifestから全カメラのIDと映像SHA-256を照合する。明示した `clip_id` と元FPS・全フレーム数はsceneおよびmanifestに照合し、`unlabelable` の両端を含む範囲を判定不能とする。 |
 
 各項目は `event_detection` 配下で指定する。例としてRefinerの実測59.94 fpsを許容するには
 `event_detection.fps_tolerance=0.06` を使う。注釈のID・カメラ・根拠文は
 コンポーネントJSONの `payload.event_evidence` に保存する。
+明治4カメラでは `annotation_benchmark_manifest` に
+`tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v2/manifest.json` を指定する。
+ベンチマークがDATA root外を指すローカルリンク上にある場合は、同じ内容のmanifestをDATA root内に置いて指定する。
+照合に使ったmanifestのSHA-256は注釈の来歴に含める。
 
 ## 実行計画と入口
 

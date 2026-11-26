@@ -19,6 +19,7 @@
 - **動作確認**: 公開3カメラサンプル（Meiji clip_000）で、既定設定がSceneResult v2の保存まで完走しました（[標準pipeline](nodes/tennis_scene/000028-run-multiview-sample-standard-pipeline-20261021.md)、[クリーン導入](nodes/tennis_scene/000030-run-clean-standard-install-20261021.md)）。1clipの動作確認であり、独立した3D精度や全frameの目視合格は示していません。
 - **ボール3Dの平滑化**: 三角測量の後、局所運動のconsensusで外れ値を除き、頑健な2次LOESSをかけます（既定で有効）。[導入時の比較](nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)では3D有効frameが821→859/1010に増え、隣接移動量のp95も下がりました。一方、元の2D観測への再投影中央値は3.554→4.810 pxに増えました。滑らかさと観測追従の交換関係であり、3D精度の向上とは扱いません。
 - **ボール3Dの評価基盤**（2026-11-03）: clip_000の人間参照を使い、[固定入力のCPU replay比較](nodes/tennis_scene/000032-run-ball3d-evaluation-foundation-20261103.md)を作りました。[レビュー修正後](nodes/tennis_scene/000033-run-ball3d-foundation-review-20261103.md)、全方式に共通の768点でのLOVO中央値/p90は、既定が8.97/25.40 px、LOESSなしが9.70/28.02 pxです。共通点は全対象の52.53%に限られ、可用性を条件とする比較です。[誤差分解](nodes/tennis_scene/000034-run-ball3d-error-decomposition-20261103.md)では、top-8候補にargmax失敗の約半数を回収できる候補がある一方、既存の採用maskを保つ3D候補oracleの改善は小さく、校正誤差と同期ずれも分離できていません。
+- **3Dボールイベント**　明治4カメラの採点6本では、打球は規則F1 .868、バウンドは3クラスRefiner F1 .831が高かった。局所根拠を加えた規則はネット接触4件中3件を±5フレームで検出した。Refinerの見逃し4件は同じ窓でネット確率が最大 .223だった。規則の候補は映像確認に使える。自動確定の判断には追加の独立ラベルが必要。 [実映像比較](nodes/tennis_scene/000096-run-i2542-meiji-ball-events.md)
 - **6方式の比較と採否**: [統合比較](nodes/tennis_scene/000041-run-ball3d-integrated-comparison-20261104.md)では後半LOVOとcoverageの一貫した改善は得られず、人間はbaseline維持を決定しました。後処理・三角測量側の追加改善はキャンセルされ、検出モデルの学習戦略の改善が必要と判断されました。比較は1 clip・近似校正・推定を含む2D参照に限られます。詳細は[凍結アーカイブ](history/summary-2026-11-05.md)を参照してください。
 
 - **動画一括推論の現行本番構成**: [player証拠と特徴分離のCPU統合](nodes/tennis_scene/000072-run-i1752-player-main-cpu-20261119.md)で、共有コートload・clip単位のplayer side判定・ball両機能off・ダブルス2・DINO/ViTPose fp16を明示します。ballありのbenchmarkも共通設定で選択可能です。保存済み3clipの単独/共有判定は#2270と完全一致しました。全69clipのplayer証拠の採否、新構成のGPU再測定と本番実行は未確認です。
@@ -53,8 +54,9 @@
 ## 3D Ball Refiner（ball_refiner_3d）
 
 - **方針**（2026-10-06）: 2Dで補完した点の誤差を三角測量に伝えず、観測の不足を3Dの欠損として保持して3D側で補完します。2D Refinerは同日に廃止しました。標準pipelineにはまだ入っていません。
-- **現状**: [イベントヘッド付き回帰](nodes/ball_refiner_3d/000011-run-i1014-3d-eventhead-regression-eventonly-s42-20261006-v1.md)はtest RMSEが全体0.158 m・欠損0.428 mで、欠損の誤差は同じ入力の線形補間より約52%低くなりました。一方で正確な観測にも約6.8 cmの誤差を生み、欠損付近の速度振動が残ります。合成データ・単一seedの結果です。
+- **位置補完の基準**: [イベントヘッド付き回帰](nodes/ball_refiner_3d/000011-run-i1014-3d-eventhead-regression-eventonly-s42-20261006-v1.md)はtest RMSEが全体0.158 m・欠損0.428 mで、欠損の誤差は同じ入力の線形補間より約52%低くなりました。一方で正確な観測にも約6.8 cmの誤差を生み、欠損付近の速度振動が残ります。合成データ・単一seedの結果です。
 - **物理head**（#1032）: [比較](nodes/ball_refiner_3d/000015-group-i1032-physics-heads-s42.md)では座標だけを出すモデルが最良で、場・区間初期状態のheadと教師を足すと、座標・イベントF1・物理指標がいずれも悪化しました。物理headは既定にしません。
+- **3クラスイベント**: [ネット接触を含む合成学習](nodes/ball_refiner_3d/000016-run-i2567-net-contacts-s42.md)では、固定testのF1がショット0.932、バウンド0.986、ネット接触0.857でした。明治4カメラのmultiview-v2では、1クリップで元フレームを保った推論を確認しました。実映像の精度は#2542の独立ラベルで評価します。
 - **次の実験**: loss係数、観測へのアンカー、区間分割の改善のどれを試すかはユーザーの判断待ちです。同じ入力・L1・GANなしで、イベント教師の有無も比べます。
 
 ## 人物（player_detection・person_tracking・player_association）

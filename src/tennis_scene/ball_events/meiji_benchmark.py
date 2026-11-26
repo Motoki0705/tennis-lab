@@ -19,7 +19,10 @@ from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
 from src.tennis_scene.ball_event_schema import EVENT_STATUS
 from src.tennis_scene.ball_events.annotation import (
     ANNOTATION_SCHEMA_FILENAME,
+    MEIJI_V2_MANIFEST_SHA256,
     annotation_path,
+    meiji_v2_manifest_asset,
+    read_meiji_v2_manifest,
 )
 from src.tennis_scene.pipeline.artifacts import document_digest, write_json_atomic
 from src.tennis_scene.pipeline.components.event_detection import (
@@ -34,7 +37,6 @@ from src.tennis_scene.pipeline.source_identity import source_commit, source_dige
 from src.tennis_scene.schema import SceneResult
 from src.utils.paths import PROJECT_ROOT
 
-BASE_MANIFEST_SHA256 = "0d11010fa2a10d73ba4b03ba01f107c90641868fbb8dd86978503cc761d4ac44"
 BASE_SUMS_SHA256 = "cbdb16b047a18747cda008a285c773cd7c3aa894fbed469b79122576daf4d295"
 ANNOTATION_SCHEMA_SHA256 = "bacedb5ef378ba50529cb3607600f3a54ae0902696fcb9d402a5e5fc64180779"
 CLIP_IDS = tuple(f"video_000/clip_{index:03}" for index in range(69))
@@ -83,12 +85,9 @@ class BenchmarkInputs:
         root = root.resolve()
         manifest_path = root / "manifest.json"
         sums_path = root / "SHA256SUMS"
-        _require_digest(manifest_path, BASE_MANIFEST_SHA256)
+        manifest = read_meiji_v2_manifest(meiji_v2_manifest_asset(manifest_path))
         _require_digest(sums_path, BASE_SUMS_SHA256)
-        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-        if manifest["benchmark_id"] != "meiji_4cam/multiview-v2" or tuple(
-            row["clip_id"] for row in manifest["clips"]
-        ) != CLIP_IDS:
+        if tuple(row["clip_id"] for row in manifest["clips"]) != CLIP_IDS:
             raise ValueError("Expected the fixed 69-clip Meiji multiview-v2 manifest")
         return cls(root, manifest, _read_sums(sums_path))
 
@@ -277,14 +276,15 @@ def build_meiji_benchmark(base: Path, annotations: Path, output: Path) -> dict[s
     rows = inputs.manifest["clips"]
     indexes = {row["clip_id"]: inputs.clip_paths(row) for row in rows}
     pins = {
-        "base": {"benchmark_id": inputs.manifest["benchmark_id"], "manifest_sha256": BASE_MANIFEST_SHA256,
+        "base": {"benchmark_id": inputs.manifest["benchmark_id"], "manifest_sha256": MEIJI_V2_MANIFEST_SHA256,
                  "sha256sums_sha256": BASE_SUMS_SHA256, "shared_files": "hardlinks"},
         "provenance": {**code, "method": "annotation", "annotation_schema_sha256": ANNOTATION_SCHEMA_SHA256},
     }
     if output.exists():
         return _verify_existing(output, inputs, indexes, digests, pins)
 
-    config = EventDetectionConfig("annotation", annotation_directory=annotations)
+    config = EventDetectionConfig("annotation", annotation_directory=annotations,
+                                  annotation_benchmark_manifest=base / "manifest.json")
     with tempfile.TemporaryDirectory(prefix=f".{output.name}-", dir=output.parent) as temporary:
         staging = Path(temporary)
         shared = inputs.stage(staging, set(indexes.values()))
@@ -295,7 +295,8 @@ def build_meiji_benchmark(base: Path, annotations: Path, output: Path) -> dict[s
                 staging / indexes[clip_id].parent, config, code_commit=code["code_commit"], code_identity=code["code_sha256"],
             )
             info = result.metadata["ball_events"]["provenance"]
-            if info["annotation_sha256"] != digests[clip_id] or info["annotation_schema_sha256"] != ANNOTATION_SCHEMA_SHA256:
+            if (info["annotation_sha256"] != digests[clip_id] or info["annotation_schema_sha256"] != ANNOTATION_SCHEMA_SHA256
+                    or info["annotation_benchmark_sha256"] != MEIJI_V2_MANIFEST_SHA256):
                 raise ValueError(f"Event annotation changed during generation: {clip_id}")
             relative = indexes[clip_id]
             counts = _counts(result)
@@ -366,7 +367,8 @@ def _verify_existing(
         index = indexes[clip_id]
         scene = verify_replayed_scene(base.root / index, output / index)
         evidence = scene.metadata["ball_events"]
-        if evidence["source"] != "annotation" or evidence["provenance"]["annotation_sha256"] != digests[clip_id]:
+        if (evidence["source"] != "annotation" or evidence["provenance"]["annotation_sha256"] != digests[clip_id]
+                or evidence["provenance"]["annotation_benchmark_sha256"] != MEIJI_V2_MANIFEST_SHA256):
             raise ValueError(f"Existing benchmark annotation provenance mismatch: {clip_id}")
         counts = _counts(scene)
         if any(row["ball_events"][key] != value for key, value in counts.items()):

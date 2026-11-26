@@ -67,6 +67,12 @@ def test_event_detection_requires_an_explicit_supported_method(tmp_path: Path, o
         PipelineRuntimeConfig.from_config(_pipeline_config(tmp_path, override), bind_inputs=False)
 
 
+def test_annotation_requires_a_benchmark_manifest(tmp_path: Path) -> None:
+    config = _pipeline_config(tmp_path, "event_detection.method=annotation", "event_detection.annotation_directory=events")
+    with pytest.raises(ValueError, match="annotation_benchmark_manifest"):
+        PipelineRuntimeConfig.from_config(config, bind_inputs=False)
+
+
 @pytest.mark.parametrize("key", ["checkpoint_sha256", "fps_tolerance"])
 def test_refiner_requires_a_checkpoint_pin_and_fps_tolerance(tmp_path: Path, key: str) -> None:
     with pytest.raises(ValueError, match=key):
