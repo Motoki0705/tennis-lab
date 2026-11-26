@@ -113,7 +113,11 @@ def _add_badges(
     active: dict[str, np.ndarray],
 ) -> None:
     # Fixed slots keep simultaneous event types legible above the court.
-    corners = camera.data.view_frame(scene=scene)
+    depth = 2.0
+    corners = [
+        corner * (depth / -corner.z)
+        for corner in camera.data.view_frame(scene=scene)
+    ]
     left = min(corner.x for corner in corners)
     right = max(corner.x for corner in corners)
     bottom = min(corner.y for corner in corners)
@@ -142,7 +146,7 @@ def _add_badges(
                 y=y,
                 width=badge_width,
                 height=badge_height,
-                depth=-2.0,
+                depth=-depth,
                 material=background,
             )
             accent = _badge_quad(
@@ -153,7 +157,7 @@ def _add_badges(
                 y=y,
                 width=badge_height * 0.12,
                 height=badge_height,
-                depth=-1.99,
+                depth=-depth + 0.01,
                 material=_emissive_material(f"{name}Color", color),
             )
             font = bpy.data.curves.new(f"{name}.Label", "FONT")
@@ -164,7 +168,9 @@ def _add_badges(
             text = bpy.data.objects.new(f"{name}.Label", font)
             collection.objects.link(text)
             text.parent = camera
-            text.location = (x + badge_height * 0.37, y + badge_height * 0.5, -1.98)
+            text.location = (
+                x + badge_height * 0.37, y + badge_height * 0.5, -depth + 0.02
+            )
             for obj in (panel, accent, text):
                 _key_visibility(obj, visible)
         x += badge_width + gap

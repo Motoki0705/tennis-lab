@@ -29,7 +29,12 @@ from playback import (  # noqa: E402
     event_badge_name,
     event_ring_name,
 )
-from reveal import load_manifest  # noqa: E402
+from reveal import (  # noqa: E402
+    PLAYBACK_LENS_MM,
+    PLAYBACK_SENSOR_WIDTH_MM,
+    Shot,
+    load_manifest,
+)
 
 
 def _playback_visibility(
@@ -96,7 +101,14 @@ def validate(bundle: Path) -> dict[str, object]:
     expected_uv = None
     visibility = {}
     if playback:
-        assert camera.data.type == "ORTHO" and camera.animation_data is None
+        assert camera.data.type == "PERSP" and camera.animation_data is None
+        assert camera.data.sensor_fit == "HORIZONTAL"
+        assert math.isclose(camera.data.lens, PLAYBACK_LENS_MM, rel_tol=1e-6)
+        assert math.isclose(camera.data.sensor_width, PLAYBACK_SENSOR_WIDTH_MM)
+        shot = Shot()
+        np.testing.assert_allclose(camera.location, shot.move_end_location, atol=1e-6)
+        target = world_to_camera_view(scene, camera, Vector(shot.move_end_target))
+        np.testing.assert_allclose((target.x, target.y), (0.5, 0.5), atol=1e-6)
         assert all(image.source != "SEQUENCE" for image in bpy.data.images)
         visibility = _playback_visibility(manifest, frames)
     else:

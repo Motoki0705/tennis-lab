@@ -57,6 +57,9 @@ from playback import PLAYBACK_BUNDLE_SCHEMA, build_ball_events  # noqa: E402
 
 BUNDLE_SCHEMA = "tennis_scene_blender_bundle_v1"
 COLLECTION = "TennisReveal"
+# Optics from the original Meiji cam1 reveal, retained at its 3D endpoint.
+PLAYBACK_LENS_MM = 19.581533432006836
+PLAYBACK_SENSOR_WIDTH_MM = 36.0
 
 
 @dataclass(frozen=True)
@@ -594,12 +597,14 @@ def _build_view(
 ) -> tuple[bpy.types.Object, Reveal | None]:
     if manifest["schema"] == PLAYBACK_BUNDLE_SCHEMA:
         cam_data = bpy.data.cameras.new("CourtCamera")
-        cam_data.type = "ORTHO"
-        cam_data.ortho_scale = 34.0
+        cam_data.type = "PERSP"
+        cam_data.sensor_fit = "HORIZONTAL"
+        cam_data.sensor_width = PLAYBACK_SENSOR_WIDTH_MM
+        cam_data.lens = PLAYBACK_LENS_MM
         cam_data.clip_start, cam_data.clip_end = 0.1, 1000.0
         camera = _link(bpy.data.objects.new("CourtCamera", cam_data))
-        camera.location = (-27.0, -22.0, 22.0)
-        target = Vector((0.0, 0.0, 0.65))
+        camera.location = shot.move_end_location
+        target = Vector(shot.move_end_target)
         camera.rotation_euler = _look_rotation(target - camera.location, 0.0).to_euler()
         return camera, None
 
