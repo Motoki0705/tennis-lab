@@ -1,0 +1,21 @@
+{
+  "baseline_commit": "ad3f52d717e1a539ebec51d1ca82ddf4c77d6590",
+  "files": {
+    "tennis_scene/pipeline/components/event_detection.py": {
+      "before": "0f31ad644cbfd2d6994907c6174d675b3bb94bc1da63779db4aa77ca9c2f7450",
+      "after": "b3e28dfce48df46294ce6996954145336c89f97359020db65e1469ff9e4dca15"
+    },
+    "tennis_scene/pipeline/definition.py": {
+      "before": "d2f6f781093f2a1b4a9ae18f002f5b334b97f92887091d8f0b271f28f78838b4",
+      "after": "0dce9ff6a224f07bbecdb455fd245f32a00bb245d139192eb15550770d9a6654"
+    },
+    "tennis_scene/pipeline/orchestrator.py": {
+      "before": "228dbfa0765642654dbca5eb519e6299bbc0b6c7c96195b67417e4d5b62867dc",
+      "after": "4e220ab0572d0dfd8c1d33a543c987a3242b3d8a46a5158a23ed7d866ff681e7"
+    },
+    "tennis_scene/pipeline/source_identity.py": {
+      "before": "2b21cc6ca7a5d12be35b47e9cd5bf80e267020327279c8d07138a7d3ed06f070",
+      "after": "2efa2397127131eff285deb4d5d1873df8f4cc5a32169f40af22e70cc203b01a"
+    }
+  }
+}

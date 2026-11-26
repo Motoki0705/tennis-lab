@@ -42,7 +42,6 @@ from src.tennis_scene.pipeline.runner import (
 )
 from src.tennis_scene.pipeline.source_identity import (
     compatible_source_digests,
-    source_commit,
     source_digests,
 )
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
@@ -123,7 +122,7 @@ class TennisSceneOrchestrator:
         for name, default in (("clip_reid", 64), ("gvhmr", 1)):
             if people_runtime.get(name) == {"batch_size": default}:
                 del people_runtime[name]
-        event = event_config.settings(source_commit())
+        event = event_config.settings()
         if event_config.annotation_directory is not None:
             event["annotation_directory"] = str(event_config.annotation_directory)
             event["annotation_benchmark_manifest"] = str(event_config.annotation_benchmark_manifest)
@@ -264,9 +263,7 @@ class TennisSceneOrchestrator:
                 from src.tasks.base.annotation.paths import AnnotationLayout
                 if self.config.people.runtime.uses_tensorrt:
                     direct_model_identity = document_digest(publication_model_identities(self.config))
-                direct_event_settings = EventDetectionModule(
-                    event_config, source.clip_id, code_commit=source_commit(),
-                ).cache_identity()
+                direct_event_settings = EventDetectionModule(event_config, source.clip_id).cache_identity()
                 workflow = direct.workflow(source, self.annotation_layout or AnnotationLayout.production())
                 self.last_receipt.update(
                     annotation={"status": "pending", "request": workflow.reference.model_dump(mode="json")},

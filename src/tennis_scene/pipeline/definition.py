@@ -128,7 +128,6 @@ from src.tennis_scene.pipeline.recipes import (
     RecipeName,
 )
 from src.tennis_scene.pipeline.runner import ComponentNode
-from src.tennis_scene.pipeline.source_identity import source_commit
 from src.tennis_scene.pipeline.video_court.component import (
     SharedCourtAssembler,
     SharedCourtModule,
@@ -599,7 +598,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         {**reconstructed, "skeleton": "player_triangulation", "placement": "body_placement",
          **({"ball": "ball_triangulation"} if include_ball else {})}, lambda: {"enabled": cfg.enabled})
     if cfg.event_detection is not None:
-        events = EventDetectionModule(cfg.event_detection, source.clip_id, code_commit=source_commit())
+        events = EventDetectionModule(cfg.event_detection, source.clip_id)
         add(EVENT_DETECTION, events, EventDetectionInputAssembler(), {"scene": "scene_assembly"},
             events.cache_identity, require_component=None if EVENT_DETECTION in overrides else events.require_inputs,
             component_origin_only=True)

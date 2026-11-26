@@ -272,6 +272,24 @@ def test_exact_multiview_pose_patch_preserves_the_standard_recipe_identity() -> 
         assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
 
 
+def test_event_detection_compatibility_preserves_only_the_exact_patch() -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    manifest = Path(source_identity.__file__).with_name("event_detection_cache_compatibility.json")
+    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    schema = {"tennis_scene/ball_event_schema.py": "a" * 64}
+    baseline = schema | {path: versions["before"] for path, versions in files.items()}
+    reviewed = schema | {path: versions["after"] for path, versions in files.items()}
+    assert source_identity.compatible_source_digests(reviewed, standard_recipe=True) == baseline
+    for path in files:
+        edited = reviewed | {path: "0" * 64}
+        assert source_identity.compatible_source_digests(edited, standard_recipe=True) == edited
+    changed_schema = {"tennis_scene/ball_event_schema.py": "b" * 64}
+    assert source_identity.compatible_source_digests(
+        reviewed | changed_schema, standard_recipe=True,
+    ) == baseline | changed_schema
+
+
 def test_exact_tensorrt_patch_preserves_the_previous_fp32_source_identity() -> None:
     from src.tennis_scene.pipeline import source_identity
 
