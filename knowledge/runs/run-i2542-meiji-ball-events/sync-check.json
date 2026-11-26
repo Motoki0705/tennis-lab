@@ -1,0 +1,49 @@
+{
+  "clip_id": "video_000/clip_040",
+  "camera_pts": {
+    "fps_ratio": "60000/1001",
+    "time_base": "1/60000",
+    "pts_at_frame_0": 0,
+    "pts_step": 1001,
+    "cameras": [
+      "cam0",
+      "cam1",
+      "cam2",
+      "cam3"
+    ],
+    "checked_frames": [
+      0,
+      175,
+      177,
+      179,
+      227,
+      229,
+      230
+    ]
+  },
+  "visually_reviewed_examples": [
+    {
+      "kind": "shot",
+      "frames_visible_by_camera": {
+        "cam0": 229,
+        "cam2": 230,
+        "cam3": 227
+      },
+      "frame_spread": 3,
+      "label_evidence_name": "e004_shot_f229.png",
+      "label_evidence_sha256": "67d4d27c260ab64699cf75a968e7931e4c1e1cde117173ad66484fe5aaebc51e"
+    },
+    {
+      "kind": "bounce",
+      "frames_visible_by_camera": {
+        "cam0": 177,
+        "cam1": 179,
+        "cam3": 175
+      },
+      "frame_spread": 4,
+      "label_evidence_name": "e002_bounce_f177.png",
+      "label_evidence_sha256": "da5edd4dee6ac7f168d22bdac0e7022addbbb280520f96d480fda8495e54a2f6"
+    }
+  ],
+  "interpretation": "同じ接触が写る元フレームに視点間で差がある。照合に補正は適用していない。映像投影と接触の可視性にも依存し、カメラ間の固定オフセットは未同定。"
+}

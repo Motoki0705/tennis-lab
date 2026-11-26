@@ -9,6 +9,7 @@ from typing import Any
 import numpy as np
 import torch
 
+from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
 from src.tasks.ball_refiner_3d.inference.predictor import RefinerPredictor
 from src.tasks.ball_refiner_3d.physics.units import (
     SURFACES,
@@ -31,7 +32,6 @@ def predict_file(
             "Prediction output must be a new file separate from its inputs"
         )
     predictor = RefinerPredictor.from_checkpoint(checkpoint, device=device)
-    metadata = predictor.metadata
     dimensions = predictor.model.config.dimensions
     with np.load(source, allow_pickle=False) as values:
         required = {"coordinates", "missing", "fps"}
@@ -40,10 +40,6 @@ def predict_file(
         coordinates = np.asarray(values["coordinates"], dtype=np.float32)
         missing = values["missing"]
         fps = float(values["fps"])
-    if not np.isclose(fps, metadata["fps"], rtol=0, atol=1e-6):
-        raise ValueError(
-            f"Input FPS {fps} does not match checkpoint FPS {metadata['fps']}; resample explicitly"
-        )
     if (
         coordinates.ndim != 3
         or coordinates.shape[-1] != dimensions
@@ -80,15 +76,16 @@ def predict_file(
     arrays: dict[str, Any] = {
         "coordinates": result,
         "event_probability": predicted.event_probability.cpu().numpy(),
+        "event_classes": np.asarray(EVENT_CLASSES),
         "input_missing": missing,
         "fps": np.asarray(fps),
         "checkpoint_sha256": np.asarray(
             hashlib.sha256(checkpoint.read_bytes()).hexdigest()
         ),
         "schema": np.asarray(
-            "ball_refiner_3d.physics_prediction.v1"
+            "ball_refiner_3d.physics_prediction.v2"
             if physics
-            else "ball_refiner_3d.prediction.v1"
+            else "ball_refiner_3d.prediction.v2"
         ),
         **physics,
     }

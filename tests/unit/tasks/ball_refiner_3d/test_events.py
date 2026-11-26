@@ -1,4 +1,4 @@
-"""Binary probabilities, Gaussian supervision, whole-clip inference and default objectives."""
+"""Class-specific probabilities, Gaussian supervision and whole-clip inference."""
 
 from unittest.mock import Mock
 
@@ -21,7 +21,11 @@ from src.tasks.ball_refiner_3d.data.schema import (
 )
 from src.tasks.ball_refiner_3d.data.targets.events import gaussian_event_target
 from src.tasks.ball_refiner_3d.inference.clip import predict_normalized
-from src.tasks.ball_refiner_3d.model_io.checkpoint import load_checkpoint
+from src.tasks.ball_refiner_3d.model_io.checkpoint import (
+    CHECKPOINT_SCHEMA,
+    checkpoint_model_config,
+    load_checkpoint,
+)
 from src.tasks.ball_refiner_3d.model_io.contracts import RefinerOutput
 from src.tasks.ball_refiner_3d.model_io.factory import build_refiner
 from src.tasks.ball_refiner_3d.physics.targets import PhysicsTargets
@@ -32,11 +36,14 @@ from src.utils.paths import PROJECT_ROOT
 
 def test_gaussian_peaks_overlap_and_outside_window_tails():
     events: np.ndarray = np.zeros(16, np.uint8)
-    events[[0, 5, 7, 15]] = [1, 2, 3, 1]
+    events[[0, 5, 7, 15]] = [1, 2, 6, 8]
     target = gaussian_event_target(events, 2.0)
-    assert target[[0, 5, 7, 15]].tolist() == [1.0] * 4
-    assert target[6] == pytest.approx(np.exp(-0.5 * (0.5**2)))  # max, not sum
-    assert 0 < target[3] < 1
+    np.testing.assert_array_equal(
+        np.argwhere(target == 1), [[0, 0], [5, 1], [7, 1], [7, 2]]
+    )
+    assert target[6, 1] == pytest.approx(np.exp(-0.5 * (0.5**2)))
+    assert target[6, 0] == pytest.approx(np.exp(-4.5))
+    assert target[15, 2] == pytest.approx(np.exp(-8))
     # An event outside [8:12] still contributes a tail inside that training crop.
     assert np.all(target[8:12] > 0)
     assert not gaussian_event_target(np.zeros(5, np.uint8), 2.0).any()
@@ -58,11 +65,13 @@ def test_sampling_crops_full_rally_event_targets_without_rebuilding():
         torch.device("cpu"),
     )
     assert batch["coordinates"].shape == batch["target"].shape == (30, 5, 3)
-    assert batch["missing"].shape == batch["event_target"].shape == (30, 5)
+    assert batch["event_target"].shape == (30, 5, 3)
+    assert batch["missing"].shape == (30, 5)
     assert not batch["padding"].any()
     labels = batch["event_target"]
-    assert torch.all(labels > 0)
-    assert torch.any(labels[:, 0] < 1)  # no event in these windows, but tails remain
+    assert torch.all(labels[..., 0] > 0)
+    assert not labels[..., 1:].any()
+    assert torch.any(labels[:, 0, 0] < 1)  # no event in these windows, but tails remain
 
 
 def _prepared(
@@ -86,7 +95,7 @@ def _prepared(
 def test_long_windows_are_padded_missing_and_segmented_per_window():
     frames = 40
     segment: np.ndarray = np.repeat([0, 1, 2], [10, 12, 18])
-    rally = _prepared(frames, np.zeros((1, frames), np.float32), segment)
+    rally = _prepared(frames, np.zeros((1, frames, 3), np.float32), segment)
     batch = sample_batch(
         [rally],
         64,
@@ -118,12 +127,12 @@ def test_long_windows_are_padded_missing_and_segmented_per_window():
     assert (batch["surface_target"] == 2).all()
 
 
-def test_default_is_equal_position_event_weights_no_gan_or_loss_schedule():
+def test_default_is_equal_position_event_weights_no_gan_or_loss_schedule(tmp_path):
     with initialize_config_dir(
         version_base=None,
         config_dir=str(PROJECT_ROOT / "src/tasks/ball_refiner_3d/configs"),
     ):
-        cfg = compose(config_name="train")
+        cfg = compose(config_name="train", overrides=[f"paths.data_root={tmp_path}"])
     raw = training_config(cfg).raw
     training = raw["training"]
     assert not training["gan"]["enabled"] and not training["gan"]["schedule_enabled"]
@@ -140,7 +149,7 @@ def test_default_is_equal_position_event_weights_no_gan_or_loss_schedule():
         training_config(cfg)
 
 
-def test_event_head_softmax_is_per_frame_and_soft_ce_has_correct_gradient():
+def test_event_head_sigmoid_and_soft_ce_have_independent_class_gradients():
     model = build_refiner(
         ModelConfig(3, "regression", 16, 1, 2, 0.0, 2, 64, 8, 10000.0, "swiglu", False)
     )
@@ -149,20 +158,22 @@ def test_event_head_softmax_is_per_frame_and_soft_ce_has_correct_gradient():
     assert output.coordinates.shape == (2, 16, 3) and output.event_logits.shape == (
         2,
         16,
-        2,
+        3,
     )
-    torch.testing.assert_close(
-        output.event_logits.softmax(-1).sum(-1), torch.ones(2, 16)
-    )
-    target = torch.full((2, 16), 0.3)
+    torch.testing.assert_close(output.event_probability, output.event_logits.sigmoid())
+    target = torch.full((2, 16, 3), 0.3)
     event_loss(output.event_logits, target, ~unpadded).backward()
     assert model.event_head[-1].weight.grad.abs().sum() > 0
     assert model.input.weight.grad.abs().sum() > 0
-    logits = torch.tensor([[[0.0, 0.0]]], requires_grad=True)
+    logits = torch.zeros(1, 2, 3, requires_grad=True)
     event_loss(
-        logits, torch.tensor([[0.8]]), torch.ones(1, 1, dtype=torch.bool)
+        logits,
+        torch.tensor([[[0.8, 0.2, 0.9], [0.9, 0.2, 0.3]]]),
+        torch.tensor([[True, False]]),
     ).backward()
-    torch.testing.assert_close(logits.grad, torch.tensor([[[0.3, -0.3]]]))
+    torch.testing.assert_close(
+        logits.grad, torch.tensor([[[-0.1, 0.1, -0.4 / 3], [0.0, 0.0, 0.0]]])
+    )
 
 
 def test_each_whole_clip_is_predicted_in_one_forward(monkeypatch):
@@ -174,7 +185,7 @@ def test_each_whole_clip_is_predicted_in_one_forward(monkeypatch):
 
     def predict(_model, coords, missing, *, generator, segment=None):
         calls.append(tuple(coords.shape))
-        logits = torch.zeros(*coords.shape[:2], 2)
+        logits = torch.zeros(*coords.shape[:2], 3)
         return RefinerOutput(coords * 2, logits)
 
     monkeypatch.setattr(
@@ -191,7 +202,7 @@ def test_each_whole_clip_is_predicted_in_one_forward(monkeypatch):
     # No temporal windows: two forwards over complete 300-frame sequences.
     assert calls == [(2, 300, 3), (1, 300, 3)]
     torch.testing.assert_close(result.coordinates, coordinates * 2)
-    torch.testing.assert_close(result.event_probability, torch.full((3, 300), 0.5))
+    torch.testing.assert_close(result.event_probability, torch.full((3, 300, 3), 0.5))
 
 
 def test_long_clips_do_not_change_short_predictions():
@@ -228,3 +239,22 @@ def test_legacy_checkpoint_does_not_silently_gain_untrained_event_head(tmp_path)
     torch.save({"schema": "ball_refiner.coordinates.v3"}, path)
     with pytest.raises(ValueError, match="event-head checkpoint"):
         load_checkpoint(path, torch.device("cpu"))
+
+
+@pytest.mark.parametrize(
+    "schema", ["ball_refiner_3d.events.v1", "ball_refiner_3d.events.v2"]
+)
+def test_legacy_binary_event_checkpoint_is_explicitly_rejected(tmp_path, schema):
+    path = tmp_path / "binary.ckpt"
+    torch.save(
+        {"schema": schema, "model": {"event_head.1.weight": torch.zeros(2, 16)}}, path
+    )
+    with pytest.raises(ValueError, match="one event channel"):
+        load_checkpoint(path, torch.device("cpu"))
+
+
+def test_three_class_checkpoint_rejects_reordered_event_classes():
+    with pytest.raises(ValueError, match="event_classes.*in order"):
+        checkpoint_model_config(
+            {"schema": CHECKPOINT_SCHEMA, "event_classes": ["bounce", "shot", "net"]}
+        )

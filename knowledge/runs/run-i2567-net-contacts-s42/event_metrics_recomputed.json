@@ -1,0 +1,84 @@
+{
+  "dataset_manifest_sha256": "b54876c074c22c055d65033a9387d2e167263fbf7e4971e2e5fe8b0009653ca0",
+  "evaluation_commit": "4afdccc7c348a946cc5bb86aac583ae220ce652f",
+  "events": {
+    "by_kind": {
+      "bounce": {
+        "f1": 0.9860834990059643,
+        "matched": 496,
+        "mean_abs_offset_frames": 0.22379032258064516,
+        "mean_abs_offset_s": 0.0037298387096774193,
+        "mean_offset_frames": -0.07862903225806452,
+        "mean_offset_s": -0.001310483870967742,
+        "precision": 0.9744597249508841,
+        "predicted": 509,
+        "recall": 0.9979879275653923,
+        "segmentation_failure_rate": 0.109375,
+        "tolerance_frames": 2,
+        "true": 497
+      },
+      "net": {
+        "f1": 0.8571428571428571,
+        "matched": 54,
+        "mean_abs_offset_frames": 0.7037037037037037,
+        "mean_abs_offset_s": 0.011728395061728396,
+        "mean_offset_frames": 0.14814814814814814,
+        "mean_offset_s": 0.0024691358024691358,
+        "precision": 0.8709677419354839,
+        "predicted": 62,
+        "recall": 0.84375,
+        "segmentation_failure_rate": 0.09375,
+        "tolerance_frames": 2,
+        "true": 64
+      },
+      "shot": {
+        "f1": 0.9322235434007135,
+        "matched": 392,
+        "mean_abs_offset_frames": 0.4336734693877551,
+        "mean_abs_offset_s": 0.007227891156462584,
+        "mean_offset_frames": -0.12755102040816327,
+        "mean_offset_s": -0.0021258503401360546,
+        "precision": 0.9775561097256857,
+        "predicted": 401,
+        "recall": 0.8909090909090909,
+        "segmentation_failure_rate": 0.3515625,
+        "tolerance_frames": 2,
+        "true": 440
+      }
+    },
+    "f1": 0.9569183983781044,
+    "fps": 60.0,
+    "matched": 944,
+    "mean_abs_offset_frames": 0.3411016949152542,
+    "mean_offset_frames": -0.0847457627118644,
+    "min_separation_frames": 3,
+    "precision": 0.9711934156378601,
+    "predicted": 972,
+    "recall": 0.9430569430569431,
+    "segmentation_failure_rate": 0.453125,
+    "threshold": 0.5,
+    "tolerance_frames": 2,
+    "true": 1001
+  },
+  "frames": 50055,
+  "matching": "maximize match count, then minimize total absolute frame error",
+  "net_by_outcome": {
+    "crossed": {
+      "matched": 29,
+      "predicted": 30,
+      "true": 32
+    },
+    "dropped": {
+      "matched": 25,
+      "predicted": 32,
+      "true": 32
+    },
+    "no_contact": {
+      "matched": 0,
+      "predicted": 0,
+      "true": 0
+    }
+  },
+  "prediction_sha256": "670029b88db868f3685d45bde24e59591c134c6798b076b19b05c16735a8ef8c",
+  "rallies": 128
+}

@@ -27,6 +27,13 @@ from src.tasks.blcs.generate_dataset.simulation.cell_manager import (
     CellManager,
     ShotCategory,
 )
+from src.tasks.blcs.generate_dataset.simulation.net_contact import (
+    NetContact,
+    NetContactPlan,
+    NetContactProposalRejected,
+    sample_net_velocity,
+    swept_net_contact,
+)
 from src.tasks.blcs.generate_dataset.simulation.targeted_velocity_sampler import (
     TargetedVelocityConfig,
     TargetedVelocitySampler,
@@ -250,6 +257,8 @@ class RallySimulator:
         from_cell: int,
         from_side: str,
         shot_type: ShotType = ShotType.GROUNDSTROKE,
+        *,
+        net_contact: NetContact | None = None,
     ) -> InitialConditionResult:
         """Sample initial conditions for a shot."""
         cfg = self.rally_config
@@ -267,6 +276,7 @@ class RallySimulator:
             ball_pos_at_return=position,
             from_side=from_side,
             target_cell=target_cell,
+            net_contact=net_contact,
         )
         return InitialConditionResult(
             initial_state=initial_state,
@@ -668,6 +678,8 @@ class RallySimulator:
         ball_pos_at_return: Tensor,
         from_side: str,
         target_cell: int,
+        *,
+        net_contact: NetContact | None = None,
     ) -> BallState:
         """Sample initial state for return shot (single attempt, no retry)."""
         target_side = "far" if from_side == "near" else "near"
@@ -682,6 +694,12 @@ class RallySimulator:
 
         position = ball_pos_at_return.clone()
         spin = self._sample_spin()
+        if net_contact is not None:
+            return BallState(
+                position,
+                sample_net_velocity(position, spin, self.physics, net_contact),
+                spin,
+            )
 
         velocity = self.targeted_velocity_sampler.sample_velocity_for_target_cell(
             start_pos=position,
@@ -725,6 +743,8 @@ class RallySimulator:
         from_side: str,
         max_frames: int,
         max_bounces: int = 3,
+        *,
+        swept_net: bool = False,
     ) -> dict:
         """Simulate a single shot within a rally.
 
@@ -771,9 +791,15 @@ class RallySimulator:
 
             # Check net collision
             if bounce_count == 0 and t_net_sim < 0:
-                hit_net, pos_at_net = self.physics.check_net_collision(
-                    prev_pos, state.position
-                )
+                if swept_net:
+                    pos_at_net = swept_net_contact(
+                        prev_pos, state.position, self.physics
+                    )
+                    hit_net = pos_at_net is not None
+                else:
+                    hit_net, pos_at_net = self.physics.check_net_collision(
+                        prev_pos, state.position
+                    )
                 if hit_net:
                     t_net_sim = frame + 1
                     hit_net_before_bounce = True
@@ -821,6 +847,18 @@ class RallySimulator:
             trajectory_sim.append(state.position.clone())
             velocities_sim.append(state.velocity.clone())
 
+        if swept_net and not hit_net_before_bounce:
+            raise NetContactProposalRejected("The aimed shot missed the net")
+        if (
+            swept_net
+            and bounce1_pos is not None
+            and self.cell_manager.is_position_on_side(bounce1_pos, target_side)
+            and not self.cell_manager.is_position_in_cell_grid(bounce1_pos, target_side)
+        ):
+            raise NetContactProposalRejected(
+                "The aimed shot landed beyond the receiving half-court grid"
+            )
+
         category, to_cell = self.cell_manager.classify_shot(
             hit_net_before_bounce=hit_net_before_bounce,
             hit_fence_before_bounce=hit_fence_before_bounce,
@@ -853,6 +891,8 @@ class RallySimulator:
         self,
         from_cell: int,
         from_side: str,
+        *,
+        net_plan: NetContactPlan | None = None,
     ) -> RallyResult:
         """Simulate a complete rally.
 
@@ -864,6 +904,18 @@ class RallySimulator:
         - Shot always accepted regardless of landing cell
         """
         cfg = self.rally_config
+        if net_plan is not None:
+            max_index = cfg.max_rallies - 1 - (net_plan.outcome is NetContact.CROSSED)
+            if not 0 <= net_plan.shot_index <= max_index:
+                raise ValueError(
+                    "Net contact needs a valid shot index and room for a return when crossed"
+                )
+
+        def contact_at(index: int) -> NetContact | None:
+            if net_plan is not None and index == net_plan.shot_index:
+                return net_plan.outcome
+            return None
+
         all_positions_sim: list[Tensor] = []
         all_velocities_sim: list[Tensor] = []
         shot_events: list[ShotEventInfo] = []
@@ -879,7 +931,9 @@ class RallySimulator:
         winner_side: str | None = None
 
         # Decide if first shot is a serve
-        is_serve = torch.rand(1).item() < cfg.serve_probability
+        is_serve = (
+            torch.rand(1).item() < cfg.serve_probability and contact_at(0) is None
+        )
         first_shot_type = ShotType.SERVE if is_serve else ShotType.GROUNDSTROKE
 
         while rally_count < cfg.max_rallies:
@@ -930,6 +984,7 @@ class RallySimulator:
                         from_cell=current_cell,
                         from_side=current_side,
                         shot_type=ShotType.GROUNDSTROKE,
+                        net_contact=contact_at(0),
                     )
                     initial_state = init_result.initial_state
             else:
@@ -941,6 +996,7 @@ class RallySimulator:
                 from_side=current_side,
                 max_frames=cfg.max_total_frames - total_sim_frames,
                 max_bounces=3,
+                swept_net=contact_at(rally_count) is not None,
             )
 
             # --- Decide return type ---
@@ -1094,6 +1150,7 @@ class RallySimulator:
                 ball_pos_at_return=ball_pos_at_return,
                 from_side=current_side,
                 target_cell=target_cell,
+                net_contact=contact_at(rally_count),
             )
 
         if end_reason == RallyEndReason.ONGOING:
@@ -1145,6 +1202,8 @@ class RallySimulator:
             return -1
         return (offset + t_sim) // downsample
 
-    def generate_rally(self, from_cell: int, from_side: str) -> RallyResult:
+    def generate_rally(
+        self, from_cell: int, from_side: str, *, net_plan: NetContactPlan | None = None
+    ) -> RallyResult:
         """Generate a complete rally from sampling to simulation."""
-        return self.simulate_rally(from_cell, from_side)
+        return self.simulate_rally(from_cell, from_side, net_plan=net_plan)
