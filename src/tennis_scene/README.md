@@ -33,6 +33,7 @@ DINO binaryの選択は[導入案内](../../docs/installation/README.ja.md#dino-
 # GPU実行は、このコマンドを共有training queueへ登録する。
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   'video_paths=[match/cam0.mp4,match/cam1.mp4,match/cam2.mp4]' \
+  event_detection.method=rule \
   'camera_ids=[cam0,cam1,cam2]'
 ```
 
@@ -45,6 +46,9 @@ dataset生成は実clipから入力を束縛し、設定中のサンプル動画
 componentのIO宣言、入力組立、runner、clip store、保存形式とexecute/loadの正本は
 [pipeline/README.md](pipeline/README.md)です。
 storeの採用済みartifactは、推論もstoreへの書き込みもせずにHTML galleryで確認できます。
+
+全人物の3D再構成を試すCPU入口は、[フレーム別の候補生成](multiview_pose/README.md)と
+[時間追跡・選手選別](multiview_tracking/README.md)にあります。
 
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.visualize_component_store --store <clip>/annotations/tennis_scene --output <dir> [--videos]
@@ -87,7 +91,7 @@ meiji_4camの例です。
   video_id=video_000 \
   batching.enabled=true \
   pipeline_config=pipeline \
-  'pipeline_overrides=["court_kp.mode=clip","court_side.mode=clip","court_side.evidence=player","ball_detection.enabled=false","ball_reconstruction.enabled=false","player_association.players_per_side=2"]'
+  'pipeline_overrides=["event_detection.method=rule","court_kp.mode=clip","court_side.mode=clip","court_side.evidence=player","ball_detection.enabled=false","ball_reconstruction.enabled=false","player_association.players_per_side=2"]'
 ```
 
 `court_kp.mode=video_shared`では、計画を組む前に`prepare_video_court`でvideo全体の
@@ -99,7 +103,7 @@ ARTIFACT rootの`tennis_scene/court_shared/meiji_4cam`からloadする例です�
 .venv/bin/python -m src.tennis_scene.scripts.run_video_batch \
   dataset_directory=tennis_multiview/processed/meiji_4cam/dataset \
   video_id=video_000 batching.enabled=true pipeline_config=pipeline \
-  "pipeline_overrides=[\"court_kp.mode=video_shared\",\"court_kp.video_shared.action=load\",\"court_kp.video_shared.directory=tennis_scene/court_shared/meiji_4cam\",\"court_kp.video_shared.dataset_id=meiji_4cam\",\"court_kp.video_shared.video_id=video_000\",\"court_kp.video_shared.artifact_digest=$VIDEO_COURT_ARTIFACT_DIGEST\",\"court_side.mode=clip\",\"court_side.evidence=player\",\"ball_detection.enabled=false\",\"ball_reconstruction.enabled=false\",\"player_association.players_per_side=2\"]"
+  "pipeline_overrides=[\"event_detection.method=rule\",\"court_kp.mode=video_shared\",\"court_kp.video_shared.action=load\",\"court_kp.video_shared.directory=tennis_scene/court_shared/meiji_4cam\",\"court_kp.video_shared.dataset_id=meiji_4cam\",\"court_kp.video_shared.video_id=video_000\",\"court_kp.video_shared.artifact_digest=$VIDEO_COURT_ARTIFACT_DIGEST\",\"court_side.mode=clip\",\"court_side.evidence=player\",\"ball_detection.enabled=false\",\"ball_reconstruction.enabled=false\",\"player_association.players_per_side=2\"]"
 ```
 
 dataset/videoのscopeと各clipのmediaを共有成果物へ照合します。build用request、診断成果物の
@@ -167,9 +171,9 @@ sideはball観測だけで決め、最低evidence、referenceとの接続性、�
 
 [schema.py](schema.py)と[archive.py](archive.py)がスキーマ・I/Oを所有します。
 
-`metadata.scene_schema_version=2` のsceneは、再構成の有効性を次のmaskで明示します。
+`metadata.scene_schema_version=2` と `3` のsceneは、再構成の有効性を次のmaskで明示します。
 versionのない旧archiveはv1で、maskを持ちません（v1にmaskがあれば拒否します）。
-v2でmaskや理由コードが欠けた・矛盾したarchiveは保存・読込とも拒否します。
+maskや理由コードが欠けた・矛盾したarchiveは保存・読込とも拒否します。
 
 | mask | shape | 意味 | 理由コード |
 |---|---|---|---|
@@ -188,26 +192,100 @@ rendererはmaskに従い、mesh不足frameでは有効COCO17を描画し、軌�
 SLCSの教師maskは `player_valid AND player_heading_valid` と `ball_3d_valid` を必ずANDし、
 2D可視性で無効な3Dのweightを復活させません。
 
+## SceneResult v3
+
+v2の配列に、元フレーム軸の疎なイベント表を加えます。Eはイベント数、Tは元フレーム数です。
+
+| 配列 | shape / dtype | 対象 |
+|---|---|---|
+| `ball_event_frame` | E / int32 | 全方式。0始まり |
+| `ball_event_kind` | E / uint8 | 全方式。0 打球、1 バウンド、2 ネット接触 |
+| `ball_event_coverage` | T / bool | 全方式。イベントの有無を判定できたフレーム |
+| `ball_event_score` | E / float32 | rule・refiner。0〜1 |
+| `ball_event_status` | E / uint8 | annotation。certain、probable、uncertain の順 |
+| `ball_event_frame_uncertainty` | E / uint8 | annotation。中心フレームからの±幅 |
+| `ball_event_in_point` | E / bool | annotation。ポイント内の接触 |
+| `ball_event_subtype` | E / uint8 | annotation。serve、groundstroke、volley、smash、let_cord、net_fault、other、未確定の順 |
+| `ball_event_side` | E / int8 | annotation。打者のコート側。−1 は y<0、+1 は y>0、0 は不明または打球以外 |
+
+`metadata.ball_events` にイベント項目の版、`source`、列挙順、出どころ別の来歴と実行commitを保存します。
+各方式の配列列は表の対象に従います。行はフレーム順に並べ、同じフレームと種別の重複を拒否します。
+判定不能フレームにも既知の注釈イベントがあり得ます。既知イベントとcoverageの両方を保存します。
+方式の設定と実行入口は[パイプライン](pipeline/README.md#ボールイベントの設定)を参照してください。
+
+### 明治4カメラのイベント注釈版
+
+固定したmultiview-v2と69クリップの注釈からCPUで派生版を作ります。
+動画、既存のコンポーネント、既存のexportはhard linkで共有し、クリップごとのscene indexで新しいexportを採用します。
+
+```bash
+.venv/bin/python -m src.tennis_scene.scripts.build_meiji_event_benchmark
+```
+
+`data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v3` に、注釈・基準入力・
+ハッシュ・集計・train/val/testのclip IDを記したmanifestと `SHA256SUMS` を保存します。
+同じcommitと入力で既存の派生版を再検証できます。`--output` で新しい同一ファイルシステム上の出力先を指定できます。
+
 ## 同期入力と3Dの並列表示
 
 [`MultiviewSceneRenderer`](visualization/rendering/multiview.py)は、3〜5台の同期済み入力を左、
 既存rendererの3D表示を右に並べ、全パネルを同じ元frame番号で描画します。
 camera IDと動画を明示的に対応付け、sceneと動画の解像度・FPS・frame数が異なる場合は拒否します。
-同期推定や欠測の補間は行わず、SceneResult v2の有効性maskを既存rendererへそのまま渡します。
+SceneResult v2・v3の有効性maskを既存rendererへそのまま渡します。
 README用GIFのCPU生成コマンド・入力hash・目視確認結果は
 [LOESS導入後の再生成・比較記録](../../knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照してください。
 
+## フレーム別の3D人物比較ページ
+
+`pose_comparison` は、meiji_4cam の採用中の `SceneResult` と
+[`frame_pose_candidates` v1](multiview_pose/README.md) を、同じ元フレームの4視点とコート上面図に並べます。
+選定は i2363 の初回 `progress.json` を使います。停止14本と、成功55本をID順に並べて seed 42 で抽出した
+`clip_009`・`clip_052` が対象です。候補は割当改善後に再計測した `refine/timing/meiji4` を使います。
+[再計測と成果物の版](../../knowledge/runs/run-multiview-pose-link-recall-20261124/README.md#meiji_4cam全69-clip)
+
+リポジトリのrootで、保存済みの入力を指定して実行します。CPUで描画・圧縮します。
+
+```bash
+.venv/bin/python -m src.tennis_scene.visualization.pose_comparison \
+  --dataset "$I2363_RUN/inputs/dataset" \
+  --progress "$I2363_RUN/all/progress/d1df39596d4f47f1896cb535191e7040/progress.json" \
+  --candidates "$POSE_OUTPUT/refine/timing/meiji4" \
+  --pose-record knowledge/runs/run-multiview-pose-link-recall-20261124/meiji4.json \
+  --output outputs/pose-comparison
+```
+
+`I2363_RUN` は保存済みの `i2363-all-v1`、`POSE_OUTPUT` は #2444 の `outputs/i2444` です。
+`index.html` を開くと、同じディレクトリ内のMP4とポスターを閲覧できます。
+`manifest.json` にclipの選定、表示した `scene_assembly`、対応する候補artifact・版、動画SHA-256、元フレームでの指標を保存します。
+`--clip clip_012` などを指定すると、選定済みのclipだけを描画できます。複数指定も可能です。
+
+旧経路は各clipの `annotations/tennis_scene/scene.json` で採用したSceneResult v2・v3の系譜をたどり、
+exportと描画に使う `scene_assembly`・カメラの版を照合します。
+3D関節がなければ残存する2Dトラックと初回の停止理由を表示します。
+採用中のシーンに有効なボール3Dがある場合は、カメラ行列を照合して同じ球を両側に表示します。
+採用先が変わったら、同じコマンドの `--output` に新しいディレクトリを指定するとその時点の版で作り直せます。
+
+動画は1888×488のH.264、CRF 21、元の3フレームごと（約19.98 fps）で、clipの時間軸全体を表示します。
+容量は1動画15 MB、ページ全体200 MBが上限です。上限を超える入力では `--crf` と `--frame-step` で調整できます。
+コート上面の点は有効な腰関節の中心を使い、腰が欠けた骨格は肩、最後に残存関節の中心を使います。
+未使用視点への再投影は、採用した人物IDに対応する実2D関節があり、正深度に投影できる有効3D関節のうち、
+その視点が復元のinlierに含まれなかった組を集計します。#2470 の `multiview_scene report` と同じ定義です。
+旧経路は採用シーンの2D観測と骨格のinlier mask、新経路は候補の `reprojection_valid` と `inlier_mask` を使います。
+元解像度での残差の中央値・P95と、分母になる関節・視点の組数を表示します。採点対象が0件の場合は理由を表示します。
+段階2の表示は `stages` に同じclip IDで動画と指標を加えられます。
+
 ## Blenderアニメーション
 
-保存済みSceneResult v2と元動画から、入力映像がコート・選手・ボールの3Dシーンへ
+保存済みSceneResult v2・v3と元動画から、入力映像がコート・選手・ボールの3Dシーンへ
 切り替わるアニメーションを生成できます。書き出し・Blenderでの撮影・動画化は
 [visualization/blender/export](visualization/blender/export/README.md)を参照してください。
 
 ## 他の入口
 
+- [multiview_pose](multiview_pose/README.md): 全人物のDINO・ViTPoseと固定した動画共有sideから、フレーム別3D骨格と排他的な観測割当を作るCPU入口。
 - [player_view](visualization/player_view/README.ja.md): 元動画なしで保存済みv2の人物・球・時刻・mask・頭部姿勢用資産を共通bundleへ書き出す。
 - [evaluation](evaluation/README.md): 固定入力でのball 3D CPU replay・LOVO採点・比較可視化。
-- [ball_events](ball_events/README.md): 保存済みSceneResult v2から打球・バウンド・ネット接触を規則で検出。
+- [ball_events](ball_events/README.md): 保存済みSceneResult v2・v3から打球・バウンド・ネット接触を規則で検出。
 - [player pose evaluation](evaluation/player_pose/README.md): 固定SMPL再射影データによる人物検出・2D pose採点。
 - [ground_truth](ground_truth/README.md): 人間提供の評価用正解の厳格な reader（再構成入力への接続なし）。
 - [generate_dataset](generate_dataset/README.md): 構造化clipへの増分疑似アノテーション。

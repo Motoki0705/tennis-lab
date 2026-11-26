@@ -1,4 +1,4 @@
-"""Export a camera-independent, read-only snapshot of a saved SceneResult v2."""
+"""Export a camera-independent, read-only snapshot of a saved SceneResult v2 or v3."""
 
 from __future__ import annotations
 
@@ -226,9 +226,9 @@ def export_player_view_bundle(
         raise FileExistsError(f"Bundle output already exists: {output_dir}")
     archive_path, source = _source(scene_path)
     scene = load_scene_result(archive_path)
-    if scene.schema_version != 2:
+    if scene.schema_version < 2:
         raise ValueError(
-            "Player-view export requires SceneResult v2 with validity masks"
+            "Player-view export requires SceneResult v2 or v3 with validity masks"
         )
     indices, frames = _select(scene, config)
     for name in (

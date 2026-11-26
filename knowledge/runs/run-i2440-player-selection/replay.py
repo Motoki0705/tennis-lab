@@ -256,7 +256,7 @@ def replay_clip(
 ) -> dict[str, Any]:
     archived_config = OmegaConf.create(config_yaml)
     archived_config.paths.project_root = str(PROJECT_ROOT)
-    cfg = PipelineRuntimeConfig.from_config(archived_config, bind_inputs=False)
+    cfg = PipelineRuntimeConfig.from_config(archived_config, bind_inputs=False, bind_event_detection=False)
     if cfg.max_tracks_per_camera != SELECTION["baseline"].max_candidates or cfg.player_association.players_per_side != 2:
         raise ValueError("Expected i2363's archived candidate cap and doubles association")
     store = read_store(record)

@@ -5,7 +5,7 @@
 
 | 場所 | 責務 |
 |---|---|
-| `components/` | 検出、追跡、pose、人物対応、幾何、身体復元・配置。各IO契約の所有者 |
+| `components/` | 検出、追跡、pose、人物対応、幾何、身体復元・配置、ボールイベント。各IO契約の所有者 |
 | `input_assembly/` | 宣言済み成果物のcamera/frame/track照合とInput構築。store全体へ自由に問い合わせない |
 | `definition.py` | 実装の選択、入力portとproducerの明示的な接続、モデル資産・設定の束縛 |
 | `execution_plan.py` | 複数clipの依存計画、宣言の互換性・循環検査、nodeごとのcache/load判定 |
@@ -26,6 +26,27 @@
 component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.yaml`の`execution`はその全てを1回ずつ持つ。
 `ball_detection.method=model`が既定。`gpt_annotation`の設定・分離したreceipt・復旧・後続受入は
 [一連実行のREADME](direct_annotation/README.ja.md)を正本とする。
+
+## ボールイベントの設定
+
+`scene_assembly` が作るSceneResult v2を `event_detection` が受け取り、
+[SceneResult v3](../README.md#sceneresult-v3) を `exports.scene` へ渡す。
+シーンを生成・採用する全recipeで `event_detection.method` を明示する。
+TensorRTのモデルexportではイベント方式の指定は不要。
+
+| method | 設定と判定可能フレーム |
+|---|---|
+| `rule` | [コート座標の規則](../ball_events/README.md)を使う。規則が前後の速度を照合できたフレームと、短い欠測で接触位置を推定できたフレームが判定可能。 |
+| `refiner` | `checkpoint` はCHECKPOINT root相対、`checkpoint_sha256` は完全ハッシュ、`fps_tolerance` は許容差Hz。3クラスのRefinerが確率を返した全フレームが判定可能。 |
+| `annotation` | `annotation_directory` と `annotation_benchmark_manifest` はDATA root相対。注釈JSONと同梱のschemaを読み、固定版 `meiji_4cam/multiview-v2` のmanifestから全カメラのIDと映像SHA-256を照合する。明示した `clip_id` と元FPS・全フレーム数はsceneおよびmanifestに照合し、`unlabelable` の両端を含む範囲を判定不能とする。 |
+
+各項目は `event_detection` 配下で指定する。例としてRefinerの実測59.94 fpsを許容するには
+`event_detection.fps_tolerance=0.06` を使う。注釈のID・カメラ・根拠文は
+コンポーネントJSONの `payload.event_evidence` に保存する。
+明治4カメラでは `annotation_benchmark_manifest` に
+`tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v2/manifest.json` を指定する。
+ベンチマークがDATA root外を指すローカルリンク上にある場合は、同じ内容のmanifestをDATA root内に置いて指定する。
+照合に使ったmanifestのSHA-256は注釈の来歴に含める。
 
 ## 実行計画と入口
 
@@ -209,7 +230,7 @@ ball_points＋court または player_selection＋court → court_side
 人物観測＋camera → player_triangulation
 ball_points＋camera → ball_triangulation
 人物対応＋2D観測＋camera → body_view_selection → hmr2_features → gvhmr
-GVHMRパラメータ＋3D関節 → body_placement → scene_assembly
+GVHMRパラメータ＋3D関節 → body_placement → scene_assembly → event_detection
 ```
 
 人物検出はDINOに固定し、標準設定は**COCO DINOの全画面、score ≥ 0.30、入力800/1333**（#964の2026-09-30判断）。
@@ -486,6 +507,7 @@ PYTHONPATH=. .venv/bin/python knowledge/runs/run-scene-x3d-dpt-20261116/prepare.
 # GPU実行は共有training queueへ登録する。動画はDATA root相対。
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline --config-name pipeline_x3d_dpt \
   'video_paths=[match/cam0.mp4,match/cam1.mp4,match/cam2.mp4]' \
+  event_detection.method=rule \
   'camera_ids=[cam0,cam1,cam2]'
 ```
 
@@ -553,7 +575,7 @@ camera scopeはnode名（例`ball_detection/cam0`）と実行identityに含む�
 
 出力は一時directoryで完了してから公開し、clip単位のlockを取って`scene.json`を更新する。
 中断途中の出力を下流へ渡さず、既存の完成artifactを上書きしない。
-`scene.json`の`artifacts`は採用版、`exports.scene`は完成した統合出力とその入力版を指す。
+`scene.json`の`artifacts`は採用版、`exports.scene`は完成した統合出力と採用した`event_detection`成果物を指す。
 採用componentが差し替わった時点で旧exportへの公開参照を外す。既存のimmutableなexportファイルは保持し、
 `scene.json`から統合sceneを読む際にも上流artifactの依存鎖が現採用版と一致するか検証する。
 `scene.npz`は派生した統合結果で、component間の受け渡しには使わない。
@@ -577,9 +599,9 @@ datasetの完成marker（`annotation.json`）は`dataset_publication.py`が公�
 
 ## 単眼 PLCS（＋HTD-Refine）骨格推定の明示選択
 
-既定パイプライン（多視点三角測量＋GVHMR/SMPL-X）は変更せず、`standard_definition(..., overrides=...)` の明示的な差し替えで HMR2・SMPL-X 非依存の単眼 PLCS（＋HTD-Refine Stage B）経路を選択できます。`gvhmr.enabled=false` と組み合わせると HMR2・SMPL-X 資産を一切要求せずに `SceneResult v2` を生成します。
+既定パイプライン（多視点三角測量＋GVHMR/SMPL-X）は変更せず、`standard_definition(..., overrides=...)` の明示的な差し替えで HMR2・SMPL-X 非依存の単眼 PLCS（＋HTD-Refine Stage B）経路を選択できます。`gvhmr.enabled=false` と組み合わせると HMR2・SMPL-X 資産を要求せずに `scene_assembly` で骨格sceneを生成します。
 
 - **多視点クリップの差し替え**: `monocular_plcs_overrides(camera_ids, config, path_resolver=cfg.resolver)` が `player_triangulation`（`MonocularPLCSReconstructionModule`）と `body_placement`（`SkeletonOnlyPlacementModule`）を差し替え、`standard_definition` が対応する入力アセンブラ（`MonocularPLCSInputAssembler` / `SkeletonOnlyPlacementInputAssembler`）と `skeleton` 単一結合へ自動切替します。
-- **単視点クリップの差し替え**: `monocular_plcs_overrides(camera_ids, config, path_resolver=cfg.resolver, single_view_camera_id=cam_id)` はさらに `player_association`（`SingleViewIdentityModule`）と `camera_alignment`（`SingleViewCameraAlignmentModule`）を単視点ローカルコート基準へ差し替え、2視点以上の証拠なしで宣言型 `ComponentRunner` から `SceneResult v2` まで実行できます（直接呼出し入口 `reconstruct_single_view_monocular_scene` も利用可能）。
+- **単視点クリップの差し替え**: `monocular_plcs_overrides(camera_ids, config, path_resolver=cfg.resolver, single_view_camera_id=cam_id)` はさらに `player_association`（`SingleViewIdentityModule`）と `camera_alignment`（`SingleViewCameraAlignmentModule`）を単視点ローカルコート基準へ差し替え、2視点以上の証拠なしで宣言型 `ComponentRunner` からscene exportまで実行できます（直接呼出し入口 `reconstruct_single_view_monocular_scene` も利用可能）。
 - 相対 checkpoint パスは `PathResolver`（`PathRole.CHECKPOINT`）で `ModelSpec.weights` と `factory` の双方から同一ファイルへ解決され、`MonocularPLCSConfig.cache_identity()` は `HTDRefinerConfig` の全パラメータを含みます。
 

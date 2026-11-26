@@ -55,7 +55,7 @@ def freeze(repo: Path, report: Path, target: Path) -> None:
     if target.exists():
         raise FileExistsError('A freeze manifest is immutable')
     cfg = configuration(repo, report)
-    runtime = PipelineRuntimeConfig.from_config(cfg, bind_inputs=False)
+    runtime = PipelineRuntimeConfig.from_config(cfg, bind_inputs=False, bind_event_detection=False)
     selection = LinkingConfig(max_candidates=runtime.max_tracks_per_camera)
     reservation = repo / 'data/tennis_multiview/processed/meiji_3cam/dataset/annotations/player_association/unseen_protocol.json'
     reserved = json.loads(reservation.read_text())  # metadata only, never a reserved clip

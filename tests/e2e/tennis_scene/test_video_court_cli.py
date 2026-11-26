@@ -39,7 +39,7 @@ with patch.object(TennisSceneOrchestrator, 'from_runtime_config', side_effect=co
     runpy.run_module('src.tennis_scene.scripts.run_pipeline', run_name='__main__')
 '''
     root = Path(__file__).parents[3]
-    command = [sys.executable, '-c', harness, str(tmp_path), 'device=cpu', 'gvhmr.enabled=false',
+    command = [sys.executable, '-c', harness, str(tmp_path), 'device=cpu', 'gvhmr.enabled=false', 'event_detection.method=rule',
                f'paths.data_root={tmp_path}', f'paths.artifact_root={tmp_path}', f'paths.output_root={tmp_path}',
                f'paths.checkpoint_root={tmp_path / "ckpt"}', f'paths.external_asset_root={tmp_path / "third_party"}',
                'video_paths=[cam0.mp4,cam1.mp4,cam2.mp4]', 'camera_ids=[cam0,cam1,cam2]', f'clip_id={CLIPS[0]}',

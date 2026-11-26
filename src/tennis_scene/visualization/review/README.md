@@ -53,7 +53,7 @@ OPENBLAS_NUM_THREADS=2 OMP_NUM_THREADS=2 OPENCV_FFMPEG_CAPTURE_OPTIONS='threads;
 
 2Dが存在しても3Dの有効性を復活させません。無効な座標0を原点の観測と扱いません。
 maskだけで人物/球の不在・画面外・遮蔽を推定せず、未知の理由コードは`UNKNOWN_CODE`と表示します。
-現行SceneResult v2のmask・理由・shapeの契約は[../../README.md](../../README.md)が正本です。
+SceneResult v2・v3のmask・理由・shapeの契約は[../../README.md](../../README.md)が正本です。
 
 3Dはモデル推定です。再投影は保存された単一平面pinhole近似で、歪み補正・独立3D GTとの比較ではありません。
 校正のRMSEも保存平面fitの指標です。SMPL meshの詳細レビューはこの統合画面の対象に含めません。

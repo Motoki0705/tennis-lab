@@ -193,8 +193,8 @@ def export_blender_bundle(
     if output_dir.exists():
         raise FileExistsError(f"Bundle output already exists: {output_dir}")
     scene = load_scene_result(scene_path)
-    if scene.schema_version != 2:
-        raise ValueError("Blender export requires SceneResult v2 with validity masks.")
+    if scene.schema_version < 2:
+        raise ValueError("Blender export requires SceneResult v2 or v3 with validity masks.")
     player_valid_in = scene.player_smpl_valid
     ball_valid_in = scene.ball_3d_valid
     if player_valid_in is None or ball_valid_in is None:

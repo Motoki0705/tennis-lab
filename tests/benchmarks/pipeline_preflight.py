@@ -35,7 +35,7 @@ def compose_config(repo: Path, report: Path, clip: Path, device: str) -> DictCon
         f'paths.project_root={CODE}', f'paths.data_root={repo / "data"}',
         f'paths.checkpoint_root={repo / "ckpt"}', f'paths.external_asset_root={repo / "third_party"}',
         f'paths.output_root={report}', f'paths.artifact_root={report}',
-        f'paths.cache_root={report / "cache"}', 'output_directory=run',
+        f'paths.cache_root={report / "cache"}', 'output_directory=run', 'event_detection.method=rule',
         f'video_paths={media}', f'camera_ids={list(manifest.camera_ids)}', f'device={device}',
         'people_models.runtime.vitpose.batch_size=4', 'people_models.runtime.hmr2.batch_size=4',
     ]

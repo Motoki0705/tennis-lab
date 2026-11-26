@@ -110,7 +110,9 @@ def restrict_appearance(frames: list[DetectionFeatures], before: FeatureConfig, 
 
 
 def runtime(repo: Path, report: Path, first_clip: Path, device: str) -> PipelineRuntimeConfig:
-    return PipelineRuntimeConfig.from_config(compose_config(repo, report, first_clip, device), bind_inputs=False)
+    return PipelineRuntimeConfig.from_config(
+        compose_config(repo, report, first_clip, device), bind_inputs=False, bind_event_detection=False,
+    )
 
 
 def plan(repo: Path, report: Path) -> None:
