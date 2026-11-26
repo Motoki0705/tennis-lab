@@ -205,6 +205,7 @@ README用GIFのCPU生成コマンド・入力hash・目視確認結果は
 
 ## 他の入口
 
+- [multiview_pose](multiview_pose/README.md): 全人物のDINO・ViTPoseと固定した動画共有sideから、フレーム別3D骨格と排他的な観測割当を作るCPU入口。
 - [player_view](visualization/player_view/README.ja.md): 元動画なしで保存済みv2の人物・球・時刻・mask・頭部姿勢用資産を共通bundleへ書き出す。
 - [evaluation](evaluation/README.md): 固定入力でのball 3D CPU replay・LOVO採点・比較可視化。
 - [ball_events](ball_events/README.md): 保存済みSceneResult v2から打球・バウンド・ネット接触を規則で検出。

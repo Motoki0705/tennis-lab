@@ -1,0 +1,53 @@
+{
+  "baseline_commit": "f53d0fd5b029377aca7c3e6d4c8af90d26a01ab6",
+  "files": {
+    "tennis_scene/multiview_pose/__init__.py": {
+      "before": null,
+      "after": "4cb7a9c4a001f11726b09ce79e4674fae85fdb1bb2b3936d2fba7164736c4cc9"
+    },
+    "tennis_scene/multiview_pose/__main__.py": {
+      "before": null,
+      "after": "c3056d2019731fd608e0a1e4dd46051899736b7e4e4d00d8a3136d58bdb63eed"
+    },
+    "tennis_scene/multiview_pose/assignment.py": {
+      "before": null,
+      "after": "4f1d2957172881be94c0e22cba3af436d7f32590e656a5c11e9d2bcce8a00428"
+    },
+    "tennis_scene/multiview_pose/geometry.py": {
+      "before": null,
+      "after": "0e67b91c73ee443a5823e79d88403505a735f4aa29d459fd553076f120474585"
+    },
+    "tennis_scene/multiview_pose/inputs.py": {
+      "before": null,
+      "after": "f559ac80331dd9dac9a48cd30d3c707fa962b73b3d9685ad6948d8e051b67ee6"
+    },
+    "tennis_scene/multiview_pose/reconstruct.py": {
+      "before": null,
+      "after": "ccde28aea2a2f5c7ad3059c3af1d864fd4d4ce0405776d6b2ce37296c1680ef7"
+    },
+    "tennis_scene/multiview_pose/schema.py": {
+      "before": null,
+      "after": "7e70f79178f9647694f2b36440896776fbe21f5a173b09efd70f4d64615de44e"
+    },
+    "tennis_scene/multiview_pose/storage.py": {
+      "before": null,
+      "after": "a6100768ae37dd378a80beb4122ac4d1f2b04900b1b9781d0d3ca9f9c976ef13"
+    },
+    "tennis_scene/pipeline/source_identity.py": {
+      "before": "0bf226844f6ff7897731b380fa24679d1c8b166c35b02e1fe9c9d231018fdddb",
+      "after": "1699f8ce7b61446fe14f33f3f223e8f843b4dca70e317d843172aa5bd170a046"
+    },
+    "tennis_scene/pipeline/video_court_side/artifact.py": {
+      "before": "33ae1d847bca38273c77709fa6d57b21634a833e4dfe52b2d655232796274404",
+      "after": "e5607bdce4ca05b8f28554a38d5287694b49a4d418ebdfed00516266ea27c207"
+    },
+    "tennis_scene/pipeline/video_court_side/prepare.py": {
+      "before": "3864447fd3e1f67b70b77afceac258ade1c16fe498bbfdc06a320e18624e3e45",
+      "after": "1e8087cf5a42de07ecba863f4e3cd1ab018a1c4831b50e8f282a77b8beaf29f8"
+    },
+    "utils/configuration/inventory.py": {
+      "before": "332c604f37eaf6a28c397ee012a5a4d3bce41747cbe5e0e70ed862aa5d4a3edf",
+      "after": "b7522c16ce54dab728ec3cea161df35e99d6189e9e6203ba8398931ad6ff3da0"
+    }
+  }
+}
