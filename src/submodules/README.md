@@ -112,6 +112,21 @@ scene pipelineは重みの配置に `paths.checkpoint_root` を使います。
 コピー元/先のSHA-256一致を確認してからckptへ配置します。旧パスを探索するfallbackはありません。
 SMPL-X/SMPL-H本体、SMPL補助資産、外部重みはgitへ追加しません。
 
+### RF-DETR-L と RTMPose-X の重みの取得
+
+[LICENSES.ja.md](../../LICENSES.ja.md#separately-obtained-weights) に公式配布元と条件があります。
+次のコマンドは指定した重みを取得し、SHA-256 を照合してから `paths.checkpoint_root` 配下に配置します。
+
+```bash
+.venv/bin/python -m src.submodules.scripts.install_people_model_checkpoint \
+  --checkpoint-root "$PWD/ckpt" --model rfdetr-l
+.venv/bin/python -m src.submodules.scripts.install_people_model_checkpoint \
+  --checkpoint-root "$PWD/ckpt" --model rtmpose-x
+```
+
+`--list` で公式 URL・配置先・期待する SHA-256 を表示します。
+`--verify-only` は既存ファイルを照合します。既存ファイルの SHA-256 が異なる場合は停止します。
+
 ### SMPL補助資産の取得
 
 5点は **[GVHMR公式リポジトリ](https://github.com/zju3dv/GVHMR/tree/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1)**
