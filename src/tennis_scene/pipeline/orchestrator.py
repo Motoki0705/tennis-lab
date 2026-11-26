@@ -102,6 +102,7 @@ class TennisSceneOrchestrator:
 
     def publication_identity(self) -> dict[str, Any]:
         cfg = self.config
+        event_config = cfg.require_event_detection()
         check_shared_side_execution(cfg, self.components)
         validate_override_names(self.components or {}, cfg.recipe)
         overrides = {name: component_override_identity(cfg, component) for name, component in (self.components or {}).items()}
@@ -122,9 +123,9 @@ class TennisSceneOrchestrator:
         for name, default in (("clip_reid", 64), ("gvhmr", 1)):
             if people_runtime.get(name) == {"batch_size": default}:
                 del people_runtime[name]
-        event = cfg.event_detection.settings(source_commit())
-        if cfg.event_detection.annotation_directory is not None:
-            event["annotation_directory"] = str(cfg.event_detection.annotation_directory)
+        event = event_config.settings(source_commit())
+        if event_config.annotation_directory is not None:
+            event["annotation_directory"] = str(event_config.annotation_directory)
         identity = {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": settings, "execution": dict(cfg.component_sources),
             EVENT_DETECTION: event,
@@ -225,6 +226,7 @@ class TennisSceneOrchestrator:
         the shape of the video paths. Alternate recipes scope their own store
         under that root.
         """
+        event_config = self.config.require_event_detection()
         self._scene_export = None
         paths = tuple(self.config.resolver.validate(video_role, Path(p)) for p in video_paths)
         inputs = prepare_clip_source(paths, camera_ids, max_frames=max_frames, clip_id=clip_id or self.config.clip_id)
@@ -262,7 +264,7 @@ class TennisSceneOrchestrator:
                 if self.config.people.runtime.uses_tensorrt:
                     direct_model_identity = document_digest(publication_model_identities(self.config))
                 direct_event_settings = EventDetectionModule(
-                    self.config.event_detection, source.clip_id, code_commit=source_commit(),
+                    event_config, source.clip_id, code_commit=source_commit(),
                 ).cache_identity()
                 workflow = direct.workflow(source, self.annotation_layout or AnnotationLayout.production())
                 self.last_receipt.update(

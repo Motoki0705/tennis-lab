@@ -197,7 +197,7 @@ def standard_requirements(cfg: PipelineRuntimeConfig) -> tuple[AssetRequirement,
             release = cfg.ecpose.release
             requirements.append(AssetRequirement(name, path, release.sha256, size_bytes=release.size))
         elif name == "ball_event_refiner":
-            requirements.append(AssetRequirement(name, path, cfg.event_detection.checkpoint_sha256))
+            requirements.append(AssetRequirement(name, path, cfg.require_event_detection().checkpoint_sha256))
         else:
             pin = pins[name]
             requirements.append(AssetRequirement(name, path, pin.sha256, size_bytes=pin.size_bytes))

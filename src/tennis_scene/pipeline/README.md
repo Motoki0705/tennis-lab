@@ -31,7 +31,8 @@ component名の一覧は`contracts.STANDARD_COMPONENTS`が正本で、`pipeline.
 
 `scene_assembly` が作るSceneResult v2を `event_detection` が受け取り、
 [SceneResult v3](../README.md#sceneresult-v3) を `exports.scene` へ渡す。
-全recipeで `event_detection.method` を明示する。
+シーンを生成・採用する全recipeで `event_detection.method` を明示する。
+TensorRTのモデルexportではイベント方式の指定は不要。
 
 | method | 設定と判定可能フレーム |
 |---|---|
