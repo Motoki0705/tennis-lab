@@ -1,4 +1,4 @@
-"""Build and render the "input video -> grid -> court -> players" reveal shot.
+"""Build and render the staged reveal or direct 3D court playback.
 
 Runs inside Blender 5.2 (its bundled Python + numpy); it does not import the
 repository. The input is a bundle written by
@@ -14,6 +14,9 @@ noise so the edge wobbles instead of forming concentric rings): the grid world,
 then the court and net, then players and ball. Players and the net add a
 height term so they materialize bottom-up. After the reveal the camera leaves
 the input viewpoint to show that the scene is really 3D.
+
+Playback bundles use a fixed court view and show annotated ball events during
+the point, with the same mesh caches and source-frame timeline.
 """
 
 from __future__ import annotations
@@ -50,6 +53,7 @@ from common import (  # noqa: E402
     net_shader,
     player_shader,
 )
+from playback import PLAYBACK_BUNDLE_SCHEMA, build_ball_events  # noqa: E402
 
 BUNDLE_SCHEMA = "tennis_scene_blender_bundle_v1"
 COLLECTION = "TennisReveal"
@@ -243,7 +247,7 @@ def _plate_shader(n: Nodes, reveal: Reveal) -> Any:
 
 def ground_material(
     shot: Shot,
-    reveal: Reveal,
+    reveal: Reveal | None,
     court_image: bpy.types.Image,
     runoff: list[float],
     cam: Vector,
@@ -251,8 +255,6 @@ def ground_material(
     material, n, surface = _new_material("RevealGround", transparent=False)
     geometry = n.tree.nodes.new("ShaderNodeNewGeometry")
     position = geometry.outputs["Position"]
-    grid_mask, grid_band = _field(n, reveal, "grid_front", 0.0)
-    court_mask, court_band = _field(n, reveal, "court_front", 0.0)
 
     minor = n.math(
         "MULTIPLY",
@@ -267,6 +269,8 @@ def ground_material(
     lines = n.math(
         "ADD", n.math("MULTIPLY", minor, 0.9), n.math("MULTIPLY", major, 2.2)
     )
+    if reveal is None:
+        lines = n.math("MULTIPLY", lines, 0.22)
     grid_emit = n.add_shader(
         n.emission((*shot.world_color, 1.0)),
         n.emission(n.rgb_scale(shot.grid_color, lines)),
@@ -306,6 +310,12 @@ def ground_material(
         n.math("MULTIPLY", line_mask.outputs[0], 0.35),
     )
 
+    if reveal is None:
+        n.tree.links.new(n.mix_shader(inside, grid_emit, court_bsdf.outputs[0]), surface)
+        return material
+
+    grid_mask, grid_band = _field(n, reveal, "grid_front", 0.0)
+    court_mask, court_band = _field(n, reveal, "court_front", 0.0)
     shader = n.mix_shader(grid_mask, _plate_shader(n, reveal), grid_emit)
     shader = n.mix_shader(
         n.math("MULTIPLY", court_mask, inside), shader, court_bsdf.outputs[0]
@@ -369,16 +379,18 @@ def backdrop_material(shot: Shot, reveal: Reveal) -> bpy.types.Material:
 
 
 def _staged_material(
-    name: str,
     shot: Shot,
-    reveal: Reveal,
+    reveal: Reveal | None,
     front: str,
     height_gain: float,
     look: Any,
     n: Nodes,
     surface: Any,
 ) -> None:
-    """plate -> transparent (after grid front) -> ``look`` (after ``front``)."""
+    """Connect the 3D look directly or stage it behind the reveal field."""
+    if reveal is None:
+        n.tree.links.new(look, surface)
+        return
     band_color = shot.band_color
     grid_mask, _ = _field(n, reveal, "grid_front", 0.0)
     mask, band = _field(n, reveal, front, height_gain)
@@ -401,12 +413,13 @@ def _staged_material(
     n.tree.links.new(shader, surface)
 
 
-def player_material(shot: Shot, reveal: Reveal, index: int) -> bpy.types.Material:
-    material, n, surface = _new_material(f"RevealPlayer{index}", transparent=True)
+def player_material(shot: Shot, reveal: Reveal | None, index: int) -> bpy.types.Material:
+    material, n, surface = _new_material(
+        f"RevealPlayer{index}", transparent=reveal is not None
+    )
     color = shot.player_colors[index % len(shot.player_colors)]
     look = player_shader(n, color)
     _staged_material(
-        material.name,
         shot,
         reveal,
         "actor_front",
@@ -418,11 +431,12 @@ def player_material(shot: Shot, reveal: Reveal, index: int) -> bpy.types.Materia
     return material
 
 
-def net_material(shot: Shot, reveal: Reveal) -> bpy.types.Material:
+def net_material(shot: Shot, reveal: Reveal | None) -> bpy.types.Material:
     material, n, surface = _new_material("RevealNet", transparent=True)
+    if reveal is None:
+        material.surface_render_method = "BLENDED"
     net_look = net_shader(n)
     _staged_material(
-        material.name,
         shot,
         reveal,
         "court_front",
@@ -434,14 +448,13 @@ def net_material(shot: Shot, reveal: Reveal) -> bpy.types.Material:
     return material
 
 
-def post_material(shot: Shot, reveal: Reveal) -> bpy.types.Material:
-    material, n, surface = _new_material("RevealNetPost", transparent=True)
+def post_material(shot: Shot, reveal: Reveal | None) -> bpy.types.Material:
+    material, n, surface = _new_material("RevealNetPost", transparent=reveal is not None)
     look = n.new(
         "ShaderNodeBsdfPrincipled",
         **{"Base Color": (0.05, 0.05, 0.05, 1.0), "Roughness": 1.0},
     ).outputs[0]
     _staged_material(
-        material.name,
         shot,
         reveal,
         "court_front",
@@ -454,12 +467,13 @@ def post_material(shot: Shot, reveal: Reveal) -> bpy.types.Material:
 
 
 def ball_material(
-    shot: Shot, reveal: Reveal, name: str, *, fade_attribute: str | None
+    shot: Shot, reveal: Reveal | None, name: str, *, fade_attribute: str | None
 ) -> bpy.types.Material:
-    material, n, surface = _new_material(name, transparent=True)
+    material, n, surface = _new_material(
+        name, transparent=reveal is not None or fade_attribute is not None
+    )
     look = ball_shader(n, shot.ball_color, fade_attribute=fade_attribute)
     _staged_material(
-        material.name,
         shot,
         reveal,
         "actor_front",
@@ -570,19 +584,59 @@ def _clear_scene() -> None:
 
 def load_manifest(bundle: Path) -> dict[str, Any]:
     manifest = json.loads((bundle / "manifest.json").read_text(encoding="utf-8"))
-    if manifest.get("schema") != BUNDLE_SCHEMA:
+    if manifest.get("schema") not in (BUNDLE_SCHEMA, PLAYBACK_BUNDLE_SCHEMA):
         raise ValueError(f"Unsupported bundle schema {manifest.get('schema')!r}.")
     return manifest
 
 
+def _build_view(
+    manifest: dict[str, Any], bundle: Path, shot: Shot
+) -> tuple[bpy.types.Object, Reveal | None]:
+    if manifest["schema"] == PLAYBACK_BUNDLE_SCHEMA:
+        cam_data = bpy.data.cameras.new("CourtCamera")
+        cam_data.type = "ORTHO"
+        cam_data.ortho_scale = 34.0
+        cam_data.clip_start, cam_data.clip_end = 0.1, 1000.0
+        camera = _link(bpy.data.objects.new("CourtCamera", cam_data))
+        camera.location = (-27.0, -22.0, 22.0)
+        target = Vector((0.0, 0.0, 0.65))
+        camera.rotation_euler = _look_rotation(target - camera.location, 0.0).to_euler()
+        return camera, None
+
+    blender_cam = manifest["camera"]["blender"]
+    cam_data = bpy.data.cameras.new("InputCamera")
+    cam_data.sensor_fit = blender_cam["sensor_fit"]
+    cam_data.sensor_width = blender_cam["sensor_width_mm"]
+    cam_data.lens = blender_cam["lens_mm"]
+    cam_data.clip_start, cam_data.clip_end = 0.1, 1000.0
+    camera = _link(bpy.data.objects.new("InputCamera", cam_data))
+    rotation = Matrix(blender_cam["rotation_matrix"])
+    cam_pos = Vector(blender_cam["location"])
+    camera.matrix_world = Matrix.Translation(cam_pos) @ rotation.to_4x4()
+    forward = rotation @ Vector((0.0, 0.0, -1.0))
+    forward_xy = Vector((forward.x, forward.y, 0.0)).normalized()
+    plate_first = bundle / manifest["plate"]["pattern"].format(frame=0)
+    plate = bpy.data.images.load(str(plate_first))
+    plate.source = "SEQUENCE"
+    plate.colorspace_settings.name = "sRGB"
+    num_frames = int(manifest["num_frames"])
+    return camera, Reveal(
+        params=build_params_group(shot, num_frames),
+        field=build_field_group(shot, cam_pos, forward_xy),
+        plate=plate,
+        num_frames=num_frames,
+    )
+
+
 def build(bundle: Path, output: Path, shot: Shot) -> bpy.types.Scene:
-    """Build the full reveal scene from ``bundle``; caches go to ``output``."""
+    """Build the reveal or 3D playback scene for this bundle."""
     manifest = load_manifest(bundle)
     output.mkdir(parents=True, exist_ok=True)
     num_frames = int(manifest["num_frames"])
     _clear_scene()
     scene = bpy.context.scene
-    scene.collection.children.link(bpy.data.collections.new(COLLECTION))
+    collection = bpy.data.collections.new(COLLECTION)
+    scene.collection.children.link(collection)
 
     fps = float(manifest["fps"])
     if not math.isfinite(fps) or not 1.0 <= fps <= 240.0:
@@ -601,35 +655,8 @@ def build(bundle: Path, output: Path, shot: Shot) -> bpy.types.Scene:
     scene.render.image_settings.file_format = "PNG"
     scene.render.image_settings.color_mode = "RGB"
 
-    # Camera (exact calibrated pose).
-    blender_cam = manifest["camera"]["blender"]
-    cam_data = bpy.data.cameras.new("InputCamera")
-    cam_data.sensor_fit = blender_cam["sensor_fit"]
-    cam_data.sensor_width = blender_cam["sensor_width_mm"]
-    cam_data.lens = blender_cam["lens_mm"]
-    cam_data.clip_start, cam_data.clip_end = 0.1, 1000.0
-    camera = _link(bpy.data.objects.new("InputCamera", cam_data))
-    camera.matrix_world = (
-        Matrix.Translation(Vector(blender_cam["location"]))
-        @ Matrix(blender_cam["rotation_matrix"]).to_4x4()
-    )
+    camera, reveal = _build_view(manifest, bundle, shot)
     scene.camera = camera
-    cam_pos = Vector(blender_cam["location"])
-    forward = Matrix(blender_cam["rotation_matrix"]) @ Vector((0.0, 0.0, -1.0))
-    forward_xy = Vector((forward.x, forward.y, 0.0)).normalized()
-
-    # Plate sequence.
-    plate_first = bundle / manifest["plate"]["pattern"].format(frame=0)
-    plate = bpy.data.images.load(str(plate_first))
-    plate.source = "SEQUENCE"
-    plate.colorspace_settings.name = "sRGB"
-
-    reveal = Reveal(
-        params=build_params_group(shot, num_frames),
-        field=build_field_group(shot, cam_pos, forward_xy),
-        plate=plate,
-        num_frames=num_frames,
-    )
 
     court = manifest["court"]
     ground_verts, ground_faces = _disk(160.0, 128)
@@ -644,19 +671,19 @@ def build(bundle: Path, output: Path, shot: Shot) -> bpy.types.Scene:
                 court, court_color=shot.court_color, runoff_color=shot.runoff_color
             ),
             court["runoff_xy"],
-            cam_pos,
+            camera.location.copy(),
         ),
         smooth=False,
     )
-    dome_verts, dome_faces = _dome(170.0, 24, 128)
-    dome = _mesh_object(
-        "Backdrop", dome_verts, dome_faces, backdrop_material(shot, reveal), smooth=True
-    )
-    # Camera-only: a closed dome would otherwise shadow the sun and occlude
-    # the world ambient for everything inside it.
-    dome.visible_shadow = False
-    dome.visible_diffuse = False
-    dome.visible_glossy = False
+    if reveal is not None:
+        dome_verts, dome_faces = _dome(170.0, 24, 128)
+        dome = _mesh_object(
+            "Backdrop", dome_verts, dome_faces, backdrop_material(shot, reveal), smooth=True
+        )
+        # The closed dome only serves as the camera backdrop.
+        dome.visible_shadow = False
+        dome.visible_diffuse = False
+        dome.visible_glossy = False
 
     net_verts, net_faces, tape = _net_geometry(court)
     net = _mesh_object(
@@ -715,12 +742,17 @@ def build(bundle: Path, output: Path, shot: Shot) -> bpy.types.Scene:
     world.node_tree.links.new(background.outputs[0], world_out.inputs["Surface"])
     sun_data = bpy.data.lights.new("Sun", "SUN")
     sun_data.energy = 3.5
-    sun_data.angle = math.radians(1.5)
+    sun_data.angle = math.radians(4.0 if reveal is None else 1.5)
     sun = _link(bpy.data.objects.new("Sun", sun_data))
-    sun.rotation_euler = (math.radians(38.0), 0.0, math.radians(-150.0))
+    sun.rotation_euler = (
+        math.radians(38.0), 0.0, math.radians(-48.0 if reveal is None else -150.0)
+    )
 
     _build_compositor(scene, name="RevealComposite")
-    animate_camera(camera, shot, num_frames)
+    if reveal is None:
+        build_ball_events(scene, collection, manifest["ball_events"], fps, num_frames)
+    else:
+        animate_camera(camera, shot, num_frames)
     scene.frame_set(0)
     return scene
 
@@ -730,7 +762,7 @@ def _build_ball(
     bundle: Path,
     output: Path,
     shot: Shot,
-    reveal: Reveal,
+    reveal: Reveal | None,
     num_frames: int,
 ) -> None:
     ball_info = manifest["ball"]

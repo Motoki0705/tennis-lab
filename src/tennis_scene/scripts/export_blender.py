@@ -1,4 +1,4 @@
-"""Export one camera's view of a saved scene as a Blender input bundle.
+"""Export a saved scene for Blender reveal or 3D playback.
 
 Usage:
     python -m src.tennis_scene.scripts.export_blender \
@@ -31,7 +31,7 @@ register_boundary_validator(_BOUNDARY, validate_blender_export_boundary)
     validation_boundary=_BOUNDARY,
 )
 def main(cfg: DictConfig) -> int:
-    """Export the configured scene/camera as a Blender bundle."""
+    """Export the configured scene as a Blender bundle."""
     from src.tennis_scene.configuration import parse_blender_export_config
     from src.tennis_scene.visualization.blender.export import export_blender_bundle
 

@@ -1,4 +1,4 @@
-"""Export one camera's view of a reconstructed scene as a Blender input bundle.
+"""Export a reconstructed scene as a Blender input bundle.
 
 The bundle is plain files that Blender's bundled Python (with numpy) can read
 without importing this repository::
@@ -10,7 +10,7 @@ without importing this repository::
     ├── player_valid.npy       # (P, T) bool after explicit short-gap filling
     ├── ball_positions.npy     # (T, 3) float32 court frame, NaN when invalid
     ├── ball_valid.npy         # (T,) bool after explicit short-gap filling
-    └── plate/%05d.jpg         # decoded source frames of the chosen camera
+    └── plate/%05d.jpg         # decoded source frames in reveal mode
 
 Blender world coordinates are court coordinates (meters, XY ground, +Z up).
 """
@@ -59,6 +59,7 @@ if TYPE_CHECKING:
     from src.tennis_scene.schema import SceneResult
 
 BUNDLE_SCHEMA = "tennis_scene_blender_bundle_v1"
+PLAYBACK_BUNDLE_SCHEMA = "tennis_scene_blender_playback_v1"
 PLATE_PATTERN = "plate/{frame:05d}.jpg"
 
 
@@ -66,16 +67,21 @@ PLATE_PATTERN = "plate/{frame:05d}.jpg"
 class BlenderBundleConfig:
     """Explicit export choices; every presentation-side synthesis is bounded here."""
 
-    camera_id: str
+    camera_id: str | None
     player_max_gap_frames: int
     ball_max_gap_frames: int
     max_ball_reprojection_median_px: float
     sensor_width_mm: float
     plate_jpeg_quality: int
+    mode: str = "reveal"
 
     def __post_init__(self) -> None:
-        if not self.camera_id.strip():
-            raise ValueError("camera_id must be non-empty.")
+        if self.mode not in ("reveal", "playback"):
+            raise ValueError("mode must be 'reveal' or 'playback'.")
+        if self.mode == "reveal" and not (self.camera_id and self.camera_id.strip()):
+            raise ValueError("camera_id must be non-empty in reveal mode.")
+        if self.mode == "playback" and self.camera_id is not None:
+            raise ValueError("camera_id must be null in playback mode.")
         if self.player_max_gap_frames < 0 or self.ball_max_gap_frames < 0:
             raise ValueError("Gap limits must be >= 0.")
         for name in ("max_ball_reprojection_median_px", "sensor_width_mm"):
@@ -181,29 +187,12 @@ def _validate_plate_video(video_path: Path, scene: SceneResult) -> None:
         )
 
 
-def export_blender_bundle(
-    *,
-    scene_path: Path,
-    smpl_faces_path: Path,
-    smpl_joint_regressor_path: Path,
-    output_dir: Path,
+def _reveal_view(
+    scene: SceneResult,
+    ball_valid: NDArray[np.bool_],
     config: BlenderBundleConfig,
-) -> Path:
-    """Write the bundle for ``config.camera_id`` and return its manifest path."""
-    if output_dir.exists():
-        raise FileExistsError(f"Bundle output already exists: {output_dir}")
-    scene = load_scene_result(scene_path)
-    if scene.schema_version < 2:
-        raise ValueError("Blender export requires SceneResult v2 or v3 with validity masks.")
-    player_valid_in = scene.player_smpl_valid
-    ball_valid_in = scene.ball_3d_valid
-    if player_valid_in is None or ball_valid_in is None:
-        raise ValueError("Scene lacks player_smpl_valid/ball_3d_valid.")
-    if scene.smpl_vertices_local is None or scene.smpl_global_orient is None:
-        raise ValueError("Scene lacks SMPL vertices/global orientation.")
-    if scene.ball_3d is None:
-        raise ValueError("Scene lacks ball_3d.")
-
+) -> tuple[Path, dict[str, Any]]:
+    assert config.camera_id is not None
     camera_ids = scene.metadata.get("camera_ids")
     video_paths = scene.metadata.get("video_paths")
     if not isinstance(camera_ids, list) or not isinstance(video_paths, list):
@@ -231,9 +220,7 @@ def export_blender_bundle(
     camera = PinholeCamera.from_scene_metadata(
         scene.metadata, config.camera_id, width=scene.width, height=scene.height
     )
-    reprojection = ball_reprojection_errors_px(
-        scene, ball_valid_in, camera, camera_index
-    )
+    reprojection = ball_reprojection_errors_px(scene, ball_valid, camera, camera_index)
     reprojection_median = float(np.median(reprojection))
     if reprojection_median > config.max_ball_reprojection_median_px:
         raise ValueError(
@@ -241,6 +228,79 @@ def export_blender_bundle(
             f"{config.camera_id} exceeds {config.max_ball_reprojection_median_px}px; "
             "camera and 3D scene frames disagree."
         )
+    pose = to_blender_camera(camera, sensor_width_mm=config.sensor_width_mm)
+    return video_path, {
+        "camera": {
+            "opencv": {
+                "K": camera.K.tolist(),
+                "R": camera.R.tolist(),
+                "t": camera.t.tolist(),
+            },
+            "blender": pose.to_dict(),
+            "ball_reprojection_px": {
+                "median": reprojection_median,
+                "p90": float(np.percentile(reprojection, 90)),
+                "count": int(reprojection.size),
+            },
+        },
+        "plate": {"pattern": PLATE_PATTERN, "jpeg_quality": config.plate_jpeg_quality},
+    }
+
+
+def _in_play_events(
+    scene: SceneResult,
+    ball_positions: NDArray[np.float32],
+    ball_valid: NDArray[np.bool_],
+) -> list[dict[str, Any]]:
+    frames = scene.ball_event_frame
+    kinds = scene.ball_event_kind
+    in_point = scene.ball_event_in_point
+    if frames is None or kinds is None or in_point is None:
+        raise ValueError("Playback requires SceneResult v3 with annotated ball events.")
+    classes = scene.metadata["ball_events"]["classes"]
+    return [
+        {
+            "frame": int(frame),
+            "kind": classes[kind],
+            "position": ball_positions[frame].tolist() if ball_valid[frame] else None,
+        }
+        for frame, kind in zip(frames[in_point], kinds[in_point], strict=True)
+    ]
+
+
+def export_blender_bundle(
+    *,
+    scene_path: Path,
+    smpl_faces_path: Path,
+    smpl_joint_regressor_path: Path,
+    output_dir: Path,
+    config: BlenderBundleConfig,
+) -> Path:
+    """Write the configured Blender bundle and return its manifest path."""
+    if output_dir.exists():
+        raise FileExistsError(f"Bundle output already exists: {output_dir}")
+    scene = load_scene_result(scene_path)
+    if scene.schema_version < 2:
+        raise ValueError("Blender export requires SceneResult v2 or v3 with validity masks.")
+    player_valid_in = scene.player_smpl_valid
+    ball_valid_in = scene.ball_3d_valid
+    if player_valid_in is None or ball_valid_in is None:
+        raise ValueError("Scene lacks player_smpl_valid/ball_3d_valid.")
+    if scene.smpl_vertices_local is None or scene.smpl_global_orient is None:
+        raise ValueError("Scene lacks SMPL vertices/global orientation.")
+    if scene.ball_3d is None:
+        raise ValueError("Scene lacks ball_3d.")
+
+    source = {"scene": str(scene_path)}
+    video_path = None
+    if config.mode == "playback":
+        schema = PLAYBACK_BUNDLE_SCHEMA
+        view = {"ball_events": _in_play_events(scene, scene.ball_3d, ball_valid_in)}
+    else:
+        schema = BUNDLE_SCHEMA
+        video_path, view = _reveal_view(scene, ball_valid_in, config)
+        assert config.camera_id is not None
+        source.update(video=str(video_path), camera_id=config.camera_id)
 
     faces = load_smpl_faces(smpl_faces_path).astype(np.int32)
     vertices = smpl_vertices_to_court(
@@ -295,40 +355,22 @@ def export_blender_bundle(
         np.save(output_dir / "ball_positions.npy", ball.values)
         np.save(output_dir / "ball_valid.npy", ball.valid)
 
-        _validate_plate_video(video_path, scene)
-        _write_plate(
-            video_path,
-            output_dir / "plate",
-            frame_range=range(scene.num_frames),
-            max_width=None,
-            quality=config.plate_jpeg_quality,
-        )
-
-        pose = to_blender_camera(camera, sensor_width_mm=config.sensor_width_mm)
+        if video_path is not None:
+            _validate_plate_video(video_path, scene)
+            _write_plate(
+                video_path,
+                output_dir / "plate",
+                frame_range=range(scene.num_frames),
+                max_width=None,
+                quality=config.plate_jpeg_quality,
+            )
         manifest = {
-            "schema": BUNDLE_SCHEMA,
-            "source": {
-                "scene": str(scene_path),
-                "video": str(video_path),
-                "camera_id": config.camera_id,
-            },
+            "schema": schema,
+            "source": source,
             "num_frames": scene.num_frames,
             "fps": scene.fps,
             "width": scene.width,
             "height": scene.height,
-            "camera": {
-                "opencv": {
-                    "K": camera.K.tolist(),
-                    "R": camera.R.tolist(),
-                    "t": camera.t.tolist(),
-                },
-                "blender": pose.to_dict(),
-                "ball_reprojection_px": {
-                    "median": reprojection_median,
-                    "p90": float(np.percentile(reprojection, 90)),
-                    "count": int(reprojection.size),
-                },
-            },
             "smpl_faces": "smpl_faces.npy",
             "players": players,
             "player_valid": "player_valid.npy",
@@ -341,10 +383,7 @@ def export_blender_bundle(
                 "invalid_frames": list(ball.unfilled_frames),
             },
             "court": court_geometry(),
-            "plate": {
-                "pattern": PLATE_PATTERN,
-                "jpeg_quality": config.plate_jpeg_quality,
-            },
+            **view,
         }
         manifest_path = output_dir / "manifest.json"
         manifest_path.write_text(json.dumps(manifest, indent=2), encoding="utf-8")

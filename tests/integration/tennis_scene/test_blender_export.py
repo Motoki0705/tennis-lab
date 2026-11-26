@@ -11,6 +11,7 @@ import pytest
 import torch
 
 from src.tennis_scene.archive import load_scene_result, save_scene_result
+from src.tennis_scene.ball_event_schema import ball_event_metadata
 from src.tennis_scene.schema import SceneResult
 from src.tennis_scene.visualization.blender.export.bundle import (
     BlenderBundleConfig,
@@ -104,14 +105,19 @@ def _config() -> BlenderBundleConfig:
     )
 
 
-def _export(inputs: tuple[Path, Path, Path], output: Path) -> Path:
+def _export(
+    inputs: tuple[Path, Path, Path],
+    output: Path,
+    *,
+    config: BlenderBundleConfig | None = None,
+) -> Path:
     scene, faces, regressor = inputs
     return export_blender_bundle(
         scene_path=scene,
         smpl_faces_path=faces,
         smpl_joint_regressor_path=regressor,
         output_dir=output,
-        config=_config(),
+        config=_config() if config is None else config,
     )
 
 
@@ -150,6 +156,57 @@ def test_bundle_preserves_timeline_geometry_and_explicit_gaps(
     assert np.isnan(balls[[4, 5]]).all()
     with pytest.raises(FileExistsError):
         _export(inputs, output)
+
+
+def test_v3_playback_exports_in_play_events_on_exact_source_frames_without_video(
+    inputs: tuple[Path, Path, Path], tmp_path: Path
+) -> None:
+    scene = load_scene_result(inputs[0])
+    Path(scene.metadata["video_paths"][0]).unlink()
+    scene.metadata["court_reference"].pop("camera_fits")
+    scene.metadata["scene_schema_version"] = 3
+    scene.metadata["ball_events"] = ball_event_metadata(
+        "annotation",
+        {
+            "code_commit": "0" * 40,
+            "annotation_sha256": "1" * 64,
+            "labeler": "fixture",
+            "labeler_original": "Fixture",
+        },
+    )
+    scene.ball_event_frame = np.array([0, 1, 2, 3, 6], dtype=np.int32)
+    scene.ball_event_kind = np.array([0, 1, 2, 1, 1], dtype=np.uint8)
+    scene.ball_event_in_point = np.array([True, False, True, False, True])
+    scene.ball_event_status = np.array([2, 0, 1, 1, 0], dtype=np.uint8)
+    scene.ball_event_frame_uncertainty = np.zeros(5, dtype=np.uint8)
+    scene.ball_event_subtype = np.full(5, 7, dtype=np.uint8)
+    scene.ball_event_side = np.zeros(5, dtype=np.int8)
+    scene.ball_event_coverage = np.array([True, True, False, True, True, True, True])
+    save_scene_result(scene, inputs[0])
+    output = tmp_path / "playback"
+    config = replace(_config(), mode="playback", camera_id=None)
+    manifest = json.loads(_export(inputs, output, config=config).read_text())
+
+    assert manifest["schema"] == "tennis_scene_blender_playback_v1"
+    assert (manifest["num_frames"], manifest["fps"]) == (7, 30.0)
+    assert not {"camera", "plate"} & manifest.keys()
+    assert not (output / "plate").exists()
+    assert scene.ball_3d is not None
+    assert manifest["ball_events"] == [
+        {"frame": 0, "kind": "shot", "position": scene.ball_3d[0].tolist()},
+        {"frame": 2, "kind": "net", "position": None},
+        {"frame": 6, "kind": "bounce", "position": scene.ball_3d[6].tolist()},
+    ]
+    assert np.load(output / "ball_valid.npy")[2]
+
+
+def test_playback_requires_annotated_v3_scene(
+    inputs: tuple[Path, Path, Path], tmp_path: Path
+) -> None:
+    output = tmp_path / "playback"
+    with pytest.raises(ValueError, match="annotated ball events"):
+        _export(inputs, output, config=replace(_config(), mode="playback", camera_id=None))
+    assert not output.exists()
 
 
 def test_rejects_camera_mismatch_before_publishing(
