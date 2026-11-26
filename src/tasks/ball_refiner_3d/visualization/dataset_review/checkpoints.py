@@ -13,10 +13,7 @@ import torch
 import yaml
 
 from src.tasks.ball_refiner_3d.configuration.evaluation import training_profile_sections
-from src.tasks.ball_refiner_3d.model_io.checkpoint import (
-    CHECKPOINT_SCHEMA,
-    checkpoint_model_config,
-)
+from src.tasks.ball_refiner_3d.model_io.checkpoint import checkpoint_model_config
 from src.tasks.ball_refiner_3d.visualization.dataset_review.artifacts import (
     bundle_path,
     cache_root,
@@ -74,14 +71,14 @@ def describe(
     predictions = None
     try:
         payload = torch.load(path, map_location="cpu", weights_only=True, mmap=True)
-        if not isinstance(payload, dict) or payload.get("schema") not in {
-            CHECKPOINT_SCHEMA,
-            "ball_refiner_3d.events.v2",
-        }:
+        if not isinstance(payload, dict):
             raise ValueError(
                 "イベントヘッド付き3D Refinerのcheckpoint形式ではありません"
             )
-        model = checkpoint_model_config(payload)
+        try:
+            model = checkpoint_model_config(payload)
+        except ValueError as exc:
+            raise ValueError(f"checkpoint形式の検証に失敗しました。{exc}") from exc
         if payload["manifest_sha256"] != manifest_hash:
             raise ValueError("学習時の共通データとmanifestが一致しません")
         if not math.isclose(float(payload["fps"]), fps, abs_tol=1e-6, rel_tol=0):

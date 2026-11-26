@@ -7,6 +7,7 @@ import torch
 from numpy.typing import NDArray
 from torch import Tensor, nn
 
+from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
 from src.tasks.ball_refiner_3d.model_io.contracts import RefinerOutput, validate_input
 from src.tasks.base.model_io import ModelCall
 
@@ -79,9 +80,12 @@ class RefinerAdapter:
             not isinstance(output, RefinerOutput)
             or output.coordinates.ndim != 3
             or output.coordinates.shape[-1] != 3
-            or output.event_logits.shape != (*output.coordinates.shape[:-1], 2)
+            or output.event_logits.shape
+            != (*output.coordinates.shape[:-1], len(EVENT_CLASSES))
         ):
-            raise ValueError("Require B,T,3 coordinates and B,T,2 event logits")
+            raise ValueError(
+                f"Require B,T,3 coordinates and B,T,{len(EVENT_CLASSES)} event logits"
+            )
         if (output.physics is not None) != self.physics:
             raise ValueError("Physics outputs must match the configured heads")
         return output
