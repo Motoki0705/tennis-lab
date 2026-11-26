@@ -94,6 +94,16 @@ scene metadataの`ok`/`partial`は従来の意味を保持する。cameraごと�
 scene stageの構築・worker受付を行わない。publisher commit後、workflow receipt保存前の中断も
 同じsnapshotへ収束する。新しい公開要求で保存注釈を上書きしない。
 
+公開再開は採用済みの `event_detection` 成果物と現在の正規化ソース識別を照合する。
+commit をまたいで入力・設定・ソース識別が一致すれば、イベントの計算時の commit を保持したまま再開できる。
+ソース識別が異なる場合は公開前に停止する。
+
+旧 `scene-completion.json` の `event_detection` 設定に `code_commit` がある場合は、
+同じsceneコマンドとstoreで
+`direct_annotation.resume=workflow cache.source=execute execution.event_detection=execute`
+を指定して再実行する。完成注釈を再利用し、新しいscene完了receiptを保存する。
+以後、公開だけを再開するときは `direct_annotation.resume=publication` を使う。
+
 ## 探索方針の比較と計測
 
 `BlankConditionRegistration`（source plan・独立したcondition ID・版付きpolicy）を

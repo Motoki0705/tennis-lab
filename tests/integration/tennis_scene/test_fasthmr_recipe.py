@@ -183,6 +183,9 @@ def test_only_the_exact_standard_recipe_patch_preserves_previous_source_identity
     assert compatible_source_digests(local_edit, standard_recipe=True, tensorrt=True) == local_edit
     people_edit = {"submodules/models/ecpose/runtime.py": "b" * 64}
     assert compatible_source_digests(reviewed | people_edit, standard_recipe=True, tensorrt=True) == before_pose | people_edit
+    publication_path = "tennis_scene/pipeline/dataset_publication.py"
+    publication_edit = {publication_path: dual_sha256(PROJECT_ROOT / "src" / publication_path)}
+    assert compatible_source_digests(reviewed | publication_edit, standard_recipe=True, tensorrt=True) == before_pose | publication_edit
 
 
 @pytest.mark.parametrize("override,message", [

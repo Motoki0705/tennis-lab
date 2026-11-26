@@ -25,6 +25,8 @@ from src.tennis_scene.generate_dataset.manifest import (
 from src.tennis_scene.generate_dataset.pseudo_annotation import (
     ANNOTATION_SCHEMA_VERSION,
 )
+from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
+from src.tennis_scene.pipeline.storage.scene_pointers import stable_scene_pointers
 from src.tennis_scene.schema import SceneResult
 from src.utils.io import load_json
 
@@ -78,7 +80,9 @@ def slcs_annotation_dir(clip_dir: Path) -> Path:
 
 def has_slcs_annotation(clip_dir: Path) -> bool:
     """Return whether the clip has a completed SLCS-consumable annotation."""
-    return (slcs_annotation_dir(clip_dir) / SLCS_ANNOTATION_FILENAME).is_file()
+    directory = slcs_annotation_dir(clip_dir)
+    with stable_scene_pointers(directory):
+        return (directory / SLCS_ANNOTATION_FILENAME).is_file()
 
 
 def _validate_marker(marker: dict[str, Any], *, source: Path) -> dict[str, Any]:
@@ -157,12 +161,14 @@ def load_slcs_annotation(
     """Load a completed annotation and enforce every SLCS data constraint."""
     annotation_dir = slcs_annotation_dir(manifest.clip_dir)
     marker_path = annotation_dir / SLCS_ANNOTATION_FILENAME
-    if not marker_path.is_file():
+    try:
+        with stable_scene_pointers(annotation_dir):
+            marker = load_json(marker_path)
+    except (FileNotFoundError, IsADirectoryError) as error:
         raise IncompleteAnnotationError(
             f"{manifest.clip_id}: tennis_scene annotation has no completion marker "
             f"({marker_path}); treating as incomplete."
-        )
-    marker = load_json(marker_path)
+        ) from error
     if not isinstance(marker, dict):
         raise DatasetManifestError(f"{marker_path} must contain a JSON object.")
     arrays_spec = _validate_marker(marker, source=marker_path)
@@ -176,7 +182,6 @@ def load_slcs_annotation(
                 f"clip.json (marker digest {recorded!r} != current {actual!r})."
             )
 
-    from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
     # Resolves through scene.json and verifies the export checksums and lineage.
     scene = load_scene_result(annotation_scene_path(annotation_dir, marker))
     if scene.schema_version < 2:

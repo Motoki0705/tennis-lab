@@ -1,0 +1,7 @@
+修正HEAD `3d8cec367e8a9fb2cb44788bdae3eb494e0aeb3f` で、3方式×3 seedと球のみ参照の計10件を共有 training queue に登録しました。
+
+最終配布版のmanifestは [#2610](https://github.com/Motoki0705/tennis-lab/pull/2610) の実行証拠と一致しました。再生成した69本の特徴NPZは初回とバイト一致し、47/11/11分割と独立ラベル6本も照合しました。再実験は `coverage-r2/runs/` に出力します。入力ハッシュとジョブIDは [PR #2613](https://github.com/Motoki0705/tennis-lab/pull/2613) に記録しました。
+
+比較表・学習曲線・代表例と [記録PR #2621](https://github.com/Motoki0705/tennis-lab/pull/2621) の更新は、再実験の結果待ちです。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204305173350700399_2026-11-26T12-07-06-649299600Z_434422_i2600-motion-ball-only-s42-r2.job","0-8204305172937211719_2026-11-26T12-07-07-062788280Z_434547_i2600-motion-shared-s42-r2.job","0-8204305172528344645_2026-11-26T12-07-07-471655354Z_434650_i2600-motion-per-player-s42-r2.job","0-8204305172093225079_2026-11-26T12-07-07-906774920Z_434755_i2600-motion-set-attention-s42-r2.job","0-8204305171654912506_2026-11-26T12-07-08-345087493Z_434871_i2600-motion-shared-s43-r2.job","0-8204305171225511626_2026-11-26T12-07-08-774488373Z_434990_i2600-motion-per-player-s43-r2.job","0-8204305170772348783_2026-11-26T12-07-09-227651216Z_435125_i2600-motion-set-attention-s43-r2.job","0-8204305170375966574_2026-11-26T12-07-09-624033425Z_435242_i2600-motion-shared-s44-r2.job","0-8204305169955810979_2026-11-26T12-07-10-044189020Z_435341_i2600-motion-per-player-s44-r2.job","0-8204305169538048816_2026-11-26T12-07-10-461951183Z_435450_i2600-motion-set-attention-s44-r2.job"]}}
