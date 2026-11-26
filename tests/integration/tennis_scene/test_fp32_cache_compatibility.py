@@ -209,8 +209,8 @@ def phase2_sources() -> dict[str, str]:
     assert baseline["commit"] == _PHASE2_BASE
     actual = source_identity.source_digests(PROJECT_ROOT / "src")
     standard = source_identity.compatible_source_digests(actual, standard_recipe=True, tensorrt=True)
-    # Recreate the historical patch in the pinned phase-2 tree. The optional
-    # recipe patch is checked independently against the current source tree.
+    # Recreate the historical patch after removing both optional recipe deltas.
+    # The live ECPose and FastHMR source digests are checked independently.
     return {
         **baseline["sources"],
         **{path: standard[path] for path in baseline["revised_paths"]},

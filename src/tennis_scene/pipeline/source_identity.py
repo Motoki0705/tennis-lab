@@ -13,9 +13,12 @@ def source_digests(source: Path) -> dict[str, str]:
 
 
 def compatible_source_digests(
-    sources: dict[str, str], *, ball_court_side: bool = False, tensorrt: bool = False, standard_recipe: bool = False
+    sources: dict[str, str], *, ball_court_side: bool = False, tensorrt: bool = False,
+    standard_recipe: bool = False, standard_people: bool = False,
 ) -> dict[str, str]:
     """Keep the baseline identity for exact, compatible source changes."""
+    if standard_recipe or standard_people:
+        sources = _compatible_patch(sources, "ecpose_recipe_cache_compatibility.json")
     if standard_recipe:
         sources = _compatible_patch(sources, "standard_recipe_cache_compatibility.json")
     if not tensorrt:

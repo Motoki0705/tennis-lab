@@ -1,0 +1,2259 @@
+{
+  "artifact_root": ".worktree-outputs",
+  "baselines": {
+    "dino-swin-l": {
+      "accuracy": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l/pt16/accuracy.json",
+        "sha256": "e6abb41e9f78ac4fc22282d6c846822e2325287dbd6e08eee90b48dd90a980cb"
+      },
+      "quality": {
+        "coverage_oks": null,
+        "coverage_pck_0_10": null,
+        "coverage_pck_0_20": null,
+        "joint_coverage": null,
+        "recall_50": 0.9668518800426245,
+        "recall_50_score_ge_0_5": 0.9561577104582129,
+        "recall_75": 0.4698964834830263,
+        "small_recall_50": 0.9516879219804951
+      },
+      "raw": {
+        "path": "parent-2492-issue-2496-primary/person-model-speed-low-precision/results/dino/PT16-b1/report.json",
+        "sha256": "5ca29b2c5d56f346075967772a58821efa23ddf7bef9e7e96a7cbbe67335707d"
+      },
+      "speed": {
+        "host_threads": 4,
+        "images_per_s": 6.018640770728821,
+        "model_p50_ms": 146.47361755371094,
+        "model_p95_ms": 149.9295967102051,
+        "nvml_peak_delta_mib": 2406.0,
+        "parity_reason": "未判定（PT32計測はスコープ外、ユーザー判断 2026-11-25）",
+        "parity_status": "PT32未計測",
+        "speed_status": "ok",
+        "stage_p50_ms": 165.68686300000002,
+        "stage_p95_ms": 170.70937145,
+        "torch_peak_allocated_mib": 2102.41748046875
+      }
+    },
+    "dino-swin-l-vitpose-h": {
+      "accuracy": {
+        "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l-vitpose-h/pt16/accuracy.json",
+        "sha256": "1574b82488c7b6b65b7ab5f1c759cfaf2a22c55c0a71bfb72bb65c9f964caffc"
+      },
+      "quality": {
+        "coverage_oks": 0.7631338856250602,
+        "coverage_pck_0_10": 0.7799384986543725,
+        "coverage_pck_0_20": 0.9484092352540701,
+        "joint_coverage": 0.982401750914981,
+        "recall_50": 0.9668518800426245,
+        "recall_50_score_ge_0_5": 0.9561577104582129,
+        "recall_75": 0.4698964834830263,
+        "small_recall_50": 0.9516879219804951
+      },
+      "raw": {
+        "path": "parent-2492-issue-2487-primary/person-model-speed-dino-vitpose-synchronized-v1/results/dino-vitpose/PT16-b1/report.json",
+        "sha256": "b4482efdc12eedc8a9dc68856a8e003834385936398cc68ef799425d023e404c"
+      },
+      "speed": {
+        "host_threads": 4,
+        "images_per_s": 3.5121211814592956,
+        "model_p50_ms": 237.1464958190918,
+        "model_p95_ms": 322.8754777908325,
+        "nvml_peak_delta_mib": 6484.0,
+        "parity_reason": "未判定（PT32計測はスコープ外、ユーザー判断 2026-11-25）",
+        "parity_status": "PT32未計測",
+        "speed_status": "ok",
+        "stage_p50_ms": 266.30324099999996,
+        "stage_p95_ms": 359.3244158,
+        "torch_peak_allocated_mib": 5810.52685546875
+      }
+    }
+  },
+  "checkout_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+  "evaluation": {
+    "eligible_boxes": 26276,
+    "id": "meiji_4cam/multiview-player-evaluation-v1",
+    "images": 6844,
+    "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364",
+    "sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580"
+  },
+  "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+  "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+  "integration_checker_commit": "edeea50b43ea990fcae8dd2b0e1173948d36aa6d",
+  "models": {
+    "ecdet-l-coco": {
+      "cases": [
+        {
+          "backend": "pt16",
+          "batch_size": 1,
+          "case": {
+            "backend": "PT16",
+            "batch_size": 1,
+            "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+            "item_unit": "image",
+            "name": "ecdet-l-coco",
+            "settings": {
+              "crops": 0,
+              "cuda_stream": "non-default",
+              "dataset_id": "meiji_4cam/person-model-speed-v1",
+              "engine_profile": null,
+              "flip_test": false,
+              "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+              "host_threads": 4,
+              "image_size_hw": [
+                640,
+                640
+              ],
+              "input_decode": "predecoded BGR",
+              "official_source_commit": "d8752b75c9beaecfcdd0e5cd207bae3b6946ae23",
+              "opencv_threads": 1,
+              "person_score_exclusive": 0.0,
+              "pose_box_margin": null,
+              "postprocess": "torch.float32",
+              "pytorch_precision": "CUDA autocast FP16",
+              "source_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+              "timed_input_ids_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+              "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+              "weight_sha256": "60e48c51b33d70acf8e3a3faddbdb70b0876c64509b74cb623106cc7c31e85a1"
+            }
+          },
+          "comparison_at_batch_1": {
+            "baseline": "dino-swin-l",
+            "baseline_stage_wall_p50_ms_per_image": 165.68686300000002,
+            "nvml_peak_increase_mib": 324.0,
+            "quality": {
+              "coverage_oks": null,
+              "coverage_pck_0_10": null,
+              "coverage_pck_0_20": null,
+              "joint_coverage": null,
+              "metrics": {
+                "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/pt16/metrics.scorer-0d4bf0990.json",
+                "sha256": "a3510fba5aab2f2233a244ece7320546fd2cec887a9c64ed86e0d0cc7db6c5d7"
+              },
+              "predictions": {
+                "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/pt16/predictions.jsonl",
+                "sha256": "748017508555a99b194d61ce8539c20d393ab452cbb9db65862603f575316d14"
+              },
+              "recall_50": 0.9760618054498401,
+              "recall_50_score_ge_0_5": 0.9496879281473588,
+              "recall_75": 0.4159689450449079,
+              "small_recall_50": 0.9636909227306827
+            },
+            "stage_wall_p50_speedup": 3.090840897757323
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 9179,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 759271424,
+          "nvml_peak_minus_before_load_bytes": 339738624,
+          "nvml_used_bytes": {
+            "after_cold_start": 755077120,
+            "after_load": 576819200,
+            "after_warmup": 759271424,
+            "before_load": 419532800,
+            "block_1": 759271424,
+            "block_2": 759271424,
+            "block_3": 759271424
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+            "sha256": "a85694032912671862cacbf75b23694dd920e769af8996a221d8ee0aee358fe8"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 11574.203706,
+            "load": 1681.592776
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3871.753233239822,
+              "p50_ms": 0.2453185,
+              "p50_ms_per_item": 0.2453185,
+              "p95_ms": 0.34622985000000006,
+              "p95_ms_per_item": 0.34622985000000006,
+              "samples": 300,
+              "total_ms": 77.484277
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 34.22013426506483,
+              "p50_ms": 28.3525565,
+              "p50_ms_per_item": 28.3525565,
+              "p95_ms": 36.243238200000015,
+              "p95_ms_per_item": 36.243238200000015,
+              "samples": 300,
+              "total_ms": 8766.768641999999
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1235.3634753126692,
+              "p50_ms": 0.782608,
+              "p50_ms_per_item": 0.782608,
+              "p95_ms": 0.9819985,
+              "p95_ms_per_item": 0.9819985,
+              "samples": 300,
+              "total_ms": 242.84350800000004
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 34.29701054657409,
+              "p50_ms": 28.286383628845215,
+              "p50_ms_per_item": 28.286383628845215,
+              "p95_ms": 36.187307167053234,
+              "p95_ms_per_item": 36.187307167053234,
+              "samples": 300,
+              "total_ms": 8747.118049621582
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 548.2267166441349,
+              "p50_ms": 1.6750865,
+              "p50_ms_per_item": 1.6750865,
+              "p95_ms": 2.674301950000002,
+              "p95_ms_per_item": 2.674301950000002,
+              "samples": 300,
+              "total_ms": 547.2188620000002
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 44.621482470019004,
+              "p50_ms": 22.079972,
+              "p50_ms_per_item": 22.079972,
+              "p95_ms": 24.217899850000002,
+              "p95_ms_per_item": 24.217899850000002,
+              "samples": 300,
+              "total_ms": 6723.219027999996
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 18.28046381671987,
+              "p50_ms": 53.605756,
+              "p50_ms_per_item": 53.605756,
+              "p95_ms": 62.97474330000001,
+              "p95_ms_per_item": 62.97474330000001,
+              "samples": 300,
+              "total_ms": 16410.962162000007
+            }
+          },
+          "torch_peak_allocated_bytes": 276785152,
+          "torch_peak_reserved_bytes": 297795584
+        },
+        {
+          "backend": "pt16",
+          "batch_size": 2,
+          "case": {
+            "backend": "PT16",
+            "batch_size": 2,
+            "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+            "item_unit": "image",
+            "name": "ecdet-l-coco",
+            "settings": {
+              "crops": 0,
+              "cuda_stream": "non-default",
+              "dataset_id": "meiji_4cam/person-model-speed-v1",
+              "engine_profile": null,
+              "flip_test": false,
+              "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+              "host_threads": 4,
+              "image_size_hw": [
+                640,
+                640
+              ],
+              "input_decode": "predecoded BGR",
+              "official_source_commit": "d8752b75c9beaecfcdd0e5cd207bae3b6946ae23",
+              "opencv_threads": 1,
+              "person_score_exclusive": 0.0,
+              "pose_box_margin": null,
+              "postprocess": "torch.float32",
+              "pytorch_precision": "CUDA autocast FP16",
+              "source_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+              "timed_input_ids_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+              "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+              "weight_sha256": "60e48c51b33d70acf8e3a3faddbdb70b0876c64509b74cb623106cc7c31e85a1"
+            }
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 9198,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 809603072,
+          "nvml_peak_minus_before_load_bytes": 390070272,
+          "nvml_used_bytes": {
+            "after_cold_start": 807505920,
+            "after_load": 576819200,
+            "after_warmup": 809603072,
+            "before_load": 419532800,
+            "block_1": 809603072,
+            "block_2": 809603072,
+            "block_3": 809603072
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-coco/speed-13e508cb7-threads4-1/pt16/speed-b2.json",
+            "sha256": "9ebee042cea08bf9bf01d4911aec8f5593e13b4bc9fe8a390a0e90b2c19a2ea5"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 3512.264594,
+            "load": 1308.942917
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 5149.548421937623,
+              "p50_ms": 0.3670695,
+              "p50_ms_per_item": 0.18353475,
+              "p95_ms": 0.5244979,
+              "p95_ms_per_item": 0.26224895,
+              "samples": 300,
+              "total_ms": 116.51507099999998
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 65.35505223118257,
+              "p50_ms": 29.879286,
+              "p50_ms_per_item": 14.939643,
+              "p95_ms": 35.42448925,
+              "p95_ms_per_item": 17.712244625,
+              "samples": 300,
+              "total_ms": 9180.621536000006
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1623.6617482199858,
+              "p50_ms": 1.2282315,
+              "p50_ms_per_item": 0.61411575,
+              "p95_ms": 1.430319,
+              "p95_ms_per_item": 0.7151595,
+              "samples": 300,
+              "total_ms": 369.53509599999984
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 65.46001157744797,
+              "p50_ms": 29.834943771362305,
+              "p50_ms_per_item": 14.917471885681152,
+              "p95_ms": 35.36200294494629,
+              "p95_ms_per_item": 17.681001472473145,
+              "samples": 300,
+              "total_ms": 9165.901220321655
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 734.5497603871135,
+              "p50_ms": 2.649127,
+              "p50_ms_per_item": 1.3245635,
+              "p95_ms": 3.4953075500000006,
+              "p95_ms_per_item": 1.7476537750000003,
+              "samples": 300,
+              "total_ms": 816.8268950000001
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 45.15442619481706,
+              "p50_ms": 43.7565975,
+              "p50_ms_per_item": 21.87829875,
+              "p95_ms": 48.18720445,
+              "p95_ms_per_item": 24.093602225,
+              "samples": 300,
+              "total_ms": 13287.733907000007
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 25.183135872060657,
+              "p50_ms": 78.46948499999999,
+              "p50_ms_per_item": 39.234742499999996,
+              "p95_ms": 85.17387195,
+              "p95_ms_per_item": 42.586935975,
+              "samples": 300,
+              "total_ms": 23825.468085000008
+            }
+          },
+          "torch_peak_allocated_bytes": 325589504,
+          "torch_peak_reserved_bytes": 348127232
+        }
+      ],
+      "checkout_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-l-coco /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16",
+      "job_id": "0-8204385483118668058_2026-11-25T13-48-36-881331941Z_1163401_i2487-ecdet-l-coco-pt16-speed-threads4-1.job",
+      "queue_log": {
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204385483118668058_2026-11-25T13-48-36-881331941Z_1163401_i2487-ecdet-l-coco-pt16-speed-threads4-1.log",
+        "sha256": "baf0b0d1a12b2ec8c3cc3cc09dd6d1251bbc2422d2ef33abc0cdf027d22bc15d"
+      },
+      "reproduction": {
+        "path": ".training_queue/repro/0-8204385483118668058_2026-11-25T13-48-36-881331941Z_1163401_i2487-ecdet-l-coco-pt16-speed-threads4-1/repro.sh",
+        "sha256": "27c0ecbe6984a2ae96c2a8e989b71a8e4f6a807ce7a6b5551bab729bff860e48"
+      },
+      "weight_sha256": "60e48c51b33d70acf8e3a3faddbdb70b0876c64509b74cb623106cc7c31e85a1"
+    },
+    "ecdet-l-o365": {
+      "cases": [
+        {
+          "backend": "pt16",
+          "batch_size": 1,
+          "case": {
+            "backend": "PT16",
+            "batch_size": 1,
+            "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+            "item_unit": "image",
+            "name": "ecdet-l-o365",
+            "settings": {
+              "crops": 0,
+              "cuda_stream": "non-default",
+              "dataset_id": "meiji_4cam/person-model-speed-v1",
+              "engine_profile": null,
+              "flip_test": false,
+              "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+              "host_threads": 4,
+              "image_size_hw": [
+                640,
+                640
+              ],
+              "input_decode": "predecoded BGR",
+              "official_source_commit": "d8752b75c9beaecfcdd0e5cd207bae3b6946ae23",
+              "opencv_threads": 1,
+              "person_score_exclusive": 0.0,
+              "pose_box_margin": null,
+              "postprocess": "torch.float32",
+              "pytorch_precision": "CUDA autocast FP16",
+              "source_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+              "timed_input_ids_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+              "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+              "weight_sha256": "6259432a6184029e17cb008dcd3fa6ebf036c3e10cd56aa552a0d848ddcef19e"
+            }
+          },
+          "comparison_at_batch_1": {
+            "baseline": "dino-swin-l",
+            "baseline_stage_wall_p50_ms_per_image": 165.68686300000002,
+            "nvml_peak_increase_mib": 324.0,
+            "quality": {
+              "coverage_oks": null,
+              "coverage_pck_0_10": null,
+              "coverage_pck_0_20": null,
+              "joint_coverage": null,
+              "metrics": {
+                "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/pt16/metrics.scorer-0d4bf0990.json",
+                "sha256": "a05e7b121de9dc8281f31ed1ba7786c1ab10b48ff6a26f77ecaf7a102b666fdc"
+              },
+              "predictions": {
+                "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/pt16/predictions.jsonl",
+                "sha256": "4d85d131068cef31073f52cc7af3828ce120de4734f26da95f99b409f8e97661"
+              },
+              "recall_50": 0.9819226670726138,
+              "recall_50_score_ge_0_5": 0.9579464149794489,
+              "recall_75": 0.44877454711523823,
+              "small_recall_50": 0.9738184546136535
+            },
+            "stage_wall_p50_speedup": 3.131469868420399
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 9669,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 759271424,
+          "nvml_peak_minus_before_load_bytes": 339738624,
+          "nvml_used_bytes": {
+            "after_cold_start": 755077120,
+            "after_load": 576819200,
+            "after_warmup": 759271424,
+            "before_load": 419532800,
+            "block_1": 759271424,
+            "block_2": 759271424,
+            "block_3": 759271424
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+            "sha256": "4630390dcbd196ec6a12da8155f8406896637149b102e574babb0fbfd5feb66a"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 3203.460782,
+            "load": 1422.846302
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3924.0191645956766,
+              "p50_ms": 0.2438155,
+              "p50_ms_per_item": 0.2438155,
+              "p95_ms": 0.3383053000000001,
+              "p95_ms_per_item": 0.3383053000000001,
+              "samples": 300,
+              "total_ms": 76.45222600000004
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 34.56009833293538,
+              "p50_ms": 27.627464500000002,
+              "p50_ms_per_item": 27.627464500000002,
+              "p95_ms": 34.953014950000004,
+              "p95_ms_per_item": 34.953014950000004,
+              "samples": 300,
+              "total_ms": 8680.530857000005
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1278.1635618618056,
+              "p50_ms": 0.771257,
+              "p50_ms_per_item": 0.771257,
+              "p95_ms": 0.944841,
+              "p95_ms_per_item": 0.944841,
+              "samples": 300,
+              "total_ms": 234.71174500000012
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 34.62684066479447,
+              "p50_ms": 27.564736366271973,
+              "p50_ms_per_item": 27.564736366271973,
+              "p95_ms": 34.9133113861084,
+              "p95_ms_per_item": 34.9133113861084,
+              "samples": 300,
+              "total_ms": 8663.799360275269
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 560.0543989051789,
+              "p50_ms": 1.6740585000000001,
+              "p50_ms_per_item": 1.6740585000000001,
+              "p95_ms": 2.5926143,
+              "p95_ms_per_item": 2.5926143,
+              "samples": 300,
+              "total_ms": 535.6622509999999
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 44.42970663025613,
+              "p50_ms": 22.099055999999997,
+              "p50_ms_per_item": 22.099055999999997,
+              "p95_ms": 25.04250555,
+              "p95_ms_per_item": 25.04250555,
+              "samples": 300,
+              "total_ms": 6752.239048000002
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 18.36762981264467,
+              "p50_ms": 52.910253,
+              "p50_ms_per_item": 52.910253,
+              "p95_ms": 63.13815015,
+              "p95_ms_per_item": 63.13815015,
+              "samples": 300,
+              "total_ms": 16333.081788999994
+            }
+          },
+          "torch_peak_allocated_bytes": 276785152,
+          "torch_peak_reserved_bytes": 297795584
+        },
+        {
+          "backend": "pt16",
+          "batch_size": 2,
+          "case": {
+            "backend": "PT16",
+            "batch_size": 2,
+            "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+            "item_unit": "image",
+            "name": "ecdet-l-o365",
+            "settings": {
+              "crops": 0,
+              "cuda_stream": "non-default",
+              "dataset_id": "meiji_4cam/person-model-speed-v1",
+              "engine_profile": null,
+              "flip_test": false,
+              "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+              "host_threads": 4,
+              "image_size_hw": [
+                640,
+                640
+              ],
+              "input_decode": "predecoded BGR",
+              "official_source_commit": "d8752b75c9beaecfcdd0e5cd207bae3b6946ae23",
+              "opencv_threads": 1,
+              "person_score_exclusive": 0.0,
+              "pose_box_margin": null,
+              "postprocess": "torch.float32",
+              "pytorch_precision": "CUDA autocast FP16",
+              "source_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+              "timed_input_ids_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+              "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+              "weight_sha256": "6259432a6184029e17cb008dcd3fa6ebf036c3e10cd56aa552a0d848ddcef19e"
+            }
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 9756,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 809603072,
+          "nvml_peak_minus_before_load_bytes": 390070272,
+          "nvml_used_bytes": {
+            "after_cold_start": 807505920,
+            "after_load": 576819200,
+            "after_warmup": 809603072,
+            "before_load": 419532800,
+            "block_1": 809603072,
+            "block_2": 809603072,
+            "block_3": 809603072
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/speed-13e508cb7-threads4-1/pt16/speed-b2.json",
+            "sha256": "d3ca7c5f49b7c1bc61094c3737c14b2e0622b4222aa42e24a0dcb638794b9d50"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 3169.154088,
+            "load": 1309.082894
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 5281.976743878957,
+              "p50_ms": 0.3590235,
+              "p50_ms_per_item": 0.17951175,
+              "p95_ms": 0.51377185,
+              "p95_ms_per_item": 0.256885925,
+              "samples": 300,
+              "total_ms": 113.59383599999995
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 65.14867341129407,
+              "p50_ms": 30.0881895,
+              "p50_ms_per_item": 15.04409475,
+              "p95_ms": 34.8886721,
+              "p95_ms_per_item": 17.44433605,
+              "samples": 300,
+              "total_ms": 9209.704028999997
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1718.0791987950718,
+              "p50_ms": 1.1516715,
+              "p50_ms_per_item": 0.57583575,
+              "p95_ms": 1.35346465,
+              "p95_ms_per_item": 0.676732325,
+              "samples": 300,
+              "total_ms": 349.2272069999996
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 65.25246845420445,
+              "p50_ms": 30.04201602935791,
+              "p50_ms_per_item": 15.021008014678955,
+              "p95_ms": 34.82613945007324,
+              "p95_ms_per_item": 17.41306972503662,
+              "samples": 300,
+              "total_ms": 9195.054443359375
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 738.3793179933342,
+              "p50_ms": 2.619326,
+              "p50_ms_per_item": 1.309663,
+              "p95_ms": 3.46335535,
+              "p95_ms_per_item": 1.731677675,
+              "samples": 300,
+              "total_ms": 812.5904739999997
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 45.46327880574815,
+              "p50_ms": 43.5547945,
+              "p50_ms_per_item": 21.77739725,
+              "p95_ms": 47.399272499999995,
+              "p95_ms_per_item": 23.699636249999998,
+              "samples": 300,
+              "total_ms": 13197.464322
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 25.2782697904282,
+              "p50_ms": 78.38841500000001,
+              "p50_ms_per_item": 39.194207500000005,
+              "p95_ms": 84.44713875,
+              "p95_ms_per_item": 42.223569375,
+              "samples": 300,
+              "total_ms": 23735.801736999987
+            }
+          },
+          "torch_peak_allocated_bytes": 325589504,
+          "torch_peak_reserved_bytes": 348127232
+        }
+      ],
+      "checkout_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-l-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16",
+      "job_id": "0-8204385482505987943_2026-11-25T13-48-37-494012056Z_1163508_i2487-ecdet-l-o365-pt16-speed-threads4-1.job",
+      "queue_log": {
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204385482505987943_2026-11-25T13-48-37-494012056Z_1163508_i2487-ecdet-l-o365-pt16-speed-threads4-1.log",
+        "sha256": "eb72721695c9a574e5d7d1626d3c66cc778a18b07d7dc0e118a80b246ca38c96"
+      },
+      "reproduction": {
+        "path": ".training_queue/repro/0-8204385482505987943_2026-11-25T13-48-37-494012056Z_1163508_i2487-ecdet-l-o365-pt16-speed-threads4-1/repro.sh",
+        "sha256": "71ee2e539de7cb0e4180a2b74963d5da56dc2f1867176c6c2d94266a729122dc"
+      },
+      "weight_sha256": "6259432a6184029e17cb008dcd3fa6ebf036c3e10cd56aa552a0d848ddcef19e"
+    },
+    "ecdet-x-coco": {
+      "cases": [
+        {
+          "backend": "pt16",
+          "batch_size": 1,
+          "case": {
+            "backend": "PT16",
+            "batch_size": 1,
+            "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+            "item_unit": "image",
+            "name": "ecdet-x-coco",
+            "settings": {
+              "crops": 0,
+              "cuda_stream": "non-default",
+              "dataset_id": "meiji_4cam/person-model-speed-v1",
+              "engine_profile": null,
+              "flip_test": false,
+              "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+              "host_threads": 4,
+              "image_size_hw": [
+                640,
+                640
+              ],
+              "input_decode": "predecoded BGR",
+              "official_source_commit": "d8752b75c9beaecfcdd0e5cd207bae3b6946ae23",
+              "opencv_threads": 1,
+              "person_score_exclusive": 0.0,
+              "pose_box_margin": null,
+              "postprocess": "torch.float32",
+              "pytorch_precision": "CUDA autocast FP16",
+              "source_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+              "timed_input_ids_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+              "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+              "weight_sha256": "c87394be021b573fd8e25969b85a8670127120c9d0209ac7807fbadae1a5cec6"
+            }
+          },
+          "comparison_at_batch_1": {
+            "baseline": "dino-swin-l",
+            "baseline_stage_wall_p50_ms_per_image": 165.68686300000002,
+            "nvml_peak_increase_mib": 432.0,
+            "quality": {
+              "coverage_oks": null,
+              "coverage_pck_0_10": null,
+              "coverage_pck_0_20": null,
+              "joint_coverage": null,
+              "metrics": {
+                "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/pt16/metrics.scorer-0d4bf0990.json",
+                "sha256": "7a602a7605c0f32d95067d1ca5ba6cd205aeb74d4a7e5e420f07494e91f79807"
+              },
+              "predictions": {
+                "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/pt16/predictions.jsonl",
+                "sha256": "f762173cbf1c78cd084680718ae035490ac725b6cd2817c0721dac06b909f68d"
+              },
+              "recall_50": 0.9757573451057999,
+              "recall_50_score_ge_0_5": 0.949954330948394,
+              "recall_75": 0.39792966966052673,
+              "small_recall_50": 0.9641410352588147
+            },
+            "stage_wall_p50_speedup": 3.159084348882161
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 9402,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 872517632,
+          "nvml_peak_minus_before_load_bytes": 452984832,
+          "nvml_used_bytes": {
+            "after_cold_start": 868323328,
+            "after_load": 622956544,
+            "after_warmup": 872517632,
+            "before_load": 419532800,
+            "block_1": 872517632,
+            "block_2": 872517632,
+            "block_3": 872517632
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+            "sha256": "e565521b0a0456b03cf13a03ff9e56e28bb339b3cb91b2b1253f3f38df8b275f"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 3223.568327,
+            "load": 2008.358246
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3895.8186412272808,
+              "p50_ms": 0.244072,
+              "p50_ms_per_item": 0.244072,
+              "p95_ms": 0.34576450000000003,
+              "p95_ms_per_item": 0.34576450000000003,
+              "samples": 300,
+              "total_ms": 77.00563800000003
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 35.795139156720595,
+              "p50_ms": 27.206222,
+              "p50_ms_per_item": 27.206222,
+              "p95_ms": 33.8534736,
+              "p95_ms_per_item": 33.8534736,
+              "samples": 300,
+              "total_ms": 8381.026225000009
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1317.8751556218376,
+              "p50_ms": 0.7439715,
+              "p50_ms_per_item": 0.7439715,
+              "p95_ms": 0.9040769000000001,
+              "p95_ms_per_item": 0.9040769000000001,
+              "samples": 300,
+              "total_ms": 227.63916499999988
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 35.85656523123829,
+              "p50_ms": 27.161952018737793,
+              "p50_ms_per_item": 27.161952018737793,
+              "p95_ms": 33.80710563659668,
+              "p95_ms_per_item": 33.80710563659668,
+              "samples": 300,
+              "total_ms": 8366.668643951416
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 580.4264932855854,
+              "p50_ms": 1.6321195,
+              "p50_ms_per_item": 1.6321195,
+              "p95_ms": 2.2803978500000004,
+              "p95_ms_per_item": 2.2803978500000004,
+              "samples": 300,
+              "total_ms": 516.8613140000003
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 44.88250263718032,
+              "p50_ms": 21.852688,
+              "p50_ms_per_item": 21.852688,
+              "p95_ms": 25.050062650000005,
+              "p95_ms_per_item": 25.050062650000005,
+              "samples": 300,
+              "total_ms": 6684.119252999994
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 18.825205155636233,
+              "p50_ms": 52.447749,
+              "p50_ms_per_item": 52.447749,
+              "p95_ms": 59.561099500000005,
+              "p95_ms_per_item": 59.561099500000005,
+              "samples": 300,
+              "total_ms": 15936.08130800001
+            }
+          },
+          "torch_peak_allocated_bytes": 382546944,
+          "torch_peak_reserved_bytes": 411041792
+        },
+        {
+          "backend": "pt16",
+          "batch_size": 2,
+          "case": {
+            "backend": "PT16",
+            "batch_size": 2,
+            "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+            "item_unit": "image",
+            "name": "ecdet-x-coco",
+            "settings": {
+              "crops": 0,
+              "cuda_stream": "non-default",
+              "dataset_id": "meiji_4cam/person-model-speed-v1",
+              "engine_profile": null,
+              "flip_test": false,
+              "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+              "host_threads": 4,
+              "image_size_hw": [
+                640,
+                640
+              ],
+              "input_decode": "predecoded BGR",
+              "official_source_commit": "d8752b75c9beaecfcdd0e5cd207bae3b6946ae23",
+              "opencv_threads": 1,
+              "person_score_exclusive": 0.0,
+              "pose_box_margin": null,
+              "postprocess": "torch.float32",
+              "pytorch_precision": "CUDA autocast FP16",
+              "source_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+              "timed_input_ids_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+              "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+              "weight_sha256": "c87394be021b573fd8e25969b85a8670127120c9d0209ac7807fbadae1a5cec6"
+            }
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 9445,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 977375232,
+          "nvml_peak_minus_before_load_bytes": 557842432,
+          "nvml_used_bytes": {
+            "after_cold_start": 943820800,
+            "after_load": 622956544,
+            "after_warmup": 977375232,
+            "before_load": 419532800,
+            "block_1": 977375232,
+            "block_2": 977375232,
+            "block_3": 977375232
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-coco/speed-13e508cb7-threads4-1/pt16/speed-b2.json",
+            "sha256": "1130e12ef555d26257cf83c2606a35ed416ea8bb1b8f81b38fd80a1e1457c160"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 3300.575198,
+            "load": 1856.466649
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 5354.075975498142,
+              "p50_ms": 0.3570645,
+              "p50_ms_per_item": 0.17853225,
+              "p95_ms": 0.49098415,
+              "p95_ms_per_item": 0.245492075,
+              "samples": 300,
+              "total_ms": 112.06415500000001
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 62.533746759844504,
+              "p50_ms": 31.2943055,
+              "p50_ms_per_item": 15.64715275,
+              "p95_ms": 36.051356,
+              "p95_ms_per_item": 18.025678,
+              "samples": 300,
+              "total_ms": 9594.819295000003
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1673.6964381120454,
+              "p50_ms": 1.175041,
+              "p50_ms_per_item": 0.5875205,
+              "p95_ms": 1.41089315,
+              "p95_ms_per_item": 0.705446575,
+              "samples": 300,
+              "total_ms": 358.4879470000002
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 62.64653861221413,
+              "p50_ms": 31.240943908691406,
+              "p50_ms_per_item": 15.620471954345703,
+              "p95_ms": 35.99320755004883,
+              "p95_ms_per_item": 17.996603775024415,
+              "samples": 300,
+              "total_ms": 9577.544319152832
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 720.2509760622149,
+              "p50_ms": 2.676011,
+              "p50_ms_per_item": 1.3380055,
+              "p95_ms": 3.4479917,
+              "p95_ms_per_item": 1.72399585,
+              "samples": 300,
+              "total_ms": 833.0429530000002
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 44.986437666468746,
+              "p50_ms": 43.878119,
+              "p50_ms_per_item": 21.9390595,
+              "p95_ms": 48.49436535,
+              "p95_ms_per_item": 24.247182675,
+              "samples": 300,
+              "total_ms": 13337.353013999998
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 24.70142255933851,
+              "p50_ms": 79.78718549999999,
+              "p50_ms_per_item": 39.893592749999996,
+              "p95_ms": 86.94397090000001,
+              "p95_ms_per_item": 43.471985450000005,
+              "samples": 300,
+              "total_ms": 24290.099024000003
+            }
+          },
+          "torch_peak_allocated_bytes": 433428992,
+          "torch_peak_reserved_bytes": 515899392
+        }
+      ],
+      "checkout_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-x-coco /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16",
+      "job_id": "0-8204385482836440906_2026-11-25T13-48-37-163559093Z_1163447_i2487-ecdet-x-coco-pt16-speed-threads4-1.job",
+      "queue_log": {
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204385482836440906_2026-11-25T13-48-37-163559093Z_1163447_i2487-ecdet-x-coco-pt16-speed-threads4-1.log",
+        "sha256": "2df4c657b2bba110075e293cf65c58597b6144cf7f8b62a373ef3575c1b8008d"
+      },
+      "reproduction": {
+        "path": ".training_queue/repro/0-8204385482836440906_2026-11-25T13-48-37-163559093Z_1163447_i2487-ecdet-x-coco-pt16-speed-threads4-1/repro.sh",
+        "sha256": "803aa47e901c8b636e0ec2f303029a390a629632fd6158705286ce2f4016865d"
+      },
+      "weight_sha256": "c87394be021b573fd8e25969b85a8670127120c9d0209ac7807fbadae1a5cec6"
+    },
+    "ecdet-x-o365": {
+      "cases": [
+        {
+          "backend": "pt16",
+          "batch_size": 1,
+          "case": {
+            "backend": "PT16",
+            "batch_size": 1,
+            "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+            "item_unit": "image",
+            "name": "ecdet-x-o365",
+            "settings": {
+              "crops": 0,
+              "cuda_stream": "non-default",
+              "dataset_id": "meiji_4cam/person-model-speed-v1",
+              "engine_profile": null,
+              "flip_test": false,
+              "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+              "host_threads": 4,
+              "image_size_hw": [
+                640,
+                640
+              ],
+              "input_decode": "predecoded BGR",
+              "official_source_commit": "d8752b75c9beaecfcdd0e5cd207bae3b6946ae23",
+              "opencv_threads": 1,
+              "person_score_exclusive": 0.0,
+              "pose_box_margin": null,
+              "postprocess": "torch.float32",
+              "pytorch_precision": "CUDA autocast FP16",
+              "source_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+              "timed_input_ids_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+              "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+              "weight_sha256": "be9c77cd4def8aadd0cc679944ba57412f363de2d44f7c6b900289e61316314c"
+            }
+          },
+          "comparison_at_batch_1": {
+            "baseline": "dino-swin-l",
+            "baseline_stage_wall_p50_ms_per_image": 165.68686300000002,
+            "nvml_peak_increase_mib": 432.0,
+            "quality": {
+              "coverage_oks": null,
+              "coverage_pck_0_10": null,
+              "coverage_pck_0_20": null,
+              "joint_coverage": null,
+              "metrics": {
+                "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/pt16/metrics.scorer-0d4bf0990.json",
+                "sha256": "8f63c774eb8059e379276ec501785b86ad3543869f175697ee6a8b32e229a16a"
+              },
+              "predictions": {
+                "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/pt16/predictions.jsonl",
+                "sha256": "29783206ffaecdd12552bbfd7d86b0244bef11ce9c1be714637907cbb7cfde46"
+              },
+              "recall_50": 0.9796772720353174,
+              "recall_50_score_ge_0_5": 0.9604201552747754,
+              "recall_75": 0.4662429593545441,
+              "small_recall_50": 0.9705926481620405
+            },
+            "stage_wall_p50_speedup": 3.264474961747743
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 9897,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 872517632,
+          "nvml_peak_minus_before_load_bytes": 452984832,
+          "nvml_used_bytes": {
+            "after_cold_start": 868323328,
+            "after_load": 622956544,
+            "after_warmup": 872517632,
+            "before_load": 419532800,
+            "block_1": 872517632,
+            "block_2": 872517632,
+            "block_3": 872517632
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+            "sha256": "4a7839a8791976e79d7569b34658a9625afe4faacc87835baa740c78d38d6871"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 3056.218975,
+            "load": 1809.335929
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3993.5783260517082,
+              "p50_ms": 0.22972399999999998,
+              "p50_ms_per_item": 0.22972399999999998,
+              "p95_ms": 0.3343456,
+              "p95_ms_per_item": 0.3343456,
+              "samples": 300,
+              "total_ms": 75.12060000000001
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 37.28854779936668,
+              "p50_ms": 26.291884,
+              "p50_ms_per_item": 26.291884,
+              "p95_ms": 30.593805600000003,
+              "p95_ms_per_item": 30.593805600000003,
+              "samples": 300,
+              "total_ms": 8045.365606999993
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1333.893272086883,
+              "p50_ms": 0.7436595,
+              "p50_ms_per_item": 0.7436595,
+              "p95_ms": 0.9102839,
+              "p95_ms_per_item": 0.9102839,
+              "samples": 300,
+              "total_ms": 224.90554999999998
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 37.35811219394846,
+              "p50_ms": 26.240415573120117,
+              "p50_ms_per_item": 26.240415573120117,
+              "p95_ms": 30.49448528289795,
+              "p95_ms_per_item": 30.49448528289795,
+              "samples": 300,
+              "total_ms": 8030.3843631744385
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 604.9091584224515,
+              "p50_ms": 1.596293,
+              "p50_ms_per_item": 1.596293,
+              "p95_ms": 2.141324500000001,
+              "p95_ms_per_item": 2.141324500000001,
+              "samples": 300,
+              "total_ms": 495.94223500000055
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 45.98260382453501,
+              "p50_ms": 21.6450515,
+              "p50_ms_per_item": 21.6450515,
+              "p95_ms": 22.30547065,
+              "p95_ms_per_item": 22.30547065,
+              "samples": 300,
+              "total_ms": 6524.206440000001
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 19.461486391992278,
+              "p50_ms": 50.754521,
+              "p50_ms_per_item": 50.754521,
+              "p95_ms": 55.67826065,
+              "p95_ms_per_item": 55.67826065,
+              "samples": 300,
+              "total_ms": 15415.06100600001
+            }
+          },
+          "torch_peak_allocated_bytes": 382546944,
+          "torch_peak_reserved_bytes": 411041792
+        },
+        {
+          "backend": "pt16",
+          "batch_size": 2,
+          "case": {
+            "backend": "PT16",
+            "batch_size": 2,
+            "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+            "item_unit": "image",
+            "name": "ecdet-x-o365",
+            "settings": {
+              "crops": 0,
+              "cuda_stream": "non-default",
+              "dataset_id": "meiji_4cam/person-model-speed-v1",
+              "engine_profile": null,
+              "flip_test": false,
+              "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+              "host_threads": 4,
+              "image_size_hw": [
+                640,
+                640
+              ],
+              "input_decode": "predecoded BGR",
+              "official_source_commit": "d8752b75c9beaecfcdd0e5cd207bae3b6946ae23",
+              "opencv_threads": 1,
+              "person_score_exclusive": 0.0,
+              "pose_box_margin": null,
+              "postprocess": "torch.float32",
+              "pytorch_precision": "CUDA autocast FP16",
+              "source_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+              "timed_input_ids_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+              "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+              "weight_sha256": "be9c77cd4def8aadd0cc679944ba57412f363de2d44f7c6b900289e61316314c"
+            }
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 9957,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 977375232,
+          "nvml_peak_minus_before_load_bytes": 557842432,
+          "nvml_used_bytes": {
+            "after_cold_start": 943820800,
+            "after_load": 622956544,
+            "after_warmup": 977375232,
+            "before_load": 419532800,
+            "block_1": 977375232,
+            "block_2": 977375232,
+            "block_3": 977375232
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-x-o365/speed-13e508cb7-threads4-1/pt16/speed-b2.json",
+            "sha256": "6f2522e0edb845e5a05374bc99363c0046ae0e8a26f1031ac6acd4715329f494"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 3139.584272,
+            "load": 1846.653739
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4952.559923746428,
+              "p50_ms": 0.378155,
+              "p50_ms_per_item": 0.1890775,
+              "p95_ms": 0.5597181500000004,
+              "p95_ms_per_item": 0.2798590750000002,
+              "samples": 300,
+              "total_ms": 121.14946799999994
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 60.22685287915136,
+              "p50_ms": 32.289494000000005,
+              "p50_ms_per_item": 16.144747000000002,
+              "p95_ms": 38.29424890000001,
+              "p95_ms_per_item": 19.147124450000003,
+              "samples": 300,
+              "total_ms": 9962.333599000009
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1681.263692264048,
+              "p50_ms": 1.156326,
+              "p50_ms_per_item": 0.578163,
+              "p95_ms": 1.44979085,
+              "p95_ms_per_item": 0.724895425,
+              "samples": 300,
+              "total_ms": 356.8744170000003
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 60.33073100574827,
+              "p50_ms": 32.21710395812988,
+              "p50_ms_per_item": 16.10855197906494,
+              "p95_ms": 38.262396621704106,
+              "p95_ms_per_item": 19.131198310852053,
+              "samples": 300,
+              "total_ms": 9945.180341720581
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 684.117278430277,
+              "p50_ms": 2.7489855,
+              "p50_ms_per_item": 1.37449275,
+              "p95_ms": 4.0674364,
+              "p95_ms_per_item": 2.0337182,
+              "samples": 300,
+              "total_ms": 877.0426049999994
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 43.596851172838946,
+              "p50_ms": 45.0731405,
+              "p50_ms_per_item": 22.53657025,
+              "p95_ms": 50.84022045,
+              "p95_ms_per_item": 25.420110225,
+              "samples": 300,
+              "total_ms": 13762.461826000015
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 23.868205638135358,
+              "p50_ms": 82.3864355,
+              "p50_ms_per_item": 41.19321775,
+              "p95_ms": 92.65283800000002,
+              "p95_ms_per_item": 46.32641900000001,
+              "samples": 300,
+              "total_ms": 25138.043851999988
+            }
+          },
+          "torch_peak_allocated_bytes": 433428992,
+          "torch_peak_reserved_bytes": 515899392
+        }
+      ],
+      "checkout_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-x-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16",
+      "job_id": "0-8204385482195415864_2026-11-25T13-48-37-804584135Z_1163781_i2487-ecdet-x-o365-pt16-speed-threads4-1.job",
+      "queue_log": {
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204385482195415864_2026-11-25T13-48-37-804584135Z_1163781_i2487-ecdet-x-o365-pt16-speed-threads4-1.log",
+        "sha256": "4f2885e6842b34d308bd619e658baed2f32b8d891f5956319af6e762bca062de"
+      },
+      "reproduction": {
+        "path": ".training_queue/repro/0-8204385482195415864_2026-11-25T13-48-37-804584135Z_1163781_i2487-ecdet-x-o365-pt16-speed-threads4-1/repro.sh",
+        "sha256": "2c38e7a6f2fd8f856404aa84e4007a233ab32d62669c9c2005d2e89c073bf009"
+      },
+      "weight_sha256": "be9c77cd4def8aadd0cc679944ba57412f363de2d44f7c6b900289e61316314c"
+    },
+    "ecpose-l-o365": {
+      "cases": [
+        {
+          "backend": "pt16",
+          "batch_size": 1,
+          "case": {
+            "backend": "PT16",
+            "batch_size": 1,
+            "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+            "item_unit": "image",
+            "name": "ecpose-l-o365",
+            "settings": {
+              "crops": 0,
+              "cuda_stream": "non-default",
+              "dataset_id": "meiji_4cam/person-model-speed-v1",
+              "engine_profile": null,
+              "flip_test": false,
+              "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+              "host_threads": 4,
+              "image_size_hw": [
+                640,
+                640
+              ],
+              "input_decode": "predecoded BGR",
+              "official_source_commit": "d8752b75c9beaecfcdd0e5cd207bae3b6946ae23",
+              "opencv_threads": 1,
+              "person_score_exclusive": 0.0,
+              "pose_box_margin": 0.1,
+              "postprocess": "torch.float32",
+              "pytorch_precision": "CUDA autocast FP16",
+              "source_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+              "timed_input_ids_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+              "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+              "weight_sha256": "091ad72c92ee5de3383176cbae8e8836e9cacf2b9fbec94c11c855fbfe35343c"
+            }
+          },
+          "comparison_at_batch_1": {
+            "baseline": "dino-swin-l-vitpose-h",
+            "baseline_stage_wall_p50_ms_per_image": 266.30324099999996,
+            "nvml_peak_increase_mib": 362.0,
+            "quality": {
+              "coverage_oks": 0.29081133127927483,
+              "coverage_pck_0_10": 0.25810689171468126,
+              "coverage_pck_0_20": 0.38561480784256386,
+              "joint_coverage": 0.5288841572350895,
+              "metrics": {
+                "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/pt16/metrics.json",
+                "sha256": "fece0379f311da4a787319e234cdc16972ee8be224070f8289272a57f67cdaf5"
+              },
+              "predictions": {
+                "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/pt16/predictions.jsonl",
+                "sha256": "458a797a371d6d14b05f1da3b003f51f08596d5cab393a92a91fe868f8d5b6d0"
+              },
+              "recall_50": 0.5218830872278886,
+              "recall_50_score_ge_0_5": 0.23085705586847313,
+              "recall_75": 0.40314355305221494,
+              "small_recall_50": 0.10990247561890473
+            },
+            "stage_wall_p50_speedup": 4.680874227257579
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10232,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 799117312,
+          "nvml_peak_minus_before_load_bytes": 379584512,
+          "nvml_used_bytes": {
+            "after_cold_start": 797020160,
+            "after_load": 583110656,
+            "after_warmup": 799117312,
+            "before_load": 419532800,
+            "block_1": 799117312,
+            "block_2": 799117312,
+            "block_3": 799117312
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+            "sha256": "89aa658bc913ae8725c3b93e49fef5cea91c99eae85db1a5a95be90e81f25b48"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 5751.237276,
+            "load": 1449.563176
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3052.06822284029,
+              "p50_ms": 0.307952,
+              "p50_ms_per_item": 0.307952,
+              "p95_ms": 0.4333265,
+              "p95_ms_per_item": 0.4333265,
+              "samples": 300,
+              "total_ms": 98.29400200000002
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 31.331215978460612,
+              "p50_ms": 31.03386,
+              "p50_ms_per_item": 31.03386,
+              "p95_ms": 38.8775233,
+              "p95_ms_per_item": 38.8775233,
+              "samples": 300,
+              "total_ms": 9575.115125000004
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1277.9057612230097,
+              "p50_ms": 0.7657320000000001,
+              "p50_ms_per_item": 0.7657320000000001,
+              "p95_ms": 0.9313276,
+              "p95_ms_per_item": 0.9313276,
+              "samples": 300,
+              "total_ms": 234.75909500000012
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 31.38621054000511,
+              "p50_ms": 30.966272354125977,
+              "p50_ms_per_item": 30.966272354125977,
+              "p95_ms": 38.82466621398926,
+              "p95_ms_per_item": 38.82466621398926,
+              "samples": 300,
+              "total_ms": 9558.337717056274
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 417.97992417624056,
+              "p50_ms": 2.2305555000000004,
+              "p50_ms_per_item": 2.2305555000000004,
+              "p95_ms": 3.3578733000000005,
+              "p95_ms_per_item": 3.3578733000000005,
+              "samples": 300,
+              "total_ms": 717.7378209999997
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 44.957060863787326,
+              "p50_ms": 21.981006,
+              "p50_ms_per_item": 21.981006,
+              "p95_ms": 23.4839333,
+              "p95_ms_per_item": 23.4839333,
+              "samples": 300,
+              "total_ms": 6673.034095999999
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 17.289671509174,
+              "p50_ms": 56.8917745,
+              "p50_ms_per_item": 56.8917745,
+              "p95_ms": 66.94006300000001,
+              "p95_ms_per_item": 66.94006300000001,
+              "samples": 300,
+              "total_ms": 17351.39964
+            }
+          },
+          "torch_peak_allocated_bytes": 313247232,
+          "torch_peak_reserved_bytes": 335544320
+        },
+        {
+          "backend": "pt16",
+          "batch_size": 2,
+          "case": {
+            "backend": "PT16",
+            "batch_size": 2,
+            "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+            "item_unit": "image",
+            "name": "ecpose-l-o365",
+            "settings": {
+              "crops": 0,
+              "cuda_stream": "non-default",
+              "dataset_id": "meiji_4cam/person-model-speed-v1",
+              "engine_profile": null,
+              "flip_test": false,
+              "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+              "host_threads": 4,
+              "image_size_hw": [
+                640,
+                640
+              ],
+              "input_decode": "predecoded BGR",
+              "official_source_commit": "d8752b75c9beaecfcdd0e5cd207bae3b6946ae23",
+              "opencv_threads": 1,
+              "person_score_exclusive": 0.0,
+              "pose_box_margin": 0.1,
+              "postprocess": "torch.float32",
+              "pytorch_precision": "CUDA autocast FP16",
+              "source_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+              "timed_input_ids_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+              "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+              "weight_sha256": "091ad72c92ee5de3383176cbae8e8836e9cacf2b9fbec94c11c855fbfe35343c"
+            }
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10446,
+            "sm_clock_mhz": 172,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 899780608,
+          "nvml_peak_minus_before_load_bytes": 480247808,
+          "nvml_used_bytes": {
+            "after_cold_start": 897683456,
+            "after_load": 583110656,
+            "after_warmup": 899780608,
+            "before_load": 419532800,
+            "block_1": 899780608,
+            "block_2": 899780608,
+            "block_3": 899780608
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-l-o365/speed-13e508cb7-threads4-1/pt16/speed-b2.json",
+            "sha256": "a303b07d351c290b950072b39643abc7b470f404a785a40d3c03e9128f4bd8c7"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 3934.563327,
+            "load": 1330.495332
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4201.815112697829,
+              "p50_ms": 0.46420150000000004,
+              "p50_ms_per_item": 0.23210075000000002,
+              "p95_ms": 0.61162615,
+              "p95_ms_per_item": 0.305813075,
+              "samples": 300,
+              "total_ms": 142.79543099999998
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 58.256005573748226,
+              "p50_ms": 33.744017,
+              "p50_ms_per_item": 16.8720085,
+              "p95_ms": 38.3652159,
+              "p95_ms_per_item": 19.18260795,
+              "samples": 300,
+              "total_ms": 10299.367319999994
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1684.1996765241886,
+              "p50_ms": 1.1797844999999998,
+              "p50_ms_per_item": 0.5898922499999999,
+              "p95_ms": 1.39064505,
+              "p95_ms_per_item": 0.695322525,
+              "samples": 300,
+              "total_ms": 356.2522950000001
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 58.339543502092695,
+              "p50_ms": 33.69705581665039,
+              "p50_ms_per_item": 16.848527908325195,
+              "p95_ms": 38.29794063568116,
+              "p95_ms_per_item": 19.14897031784058,
+              "samples": 300,
+              "total_ms": 10284.619384765625
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 491.1783830297937,
+              "p50_ms": 3.8896984999999997,
+              "p50_ms_per_item": 1.9448492499999999,
+              "p95_ms": 5.1455394000000005,
+              "p95_ms_per_item": 2.5727697000000003,
+              "samples": 300,
+              "total_ms": 1221.5521299999994
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 45.276792885180356,
+              "p50_ms": 43.7123165,
+              "p50_ms_per_item": 21.85615825,
+              "p95_ms": 47.12638785000001,
+              "p95_ms_per_item": 23.563193925000004,
+              "samples": 300,
+              "total_ms": 13251.821999000005
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 23.690859795670136,
+              "p50_ms": 83.7168225,
+              "p50_ms_per_item": 41.85841125,
+              "p95_ms": 90.2608984,
+              "p95_ms_per_item": 45.1304492,
+              "samples": 300,
+              "total_ms": 25326.223074000005
+            }
+          },
+          "torch_peak_allocated_bytes": 398217216,
+          "torch_peak_reserved_bytes": 436207616
+        }
+      ],
+      "checkout_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecpose-l-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16",
+      "job_id": "0-8204385481889489464_2026-11-25T13-48-38-110510535Z_1163961_i2487-ecpose-l-o365-pt16-speed-threads4-1.job",
+      "queue_log": {
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204385481889489464_2026-11-25T13-48-38-110510535Z_1163961_i2487-ecpose-l-o365-pt16-speed-threads4-1.log",
+        "sha256": "3804c9b10eeaaa4a3704e72e85a4dc6344ae357ed91dc07e13a293582d412b23"
+      },
+      "reproduction": {
+        "path": ".training_queue/repro/0-8204385481889489464_2026-11-25T13-48-38-110510535Z_1163961_i2487-ecpose-l-o365-pt16-speed-threads4-1/repro.sh",
+        "sha256": "cc12526a8dd2399dd2c9279b56212ad3ab7daedee466a13f43031896d64321da"
+      },
+      "weight_sha256": "091ad72c92ee5de3383176cbae8e8836e9cacf2b9fbec94c11c855fbfe35343c"
+    },
+    "ecpose-x-o365": {
+      "cases": [
+        {
+          "backend": "pt16",
+          "batch_size": 1,
+          "case": {
+            "backend": "PT16",
+            "batch_size": 1,
+            "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+            "item_unit": "image",
+            "name": "ecpose-x-o365",
+            "settings": {
+              "crops": 0,
+              "cuda_stream": "non-default",
+              "dataset_id": "meiji_4cam/person-model-speed-v1",
+              "engine_profile": null,
+              "flip_test": false,
+              "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+              "host_threads": 4,
+              "image_size_hw": [
+                640,
+                640
+              ],
+              "input_decode": "predecoded BGR",
+              "official_source_commit": "d8752b75c9beaecfcdd0e5cd207bae3b6946ae23",
+              "opencv_threads": 1,
+              "person_score_exclusive": 0.0,
+              "pose_box_margin": 0.1,
+              "postprocess": "torch.float32",
+              "pytorch_precision": "CUDA autocast FP16",
+              "source_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+              "timed_input_ids_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+              "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+              "weight_sha256": "2d79c0fd21831e4f3e6d5ba7bfa10b5e6e8ecb2641180299d7a1bd968b33f4f6"
+            }
+          },
+          "comparison_at_batch_1": {
+            "baseline": "dino-swin-l-vitpose-h",
+            "baseline_stage_wall_p50_ms_per_image": 266.30324099999996,
+            "nvml_peak_increase_mib": 472.0,
+            "quality": {
+              "coverage_oks": 0.2587980664691711,
+              "coverage_pck_0_10": 0.24416856668966494,
+              "coverage_pck_0_20": 0.33077534645910345,
+              "joint_coverage": 0.4067953046966741,
+              "metrics": {
+                "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/pt16/metrics.json",
+                "sha256": "afe07b487c5cf09a5ac3e5e8b8775434d9fe5e1b42571b34c6382a27b20ac44b"
+              },
+              "predictions": {
+                "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/pt16/predictions.jsonl",
+                "sha256": "dea95429c15213ec5e47bf64f0056c141cfc5f4ab550719cbbb34bb141a5598c"
+              },
+              "recall_50": 0.4009362155579236,
+              "recall_50_score_ge_0_5": 0.22689907139595067,
+              "recall_75": 0.3344116303851423,
+              "small_recall_50": 0.014253563390847712
+            },
+            "stage_wall_p50_speedup": 4.750163754239007
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 7001,
+            "power_limit_mw": 180000,
+            "power_mw": 23981,
+            "sm_clock_mhz": 540,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 914460672,
+          "nvml_peak_minus_before_load_bytes": 494927872,
+          "nvml_used_bytes": {
+            "after_cold_start": 895586304,
+            "after_load": 629248000,
+            "after_warmup": 914460672,
+            "before_load": 419532800,
+            "block_1": 914460672,
+            "block_2": 914460672,
+            "block_3": 914460672
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/speed-13e508cb7-threads4-1/pt16/speed-b1.json",
+            "sha256": "bea027e93c934e81a6dd4c7c3bbd89177dc9f952e5906f497651dcce91c443e6"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 3936.202794,
+            "load": 1994.508045
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3201.072248232653,
+              "p50_ms": 0.29873,
+              "p50_ms_per_item": 0.29873,
+              "p95_ms": 0.39395775,
+              "p95_ms_per_item": 0.39395775,
+              "samples": 300,
+              "total_ms": 93.71859700000002
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 31.823075090912322,
+              "p50_ms": 30.41534,
+              "p50_ms_per_item": 30.41534,
+              "p95_ms": 38.2182353,
+              "p95_ms_per_item": 38.2182353,
+              "samples": 300,
+              "total_ms": 9427.121645000003
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1332.8550457049323,
+              "p50_ms": 0.7366925,
+              "p50_ms_per_item": 0.7366925,
+              "p95_ms": 0.8973735500000001,
+              "p95_ms_per_item": 0.8973735500000001,
+              "samples": 300,
+              "total_ms": 225.08074
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 31.879735559070713,
+              "p50_ms": 30.353919982910156,
+              "p50_ms_per_item": 30.353919982910156,
+              "p95_ms": 38.14375324249268,
+              "p95_ms_per_item": 38.14375324249268,
+              "samples": 300,
+              "total_ms": 9410.366640090942
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 412.10729584893477,
+              "p50_ms": 2.269542,
+              "p50_ms_per_item": 2.269542,
+              "p95_ms": 3.3881822000000006,
+              "p95_ms_per_item": 3.3881822000000006,
+              "samples": 300,
+              "total_ms": 727.9657579999998
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 44.93183447107866,
+              "p50_ms": 21.9923395,
+              "p50_ms_per_item": 21.9923395,
+              "p95_ms": 23.453641700000002,
+              "p95_ms_per_item": 23.453641700000002,
+              "samples": 300,
+              "total_ms": 6676.780584000002
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 17.440437496778976,
+              "p50_ms": 56.061907500000004,
+              "p50_ms_per_item": 56.061907500000004,
+              "p95_ms": 65.74072260000001,
+              "p95_ms_per_item": 65.74072260000001,
+              "samples": 300,
+              "total_ms": 17201.403351000004
+            }
+          },
+          "torch_peak_allocated_bytes": 414286336,
+          "torch_peak_reserved_bytes": 450887680
+        },
+        {
+          "backend": "pt16",
+          "batch_size": 2,
+          "case": {
+            "backend": "PT16",
+            "batch_size": 2,
+            "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+            "item_unit": "image",
+            "name": "ecpose-x-o365",
+            "settings": {
+              "crops": 0,
+              "cuda_stream": "non-default",
+              "dataset_id": "meiji_4cam/person-model-speed-v1",
+              "engine_profile": null,
+              "flip_test": false,
+              "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+              "host_threads": 4,
+              "image_size_hw": [
+                640,
+                640
+              ],
+              "input_decode": "predecoded BGR",
+              "official_source_commit": "d8752b75c9beaecfcdd0e5cd207bae3b6946ae23",
+              "opencv_threads": 1,
+              "person_score_exclusive": 0.0,
+              "pose_box_margin": 0.1,
+              "postprocess": "torch.float32",
+              "pytorch_precision": "CUDA autocast FP16",
+              "source_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+              "timed_input_ids_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+              "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+              "weight_sha256": "2d79c0fd21831e4f3e6d5ba7bfa10b5e6e8ecb2641180299d7a1bd968b33f4f6"
+            }
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10898,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 1040289792,
+          "nvml_peak_minus_before_load_bytes": 620756992,
+          "nvml_used_bytes": {
+            "after_cold_start": 1006735360,
+            "after_load": 629248000,
+            "after_warmup": 1040289792,
+            "before_load": 419532800,
+            "block_1": 1040289792,
+            "block_2": 1040289792,
+            "block_3": 1040289792
+          },
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "raw": {
+            "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecpose-x-o365/speed-13e508cb7-threads4-1/pt16/speed-b2.json",
+            "sha256": "a8052aecd25700441dd1c6f88e2a15b4ec863c26d6f69a0405fde5df1373a49e"
+          },
+          "sample_count": 300,
+          "setup_wall_ms": {
+            "cold_start": 3737.563124,
+            "load": 1800.162603
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4150.40899582888,
+              "p50_ms": 0.460385,
+              "p50_ms_per_item": 0.2301925,
+              "p95_ms": 0.6411651500000001,
+              "p95_ms_per_item": 0.32058257500000004,
+              "samples": 300,
+              "total_ms": 144.56406600000003
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 54.22760000536928,
+              "p50_ms": 35.34619,
+              "p50_ms_per_item": 17.673095,
+              "p95_ms": 45.86891775,
+              "p95_ms_per_item": 22.934458875,
+              "samples": 300,
+              "total_ms": 11064.476391000002
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1735.167990072063,
+              "p50_ms": 1.1176425,
+              "p50_ms_per_item": 0.55882125,
+              "p95_ms": 1.4180728000000002,
+              "p95_ms_per_item": 0.7090364000000001,
+              "samples": 300,
+              "total_ms": 345.78784499999995
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 54.31670784919219,
+              "p50_ms": 35.293344497680664,
+              "p50_ms_per_item": 17.646672248840332,
+              "p95_ms": 45.792426681518556,
+              "p95_ms_per_item": 22.896213340759278,
+              "samples": 300,
+              "total_ms": 11046.324855804443
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 470.9048092699,
+              "p50_ms": 4.000418,
+              "p50_ms_per_item": 2.000209,
+              "p95_ms": 5.435221650000001,
+              "p95_ms_per_item": 2.7176108250000004,
+              "samples": 300,
+              "total_ms": 1274.1428589999998
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 44.54369488073599,
+              "p50_ms": 44.0131795,
+              "p50_ms_per_item": 22.00658975,
+              "p95_ms": 49.56813885000001,
+              "p95_ms_per_item": 24.784069425000006,
+              "samples": 300,
+              "total_ms": 13469.919852999996
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 22.764701003448987,
+              "p50_ms": 85.71106449999999,
+              "p50_ms_per_item": 42.855532249999996,
+              "p95_ms": 101.57718330000002,
+              "p95_ms_per_item": 50.78859165000001,
+              "samples": 300,
+              "total_ms": 26356.59479600002
+            }
+          },
+          "torch_peak_allocated_bytes": 500077568,
+          "torch_peak_reserved_bytes": 576716800
+        }
+      ],
+      "checkout_commit": "60af57ee662aa7d307cd1f49ae069b45aaa65446",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecpose-x-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6 pt16",
+      "job_id": "0-8204385481606919777_2026-11-25T13-48-38-393080222Z_1164088_i2487-ecpose-x-o365-pt16-speed-threads4-1.job",
+      "queue_log": {
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204385481606919777_2026-11-25T13-48-38-393080222Z_1164088_i2487-ecpose-x-o365-pt16-speed-threads4-1.log",
+        "sha256": "f0dc3a33103717862bd0e90e559d11387d436fc65f3e5fcc561e45439925db22"
+      },
+      "reproduction": {
+        "path": ".training_queue/repro/0-8204385481606919777_2026-11-25T13-48-38-393080222Z_1164088_i2487-ecpose-x-o365-pt16-speed-threads4-1/repro.sh",
+        "sha256": "b7fa643888c5588decd2c509b0daafd46c45eaa013cef149c18f0f98cea9b425"
+      },
+      "weight_sha256": "2d79c0fd21831e4f3e6d5ba7bfa10b5e6e8ecb2641180299d7a1bd968b33f4f6"
+    }
+  },
+  "schema_version": 1,
+  "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+  "verified_unique_input_images": 96
+}
