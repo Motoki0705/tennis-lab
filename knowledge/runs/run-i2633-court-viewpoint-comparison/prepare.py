@@ -37,7 +37,7 @@ from src.tasks.court_detection.scaling.real_split import make_registry, real_sou
 from src.utils.data.image_record_store import file_sha256
 from src.utils.io import write_json_atomic
 
-POOL_SHA256 = "13b685927e56aac0ab6bd8335d6d7e9ab654f461ed68f57e29db84648f86fbc4c"
+POOL_SHA256 = "3b685927e56aac0ab6bd8335d6d7e9ab654f461ed68f57e29db84648f86fbc4c"
 PARTITION_SHA256 = "4355b16613b7e53a5ca76e1db87c55f1a18ee6ce04d1209ea4447bbf38524d43"
 QUOTAS = {"B00": (64, 64), "B01": (43, 43, 42), "B02": (128,), "B03": (128,)}
 MIN_VISIBLE_POINTS = 4
@@ -248,11 +248,15 @@ def prepare(source_pool: Path, scenes_root: Path, tcd: Path, output: Path) -> No
     if output.exists():
         raise FileExistsError(output)
     partition_path = source_pool.parent / "trajectory-partition.json"
-    if (
-        file_sha256(source_pool) != POOL_SHA256
-        or file_sha256(partition_path) != PARTITION_SHA256
+    for path, expected in (
+        (source_pool, POOL_SHA256),
+        (partition_path, PARTITION_SHA256),
     ):
-        raise ValueError("The pool or original trajectory partition changed.")
+        actual = file_sha256(path)
+        if actual != expected:
+            raise ValueError(
+                f"SHA-256 mismatch for {path}: expected {expected}, found {actual}"
+            )
     print("Verifying the frozen synthetic publication", flush=True)
     publication = load_dataset_version(source_pool, verify_images=True)
     partition = read_json(partition_path)["scenes"]
