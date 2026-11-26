@@ -5,13 +5,21 @@
       "before": "0f31ad644cbfd2d6994907c6174d675b3bb94bc1da63779db4aa77ca9c2f7450",
       "after": "b3e28dfce48df46294ce6996954145336c89f97359020db65e1469ff9e4dca15"
     },
+    "tennis_scene/pipeline/dataset_publication.py": {
+      "before": "8a50a8a3fc0c54b3d4d334b731a930951cf322e0bae3abbe03789c9bb861a071",
+      "after": "049a71313ca1c0d0f06837148679b1d922a15aea0220298ce0f10882621acc65"
+    },
     "tennis_scene/pipeline/definition.py": {
       "before": "d2f6f781093f2a1b4a9ae18f002f5b334b97f92887091d8f0b271f28f78838b4",
       "after": "0dce9ff6a224f07bbecdb455fd245f32a00bb245d139192eb15550770d9a6654"
     },
+    "tennis_scene/pipeline/direct_annotation/__init__.py": {
+      "before": "5f0e93688459ccb5c94de00ad2198b3612239658ecf8452bbf187d37a4ff1d24",
+      "after": "77b18dfd86c25b4c7595c01e41149decefc8f6aaf2a60c74e66aa4ae9467c302"
+    },
     "tennis_scene/pipeline/orchestrator.py": {
       "before": "228dbfa0765642654dbca5eb519e6299bbc0b6c7c96195b67417e4d5b62867dc",
-      "after": "4e220ab0572d0dfd8c1d33a543c987a3242b3d8a46a5158a23ed7d866ff681e7"
+      "after": "a877cff9b76a979210b6d5b16487b5bc5bd15b4d10bc6290a67ffb6b1838ce77"
     },
     "tennis_scene/pipeline/source_identity.py": {
       "before": "2b21cc6ca7a5d12be35b47e9cd5bf80e267020327279c8d07138a7d3ed06f070",

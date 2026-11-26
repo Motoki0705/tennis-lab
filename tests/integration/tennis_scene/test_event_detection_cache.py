@@ -172,6 +172,11 @@ def test_event_cache_tracks_sources_and_settings_and_keeps_computation_commit(
     changed_code = new_pipeline(config)
     changed_publication = changed_code.publication_identity()
     assert changed_publication["code_sha256"] != publication["code_sha256"]
+    published_marker = marker.read_bytes()
+    with pytest.raises(ValueError, match="Published event_detection implementation differs"):
+        publish_annotation(bound, scene, pipeline_config_yaml=yaml, publication_identity=changed_publication,
+                           expected_scene=archive)
+    assert marker.read_bytes() == published_marker
     # Hold the assembly reference fixed to isolate the event's own implementation
     # check from the pipeline's broader source fingerprint.
     event_node = initial.nodes[EVENT_DETECTION]

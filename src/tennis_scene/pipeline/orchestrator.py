@@ -297,7 +297,7 @@ class TennisSceneOrchestrator:
                 if direct.resume == "publication":
                     scene, saved = saved_scene(store, direct, workflow.reference.digest,
                         people_runtime=self.config.people.runtime, model_identity=direct_model_identity,
-                        event_settings=direct_event_settings)
+                        event_settings=direct_event_settings, code_identity=self.code_identity)
                     archive = Path(str(saved["archive"]))
                     self.last_receipt["scene"] = saved
                 else:
