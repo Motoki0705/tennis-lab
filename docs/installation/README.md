@@ -324,7 +324,7 @@ Body models and DINOv3 still require their official registration/application pat
 ```bash
 export PYTHONPATH="$PWD/outputs/dino_extension/lib"
 export TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so"
-CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
+CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight event_detection.method=rule
 ```
 
 Require `status: ok` and exit code 0. Missing files, content mismatches, read failures and extension incompatibilities

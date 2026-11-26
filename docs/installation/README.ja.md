@@ -306,7 +306,7 @@ body modelとDINOv3は引き続き上記の公式登録・申請経路で取得�
 ```bash
 export PYTHONPATH="$PWD/outputs/dino_extension/lib"
 export TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so"
-CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
+CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight event_detection.method=rule
 ```
 
 `status: ok`と終了値0が必要です。欠損・内容の不一致・読取失敗・拡張の不適合を**全件まとめて**
