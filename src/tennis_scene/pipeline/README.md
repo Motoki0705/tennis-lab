@@ -592,8 +592,15 @@ datasetの完成marker（`annotation.json`）は`dataset_publication.py`が公�
 `body_parameters` v2、`hmr2_features` v1、共通の`body_view_selection`までたどり、
 採用参照・checksumとclip/人物/segment/frameの対応を検証する。旧身体成果物は明示的に拒否する。
 
-モデル/設定/上流artifact/入力組立の変更は再計算を必要とする。現行のコードfingerprintは`src`全体を保守的に含むため、
-コード変更は全componentを無効化する。設定・checkpointだけの変更は、そのcomponentと依存先だけを無効化する。
+モデル/設定/上流artifact/入力組立の変更は再計算を必要とする。実行キーの実装識別と公開識別の
+`code_sha256` は、`src` 全体のPythonソースのSHA-256を `source_identity.py` の互換表で
+正規化して求める。互換表は対象ファイルの全ハッシュが一致する変更だけを基準版へ対応づける。
+ソース識別が変わると全componentが無効になり、設定・checkpointだけの変更はそのcomponentと依存先を無効にする。
+同じソース識別・設定・入力ならcheckoutのcommitをまたいで再利用できる。`event_detection` の
+`metadata.ball_events.provenance.code_commit` は計算時のcommitを記録し、cache/loadによる再利用時も保持する。
+設定に `code_commit` を含む旧実行キーの `event_detection` には、一度 `execute` が必要になる。
+旧公開識別の完成markerを更新するdatasetでは `overwrite=true` を使う。
+配布済みのSceneResult v3は `load_scene_result` で引き続き読み込める。
 新しい実装を差す場合は`ComponentNode`へ実装、IO、assembler、bindings、設定を登録する。runner変更は不要。
 
 ## execute / load
