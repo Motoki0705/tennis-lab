@@ -1,3 +1,4 @@
+from dataclasses import replace
 from pathlib import Path
 
 import cv2
@@ -107,15 +108,21 @@ def _comparison() -> tuple[ComparisonInputs, ClipPlan]:
     valid[:, 5:7] = True
     support: NDArray[np.bool_] = np.zeros((2, 4, 17), dtype=np.bool_)
     support[:, :2, 5:7] = True
+    support[:, 2, 6] = True
+    measured = support.copy()
+    measured[:, 2, 5] = True
+    errors = np.zeros(support.shape, dtype=np.float32)
+    errors[:, 0, 5] = 2  # Inlier residuals are excluded from the statistic.
+    errors[:, 2, 5] = (3, 7)
     candidates = FramePoseCandidates(
         camera_ids=source.camera_ids,
         frame_offsets=np.array([0, 2, 2]),
         positions_m=xyz,
         joint_valid=valid,
-        source_rows=np.array([[0, 0, -1, -1], [1, 1, -1, -1]]),
+        source_rows=np.array([[0, 0, 0, -1], [1, 1, 1, -1]]),
         inlier_mask=support,
-        reprojection_px=np.zeros(support.shape, dtype=np.float32),
-        reprojection_valid=support,
+        reprojection_px=errors,
+        reprojection_valid=measured,
         joint_rejection_codes=np.where(
             valid, 0, PointRejection.INSUFFICIENT_VIEWS
         ).astype(np.uint8),
@@ -126,13 +133,13 @@ def _comparison() -> tuple[ComparisonInputs, ClipPlan]:
         detection_offsets=(
             np.array([0, 2, 2]),
             np.array([0, 2, 2]),
-            np.zeros(3, dtype=np.int64),
+            np.array([0, 2, 2]),
             np.zeros(3, dtype=np.int64),
         ),
         row_rejection_codes=(
             np.zeros(2, dtype=np.uint8),
             np.zeros(2, dtype=np.uint8),
-            np.empty(0, dtype=np.uint8),
+            np.zeros(2, dtype=np.uint8),
             np.empty(0, dtype=np.uint8),
         ),
     )
@@ -146,8 +153,8 @@ def _comparison() -> tuple[ComparisonInputs, ClipPlan]:
         (),
         candidates,
         cameras,
-        (np.zeros((2, 4), dtype=np.float32),) * 2
-        + (np.empty((0, 4), dtype=np.float32),) * 2,
+        (np.zeros((2, 4), dtype=np.float32),) * 3
+        + (np.empty((0, 4), dtype=np.float32),),
         {"legacy_scene_assembly": {"artifact_id": "a" * 64}},
     )
     return data, ClipPlan(source.clip_id, Path(source.clip_id), 2, None, None, 1.0)
@@ -180,6 +187,21 @@ def test_frame_histograms_keep_empty_frames_and_outside_core_people() -> None:
     assert metrics["new"]["ambiguous_frames"] == 1
     assert metrics["legacy"]["count_histogram"] == {1: 2}
     assert metrics["ball_valid_frames"] == 1
+
+
+def test_reprojection_summarizes_matched_non_inliers_and_explains_stops() -> None:
+    data, plan = _comparison()
+    stopped = replace(plan, baseline_reason="court_side_no_consistent_hypothesis")
+    metrics = clip_metrics(replace(data, legacy=None), stopped, 2.0)
+    assert metrics["legacy"]["unused_view_reprojection"] == {
+        "points": 0,
+        "median_px": None,
+        "p95_px": None,
+        "reason": "pipeline_stopped",
+    }
+    scores = metrics["new"]["unused_view_reprojection"]
+    assert scores["points"] == 2 and scores["reason"] is None
+    np.testing.assert_allclose((scores["median_px"], scores["p95_px"]), (5.0, 6.8))
 
 
 def test_page_embeds_literal_data_for_file_playback(tmp_path: Path) -> None:

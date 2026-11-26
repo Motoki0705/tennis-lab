@@ -828,6 +828,17 @@ class Review(StoreReader):
                          ("valid player frames", str(_count(player_valid))),
                          ("trajectory policy", "source-frame axis retained; no line across missing frames")]
 
+    @renders("event_detection", "scene_result", 3)
+    def render_event_detection(self, node: str, camera: str, value: dict[str, Any]) -> RenderResult:
+        events = value["metadata"]["ball_events"]
+        kinds = _array(value["ball_event_kind"])
+        coverage = _array(value["ball_event_coverage"])
+        return [], [
+            ("event source", str(events["source"])),
+            ("covered frames", f"{_count(coverage)}/{len(coverage)}"),
+            *((kind, str(_count(kinds == code))) for code, kind in enumerate(events["classes"])),
+        ]
+
     def build(self) -> Path:
         nodes: list[str] = []
         for name in STANDARD_COMPONENTS:

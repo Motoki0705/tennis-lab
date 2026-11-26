@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import json
 from dataclasses import replace
 from pathlib import Path
 from typing import Any
@@ -46,7 +47,7 @@ def runtime(tmp_path: Path, *, overrides: tuple[str, ...] = ()) -> PipelineRunti
             "device=cpu", "gvhmr.enabled=false", f"paths.data_root={tmp_path}",
             f"paths.artifact_root={tmp_path}", f"paths.output_root={tmp_path}",
             f"paths.checkpoint_root={tmp_path / 'ckpt'}", f"paths.external_asset_root={tmp_path / 'third_party'}",
-            "output_directory=run", "cache.directory=stages",
+            "output_directory=run", "cache.directory=stages", "event_detection.method=rule",
             *overrides,
         ])
     return PipelineRuntimeConfig.from_config(cfg)
@@ -248,16 +249,24 @@ def setup_pipeline(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, empty: bo
 def test_headless_declared_pipeline_and_disk_resume(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
     pipeline, paths, stages = setup_pipeline(tmp_path, monkeypatch)
     scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
-    assert scene.schema_version == 2 and scene.num_frames == 24
+    assert scene.schema_version == 3 and scene.num_frames == 24
     assert scene.metadata["court_reference"]["view_half_turns"] == [False, False, True]
-    assert scene.player_kp_3d_vis.all() and scene.ball_3d_valid.all()
+    assert scene.player_kp_3d_vis is not None and scene.player_kp_3d_vis.all()
+    assert scene.ball_3d_valid is not None and scene.ball_3d_valid.all()
     assert all(stage.calls == 1 for stage in stages.values())
     assert pipeline.last_runner is not None and pipeline.last_runner.statuses["court_side"] == "executed"
     side = pipeline.last_runner.output("court_side")  # the fixture's cam2 court is half-turned
     assert side.view_half_turns == (False, False, True) and len(side.hypotheses) == 4 and side.margin > .5
     assert pipeline.last_store is not None
-    assert pipeline.last_store.index_path.is_file()
-    assert not scene.player_valid.any()
+    index_path = pipeline.last_store.index_path
+    index = json.loads(index_path.read_text())
+    assert index["exports"]["scene"]["inputs"] == {"event_detection": index["artifacts"]["event_detection"]}
+    assert scene.metadata["ball_events"]["source"] == "rule"
+    assert load_scene_result(index_path).schema_version == 3
+    old = pipeline.last_runner.output("scene_assembly")
+    assert old.schema_version == 2 and old.ball_event_frame is None
+    np.testing.assert_array_equal(scene.ball_3d, old.ball_3d)
+    assert scene.player_valid is not None and not scene.player_valid.any()
     pipeline.config = replace(pipeline.config, cache_source="load")
     again = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
     np.testing.assert_array_equal(again.ball_3d, scene.ball_3d)
@@ -299,7 +308,8 @@ def test_player_side_scene_plans_the_requested_ball_stages(
     pipeline = TennisSceneOrchestrator(cfg, components=stages)
     scene = pipeline.run(patch_video_probe(tmp_path, monkeypatch), video_role=PathRole.DATA, camera_ids=people.camera_ids,
                          store_root=tmp_path / "player-store")
-    assert scene.player_kp_3d_vis.all()
+    assert scene.player_kp_3d_vis is not None and scene.player_kp_3d_vis.all()
+    assert scene.ball_3d_valid is not None and scene.ball_3d is not None
     assert bool(scene.ball_3d_valid.any()) is include_ball and bool(scene.ball_3d.any()) is include_ball
     assert scene.metadata["court_reference"]["view_half_turns"] == [False, False, True]
     runner = pipeline.last_runner
@@ -326,6 +336,7 @@ def test_single_ball_missing_views_remain_invalid(tmp_path: Path, monkeypatch: p
         result.confidence[7] = 0
         result.uv_px[7] = 0
     scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
+    assert scene.ball_3d_valid is not None and scene.ball_3d is not None
     assert not scene.ball_3d_valid[7] and scene.ball_3d_valid.sum() == 23
     assert not scene.ball_3d[7].any()
 
@@ -415,7 +426,9 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
     materialize_assets(config.people.body_assets().values(), tmp_path)  # identity inputs of the real body_placement
     pipeline = TennisSceneOrchestrator(config, components=stages)
     scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
-    assert scene.player_valid.all() and scene.player_heading_valid.all() and scene.player_smpl_valid.all()
+    assert scene.player_valid is not None and scene.player_valid.all()
+    assert scene.player_heading_valid is not None and scene.player_heading_valid.all()
+    assert scene.player_smpl_valid is not None and scene.player_smpl_valid.all()
     assert body.calls == 1 and body.unloaded
     expected = np.column_stack((np.full(24, np.linspace(-.2, .2, 17)[11:13].mean()), -4 + np.arange(24)*.01,
                                 np.full(24, np.linspace(.5, 1.8, 17)[11:13].mean()))) + [.03, 0., -.05]
@@ -424,7 +437,7 @@ def test_selected_gvhmr_parameters_are_placed_and_resumed_without_reinference(tm
     np.testing.assert_array_equal(scene.smpl_body_pose, 0)
     assert scene.metadata["body_placement"]["players"]["0"]["scale"] == pytest.approx(1, abs=1e-5)
     if missing_hips:
-        assert not scene.player_kp_3d_vis[..., 11:13].any()
+        assert scene.player_kp_3d_vis is not None and not scene.player_kp_3d_vis[..., 11:13].any()
     pipeline.config = replace(config, cache_source="load")
     again = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=None)
     np.testing.assert_array_equal(again.player_position, scene.player_position)
@@ -446,6 +459,7 @@ def test_missing_detector_frames_remain_missing_through_triangulation_and_reload
         observed[8:11], kind[8:11] = False, 2  # finite interpolated pixels must not enter geometry
         stage.result = replace(row, observed=observed, point_kind=kind)
     scene = pipeline.run(paths, video_role=PathRole.DATA, camera_ids=("cam0", "cam1", "cam2"), store_root=tmp_path / "store")
+    assert scene.ball_3d_valid is not None
     assert not scene.ball_3d_valid[8:11].any()
     assert scene.ball_3d_valid[:8].all() and scene.ball_3d_valid[11:].all()
     runner = pipeline.last_runner

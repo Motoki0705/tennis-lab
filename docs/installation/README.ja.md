@@ -306,7 +306,7 @@ body modelとDINOv3は引き続き上記の公式登録・申請経路で取得�
 ```bash
 export PYTHONPATH="$PWD/outputs/dino_extension/lib"
 export TENNIS_LAB_DINO_EXTENSION="$PWD/outputs/dino_extension/lib/MultiScaleDeformableAttention.so"
-CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight
+CUDA_VISIBLE_DEVICES='' .venv/bin/python -m src.tennis_scene.scripts.preflight event_detection.method=rule
 ```
 
 `status: ok`と終了値0が必要です。欠損・内容の不一致・読取失敗・拡張の不適合を**全件まとめて**
@@ -331,7 +331,7 @@ PYTHONPATH="$PWD/outputs/dino_extension/lib" \
   OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 \
   .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   output_directory=tennis_scene/generate/clean_install output_name=scene \
-  cache.directory=tennis_scene/cache/clean_install
+  cache.directory=tennis_scene/cache/clean_install event_detection.method=rule
 ```
 
 このrepoの共有GPU上では[training queue](../../.agents/skills/training-queue/SKILL.md)から実行します。
@@ -340,7 +340,7 @@ RTX 5060 Tiでのクリーン導入検証では、pipeline開始からscene保�
 公開サンプル1clipの参考値で、queue待ち・プロセス起動・資産取得・ビルド・可視化は含みません。
 
 `outputs/tennis_scene/generate/clean_install/scene.npz`と`scene.metadata.json`が保存され、
-metadataの`scene_schema_version=2`・`status=ok`であることを確認します。
+metadataの`scene_schema_version=3`・`status=ok`であることを確認します。
 正規readerでのmask・理由コード・座標系の検査も必要です。
 
 ```bash

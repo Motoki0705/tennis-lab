@@ -18,6 +18,7 @@ from src.tennis_scene.visualization.blender.export.bundle import (
 )
 from src.tennis_scene.visualization.blender.export.pointcache import read_pc2
 from src.utils.video.writer import save_video_rgb
+from tests.support.tennis_scene.annotations import with_fixture_ball_events
 
 pytestmark = pytest.mark.integration
 
@@ -114,10 +115,14 @@ def _export(inputs: tuple[Path, Path, Path], output: Path) -> Path:
     )
 
 
-def test_v2_bundle_preserves_timeline_geometry_and_explicit_gaps(
+@pytest.mark.parametrize("version", [2, 3])
+def test_bundle_preserves_timeline_geometry_and_explicit_gaps(
     inputs: tuple[Path, Path, Path],
     tmp_path: Path,
+    version: int,
 ) -> None:
+    if version == 3:
+        save_scene_result(with_fixture_ball_events(load_scene_result(inputs[0])), inputs[0])
     source_bytes = inputs[0].read_bytes()
     output = tmp_path / "bundle"
     manifest = json.loads(_export(inputs, output).read_text())

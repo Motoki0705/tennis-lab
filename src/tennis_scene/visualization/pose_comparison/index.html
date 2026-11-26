@@ -101,7 +101,7 @@
         </table>
       </div>
       <p class="note muted">分母は間引き前の元フレームです。3D被覆は有効な3D関節のある骨格が1体以上ある割合です。人数とコア内人数はフレーム数で集計します。新経路にはコート外の人物も含まれます。</p>
-      <p class="note muted">旧経路の時間は初回の実行済みノードの合計（並行区間を含む）、新経路は保存済み2D観測からの骨格復元と割当です。未使用視点の残差を測る対応観測はこの比較の保存データに含まれていません。</p>
+      <p class="note muted">旧経路の時間は初回の実行済みノードの合計（並行区間を含む）、新経路は保存済み2D観測からの骨格復元と割当です。未使用視点への再投影は、対応する2D関節があり、その3D関節の復元でinlierに入らなかった視点で集計します。点数は集計に使った関節と視点の組数です。</p>
     </section>
     <section class="card block" aria-labelledby="details-title">
       <h2 id="details-title">表示したデータ</h2>
@@ -195,7 +195,20 @@
     get('next').disabled = clipSelect.selectedIndex === stage.clips.length - 1;
 
     const coverage = value => `${(100 * value / frames).toFixed(1)}% (${count(value)} / ${count(frames)} f)`;
-    const projection = stats => stats === null ? '未計測' : `中央値 ${stats.median_px.toFixed(1)} px（${count(stats.points)}点）`;
+    const projection = stats => {
+      if (stats == null) return '保存指標なし';
+      if (stats.points === 0) {
+        const reasons = {
+          pipeline_stopped: '人物再構成が停止',
+          no_valid_3d: '有効な3D関節なし',
+          inliers_unavailable: '採用シーンにinlierの記録なし',
+          no_unused_observations: '未使用視点に対応する観測なし',
+        };
+        return `${reasons[stats.reason] ?? '採点対象なし'}（0点）`;
+      }
+      const p95 = stats.p95_px == null ? '' : `、P95 ${stats.p95_px.toFixed(1)} px`;
+      return `中央値 ${stats.median_px.toFixed(1)} px${p95}（${count(stats.points)}点）`;
+    };
     const oldStatus = legacy.status === 'stopped' ? `停止 · ${legacy.baseline_stop_label}` : '生成済み';
     get('metrics').replaceChildren(
       metric('人物再構成', oldStatus, current.status === 'complete' ? '出力あり' : '停止'),
@@ -209,7 +222,8 @@
 
     get('details').replaceChildren();
     const provenance = clip.provenance;
-    detail('旧経路の scene_assembly ID', provenance.legacy_scene_assembly?.artifact_id ?? '採用シーンなし', true);
+    const version = provenance.legacy_scene_schema_version;
+    detail(`旧経路の scene_assembly ID${version ? `（出力v${version}）` : ''}`, provenance.legacy_scene_assembly?.artifact_id ?? '採用シーンなし', true);
     detail('新経路の frame_pose_candidates ID', provenance.candidate_artifact.artifact_id, true);
     detail('ボール3D', ball > 0 ? `採用シーンから両側に表示 · ${coverage(ball)}` : '採用シーンに有効な3D球なし');
     detail('動画', `${count(clip.video_frames)} f · ${clip.video_fps.toFixed(2)} fps · ${(clip.video_bytes / 1e6).toFixed(2)} MB`);

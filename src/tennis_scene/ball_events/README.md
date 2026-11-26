@@ -1,6 +1,6 @@
 # 規則によるボールイベント検出
 
-`detect_scene_events(scene)` は [SceneResult v2](../README.md#sceneresult-v2)
+`detect_scene_events(scene)` は [SceneResult v2・v3](../README.md#sceneresult-v3)
 から打球（`shot`）、バウンド（`bounce`）、ネット接触（`net`）の候補を返す。
 `detect_ball_events(ball_3d, valid, fps)` は合成軌跡などのボールのみの入力に使う。
 どちらもコート座標のメートル単位で判定し、入力の0始まりのframeを保持する。

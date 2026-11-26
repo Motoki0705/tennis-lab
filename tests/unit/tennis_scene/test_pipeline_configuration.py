@@ -22,7 +22,7 @@ def _runtime(
 ) -> PipelineRuntimeConfig:
     directory = Path(__file__).parents[3] / "src/tennis_scene/configs"
     with initialize_config_dir(version_base="1.3", config_dir=str(directory)):
-        cfg = compose(config_name="pipeline", overrides=overrides)
+        cfg = compose(config_name="pipeline", overrides=["event_detection.method=rule", *overrides])
     return PipelineRuntimeConfig.from_config(cfg, bind_inputs=bind_inputs)
 
 
@@ -74,7 +74,7 @@ def test_person_precision_rejects_invalid_configuration(overrides: list[str], er
 def test_saved_six_threshold_court_side_config_restores_clip_mode(tmp_path: Path) -> None:
     directory = Path(__file__).parents[3] / "src/tennis_scene/configs"
     with initialize_config_dir(version_base="1.3", config_dir=str(directory)):
-        cfg = compose(config_name="pipeline", overrides=["court_side.min_margin=0.31"])
+        cfg = compose(config_name="pipeline", overrides=["event_detection.method=rule", "court_side.min_margin=0.31"])
     current = PipelineRuntimeConfig.from_config(cfg)
     thresholds = {"reprojection_px": 20.0, "min_motion_px": 5.0, "min_frames": 8,
                   "max_cost": 0.8, "min_support": 0.2, "min_margin": 0.31}
@@ -141,7 +141,7 @@ def test_default_sampling_covers_long_meiji_clip_and_still_refuses_truncation() 
 def test_explicit_x3d_config_changes_model_and_cache_settings() -> None:
     directory = Path(__file__).parents[3] / "src/tennis_scene/configs"
     with initialize_config_dir(version_base="1.3", config_dir=str(directory)):
-        cfg = compose(config_name="pipeline_x3d_dpt")
+        cfg = compose(config_name="pipeline_x3d_dpt", overrides=["event_detection.method=rule"])
     runtime = PipelineRuntimeConfig.from_config(cfg)
     assert runtime.ball_detection is not None
     assert runtime.ball_detection.model_type == "x3d_csn_dpt"

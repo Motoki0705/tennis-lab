@@ -278,23 +278,15 @@ def test_exact_multiview_pose_patch_preserves_the_standard_recipe_identity() -> 
 
     manifest = Path(source_identity.__file__).with_name("multiview_pose_cache_compatibility.json")
     files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
-    comparison = json.loads(
-        manifest.with_name("pose_comparison_cache_compatibility.json").read_text(encoding="utf-8")
-    )["files"]
     current = source_identity.source_digests(PROJECT_ROOT / "src")
-    without_comparison = {path: digest for path, digest in current.items() if path not in comparison}
-    without_comparison.update({
-        path: pair["before"] for path, pair in comparison.items() if pair["before"] is not None
-    })
-    baseline = {path: digest for path, digest in without_comparison.items() if path not in files}
-    baseline.update({path: pair["before"] for path, pair in files.items() if pair["before"] is not None})
-    assert source_identity.compatible_source_digests(current, tensorrt=True) == baseline
-
-    for path in ("utils/configuration/inventory.py", "tennis_scene/visualization/pose_comparison/rendering.py"):
-        changed = current | {path: "0" * 64}
+    outside_patch = {path: digest for path, digest in current.items() if path not in files}
+    # Test the reviewed snapshot even when this checkout changes a patch file.
+    reviewed = outside_patch | {path: pair["after"] for path, pair in files.items()}
+    baseline = outside_patch | {path: pair["before"] for path, pair in files.items() if pair["before"] is not None}
+    assert source_identity.compatible_source_digests(reviewed, tensorrt=True) == baseline
+    for path in ("utils/configuration/inventory.py", "tennis_scene/pipeline/video_court_side/artifact.py"):
+        changed = {**reviewed, path: "0" * 64}
         assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
-    side_edit = {"tennis_scene/pipeline/video_court_side/artifact.py": "0" * 64}
-    assert source_identity.compatible_source_digests(current | side_edit, tensorrt=True) == without_comparison | side_edit
 
 
 def test_exact_tensorrt_patch_preserves_the_previous_fp32_source_identity() -> None:

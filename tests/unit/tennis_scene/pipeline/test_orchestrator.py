@@ -64,6 +64,27 @@ def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -
     assert nodes["gvhmr"].io.version == 2
     assert nodes["body_placement"].io.inputs["recovered"].version == 2
     assert order.index("body_view_selection") < order.index("hmr2_features") < order.index("gvhmr") < order.index("body_placement")
+    assert order[-2:] == ("scene_assembly", "event_detection")
+    assert nodes["event_detection"].bindings == {"scene": "scene_assembly"}
+    assert (nodes["event_detection"].io.inputs["scene"].version, nodes["event_detection"].io.version) == (2, 3)
+
+
+def test_stage_only_runtime_stops_at_assembly_and_cannot_publish_a_scene(tmp_path: Path) -> None:
+    from dataclasses import replace
+
+    from src.tennis_scene.pipeline.definition import standard_definition
+    from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
+    from src.utils.configuration import PathRole
+
+    cfg = replace(_runtime_with_assets(tmp_path), event_detection=None)
+    nodes = standard_definition(cfg, _source(tmp_path), code_identity="test")
+    assert nodes[-1].name == "scene_assembly" and all(node.name != "event_detection" for node in nodes)
+    app = TennisSceneOrchestrator(cfg)
+    with pytest.raises(ValueError, match=r"event_detection\.method"):
+        app.run((), video_role=PathRole.DATA, camera_ids=(), store_root=tmp_path / "store")
+    with pytest.raises(ValueError, match=r"event_detection\.method"):
+        app.publication_identity()
+    assert not (tmp_path / "store").exists()
 
 
 def test_missing_enabled_asset_stops_the_definition(tmp_path: Path) -> None:
