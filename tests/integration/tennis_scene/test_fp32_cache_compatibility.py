@@ -208,6 +208,7 @@ def phase2_sources() -> dict[str, str]:
     assert baseline["commit"] == _PHASE2_BASE
     assert baseline["patch_commit"] == _PHASE2_BATCHED_TRT
     assert set(baseline["revised_paths"]) == set(baseline["patch_sources"])
+    # The live ECPose and FastHMR source digests are covered by the recipe tests.
     return {**baseline["sources"], **baseline["patch_sources"]}
 
 
