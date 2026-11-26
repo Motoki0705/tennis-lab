@@ -4,6 +4,7 @@ from sys import argv
 
 import numpy as np
 import pytest
+from numpy.typing import NDArray
 
 from src.tennis_scene.multiview_pose.__main__ import main
 from src.tennis_scene.multiview_pose.inputs import PinnedCourtSide, read_saved_inputs
@@ -13,6 +14,7 @@ from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
+from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
 from src.tennis_scene.pipeline.components.person_features import (
     PersonPoseFeaturesOutput,
 )
@@ -59,17 +61,25 @@ def saved_inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         video_court=court,
         overrides=pipeline.components,
     )
-    # The inference stub supplies DINO's rows. Give the saved descriptor the
-    # production detector setting while the real runner binds the pose port.
-    detector_settings = {
-        "detector": "dino",
-        "scope": "full_frame",
-        "merge_duplicates": False,
+    # The inference stubs supply rows and poses while the real runner binds
+    # the corresponding ports with the production observation settings.
+    observation_settings: dict[str, dict[str, bool | str]] = {
+        "person_detection": {
+            "detector": "dino",
+            "scope": "full_frame",
+            "merge_duplicates": False,
+            "enabled": True,
+        },
+        "person_pose_features": {"enabled": True},
     }
     nodes = [
-        replace(node, settings={**node.settings, **detector_settings})
-        if node.name.startswith("person_detection/")
-        else node
+        replace(
+            node,
+            settings={
+                **node.settings,
+                **observation_settings.get(node.name.split("/", 1)[0], {}),
+            },
+        )
         for node in nodes
     ]
     ComponentRunner(nodes, store).run(
@@ -242,6 +252,71 @@ def test_legacy_dependencies_are_rejected_at_each_input_level(
     )
     with pytest.raises(ValueError, match="Unexpected .*dependencies"):
         read_saved_inputs(store.root, side)
+
+
+@pytest.mark.parametrize(
+    ("dino_enabled", "vitpose_enabled", "disabled"),
+    [(False, True, "DINO"), (True, False, "ViTPose"), (True, True, None)],
+    ids=["dino-disabled", "vitpose-disabled", "enabled-empty"],
+)
+def test_empty_observations_require_enabled_person_inputs(
+    saved_inputs, dino_enabled, vitpose_enabled, disabled
+):
+    store, source, _, _, _, side = saved_inputs
+    offsets = np.zeros(source.num_frames + 1, np.int64)
+    rows: NDArray[np.int64] = np.empty(0, np.int64)
+    det_codec = ArtifactCodec(PersonDetectionOutput)
+    pose_codec = ArtifactCodec(PersonPoseFeaturesOutput)
+    refs = store.references()
+    for camera in source.camera_ids:
+        d_node, p_node = f"person_detection/{camera}", f"person_pose_features/{camera}"
+        d_ref, p_ref = refs[d_node], refs[p_node]
+        d_identity = store.descriptor(d_ref)["identity"]
+        p_identity = store.descriptor(p_ref)["identity"]
+        pose = store.load(p_ref, pose_codec)
+        detection = PersonDetectionOutput(
+            camera, offsets, np.empty((0, 4), np.float32), np.empty(0, np.float32), rows
+        )
+        d_ref = store.publish(
+            d_node,
+            detection,
+            det_codec,
+            schema=d_ref.schema,
+            version=d_ref.version,
+            identity={
+                **d_identity,
+                "settings": {**d_identity["settings"], "enabled": dino_enabled},
+            },
+            dependencies={},
+            provenance={},
+        )
+        store.publish(
+            p_node,
+            replace(
+                pose,
+                frame_offsets=offsets,
+                source_rows=rows,
+                keypoints=pose.keypoints[:0],
+            ),
+            pose_codec,
+            schema=p_ref.schema,
+            version=p_ref.version,
+            identity={
+                **p_identity,
+                "settings": {**p_identity["settings"], "enabled": vitpose_enabled},
+            },
+            dependencies={"detections": d_ref},
+            provenance={},
+        )
+
+    if disabled is not None:
+        with pytest.raises(ValueError, match=rf"{disabled}.*enabled=true.*cam0"):
+            read_saved_inputs(store.root, side)
+        return
+
+    result = reconstruct(read_saved_inputs(store.root, side).observations)
+    np.testing.assert_array_equal(result.frame_offsets, offsets)
+    assert result.positions_m.shape == (0, 17, 3)
 
 
 def test_original_detection_rows_must_match_saved_pose(saved_inputs):
