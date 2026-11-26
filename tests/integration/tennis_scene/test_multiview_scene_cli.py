@@ -13,6 +13,8 @@ from types import SimpleNamespace
 import numpy as np
 import pytest
 
+from src.tasks.slcs.data.annotation import load_slcs_annotation
+from src.tennis_scene.generate_dataset.manifest import ClipManifest
 from src.tennis_scene.multiview_scene import __main__ as scene_cli
 from src.tennis_scene.multiview_scene.configuration import MultiviewSceneConfig
 from src.tennis_scene.multiview_scene.inputs import INPUT_NODE, RECIPE
@@ -22,9 +24,15 @@ from src.tennis_scene.multiview_scene.publication import (
 )
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.contracts import ClipSource, SourceVideo
+from src.tennis_scene.pipeline.dataset_publication import (
+    ANNOTATION_SCHEMA_VERSION,
+    scene_array_manifest,
+)
+from src.tennis_scene.pipeline.storage import scene_pointers
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
+from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
 from src.tennis_scene.schema import SceneResult
 from src.tennis_scene.visualization.pose_comparison import __main__ as compare_cli
 from src.tennis_scene.visualization.pose_comparison.inputs import ClipPlan, _read_scene
@@ -130,8 +138,12 @@ def adopted_clip(tmp_path: Path, v2_scene: SceneResult):
     (old.root / "annotation.json").write_text(
         json.dumps(
             {
+                "version": ANNOTATION_SCHEMA_VERSION,
+                "clip_manifest_sha256": ClipManifest.load(clip).digest(),
                 "scene_index": "scene.json",
                 "scene_result": str(original_export.relative_to(old.root)),
+                "scene_schema_version": legacy.schema_version,
+                "arrays": scene_array_manifest(legacy),
             }
         )
     )
@@ -200,39 +212,27 @@ def test_report_and_comparison_read_the_saved_legacy_generation_after_publicatio
 ) -> None:
     dataset, progress, source, old, legacy_ref, output, new_ref = adopted_clip
     before = read_pointers(old.root)
+    clip = ClipManifest.load(old.root.parents[1])
+    journal = old.root / "updates" / "multiview_scene" / f"{new_ref.artifact_id}.json"
     common = ("--dataset", dataset, "--progress", progress, "--clip", CLIP_ID)
     scene_args = (*common, "--players-per-side", 1)
-    invoke(monkeypatch, "multiview_scene", "publish", *scene_args, "--output", output)
-    assert scene_cli.main() == 0
-    published = read_pointers(old.root)
-    assert (
-        published != before
-        and StoreReader(old.index_path).references["scene_assembly"]["artifact_id"]
-        == new_ref.artifact_id
-    )
-
-    report = tmp_path / "reports"
-    invoke(monkeypatch, "multiview_scene", "report", *scene_args, "--output", report)
-    with pytest.raises(ValueError, match="choose --legacy-generation before-multiview"):
-        scene_cli.main()
     history = ("--legacy-generation", "before-multiview")
-    invoke(
-        monkeypatch,
-        "multiview_scene",
-        "report",
-        *scene_args,
-        "--output",
-        report,
-        *history,
-    )
-    assert scene_cli.main() == 0
-    with (report / "legacy-completion.csv").open(newline="") as stream:
-        (row,) = csv.DictReader(stream)
-    assert (row["clip_id"], row["joint_player_frames"], row["ball_3d_frames"]) == (
-        CLIP_ID,
-        "0",
-        "1",
-    )
+
+    def change(phase: str) -> None:
+        invoke(monkeypatch, "multiview_scene", phase, *scene_args, "--output", output)
+        assert scene_cli.main() == 0
+
+    def report(directory: Path, *options: str) -> None:
+        invoke(
+            monkeypatch,
+            "multiview_scene",
+            "report",
+            *scene_args,
+            "--output",
+            directory,
+            *options,
+        )
+        assert scene_cli.main() == 0
 
     # Keep the real old archive and lineage checks. Supply the candidate and
     # encoding results because their contracts have dedicated tests.
@@ -254,46 +254,155 @@ def test_report_and_comparison_read_the_saved_legacy_generation_after_publicatio
     ClipStore(candidates / CLIP_ID, json_value(source))
     pose = tmp_path / "pose.json"
     pose.write_text(json.dumps({"clips": {CLIP_ID: {"reconstruction_seconds": 0}}}))
-    page = tmp_path / "page"
-    invoke(
-        monkeypatch,
-        "pose_comparison",
-        *common,
-        "--candidates",
-        candidates,
-        "--pose-record",
-        pose,
-        "--output",
-        page,
-    )
-    with pytest.raises(ValueError, match="choose --legacy-generation before-multiview"):
+
+    def compare(directory: Path, *options: str) -> None:
+        invoke(
+            monkeypatch,
+            "pose_comparison",
+            *common,
+            "--candidates",
+            candidates,
+            "--pose-record",
+            pose,
+            "--output",
+            directory,
+            *options,
+        )
         compare_cli.main()
-    invoke(
-        monkeypatch,
-        "pose_comparison",
-        *common,
-        "--candidates",
-        candidates,
-        "--pose-record",
-        pose,
-        "--output",
-        page,
-        *history,
+
+    replace_text = scene_pointers._replace_text
+
+    def interrupt_annotation(path: Path, content: str | None) -> None:
+        if path.name == "annotation.json":
+            raise OSError("simulated stop after the scene index rename")
+        replace_text(path, content)
+
+    def assert_recovery_needed() -> None:
+        pending = scene_pointers.read_pending_scene_update(old.root)
+        assert pending is not None and pending.receipt == journal
+        message = r"pending .*updates/multiview_scene/.*multiview_scene publish.*multiview_scene restore"
+        with pytest.raises(scene_pointers.ScenePointerUpdateError, match=message):
+            load_slcs_annotation(clip)
+        with pytest.raises(scene_pointers.ScenePointerUpdateError, match=message):
+            indexed_scene_path(old.index_path)
+        pending_page = tmp_path / "pending-page"
+        with pytest.raises(scene_pointers.ScenePointerUpdateError, match=message):
+            compare(pending_page, *history)
+        pending_report = tmp_path / "pending-report"
+        with pytest.raises(scene_pointers.ScenePointerUpdateError, match=message):
+            report(pending_report, *history)
+        assert not pending_page.exists()
+        assert not (pending_report / "legacy-completion.csv").exists()
+
+    with monkeypatch.context() as patch:
+        patch.setattr(scene_pointers, "_replace_text", interrupt_annotation)
+        with pytest.raises(OSError, match="simulated stop after"):
+            change("publish")
+    interrupted = read_pointers(old.root)
+    assert interrupted["scene.json"] != before["scene.json"]
+    assert interrupted["annotation.json"] == before["annotation.json"]
+    assert_recovery_needed()
+
+    change("publish")
+    published = read_pointers(old.root)
+    assert published["scene.json"] == interrupted["scene.json"]
+    assert published["annotation.json"] != before["annotation.json"]
+    assert scene_pointers.read_pending_scene_update(old.root) is None
+    assert (
+        indexed_scene_path(old.index_path)
+        == old.root / "exports" / new_ref.artifact_id / "scene.npz"
     )
-    compare_cli.main()
+    assert load_slcs_annotation(clip).player_track_ids.tolist() == [47]
+    assert json.loads(published["annotation.json"])["scene_schema_version"] == 2
+
+    reports = tmp_path / "reports"
+    with pytest.raises(ValueError, match="choose --legacy-generation before-multiview"):
+        report(reports)
+    report(reports, *history)
+    with (reports / "legacy-completion.csv").open(newline="") as stream:
+        (row,) = csv.DictReader(stream)
+    assert (row["clip_id"], row["joint_player_frames"], row["ball_3d_frames"]) == (
+        CLIP_ID,
+        "0",
+        "1",
+    )
+
+    page = tmp_path / "page"
+    with pytest.raises(ValueError, match="choose --legacy-generation before-multiview"):
+        compare(page)
+    compare(page, *history)
     manifest = json.loads((page / "manifest.json").read_text())
     (entry,) = manifest["stages"][0]["clips"]
     assert manifest["legacy_progress"]["scene_generation"] == "before-multiview"
     assert entry["provenance"]["legacy_scene_assembly"] == json_value(legacy_ref)
     assert read_pointers(old.root) == published
 
-    journal = old.root / "updates" / "multiview_scene" / f"{new_ref.artifact_id}.json"
-    assert journal.is_file()
-    journal.rename(journal.with_suffix(".recovery-test"))
+    moved = journal.rename(journal.with_suffix(".recovery-test"))
     with pytest.raises(
         FileNotFoundError, match="Missing multiview publication receipt"
     ):
         open_legacy_store(old.root, "before-multiview")
+    moved.rename(journal)
+
+    with monkeypatch.context() as patch:
+        patch.setattr(scene_pointers, "_replace_text", interrupt_annotation)
+        with pytest.raises(OSError, match="simulated stop after"):
+            change("restore")
+    assert read_pointers(old.root) == {
+        "scene.json": before["scene.json"],
+        "annotation.json": published["annotation.json"],
+    }
+    assert_recovery_needed()
+
+    change("restore")
+    assert read_pointers(old.root) == before
+    assert scene_pointers.read_pending_scene_update(old.root) is None
+    assert (
+        indexed_scene_path(old.index_path)
+        == old.root / json.loads(before["annotation.json"])["scene_result"]
+    )
+    assert load_slcs_annotation(clip).player_track_ids.size == 0
+    report(reports)
+    compare(tmp_path / "restored-page")
+
+
+def test_restore_uses_pending_receipt_before_the_first_pointer_change(
+    monkeypatch: pytest.MonkeyPatch,
+    adopted_clip,
+) -> None:
+    dataset, progress, _, old, _, output, new_ref = adopted_clip
+    before = read_pointers(old.root)
+    common = (
+        "--dataset",
+        dataset,
+        "--progress",
+        progress,
+        "--clip",
+        CLIP_ID,
+        "--players-per-side",
+        1,
+        "--output",
+        output,
+    )
+
+    def interrupt_first(path: Path, content: str | None) -> None:
+        assert path == old.index_path
+        raise OSError("simulated stop before the first rename")
+
+    with monkeypatch.context() as patch:
+        patch.setattr(scene_pointers, "_replace_text", interrupt_first)
+        invoke(monkeypatch, "multiview_scene", "publish", *common)
+        with pytest.raises(OSError, match="simulated stop before"):
+            scene_cli.main()
+    assert read_pointers(old.root) == before
+    pending = scene_pointers.read_pending_scene_update(old.root)
+    assert pending is not None
+    assert pending.receipt.name == f"{new_ref.artifact_id}.json"
+
+    invoke(monkeypatch, "multiview_scene", "restore", *common)
+    assert scene_cli.main() == 0
+    assert read_pointers(old.root) == before
+    assert scene_pointers.read_pending_scene_update(old.root) is None
 
 
 @pytest.mark.parametrize("phase", ["prepare", "run"])

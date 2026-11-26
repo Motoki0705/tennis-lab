@@ -415,6 +415,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "tennis_scene.gvhmr_tensorrt_qualification",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tennis_scene.scripts.import_external_ball": (
+        "tennis_scene.external_ball_import",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.ball_refiner_3d.scripts.evaluate": (
         "ball_refiner_3d.evaluate",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -654,6 +658,11 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         "src.tennis_scene.scripts.qualify_gvhmr_tensorrt", "main",
         domain="tennis_scene", executable_module=True,
         optional_policy="each supplied video progress receipt is an existing artifact input",
+    ),
+    _non_hydra_boundary(
+        "src.tennis_scene.scripts.import_external_ball", "main",
+        domain="tennis_scene", executable_module=True,
+        optional_policy="publish requires positions, side store, court store and report; drift store follows the pinned side decision",
     ),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.evaluate", "main", domain="ball_refiner_3d", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.predict", "main", domain="ball_refiner_3d", executable_module=True),

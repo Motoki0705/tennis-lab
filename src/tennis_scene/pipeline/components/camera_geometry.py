@@ -236,6 +236,21 @@ def resolve_camera_geometry(
     validation = {"view_half_turns": list(sides), "cost": cost, "support": support}
     if cost > config.side_max_cost or support < config.side_min_support:
         raise ReconstructionUnavailable("side_geometry_rejected", "Side assignment lacks absolute geometric support", diagnostics={"validation": validation})
+    return describe_camera_geometry(calibration, reference_camera, sides, cameras, validation)
+
+
+def describe_camera_geometry(
+    calibration: CalibrationSet,
+    reference_camera: str,
+    sides: tuple[bool, ...],
+    cameras: tuple[PinholeCamera, ...],
+    validation: dict[str, Any],
+) -> CameraGeometryResult:
+    """Build view metadata for camera parameters whose gauge is already fixed."""
+    ids = calibration.camera_ids
+    if (tuple(camera.camera_id for camera in cameras) != ids or len(sides) != len(ids)
+            or any(type(turn) is not bool for turn in sides) or sides[ids.index(reference_camera)]):
+        raise ValueError("Fixed camera geometry disagrees with the calibrated views or reference")
     contract = resolve_court_keypoint_contract("camera_view_v2")
     records = tuple(build_court_view_record(camera_id=c.camera_id, camera_center_court_m=c.center.tolist(), contract=contract) for c in cameras)
     selection = ReferenceViewSelection.create(stable_camera_id_table=StableCameraIdTable.from_complete_scene_camera_ids(ids), selected_views=records, reference_camera_id=reference_camera)

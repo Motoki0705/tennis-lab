@@ -20,7 +20,7 @@ from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.components.event_detection import EVENT_DETECTION
 from src.tennis_scene.pipeline.contracts import ClipSource
 from src.tennis_scene.pipeline.storage.codec import restore_type, unpack_value
-from src.tennis_scene.pipeline.storage.scene_index import scene_path_from_index
+from src.tennis_scene.pipeline.storage.scene_index import resolve_indexed_scene
 from src.tennis_scene.visualization.review.store import StoreReader
 from src.utils.checksum import dual_sha256
 from src.utils.geometry.triangulation import PinholeCamera
@@ -372,8 +372,8 @@ def _read_scene(store: StoreReader, source: ClipSource) -> AdoptedScene | None:
     else:
         alignment = ball_ref = tracked
         alignment_node = _component_node(store, tracked, "multiview_scene_inputs", 1)
-    archive = scene_path_from_index(
-        store.root, store.document,
+    archive = resolve_indexed_scene(
+        store.document, store.root,
         required_components={"scene_assembly": assembly, alignment_node: alignment},
     )
     skeleton = None
