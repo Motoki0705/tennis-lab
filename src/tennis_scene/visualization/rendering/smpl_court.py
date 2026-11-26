@@ -70,13 +70,17 @@ def smpl_vertices_to_court(
         )
     if players_yaw.shape != verts_local.shape[:2]:
         raise ValueError(f"player_yaw must have shape (P, T), got {players_yaw.shape}.")
-    if joint_regressor.ndim != 2 or joint_regressor.shape[1] != verts_local.shape[2]:
+    if (
+        joint_regressor.ndim != 2
+        or joint_regressor.shape[0] == 0
+        or joint_regressor.shape[1] != verts_local.shape[2]
+    ):
         raise ValueError(
-            "joint_regressor must have shape (J, V) matching the vertex count, "
+            "joint_regressor must have shape (J, V) with a root row and matching vertex count, "
             f"got {joint_regressor.shape} for V={verts_local.shape[2]}."
         )
 
-    roots = np.einsum("jv,ptvc->ptjc", joint_regressor, verts_local)[:, :, 0, :]
+    roots = np.einsum("v,ptvc->ptc", joint_regressor[0], verts_local)
     verts_centered = verts_local - roots[:, :, None, :]
 
     orient_rot = axis_angle_to_rotation_matrix(global_orient)

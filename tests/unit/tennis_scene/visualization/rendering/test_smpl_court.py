@@ -11,7 +11,7 @@ from src.tennis_scene.visualization.rendering.smpl_court import smpl_vertices_to
 def test_root_centering_axis_swap_yaw_and_translation() -> None:
     # Two vertices; the regressor's root joint is vertex 0.
     verts = np.array([[[[1.0, 1.0, 1.0], [1.0, 2.0, 1.0]]]], dtype=np.float32)
-    regressor = np.array([[1.0, 0.0]], dtype=np.float32)
+    regressor = np.array([[1.0, 0.0], [0.0, 1.0]], dtype=np.float32)
     orient: np.ndarray = np.zeros((1, 1, 3), dtype=np.float32)
     position = np.array([[[5.0, -3.0, 0.9]]], dtype=np.float32)
     yaw = np.array([[np.pi / 2]], dtype=np.float32)
@@ -37,7 +37,8 @@ def test_yaw_rotates_horizontal_offsets_about_court_z() -> None:
     np.testing.assert_allclose(court[0, 0, 1], [0.0, 1.0, 0.0], atol=1e-6)
 
 
-def test_regressor_vertex_count_mismatch_is_rejected() -> None:
+@pytest.mark.parametrize("regressor_shape", [(1, 2), (0, 3)])
+def test_invalid_regressor_shape_is_rejected(regressor_shape: tuple[int, int]) -> None:
     verts: np.ndarray = np.zeros((1, 1, 3, 3), dtype=np.float32)
     with pytest.raises(ValueError, match="joint_regressor"):
         smpl_vertices_to_court(
@@ -45,5 +46,5 @@ def test_regressor_vertex_count_mismatch_is_rejected() -> None:
             np.zeros((1, 1, 3), dtype=np.float32),
             np.zeros((1, 1, 3), dtype=np.float32),
             np.zeros((1, 1), dtype=np.float32),
-            np.ones((1, 2), dtype=np.float32),
+            np.ones(regressor_shape, dtype=np.float32),
         )
