@@ -16,6 +16,7 @@ try {
   assert.equal(original.read_only,true);
   assert.deepEqual(original.sources.map(s => s.offset_sec),[0,-1]);
   assert.equal(original.clips[0].name,'clip_000');
+  const row = name => page.locator(`.clip-row[data-clip="${name}"]`);
   await page.goto(base);
   await page.locator('#compare').click();
   const seek = async time => {
@@ -26,7 +27,7 @@ try {
   await seek(0);
   assert.ok((await page.locator('#frame-map tr').nth(1).textContent()).includes('範囲外・映像なし'));
   assert.ok((await page.locator('.frame-label').nth(1).textContent()).includes('映像はありません'));
-  await page.locator('.clip-row').click();await seek(2);
+  await row('clip_000').click();await seek(2);
   assert.ok((await page.locator('#clip-review').textContent()).includes('[2.000, 4.000)'));
   assert.ok((await page.locator('#clip-review .membership').textContent()).includes('区間内'));
   assert.ok((await page.locator('#clip-review .clip-state').textContent()).includes('未出力'));
@@ -45,9 +46,30 @@ try {
   assert.equal(await page.locator('#export-all').isVisible(),false);
   assert.equal(await page.locator('#sync-toggle').isVisible(),false);
   assert.equal(await page.locator('#clip-editor').isVisible(),false);
+  assert.equal(await page.locator('#score-form').isVisible(),false);
+  assert.equal(await page.locator('#match-form').isVisible(),false);
+  if (original.clips[0].score?.status === 'confirmed') {
+    assert.match(await row('clip_000').locator('.clip-score').textContent(), /開始前.*確定.*得点/);
+    assert.match(await page.locator('#score-after').textContent(), /終了後/);
+    assert.equal(await page.locator('#score-saved-note').textContent(), original.clips[0].score.note);
+  } else if (original.clips[0].score === null) {
+    assert.equal(await page.locator('#score-current').textContent(), '未入力');
+  }
+  const conflicting = original.clips.find(clip => clip.name === 'next_set');
+  if (conflicting) {
+    assert.equal(original.score_views.next_set.expected_server, 'B');
+    await row(conflicting.name).click();
+    assert.match(await row(conflicting.name).textContent(), /サーブ順の矛盾/);
+    assert.match(await page.locator('#score-warning').textContent(), /直前からの計算では B.*保存値は A/);
+    assert.match(await page.locator('#score-current').textContent(), /サーブ A/);
+    assert.ok(await page.locator('#score-after').isVisible());
+    await row('clip_000').click();
+  }
   // The endpoint must enforce readonly even when the UI is bypassed.
   for (const [path,body] of [
     ['edit',{revision:0,action:'create',start_sec:5,end_sec:6}],
+    ['edit/preview',{revision:0,action:'set_score',name:'clip_000',score:null}],
+    ['edit',{revision:0,action:'set_score',name:'clip_000',score:null}],
     ['jobs',{revision:0,kind:'export'}],['jobs',{revision:0,kind:'sync'}],
   ]) assert.equal((await page.request.post(`${base}/api/${path}`,{data:body})).status(),403);
   await page.locator('#reload').click();
@@ -60,5 +82,5 @@ try {
   assert.ok(await page.locator('#seek').isVisible());
   assert.equal(await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth),false);
   assert.deepEqual(errors,[]);
-  console.log('PASS: readonly API/UI, raw frame correspondence, negative offset missing video, half-open clip boundary, unexported state, reload, responsive layout');
+  console.log(`PASS: readonly API/UI, raw frame correspondence, unexported state, reload, responsive layout${conflicting ? ', and saved next-set server warning' : ''}`);
 } finally {await browser.close();}

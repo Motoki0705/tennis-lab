@@ -12,8 +12,15 @@ import numpy as np
 import pytest
 
 from src.tennis_scene.clip_studio.export import ExportSettings, export_clips
-from src.tennis_scene.clip_studio.project import Clip, ClipSource, ClipStudioProject
+from src.tennis_scene.clip_studio.project import (
+    Clip,
+    ClipScore,
+    ClipSource,
+    ClipStudioProject,
+    MatchSettings,
+)
 from src.utils.io import load_json
+from src.utils.tennis_scoring import ScoreCount, SoftTennisRules
 from src.utils.video import probe_video_info, read_video_rgb
 from src.utils.video.writer import save_video_rgb
 
@@ -118,6 +125,10 @@ class TestClipExportRoundTrip:
     def test_manifest_plugs_into_pipeline(
         self, synced_project: ClipStudioProject, tmp_path: Path
     ) -> None:
+        synced_project.match = MatchSettings("青", "赤", SoftTennisRules(7), "A")
+        synced_project.clips[0].score = ClipScore(
+            "confirmed", ScoreCount(points=(1, 2)), "anchor", "A", "auto", "B", ""
+        )
         settings = export_settings(tmp_path, width=96, height=64, crf=10)
         result = export_clips(synced_project, settings)[0]
         manifest = load_json(result.manifest_path)
@@ -126,6 +137,7 @@ class TestClipExportRoundTrip:
         assert manifest["dataset_id"] == "test-dataset"
         assert manifest["clip_id"] == "video_000/clip_000"
         assert manifest["video_id"] == "video_000"
+        assert "score" not in manifest and "match" not in manifest
         assert manifest["video_paths"] == ["media/cam0.mp4", "media/cam1.mp4"]
         assert manifest["num_frames"] == 60
         assert manifest["fps"] == pytest.approx(FPS)
