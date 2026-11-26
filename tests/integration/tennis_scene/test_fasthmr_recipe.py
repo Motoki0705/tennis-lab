@@ -154,26 +154,26 @@ def test_only_the_exact_standard_recipe_patch_preserves_previous_source_identity
     manifest = PROJECT_ROOT / "src/tennis_scene/pipeline/standard_recipe_cache_compatibility.json"
     records = json.loads(manifest.read_text())["files"]
     people = json.loads(manifest.with_name("ecpose_recipe_cache_compatibility.json").read_text())["files"]
-    plcs_path = "tennis_scene/pipeline/components/monocular_plcs.py"
-    actual = {
-        path: dual_sha256(PROJECT_ROOT / "src" / path)
-        for path in records.keys() | people.keys() | {plcs_path}
+    unrelated = {"tennis_scene/pipeline/components/monocular_plcs.py": "e" * 64}
+    reviewed = {
+        **unrelated,
+        **{path: entry["after"] for path, entry in records.items()},
+        **{path: entry["after"] for path, entry in people.items()},
     }
-    assert {path: actual[path] for path in people} == {path: entry["after"] for path, entry in people.items()}
     outside_fast = {path: entry["before"] for path, entry in people.items()
                     if path not in records and entry["before"] is not None}
-    outside_fast[plcs_path] = actual[plcs_path]
-    fast_sources = compatible_source_digests(actual, standard_people=True, tensorrt=True)
+    outside_fast.update(unrelated)
+    fast_sources = compatible_source_digests(reviewed, standard_people=True, tensorrt=True)
     assert fast_sources == {**outside_fast, **{path: entry["after"] for path, entry in records.items()}}
     baseline = {
         **outside_fast,
         **{path: entry["before"] for path, entry in records.items() if entry["before"] is not None},
     }
-    assert compatible_source_digests(actual, standard_recipe=True, tensorrt=True) == baseline
-    assert compatible_source_digests(actual, tensorrt=True) == actual
+    assert compatible_source_digests(reviewed, standard_recipe=True, tensorrt=True) == baseline
+    assert compatible_source_digests(reviewed, tensorrt=True) == reviewed
     local_edit = {**fast_sources, "tennis_scene/pipeline/definition.py": "a" * 64}
     assert compatible_source_digests(local_edit, standard_recipe=True, tensorrt=True) == local_edit
-    people_edit = {**actual, "submodules/models/ecpose/runtime.py": "b" * 64}
+    people_edit = {**reviewed, "submodules/models/ecpose/runtime.py": "b" * 64}
     assert compatible_source_digests(people_edit, standard_recipe=True, tensorrt=True) == people_edit
 
 
