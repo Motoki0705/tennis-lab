@@ -8,6 +8,7 @@ import runpy
 import sys
 import tarfile
 from dataclasses import replace
+from itertools import product
 from pathlib import Path
 from typing import Any
 
@@ -361,6 +362,33 @@ def test_exact_multiview_tracking_patch_preserves_the_standard_recipe_identity(
 
     pose_edit = {"tennis_scene/multiview_pose/inputs.py": "0" * 64}
     assert source_identity.compatible_source_digests(current | pose_edit, tensorrt=True) == baseline | pose_edit
+
+
+def test_multiview_integration_preserves_main_source_identity() -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    manifest = Path(source_identity.__file__).with_name("multiview_scene_cache_compatibility.json")
+    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    current = source_identity.source_digests(PROJECT_ROOT / "src")
+    baseline = {path: digest for path, digest in current.items() if path not in files}
+    baseline.update({path: versions["before"] for path, versions in files.items() if versions["before"] is not None})
+    guarded = (
+        "utils/configuration/inventory.py",
+        "tennis_scene/multiview_scene/publication.py",
+    )
+    outside = "tennis_scene/pipeline/storage/scene_pointers.py"
+    edits = {path: {**current, path: "0" * 64} for path in (*guarded, outside)}
+
+    for recipe, people, trt, ball in product((False, True), repeat=4):
+        flags = dict(standard_recipe=recipe, standard_people=people, tensorrt=trt, ball_court_side=ball)
+        expected = source_identity.compatible_source_digests(baseline, **flags)
+        assert source_identity.compatible_source_digests(current, **flags) == expected
+        for path in guarded:
+            edited = edits[path]
+            assert source_identity._compatible_patch(edited, manifest.name) == edited
+            resolved = source_identity.compatible_source_digests(edited, **flags)
+            assert resolved[path] == edited[path] and resolved != expected
+        assert source_identity.compatible_source_digests(edits[outside], **flags) == expected | {outside: "0" * 64}
 
 
 def test_exact_tensorrt_patch_preserves_the_previous_fp32_source_identity() -> None:

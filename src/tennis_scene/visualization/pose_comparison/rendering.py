@@ -2,13 +2,16 @@
 
 from __future__ import annotations
 
+from colorsys import hsv_to_rgb
 from dataclasses import dataclass
+from math import ceil, hypot
 
 import cv2
 import numpy as np
 from numpy.typing import NDArray
 
 from src.tennis_scene.multiview_pose.schema import RowRejection
+from src.tennis_scene.multiview_tracking.schema import PoseTracks, SampleEvent, TrackEnd
 from src.tennis_scene.visualization.pose_comparison.inputs import (
     STOP_LABELS,
     ClipPlan,
@@ -29,6 +32,7 @@ SIDE_W = 2 * VIEW_W + COURT_W
 VIDEO_W, VIDEO_H = 2 * SIDE_W + GUTTER, HEADER_H + 2 * VIEW_H
 CORE_Y = round(HALF_LENGTH + 5.0, 3)
 MAP_SCALE = 7.8  # Same scale (pixels per metre) on x and y.
+TRACK_MARK_SECONDS = 0.4
 
 Color = tuple[int, int, int]  # OpenCV BGR.
 PALETTE: tuple[Color, ...] = (
@@ -60,12 +64,110 @@ ROW_STYLES: dict[RowRejection, tuple[str, str, Color]] = {
 
 
 @dataclass(frozen=True)
+class TrackMark:
+    label: str
+    color: Color
+    selected: bool
+    interpolated: bool
+    ambiguity: str
+
+
+@dataclass(frozen=True)
 class Poses:
     xyz: NDArray[np.float32]
     valid: NDArray[np.bool_]
     ids: tuple[int, ...]
     prefix: str
     ambiguous: NDArray[np.bool_]
+    track_marks: tuple[TrackMark, ...] = ()
+    centers: NDArray[np.float32] | None = None
+
+    def draw_order(self) -> range | list[int]:
+        indices = range(len(self.ids))
+        if self.track_marks:
+            return sorted(indices, key=lambda i: self.track_marks[i].selected)
+        return indices
+
+
+class TrackOverlay:
+    def __init__(self, tracks: PoseTracks, fps: float) -> None:
+        self.tracks = tracks
+        self.hold_frames = max(1, round(TRACK_MARK_SECONDS * fps))
+        self.selected = {
+            identity: PALETTE[index]
+            for index, identity in enumerate(tracks.selection.selected_track_ids)
+        }
+        self.last_sample: NDArray[np.int64] = np.zeros(
+            len(tracks.end_frames), dtype=np.int64
+        )
+        np.maximum.at(
+            self.last_sample, tracks.track_ids, np.arange(len(tracks.track_ids))
+        )
+
+    def _style(self, identity: int) -> tuple[str, Color]:
+        if identity in self.selected:
+            return f"P{identity}", self.selected[identity]
+        # Space neighboring IDs around the hue circle and dim unselected tracks.
+        r, g, b = hsv_to_rgb((identity * 0.61803398875) % 1, 0.38, 0.68)
+        return f"T{identity}", (round(b * 255), round(g * 255), round(r * 255))
+
+    def poses(self, frame: int) -> Poses:
+        tracks = self.tracks
+        first, end = tracks.frame_offsets[frame : frame + 2]
+        current = slice(first, end)
+        lookback = max(0, frame - self.hold_frames + 1)
+        recent = slice(tracks.frame_offsets[lookback], end)
+        events = tracks.event[recent]
+        ids = tracks.track_ids[recent]
+        born = set(ids[events == SampleEvent.BORN])
+        returned = set(ids[events == SampleEvent.REAPPEARED])
+        close_assignment = set(ids[tracks.frame_ambiguous[recent]])
+        close_id = set(ids[tracks.id_ambiguous[recent]])
+        marks = []
+        identities = tuple(map(int, tracks.track_ids[current]))
+        for identity, event in zip(identities, tracks.event[current], strict=True):
+            label, color = self._style(identity)
+            interpolated = bool(event == SampleEvent.OCCLUDED)
+            if interpolated:
+                label += "~"
+            elif identity in returned:
+                label += "R"
+            elif identity in born:
+                label += "+"
+            ambiguity = " ".join(
+                text
+                for text, group in (("A?", close_assignment), ("ID?", close_id))
+                if identity in group
+            )
+            marks.append(
+                TrackMark(
+                    label, color, identity in self.selected, interpolated, ambiguity
+                )
+            )
+        return Poses(
+            tracks.positions_m[current],
+            tracks.measured_joints[current] | tracks.predicted_joints[current],
+            identities,
+            "",
+            np.array([bool(mark.ambiguity) for mark in marks], dtype=bool),
+            tuple(marks),
+            tracks.torso_m[current, :2],
+        )
+
+    def draw_disappearances(self, image: NDArray[np.uint8], frame: int) -> None:
+        tracks = self.tracks
+        endings = (tracks.end_reasons == TrackEnd.DISAPPEARED) & (
+            (tracks.end_frames <= frame)
+            & (tracks.end_frames > frame - self.hold_frames)
+        )
+        for identity in np.flatnonzero(endings):
+            center = _court_pixel(tracks.torso_m[self.last_sample[identity], :2])
+            if _contains(image, center):
+                label, color = self._style(int(identity))
+                cv2.drawMarker(
+                    image, center, color, cv2.MARKER_TILTED_CROSS, 10, 2, cv2.LINE_AA
+                )
+                _label(image, f"{label}X", (center[0] + 5, center[1] - 4), color, 0.35)
 
 
 def torso_xy(xyz: NDArray[np.float32], valid: NDArray[np.bool_]) -> NDArray[np.float32]:
@@ -131,16 +233,48 @@ def draw_rejections(
         _label(image, letter, (max(1, p1[0]), max(10, p1[1] - 2)), color, 0.34)
 
 
+def _dashed_bone(
+    image: NDArray[np.uint8],
+    a: tuple[int, int],
+    b: tuple[int, int],
+    color: Color,
+    width: int,
+) -> None:
+    height, tile_width = image.shape[:2]
+    clipped, a, b = cv2.clipLine((0, 0, tile_width, height), a, b)
+    if not clipped:
+        return
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    length = hypot(dx, dy)
+    if length == 0:
+        return
+
+    def point(distance: float) -> tuple[int, int]:
+        fraction = distance / length
+        return round(a[0] + dx * fraction), round(a[1] + dy * fraction)
+
+    for start in range(0, ceil(length), 9):
+        cv2.line(
+            image,
+            point(start),
+            point(min(start + 4, length)),
+            color,
+            width,
+            cv2.LINE_AA,
+        )
+
+
 def draw_poses(
     image: NDArray[np.uint8],
     uv: NDArray[np.float64],
     visible: NDArray[np.bool_],
     poses: Poses,
 ) -> None:
-    for points, mask, identity, ambiguous in zip(
-        uv, visible, poses.ids, poses.ambiguous, strict=True
-    ):
-        color = PALETTE[identity % len(PALETTE)]
+    for i in poses.draw_order():
+        points, mask, identity = uv[i], visible[i], poses.ids[i]
+        mark = poses.track_marks[i] if poses.track_marks else None
+        color = mark.color if mark else PALETTE[identity % len(PALETTE)]
+        width = 2 if mark and mark.selected else 1
         pixels = [
             (x, y)
             for x, y in np.clip(np.rint(points), -32768, 32768).astype(int).tolist()
@@ -148,10 +282,14 @@ def draw_poses(
         bones = [
             (pixels[a], pixels[b]) for a, b in COCO17_SKELETON if mask[a] and mask[b]
         ]
-        for a, b in bones:
-            cv2.line(image, a, b, SHADOW, 3, cv2.LINE_AA)
-        for a, b in bones:
-            cv2.line(image, a, b, color, 1, cv2.LINE_AA)
+        if mark and mark.interpolated:
+            for a, b in bones:
+                _dashed_bone(image, a, b, color, width)
+        else:
+            for a, b in bones:
+                cv2.line(image, a, b, SHADOW, width + 2, cv2.LINE_AA)
+            for a, b in bones:
+                cv2.line(image, a, b, color, width, cv2.LINE_AA)
         for joint in np.flatnonzero(mask):
             point = pixels[joint]
             if _contains(image, point):
@@ -163,9 +301,21 @@ def draw_poses(
         ]
         if inside:
             x, y = min(inside, key=lambda point: point[1])
-            label = f"{poses.prefix}{identity}"
-            _label(image, label, (max(1, x - 2), max(11, y - 4)), color, 0.35)
-            if ambiguous:
+            label = mark.label if mark else f"{poses.prefix}{identity}"
+            label_x, label_y = max(1, x - 2), max(11, y - 4)
+            _label(image, label, (label_x, label_y), color, 0.35)
+            if mark and mark.ambiguity:
+                label_width = cv2.getTextSize(label, cv2.FONT_HERSHEY_SIMPLEX, 0.35, 1)[
+                    0
+                ][0]
+                _label(
+                    image,
+                    mark.ambiguity,
+                    (label_x + label_width + 2, label_y),
+                    AMBER,
+                    0.35,
+                )
+            elif not mark and poses.ambiguous[i]:
                 _label(image, "?", (max(14, x + 14), max(11, y - 4)), AMBER, 0.50)
 
 
@@ -230,14 +380,28 @@ def _court_background() -> NDArray[np.uint8]:
 def _draw_court(
     image: NDArray[np.uint8], poses: Poses, ball: NDArray[np.float32] | None
 ) -> None:
-    xy = torso_xy(poses.xyz, poses.valid)
+    xy = torso_xy(poses.xyz, poses.valid) if poses.centers is None else poses.centers
     off_map = 0
-    for center, identity, ambiguous in zip(xy, poses.ids, poses.ambiguous, strict=True):
+    for i in poses.draw_order():
+        center, identity, ambiguous = xy[i], poses.ids[i], poses.ambiguous[i]
         p = _court_pixel(center)
         if not _contains(image, p):
             off_map += 1
             continue
-        color = PALETTE[identity % len(PALETTE)]
+        mark = poses.track_marks[i] if poses.track_marks else None
+        color = mark.color if mark else PALETTE[identity % len(PALETTE)]
+        if mark:
+            radius = 5 if mark.selected else 3
+            cv2.circle(
+                image, p, radius + 2, AMBER if ambiguous else SHADOW, 1, cv2.LINE_AA
+            )
+            cv2.circle(
+                image, p, radius, color, 1 if mark.interpolated else -1, cv2.LINE_AA
+            )
+            _label(image, mark.label, (p[0] + 7, p[1] + 1), color, 0.38)
+            if mark.ambiguity:
+                _label(image, mark.ambiguity, (p[0] + 7, p[1] + 14), AMBER, 0.35)
+            continue
         cv2.circle(image, p, 5, AMBER if ambiguous else SHADOW, -1, cv2.LINE_AA)
         cv2.circle(image, p, 3, color, -1, cv2.LINE_AA)
         _label(
@@ -284,8 +448,16 @@ def _project(
 
 
 class FrameRenderer:
-    def __init__(self, comparison: ComparisonInputs, plan: ClipPlan) -> None:
+    def __init__(
+        self,
+        comparison: ComparisonInputs,
+        plan: ClipPlan,
+        tracks: PoseTracks | None = None,
+    ) -> None:
         self.data = comparison
+        self.tracking = (
+            TrackOverlay(tracks, comparison.source.fps) if tracks is not None else None
+        )
         self.court = _court_background()
         self.canvas: NDArray[np.uint8] = np.full(
             (VIDEO_H, VIDEO_W, 3), (27, 25, 23), dtype=np.uint8
@@ -304,15 +476,18 @@ class FrameRenderer:
             self.data.legacy,
             self.data.candidates,
         )
-        new_start, new_end = candidates.frame_offsets[frame : frame + 2]
-        current = slice(new_start, new_end)
-        new = Poses(
-            candidates.positions_m[current],
-            candidates.joint_valid[current],
-            tuple(range(new_end - new_start)),
-            "N",
-            candidates.ambiguous[current],
-        )
+        if self.tracking is None:
+            new_start, new_end = candidates.frame_offsets[frame : frame + 2]
+            current = slice(new_start, new_end)
+            new = Poses(
+                candidates.positions_m[current],
+                candidates.joint_valid[current],
+                tuple(range(new_end - new_start)),
+                "N",
+                candidates.ambiguous[current],
+            )
+        else:
+            new = self.tracking.poses(frame)
         old_poses = Poses(new.xyz[:0], new.valid[:0], (), "P", new.ambiguous[:0])
         ball = None
         if old is not None:
@@ -371,6 +546,8 @@ class FrameRenderer:
 
         for x, poses in ((0, old_poses), (new_x, new)):
             court = self.court.copy()
+            if x == new_x and self.tracking is not None:
+                self.tracking.draw_disappearances(court, frame)
             _draw_court(court, poses, ball)
             image[HEADER_H:, x + 2 * VIEW_W : x + SIDE_W] = court
         _label(
@@ -380,13 +557,21 @@ class FrameRenderer:
             INK,
             0.57,
         )
-        _label(
-            image,
-            f"NEW ROUTE  |  {len(new.ids)} 3D  |  {np.count_nonzero(new.ambiguous)} close calls",
-            (new_x + 12, 20),
-            INK,
-            0.57,
-        )
+        if self.tracking is None:
+            title = (
+                f"{len(new.ids)} 3D  |  {np.count_nonzero(new.ambiguous)} close calls"
+            )
+            new_note = "Frame-local IDs and colors  |  ? = close assignment"
+        else:
+            measured = sum(
+                mark.selected and not mark.interpolated for mark in new.track_marks
+            )
+            interpolated = sum(
+                mark.selected and mark.interpolated for mark in new.track_marks
+            )
+            title = f"Players: {measured} measured + {interpolated} interpolated  |  {len(new.ids)} active tracks"
+            new_note = "Clip IDs  |  P: selected  T: unselected  +: born  R: reappeared  X: disappeared  ~: interpolated"
+        _label(image, f"NEW ROUTE  |  {title}", (new_x + 12, 20), INK, 0.57)
         old_note = self.stop if self.data.tracks else "Persistent player IDs"
         _label(
             image,
@@ -396,7 +581,7 @@ class FrameRenderer:
         )
         _label(
             image,
-            "Frame-local IDs and colors  |  ? = close assignment",
+            new_note,
             (new_x + 12, 41),
             MUTED,
         )

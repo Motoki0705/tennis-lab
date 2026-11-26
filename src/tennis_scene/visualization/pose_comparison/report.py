@@ -10,6 +10,7 @@ import numpy as np
 from numpy.typing import NDArray
 
 from src.tennis_scene.multiview_pose.schema import RowRejection
+from src.tennis_scene.multiview_tracking.schema import PoseTracks, SampleEvent, TrackEnd
 from src.tennis_scene.visualization.pose_comparison.inputs import (
     STOP_LABELS,
     ClipPlan,
@@ -18,6 +19,8 @@ from src.tennis_scene.visualization.pose_comparison.inputs import (
 from src.tennis_scene.visualization.pose_comparison.rendering import (
     AMBER,
     BALL,
+    MUTED,
+    PALETTE,
     ROW_STYLES,
     Color,
     in_core,
@@ -114,6 +117,60 @@ def clip_metrics(
     }
 
 
+def tracked_clip_metrics(
+    stage1: dict[str, Any], tracks: PoseTracks, tracking_seconds: float
+) -> dict[str, Any]:
+    n = stage1["source_frames"]
+    frames: NDArray[np.int64] = np.repeat(np.arange(n), np.diff(tracks.frame_offsets))
+    selected_ids = tracks.selection.selected_track_ids
+    selected = np.isin(tracks.track_ids, selected_ids)
+    measured = selected & tracks.measured_joints.any(axis=1)
+    interpolated = selected & tracks.predicted_joints.any(axis=1)
+    measured_counts = np.bincount(frames[measured], minlength=n)
+    core_counts = np.bincount(
+        frames[measured & in_core(tracks.torso_m[:, :2])], minlength=n
+    )
+    available_counts = measured_counts + np.bincount(frames[interpolated], minlength=n)
+    lineup = 2 * tracks.selection.players_per_side
+    missing = tracks.selection.missing_per_side
+    return {
+        **stage1,
+        "new": {
+            **_summary(measured_counts, core_counts),
+            "status": "incomplete" if any(missing) else "complete",
+            "reconstruction_seconds": stage1["new"]["reconstruction_seconds"],
+            "tracking_seconds": tracking_seconds,
+            "selected_by_side": [
+                [
+                    identity
+                    for identity in selected_ids
+                    if tracks.selection.decisions[identity].side == side
+                ]
+                for side in (-1, 1)
+            ],
+            "missing_per_side": missing,
+            "lineup_size": lineup,
+            "lineup_measured_frames": int(np.count_nonzero(measured_counts == lineup)),
+            "lineup_available_frames": int(
+                np.count_nonzero(available_counts == lineup)
+            ),
+            "interpolated_frames": int(len(np.unique(frames[interpolated]))),
+            "ambiguous_frames": int(len(np.unique(frames[tracks.frame_ambiguous]))),
+            "temporal_ambiguous_frames": int(
+                len(np.unique(frames[tracks.id_ambiguous]))
+            ),
+            "events": {
+                event.name: int(np.count_nonzero(tracks.event == event))
+                for event in SampleEvent
+            },
+            "endings": {
+                reason.name: int(np.count_nonzero(tracks.end_reasons == reason))
+                for reason in TrackEnd
+            },
+        },
+    }
+
+
 def _css_color(bgr: Color) -> str:
     b, g, r = bgr
     return f"#{r:02x}{g:02x}{b:02x}"
@@ -135,6 +192,10 @@ def write_page(output: Path, manifest: dict[str, Any]) -> None:
             ],
             "ambiguous": _css_color(AMBER),
             "ball": _css_color(BALL),
+            "track": {
+                "selected": _css_color(PALETTE[0]),
+                "unselected": _css_color(MUTED),
+            },
         },
     }
     metadata = json.dumps(document, ensure_ascii=False, allow_nan=False, indent=2)
