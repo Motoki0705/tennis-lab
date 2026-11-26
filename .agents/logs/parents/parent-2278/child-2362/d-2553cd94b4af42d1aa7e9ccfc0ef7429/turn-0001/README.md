@@ -1,0 +1,37 @@
+# 担当issue &#35;2362 のターン 1
+
+結果 → 親の判断と理由 → 実際の行動 → 次の結果を、参照で辿る表示です。
+
+反映範囲: このHEADの記録集合 6 件。記録時刻 2026-11-22T05:01:57.163872+00:00 〜 2026-11-23T03:42:51.686879+00:00。
+
+公開待ち: このHEADのmain反映と、まだGitに無い非公開記録は `decision-log-status` で照合してください。ここでは未公開件数や最新状態を推測しません。
+
+[上の階層](../README.md) · [親一覧](../../../../README.md)
+
+6 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 2 件。親の確認未記録: 2 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 0 件（結果イベント単位）。
+
+公開workerログ: 1 ターン（分母）。対応イベントあり: 1 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。
+
+対応数は公開worker3ファイルのあるターンを分母にしたものです。イベントのみのターンを加えた和集合とは分けます。対応イベントの存在は、親判断の記録・受入・網羅性を保証しません。
+
+直近の観測（受入の判定とは別）: [結果 5596](../../../activity-90bdfc64b95d4df6b04a8f0bf6d7fa1a/README.md#record-99dfb4a0b0a441218c0bf82f29366162) success / machine: worker&#95;logs.publish: delegation&#95;key=d-2553cd94b4af42d1aa7e9ccfc0ef7429 / ターン: 1 / 状態: merged<br>[行動 5597](../../../activity-90bdfc64b95d4df6b04a8f0bf6d7fa1a/README.md#record-5dd47585a9b94ac7bc4d23fa778c1ff2) 公開 / 終了（成果受入とは別）
+
+## 活動別の結果と判断
+
+| 対象・期間 | 件数と未確認 | 最新の記録 |
+| --- | --- | --- |
+| [worker&#95;logs.receive / 担当issue &#35;2362](../../../activity-aff626a00095418a8e3288cc502a10f9/README.md)<br>2026-11-22T05:01:57.163872+00:00 〜 2026-11-22T05:01:57.776339+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 0 件（結果イベント単位）。<br>公開workerログ: 1 ターン（分母）。対応イベントあり: 1 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 4477](../../../activity-aff626a00095418a8e3288cc502a10f9/README.md#record-3d4bfe42682e450986612b9e979f5b52) partial / machine: worker&#95;logs.receive: delegation&#95;key=d-2553cd94b4af42d1aa7e9ccfc0ef7429 / ターン: 1 / 状態: ready<br>[行動 4478](../../../activity-aff626a00095418a8e3288cc502a10f9/README.md#record-487f436584cc46e2a53b30cfbeae0125) 記録 / 終了（成果受入とは別） |
+| [worker&#95;logs.publish / 担当issue &#35;2362](../../../activity-90bdfc64b95d4df6b04a8f0bf6d7fa1a/README.md)<br>2026-11-23T03:42:51.006151+00:00 〜 2026-11-23T03:42:51.686879+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 0 件（結果イベント単位）。<br>公開workerログ: 1 ターン（分母）。対応イベントあり: 1 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 5596](../../../activity-90bdfc64b95d4df6b04a8f0bf6d7fa1a/README.md#record-99dfb4a0b0a441218c0bf82f29366162) success / machine: worker&#95;logs.publish: delegation&#95;key=d-2553cd94b4af42d1aa7e9ccfc0ef7429 / ターン: 1 / 状態: merged<br>[行動 5597](../../../activity-90bdfc64b95d4df6b04a8f0bf6d7fa1a/README.md#record-5dd47585a9b94ac7bc4d23fa778c1ff2) 公開 / 終了（成果受入とは別） |
+
+[既存workerログのフォルダー](../0001-initial/README.md)
+
+| 実行（観測時点） | 最終報告 | 公開の所在 | 根拠 |
+| --- | --- | --- | --- |
+| 終了確認 | 最終報告あり | main / このHEADに公開3ファイルを確認<br>[公開PR](https://github.com/Motoki0705/tennis-lab/pull/2436)<br>[PR HEAD](https://github.com/motoki0705/tennis-lab/commit/04f03c41dea808c7dcfc0002a77b9760d51f2a1a)<br>[照合先main（観測時点）](https://github.com/motoki0705/tennis-lab/commit/14ee2d5b3b2ed8909ea9aab194b68079e8c0141e) | 根拠非公開・記録不足: capture&#95;source=worker&#95;logs.observation; artifact=fixed worker journal snapshot; content&#95;sha256=0f9af4e5107ab6a4da1e7f4aa99e66ff3e47dbd1e8a0e5a7a6b3625487d53e83; private evidence<br>根拠非公開・記録不足: capture&#95;source=worker&#95;logs.receive; artifact=fixed final receipt; content&#95;sha256=faac5435a01c820aeb6b66c45bbc900370f45c1d4383f6a172a790642656512b; private evidence<br>根拠非公開・記録不足: capture&#95;source=worker&#95;logs.observation; artifact=fixed worker journal snapshot; content&#95;sha256=e3f7fc323f497656ee882fb79bd33ce3656a23df8cf2e3f71b75c494904c54b8; private evidence<br>[根拠](https://github.com/Motoki0705/tennis-lab/blob/04f03c41dea808c7dcfc0002a77b9760d51f2a1a/.agents/logs/parents/parent-2278/child-2362/d-2553cd94b4af42d1aa7e9ccfc0ef7429/0001-initial/final.md)（固定版）<br>ほか1件の根拠は記録本文を参照 |
+
+[instruction.md](../0001-initial/instruction.md)
+
+[final.md](../0001-initial/final.md)
+
+[meta.json](../0001-initial/meta.json)
+

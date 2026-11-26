@@ -12,6 +12,8 @@ from src.tasks.blcs.generate_dataset.simulation.ball_physics import (
     BallState,
     PhysicsConfig,
 )
+from src.tasks.blcs.generate_dataset.simulation.net_contact import swept_net_contact
+from src.utils.schema.court import net_height_at_x
 
 
 def test_position_normalization_uses_one_scale_and_round_trips() -> None:
@@ -71,6 +73,25 @@ def _reference_step(config: PhysicsConfig, state: BallState) -> BallState:
         position=state.position + velocity * config.dt,
         velocity=velocity,
         spin=state.spin.clone(),
+    )
+
+
+@pytest.mark.parametrize("side", [-1, 1])
+def test_swept_step_detects_first_cord_contact_between_samples(side: int) -> None:
+    physics = BallPhysics(_config(use_drag=False, use_magnus=False))
+    height = net_height_at_x(0.0)
+    start = torch.tensor([0.0, side * 0.09, height - 0.001])
+    end = torch.tensor([0.0, -side * 0.09, height - 0.001])
+    contact = swept_net_contact(start, end, physics)
+    assert contact is not None and 0.006 < side * contact[1].item() < 0.009
+    assert contact[2].item() == pytest.approx(height - 0.001)
+    assert (
+        swept_net_contact(
+            start + torch.tensor([0, 0, 0.002]),
+            end + torch.tensor([0, 0, 0.002]),
+            physics,
+        )
+        is None
     )
 
 

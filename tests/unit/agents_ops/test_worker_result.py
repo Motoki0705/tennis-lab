@@ -13,6 +13,9 @@ OPS = Path(__file__).resolve().parents[3] / ".agents/ops"
 DONE = 'PARENT_RESULT {"schema_version":1,"state":"done","wait":null}'
 CI = {"kind": "ci", "pr": 6, "head": "c" * 40, "resume_on_success": False}
 QUEUE = {"kind": "queue", "job_ids": ["12_34_sample.job"]}
+LOCAL_JOB_A = "20261124T010203Z_0123456789ab_pytest-unit"
+LOCAL_JOB_B = "20261124T010204Z_fedcba987654_mypy.check_1"
+LOCAL = {"kind": "local", "job_ids": [LOCAL_JOB_A]}
 
 
 def report(wait: dict[str, Any]) -> str:
@@ -38,6 +41,8 @@ def report(wait: dict[str, Any]) -> str:
                 ],
             }
         ),
+        report(LOCAL),
+        report({"kind": "local", "job_ids": [LOCAL_JOB_A, LOCAL_JOB_B]}),
     ],
 )
 def test_valid_footer(monkeypatch: pytest.MonkeyPatch, text: str) -> None:
@@ -77,6 +82,15 @@ def test_valid_footer(monkeypatch: pytest.MonkeyPatch, text: str) -> None:
         report({**QUEUE, "job_ids": ["12_34_sample.job"] * 2}),
         report({**QUEUE, "job_ids": "12_34_sample.job"}),
         report({**QUEUE, "unknown": 1}),
+        report({**LOCAL, "job_ids": []}),
+        report({**LOCAL, "job_ids": [LOCAL_JOB_A, LOCAL_JOB_A]}),
+        report({**LOCAL, "job_ids": [f"../{LOCAL_JOB_A}"]}),
+        report({**LOCAL, "job_ids": [f"{LOCAL_JOB_A}/sub"]}),
+        report({**LOCAL, "job_ids": ["20261124T010203Z_0123456789ab_a..b"]}),
+        report({**LOCAL, "job_ids": ["not-a-valid-job"]}),
+        report({**LOCAL, "job_ids": [123]}),
+        report({**LOCAL, "job_ids": LOCAL_JOB_A}),
+        report({**LOCAL, "unknown": 1}),
     ],
 )
 def test_invalid_footer(monkeypatch: pytest.MonkeyPatch, text: str) -> None:

@@ -124,7 +124,7 @@ def summarize(report: Path) -> None:
     lines = ['# #964 run 6 — ROI前の人物source比較（固定4 dev clip）', '',
         '参照boxは旧COCO/旧trackerから作った部分ラベルで、**COCOに有利**。旧boxとの一致を検出recallとは呼ばない。未ラベル予測をFPと数えない。全sourceは800/1333・全画面・ROI前。保存済み追跡archiveによるsource比較で、最終tracking方式比較ではない。追跡条件は入力archiveのprovenanceを参照する。', '',
         '## 固定した選別規則', '',
-        'box下端中心を校正cameraのz=0平面へ投影。シングルス幅 |x|≤4.115m、|y|≤16.885mのcoreにおけるdistinctな実観測frameがclipの25%以上となる連結groupを選手候補とし、その後に上限6。ダブルス幅 |x|≤5.485mは診断値で、出力を切らない。**選択済み断片の全実観測を保持する**（wide run・無効足元も含む）。', '',
+        'box下端中心を校正cameraのz=0平面へ投影。コア領域における重複のない実観測frameの滞在で連結groupを選び、group上限を適用する。実行時の条件は selection_protocol.json の linking と selection_code_sha256 で識別する。**選択済み断片の全実観測を保持する**（wide run・無効足元も含む）。', '',
         'gap>1秒または既存0.25秒窓/3m jumpで区間を切る。両方coreへ入る断片を位置連続性＋CLIP cosine≥.8のvetoで連結。mutual nearestと次点差.2を要求、1秒未満の曖昧断片は除外、同camera handoff重複は≤.2秒。滞在の重複は1回だけ数える。選別maskは重複観測も保持し、既存v3対応に渡すgroup timelineだけ早いraw track IDで1box/frameへ正規化する。検出sourceの閾値以降にscore gate/fusionは無い。ラベルはこの判定へ渡さない。', '',
         '全raw trackでcropの遮蔽を検査し、coreに入るtrackへ既定CLIPをCPUで適用。同じ動画/hash・重み/hash・frame・resized RGBが完全一致するcropだけ再利用する。crop不足・短いsegmentに埋め込みが無い場合はmissingと記録し、幾何だけで照合する既存挙動。camera間対応は同じ既存CLIP+幾何の第2確認で、undecidedを補完しない。', '',
         '主表は選別直後、IoU≥.3。IoU≥.5、clip別、identity別、対応成功clipだけのassociated表はCSV/JSONに保存。選手ID保持は当該集計範囲でラベルunitの50%以上、非選手ID完全除外は残存0。unit=(clip,camera,frame,person)で重複boxをまとめる。near/farは同frameの2選手のbox下端順位、順位が定まらなければunknown。', '',

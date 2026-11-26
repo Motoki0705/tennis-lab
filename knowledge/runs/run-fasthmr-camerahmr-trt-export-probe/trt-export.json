@@ -1,0 +1,32 @@
+{
+  "phase": "camera_backbone_export",
+  "clip": "video_000/clip_003",
+  "source_frame": 0,
+  "tensorrt": "10.14.1.48.post1",
+  "profile": {
+    "batch": 1,
+    "image": [
+      1,
+      3,
+      256,
+      256
+    ]
+  },
+  "positive_mask_pixels": 9273,
+  "eager_mask_effect": {
+    "tokens": 0.625,
+    "crop_camera": 0.076934814453125,
+    "betas": 0.803955078125
+  },
+  "torch_export": {
+    "status": "failed",
+    "type": "RuntimeError",
+    "message": "PyTorch is checking whether allow_tf32 is enabled for cuDNN without a specific operator name,but the current flag(s) indicate that cuDNN conv and cuDNN RNN have different TF32 flags.This combination indicates that you have used a mix of the legacy and new APIs to set the TF32 flags. We suggest only using the new API to set the TF32 flag(s). See also: https://pytorch.org/docs/main/notes/cuda.html#tensorfloat-32-tf32-on-ampere-and-later-devices"
+  },
+  "torchscript_export": {
+    "status": "failed",
+    "type": "RuntimeError",
+    "message": "CameraHMR is not attached to a `Trainer`."
+  },
+  "trt_engine": "not_built"
+}

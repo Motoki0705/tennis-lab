@@ -11,6 +11,10 @@ from typing import Any
 
 import cv2
 
+from src.tennis_scene.multiview_scene.publication import (
+    LEGACY_GENERATIONS,
+    open_legacy_store,
+)
 from src.tennis_scene.multiview_tracking.schema import PoseTracks
 from src.tennis_scene.visualization.pose_comparison.inputs import (
     ClipPlan,
@@ -238,8 +242,8 @@ def build(args: argparse.Namespace) -> None:
     with TemporaryDirectory(prefix=".pose-comparison-", dir=output.parent) as temporary:
         bundle = Path(temporary) / "page"
         for plan in plans:
-            old = StoreReader(
-                dataset / plan.path / "annotations/tennis_scene/scene.json"
+            old = open_legacy_store(
+                dataset / plan.path / "annotations/tennis_scene", args.legacy_generation
             )
             new = StoreReader(args.candidates / plan.clip_id / "scene.json")
             data = load_comparison(old, new, plan, record)
@@ -276,6 +280,7 @@ def build(args: argparse.Namespace) -> None:
                 "legacy_progress": {
                     "sha256": progress_digest,
                     "batch": dataset.parent.parent.name,
+                    "scene_generation": args.legacy_generation,
                 },
                 "stages": list(stages.values()),
             },
@@ -299,6 +304,10 @@ def main() -> None:
     )
     parser.add_argument(
         "--progress", required=True, type=Path, help="Original batch progress.json"
+    )
+    parser.add_argument(
+        "--legacy-generation", choices=LEGACY_GENERATIONS, default="active",
+        help="Legacy scene generation to compare",
     )
     parser.add_argument(
         "--candidates",

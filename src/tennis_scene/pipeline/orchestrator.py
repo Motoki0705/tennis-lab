@@ -13,6 +13,10 @@ from src.tennis_scene.pipeline.artifacts import (
 )
 from src.tennis_scene.pipeline.clip_inputs import InputSnapshot, prepare_clip_source
 from src.tennis_scene.pipeline.components.court_kp import CourtKPModule
+from src.tennis_scene.pipeline.components.event_detection import (
+    EVENT_DETECTION,
+    EventDetectionModule,
+)
 from src.tennis_scene.pipeline.components.person_features import (
     appearance_feature_settings,
 )
@@ -30,6 +34,7 @@ from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
 from src.tennis_scene.pipeline.imports import BallAnnotationImporter
 from src.tennis_scene.pipeline.inference_runtime import ModelEventHook
 from src.tennis_scene.pipeline.model_assets import ModelAssetSnapshot
+from src.tennis_scene.pipeline.recipes import STANDARD_RECIPE, recipe_directory
 from src.tennis_scene.pipeline.runner import (
     ComponentNode,
     ComponentRunner,
@@ -82,7 +87,8 @@ class TennisSceneOrchestrator:
         self._video_court_side_key: tuple[object, ...] | None = None
         self.code_identity = document_digest(compatible_source_digests(
             source_digests(PROJECT_ROOT / "src"), ball_court_side=config.court_side_evidence == "ball",
-            tensorrt=config.people.runtime.uses_tensorrt))
+            tensorrt=config.people.runtime.uses_tensorrt or (config.ecpose is not None and config.ecpose.engine is not None),
+            standard_recipe=config.recipe == STANDARD_RECIPE, standard_people=config.ecpose is None))
 
     @classmethod
     def from_runtime_config(cls, cfg: PipelineRuntimeConfig, *, model_event: ModelEventHook | None = None) -> TennisSceneOrchestrator:
@@ -95,8 +101,9 @@ class TennisSceneOrchestrator:
 
     def publication_identity(self) -> dict[str, Any]:
         cfg = self.config
+        event_config = cfg.require_event_detection()
         check_shared_side_execution(cfg, self.components)
-        validate_override_names(self.components or {})
+        validate_override_names(self.components or {}, cfg.recipe)
         overrides = {name: component_override_identity(cfg, component) for name, component in (self.components or {}).items()}
         shared = self.prepare_video_court()
         side = self.prepare_video_court_side(shared)
@@ -115,11 +122,17 @@ class TennisSceneOrchestrator:
         for name, default in (("clip_reid", 64), ("gvhmr", 1)):
             if people_runtime.get(name) == {"batch_size": default}:
                 del people_runtime[name]
+        event = event_config.settings()
+        if event_config.annotation_directory is not None:
+            event["annotation_directory"] = str(event_config.annotation_directory)
+            event["annotation_benchmark_manifest"] = str(event_config.annotation_benchmark_manifest)
         identity = {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": settings, "execution": dict(cfg.component_sources),
+            EVENT_DETECTION: event,
             "checkpoints": {key: cfg.court_kp.asset_catalog.file_identity(path) for key, path in enabled_model_assets(cfg).items()},
             "models": publication_model_identities(cfg),
             "component_overrides": overrides,
+            **({"recipe": cfg.recipe} if cfg.recipe != STANDARD_RECIPE else {}),
             **({"appearance_preprocessing": appearance_feature_settings(cfg.tracking.features)}
                if cfg.enabled["person_observations"] else {}),
             **({"bind_appearance_media": True} if binds_appearance_media(cfg, self.components or {}) else {}),
@@ -205,13 +218,15 @@ class TennisSceneOrchestrator:
 
     def run(self, video_paths: Sequence[Path], *, video_role: PathRole, camera_ids: Sequence[str],
             store_root: Path | None, max_frames: int | None = None, clip_id: str | None = None) -> SceneResult:
-        """Run the standard recipe into an explicitly chosen component store.
+        """Run the selected recipe into an explicitly chosen component store.
 
         ``store_root`` is the clip-owned store (structured datasets keep it at
         ``<clip>/annotations/tennis_scene``); ``None`` selects
         ``cache.directory/<source digest>``. The store is never inferred from
-        the shape of the video paths.
+        the shape of the video paths. Alternate recipes scope their own store
+        under that root.
         """
+        event_config = self.config.require_event_detection()
         self._scene_export = None
         paths = tuple(self.config.resolver.validate(video_role, Path(p)) for p in video_paths)
         inputs = prepare_clip_source(paths, camera_ids, max_frames=max_frames, clip_id=clip_id or self.config.clip_id)
@@ -220,7 +235,7 @@ class TennisSceneOrchestrator:
             raise ValueError("Reference camera is not a source camera")
         source_document = json_value(source)
         root = self.config.cache_directory / document_digest(source_document)[:20] if store_root is None else store_root
-        store = ClipStore(root, source_document)
+        store = ClipStore(recipe_directory(root, self.config.recipe), source_document)
         runner = None
         self.last_runner, self.last_store = None, store
         self.last_receipt = {"schema": "tennis_scene_run_v3", "status": "running", "clip_id": source.clip_id,
@@ -243,10 +258,12 @@ class TennisSceneOrchestrator:
             direct = self.config.direct_annotation
             workflow = None
             direct_model_identity = None
+            direct_event_settings = None
             if direct is not None:
                 from src.tasks.base.annotation.paths import AnnotationLayout
                 if self.config.people.runtime.uses_tensorrt:
                     direct_model_identity = document_digest(publication_model_identities(self.config))
+                direct_event_settings = EventDetectionModule(event_config, source.clip_id).cache_identity()
                 workflow = direct.workflow(source, self.annotation_layout or AnnotationLayout.production())
                 self.last_receipt.update(
                     annotation={"status": "pending", "request": workflow.reference.model_dump(mode="json")},
@@ -279,7 +296,8 @@ class TennisSceneOrchestrator:
                 write_json_atomic(store.root / "run.json", self.last_receipt)
                 if direct.resume == "publication":
                     scene, saved = saved_scene(store, direct, workflow.reference.digest,
-                        people_runtime=self.config.people.runtime, model_identity=direct_model_identity)
+                        people_runtime=self.config.people.runtime, model_identity=direct_model_identity,
+                        event_settings=direct_event_settings, code_identity=self.code_identity)
                     archive = Path(str(saved["archive"]))
                     self.last_receipt["scene"] = saved
                 else:
@@ -299,7 +317,8 @@ class TennisSceneOrchestrator:
                                                    video_court=shared, video_court_side=side)
                 if direct is not None and workflow is not None:
                     self.last_receipt["scene"] = scene_receipt(store, direct, workflow.reference.digest, archive,
-                        people_runtime=self.config.people.runtime, model_identity=direct_model_identity)
+                        people_runtime=self.config.people.runtime, model_identity=direct_model_identity,
+                        event_settings=direct_event_settings)
             self._scene_export = archive
             if workflow is not None:
                 write_json_atomic(store.root / "run.json", self.last_receipt)

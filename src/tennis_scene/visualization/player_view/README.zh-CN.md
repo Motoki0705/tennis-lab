@@ -2,7 +2,7 @@
 
 [English](README.md) · [日本語](README.ja.md)
 
-此 CPU 导出器将已保存的 SceneResult v2 转成 Blender 与 3DGS 共用的输入，
+此 CPU 导出器将已保存的 SceneResult v2 或 v3 转成 Blender 与 3DGS 共用的输入，
 复用现有网格放置、PC2 和球场几何。下述头部相机导出器只读取此 bundle，渲染由下游负责。
 
 ```bash

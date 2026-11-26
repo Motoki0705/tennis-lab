@@ -75,7 +75,10 @@ def test_write_rejects_a_file_owned_by_another_user(
     original_stat = os.stat
 
     def stat_with_foreign_owner(
-        name: str | Path | int, *, dir_fd: int | None = None, follow_symlinks: bool = True
+        name: str | Path | int,
+        *,
+        dir_fd: int | None = None,
+        follow_symlinks: bool = True,
     ) -> os.stat_result:
         info = original_stat(name, dir_fd=dir_fd, follow_symlinks=follow_symlinks)
         if name in (foreign, foreign.name):
@@ -101,6 +104,44 @@ def test_write_creates_private_directories(tmp_path: Path) -> None:
     assert stat.S_IMODE(path.parent.stat().st_mode) == 0o700
     assert stat.S_IMODE(path.parent.parent.stat().st_mode) == 0o700
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
+
+
+def test_read_reopens_state_replaced_after_open(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    state_files = importlib.import_module("lib.state_files")
+    path = tmp_path / "registry.json"
+    path.write_text('{"version":1,"parents":{}}')
+    replacement = tmp_path / "next-registry.json"
+    current = '{"version":2,"parents":{}}'
+    replacement.write_text(current)
+    original_open = os.open
+
+    def open_during_replace(
+        name: str | bytes | Path,
+        flags: int,
+        mode: int = 0o777,
+        *,
+        dir_fd: int | None = None,
+    ) -> int:
+        fd = original_open(name, flags, mode, dir_fd=dir_fd)
+        if name == path.name and replacement.exists():
+            replacement.replace(path)
+            assert os.fstat(fd).st_nlink == 0
+        return fd
+
+    monkeypatch.setattr(os, "open", open_during_replace)
+    assert state_files.read_state_text(path) == current
+
+
+def test_read_rejects_hardlinked_state(tmp_path: Path) -> None:
+    state_files = importlib.import_module("lib.state_files")
+    path = tmp_path / "registry.json"
+    path.write_text("{}")
+    (tmp_path / "alias.json").hardlink_to(path)
+
+    with pytest.raises(state_files.StateFileError, match="hardlink"):
+        state_files.read_state_text(path)
 
 
 def test_write_refuses_symlinked_ancestor_without_creating_directories(

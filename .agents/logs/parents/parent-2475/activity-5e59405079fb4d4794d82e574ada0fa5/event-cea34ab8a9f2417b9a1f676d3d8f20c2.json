@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "feeb5e5ee6d8429f9a24031141792d19",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=merge.progression; artifact=progression state; content_sha256=94bb3a6b8f21edcdf30a17701b67758ee8d4d264f07640e93ecfeeb0bdd3dc30; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "partial",
+      "summary": "Automatic progression: parent_wait; checkout_interrupted: checkout HEAD changed during wait (59faa32a28d2f54e6492abdba2429846fa0397e3 -> de2cf24362383b1550fee7081bc14324802e3271); restart the command",
+      "verifies": []
+    },
+    "id": "cea34ab8a9f2417b9a1f676d3d8f20c2",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "5e59405079fb4d4794d82e574ada0fa5",
+      "delegation": null,
+      "issue": null,
+      "parent": 2475,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-25T12:00:30.667079+00:00"
+      },
+      "recorded_at": "2026-11-25T12:00:30.667093+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

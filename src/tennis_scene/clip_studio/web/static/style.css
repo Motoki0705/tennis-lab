@@ -41,3 +41,28 @@ td small{display:block;font-size:10px;color:var(--muted);margin-top:3px}.unavail
 #stage:fullscreen #back,#stage:fullscreen #forward,#stage:fullscreen .timeline-head,#stage:fullscreen .timeline-tools,#stage:fullscreen .marks{display:none}
 #stage:fullscreen #time{font-size:15px}#stage:fullscreen #seek{margin:4px 0 0}
 .viewers.focus .focus-button{visibility:hidden}
+
+.clip-row .clip-score { flex-basis: 100%; font-size: 11px; overflow-wrap: anywhere; color: #d8e8e8 }
+.clip-row .clip-score.unscored { color: var(--muted) }
+.clip-row.active .clip-score { color: #162117 }
+#score-panel, #match-settings { border-top: 1px solid var(--line); margin-top: 16px; padding-top: 12px }
+#score-panel h3 { margin: 0 0 8px }
+#score-panel p { font-size: 12px; line-height: 1.6; margin: 6px 0; overflow-wrap: anywhere }
+#score-after { color: var(--accent) }
+#score-warning { color: #ffc98a }
+#score-saved-note { white-space: pre-wrap; color: var(--muted) }
+#score-form, #match-form, #score-csv-form { border: 0; padding: 0; margin: 10px 0 }
+.score-options { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px }
+.score-options select, #score-form select, #score-note { display: block; width: 100%; margin: 4px 0 0 }
+#score-form [hidden], #match-settings [hidden] { display: none }
+#score-note { font: inherit; color: inherit; background: #1a292c; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; resize: vertical }
+#score-before { border: 1px solid var(--line); border-radius: 6px; margin: 10px 0; padding: 6px 8px; font-size: 12px }
+.score-counts { display: grid; grid-template-columns: max-content repeat(2, minmax(0, 1fr)); gap: 4px 8px; align-items: center }
+.score-counts input { width: 100%; padding: 4px 6px }
+.score-checkbox { align-self: end; display: flex; align-items: center; gap: 5px }
+.score-checkbox input { width: auto }
+#score-csv-download { display: inline-block; color: var(--accent); margin-top: 10px }
+#score-csv-file { max-width: 100% }
+@media (min-width: 1051px) and (min-height: 730px) {
+  .clip-mode .workspace { position: sticky; top: 12px; align-self: start }
+}

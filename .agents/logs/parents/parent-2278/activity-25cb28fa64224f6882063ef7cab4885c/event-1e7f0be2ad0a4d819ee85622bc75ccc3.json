@@ -1,0 +1,118 @@
+{
+  "record": {
+    "data": {
+      "action_id": "6b9add8b82c14b3c8c6cf998041f624c",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=worker_logs.receive; artifact=worker-log journal publication view; content_sha256=209dd4bdbdc4e20ba544084bb7d5cf7250026ef0881902015a2b9c456fb2ecac; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "missing_final",
+        "status": "unavailable"
+      },
+      "observation": {
+        "execution": {
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=worker_logs.observation; artifact=fixed worker journal snapshot; content_sha256=590b9af06b95c245db71c9ace4bbe1eb7313a141ce46dea1b6186bae5a55b631; private evidence"
+            }
+          ],
+          "state": "ended"
+        },
+        "final": {
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=worker_logs.observation; artifact=fixed worker journal snapshot; content_sha256=590b9af06b95c245db71c9ace4bbe1eb7313a141ce46dea1b6186bae5a55b631; private evidence"
+            }
+          ],
+          "state": "absent"
+        },
+        "kind": "worker_turn",
+        "publication": {
+          "error": "worker_failed",
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=worker_logs.observation; artifact=fixed worker journal snapshot; content_sha256=590b9af06b95c245db71c9ace4bbe1eb7313a141ce46dea1b6186bae5a55b631; private evidence"
+            }
+          ],
+          "main_revision": null,
+          "pr_head": null,
+          "pr_url": null,
+          "stage": "awaiting_final",
+          "state": "pending"
+        },
+        "version": 1
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "failure",
+      "summary": "worker_logs.receive: delegation_key=d-f3942ae96ead4458a93f577be6fea2df; turn=2; state=worker_failed; stage=awaiting_final; saved_to_main=False; error=worker_failed",
+      "verifies": []
+    },
+    "id": "1e7f0be2ad0a4d819ee85622bc75ccc3",
+    "kind": "result",
+    "schema_version": 2,
+    "scope": {
+      "activity_key": "25cb28fa64224f6882063ef7cab4885c",
+      "delegation": {
+        "key": "d-f3942ae96ead4458a93f577be6fea2df",
+        "turn": 2
+      },
+      "issue": 2355,
+      "parent": 2278,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-21T23:47:20.817784+00:00"
+      },
+      "recorded_at": "2026-11-21T23:47:20.817801+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

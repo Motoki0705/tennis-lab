@@ -1,12 +1,45 @@
-"""The installation CLI must preserve its nonzero exit and complete diagnostic."""
+"""The installation CLI reports readiness or errors with a matching exit code."""
 
 import json
 import os
+import shlex
 import subprocess
 import sys
 from pathlib import Path
 
 from src.utils.paths import PROJECT_ROOT
+
+
+def test_documented_preflight_exits_zero_when_assets_are_ready(tmp_path: Path) -> None:
+    module = "src.tennis_scene.scripts.preflight"
+    commands = [
+        shlex.split(next(line for line in path.read_text().splitlines() if f"-m {module}" in line))
+        for path in sorted((PROJECT_ROOT / "docs/installation").glob("README*.md"))
+    ]
+    assert len(commands) == 3 and all(command == commands[0] for command in commands)
+    command = commands[0]
+    harness = """
+import runpy
+import sys
+from src.tennis_scene import preflight
+
+def ready_assets(requirements, **options):
+    return tuple(preflight.AssetCheck(item.name, str(item.path), "ok", "fixture ready") for item in requirements)
+
+preflight.check_assets = ready_assets
+runpy.run_module(sys.argv.pop(1), run_name="__main__", alter_sys=True)
+"""
+    result = subprocess.run(
+        [sys.executable, "-c", harness, *command[command.index("-m") + 1:],
+         f"paths.data_root={tmp_path / 'data'}", f"paths.checkpoint_root={tmp_path / 'ckpt'}",
+         f"paths.external_asset_root={tmp_path / 'third_party'}", f"paths.output_root={tmp_path / 'outputs'}"],
+        cwd=PROJECT_ROOT, env={**os.environ, "CUDA_VISIBLE_DEVICES": "", "OMP_NUM_THREADS": "1"},
+        capture_output=True, text=True, timeout=45, check=False,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    report = json.loads(result.stdout)
+    assert report["status"] == "ok" and report["failed"] == 0
+    assert report["checks"] and report["inference_executed"] is False
 
 
 def test_empty_installation_lists_every_asset_and_exits_nonzero(tmp_path: Path) -> None:

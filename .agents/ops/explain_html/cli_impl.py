@@ -12,14 +12,22 @@ import signal
 import socket
 import subprocess
 import sys
+import time
+from collections.abc import Iterator
+from contextlib import ExitStack, contextmanager, nullcontext
 from pathlib import Path
+from threading import Timer
 from typing import Any
 
+from lib.checkout_lock import interactive_checkout_is_pinned
 from lib.opsproc import pidfd_open, pidfd_send_signal, process_identity
 
 from .paths import SafeDirectory
 from .schema import ContractError, ErrorResponse, Identifier, Model, parse
 from .store import RevisionStore
+
+MAIN_SERVE_SECONDS = 3600
+MAIN_SERVE_SHUTDOWN_GRACE = 15
 
 
 class _Session(Model):
@@ -67,7 +75,23 @@ def _live(session: _Session | None) -> bool:
     return session is not None and process_identity(session.pid) == session.identity
 
 
-def _serve(arguments: argparse.Namespace) -> None:
+@contextmanager
+def _serve_lifetime() -> Iterator[float | None]:
+    if not interactive_checkout_is_pinned():
+        yield None
+        return
+    deadline = time.monotonic() + MAIN_SERVE_SECONDS
+    previous = signal.signal(signal.SIGALRM, signal.SIG_DFL)
+    # Bound the checkout lock even if a trusted adapter or shutdown blocks.
+    signal.setitimer(signal.ITIMER_REAL, MAIN_SERVE_SECONDS + MAIN_SERVE_SHUTDOWN_GRACE)
+    try:
+        yield deadline
+    finally:
+        signal.setitimer(signal.ITIMER_REAL, 0)
+        signal.signal(signal.SIGALRM, previous)
+
+
+def _serve(arguments: argparse.Namespace, *, deadline: float | None) -> None:
     import secrets
 
     import uvicorn
@@ -145,9 +169,21 @@ def _serve(arguments: argparse.Namespace) -> None:
                     else:
                         print(announcement, flush=True)
 
-            Server(uvicorn.Config(app, log_config=None, access_log=False)).run(
-                sockets=[sock]
-            )
+            server = Server(uvicorn.Config(app, log_config=None, access_log=False))
+            with ExitStack() as lifetime:
+                if deadline is not None:
+
+                    def expire() -> None:
+                        server.should_exit = True
+                        logging.getLogger(__name__).warning(
+                            "Main checkout service lifetime expired; reopen with start"
+                        )
+
+                    timer = Timer(max(0, deadline - time.monotonic()), expire)
+                    timer.daemon = True
+                    lifetime.callback(timer.cancel)
+                    timer.start()
+                server.run(sockets=[sock])
     except Exception:
         logging.getLogger(__name__).exception("Private startup failure")
         if ready is not None:
@@ -284,18 +320,24 @@ def main() -> int:
     arguments.root = arguments.root.absolute()
     try:
         if arguments.command in {"serve", "start"}:
-            # Do not send raw adapter errors or prompts to a terminal or HTTP.
-            with SafeDirectory(arguments.root, create=True) as filesystem:
-                filesystem.mkdir("private")
-                with filesystem.open_file(
-                    "private/service.log", os.O_WRONLY | os.O_CREAT | os.O_APPEND
-                ) as descriptor:
-                    handler = logging.StreamHandler(os.fdopen(os.dup(descriptor), "a"))
-                    logging.getLogger().addHandler(handler)
-            if arguments.command == "serve":
-                _serve(arguments)
-            else:
-                _start(arguments)
+            lifetime = (
+                _serve_lifetime() if arguments.command == "serve" else nullcontext()
+            )
+            with lifetime as deadline:
+                # Do not send raw adapter errors or prompts to a terminal or HTTP.
+                with SafeDirectory(arguments.root, create=True) as filesystem:
+                    filesystem.mkdir("private")
+                    with filesystem.open_file(
+                        "private/service.log", os.O_WRONLY | os.O_CREAT | os.O_APPEND
+                    ) as descriptor:
+                        handler = logging.StreamHandler(
+                            os.fdopen(os.dup(descriptor), "a")
+                        )
+                        logging.getLogger().addHandler(handler)
+                if arguments.command == "serve":
+                    _serve(arguments, deadline=deadline)
+                else:
+                    _start(arguments)
         elif arguments.command == "stop":
             _stop(arguments.root)
         elif arguments.command == "status":

@@ -133,7 +133,7 @@ set済みなら起動せず、実行中のsetはprocess groupを停止・回収�
 ### 対話CLIの保護
 
 次の対話CLI入口は、stdlibによるpath設定と `checkout_lock.run_cli()` の呼出だけを行う。
-`run_cli()` は共有lockを取った後に本体moduleをimportし、メインcheckoutのコードを終了まで保護する。
+`run_cli()` は共有lockを取った後に本体moduleをimportする。共有lockはメインcheckoutのコードを使う区間を保護する。
 Pythonは入口全体をlock取得前にcompileするため、入口へ実処理・project importを置かない。
 **起動方法は従来どおりで、launcherの追加は不要**。
 同じ入口の短いstatus/help操作も保護する。subcommandの選別と入口の取りこぼしを避け、
@@ -141,22 +141,22 @@ Gitメタデータの読取とlock操作に留めるための判断である。
 
 | 入口 | lock取得後の本体 | 保持する期間・用途 |
 |---|---|---|
-| `python -m parent` | `parent.cli_impl` | worker待機・補足待ち・公開・復旧を含む全体。`improvement-expire` は有限launcherも必須 |
-| `python -m parent.cli` | `parent.cli_impl` | 同上 |
-| `review/merge_gate.py` | `lib.ops_review.merge_gate_impl` | 自動進行controllerのレビュー・CI待機・merge・merge後確認の全体 |
-| `lib/agent_exec.sh` | `lib/agent_runtime.py` 経由 | runner終了まで。監視・出力解析・回収中も保護 |
-| `lib/agent_runtime.py` | `lib.agent_runtime_impl` | 同上。直接file起動も保護 |
-| `python -m explain_html` | `explain_html.cli_impl` | start/serveを含む全体。背景serveも自身で取得 |
+| `python -m parent wait-worker` / `parent.cli` の同サブコマンド | `parent.worker_wait` | runner・CI・queue・local job・空き枠の観測間隔（最大1秒）は解放。runの照合と同期runner statusは保持。statusの上限は60秒と `--timeout` の残り時間の短い方 |
+| `python -m parent wait-supplement` / `parent.cli` の同サブコマンド | `parent.supplement` | `gh run watch` の実行中は解放。開始前のrun特定と終了後のissue照会は保持 |
+| 親CLIの `wait-merge` と `review-request`・`merge-knowledge`・`merge-confirm`・`merge-continue` の `--wait` | `lib.ops_review.merge_gate_impl` | 進行イベントの観測間隔（0.25秒）は解放。保存状態の読取は保持 |
+| `python -m parent` / `python -m parent.cli` のその他の操作 | `parent.cli_impl` | 起動、公開、復旧などは終了まで保持。通常の `run-worker` は活動中のrunnerとの契約・結果の照合と回収を保護する。手動workerの修正は次の `merge_gate.py` と同じ上限。`improvement-expire` は有限launcherも必須 |
+| `python -m parent.worker_monitor` | `parent.worker_monitor` | 専用のdetached worktreeを起動元に要求し、照合してからclaimする。CI・queue・local job・空き枠の観測ではレジストリ処理の区間だけ共有lockを保持 |
+| `review/merge_gate.py` | `lib.ops_review.merge_gate_impl` | PR/main CI・依存・修正結果・rate limitの観測間隔で解放。判定・merge・公開と活動中のrunnerの契約を保護する。正式レビューは `--agent-timeout`（既定1800秒）と回収で区切る。手動workerの修正はrunner内部1800秒、同期終了待ち1810秒、終了要求8秒と強制停止の回収2秒で区切る。強制停止時は保存済みの起動記録から終了証拠を照合する |
+| `lib/agent_exec.sh` / `lib/agent_runtime.py` | `lib.agent_runtime_impl` | 実行中のrunner契約、出力解析、回収を保護し、runnerの終了まで保持。`--timeout` 指定時はその実行時間と終了回収で区切る |
+| `python -m explain_html` | `explain_html.cli_impl` | リクエスト・生成・公開を一貫した版で扱うため、メイン由来の `serve` は待受中も保持。起動時の初期化から3600秒で終了を要求し、終了処理を含め3615秒でプロセスを打ち切る。背景serveも自身で取得し、同じ上限を使う |
 | `python -m ci_watch` | `ci_watch.cli` | GitHubのページ取得・複数対象の収集が終わるまで |
 | `python -m project_progress` | `project_progress.cli_impl` | 同上 |
 | `python -m shared_memory` / `python -m shared_memory.cli` | `shared_memory.cli_impl` | 共有memoryの検査・公開・マージが終わるまで |
 | `python -m issue_supplement` | `issue_supplement.cli` | 生成・検証・取得serverを含む全体 |
 | `python -m review.evaluation` | `lib.ops_review.evaluation.cli_impl` | 比較・検証の全体 |
-| `python -m lib.review_tools.mcp_server` | `lib.review_tools.mcp_server_impl` | stdio取得serverの終了まで |
-| `python -m lib.review_tools.review_server` | `lib.review_tools.review_server_impl` | 同上 |
-| `python -m opsreport.mcp_server` | `opsreport.mcp_server_impl` | stdio取得serverの終了まで |
-| `python -m opsreport.reproduction_server` | `opsreport.reproduction_server_impl` | stdio CPU検証serverの終了まで |
-| `dispatcher/worker.py` | `dispatcher.worker_impl` | 予約照合からrunner待機・終了記録まで |
+| `python -m lib.review_tools.mcp_server` / `python -m lib.review_tools.review_server` | `lib.review_tools.mcp_server_impl` / `lib.review_tools.review_server_impl` | stdio取得serverは同じツール契約でセッションを提供する間保持。stdinの終了または呼出元runnerの回収で解放 |
+| `python -m opsreport.mcp_server` / `python -m opsreport.reproduction_server` | `opsreport.mcp_server_impl` / `opsreport.reproduction_server_impl` | stdio取得・CPU検証serverは同じツール契約でセッションを提供する間保持。stdinの終了または呼出元runnerの回収で解放 |
+| `dispatcher/worker.py` | `dispatcher.worker_impl` | 予約と活動中のrunnerの契約を終了記録まで照合するため、runnerの実行・回収の間保持 |
 
 lockの対象は `checkout_lock.py` 自身の実体が属するcheckoutで決める。cwd、`--repo`、
 state先で別checkoutのlockを取らない。linked worktree由来のコードには寿命lockを取らない。
@@ -167,7 +167,12 @@ separate git-dirのメインも保護し、壊れたメタデータは75で拒�
 
 更新側が排他lockを持っていれば、待機をstderrへ出し、**更新完了を待ってからproject importを始める**。
 取得・repoの識別に失敗した場合や、取得後にも中断マーカーが残る場合は、理由を出して75で拒否する。
-lockなしの実行へ切り替えない。通常の共有lockのFDはexecで閉じ、Pythonのfork子でも閉じるため、
+表の外部待機では、`checkout_wait()` が共有lock下でsource checkoutの完全HEADを読み、自身の共有FDを閉じる。
+待機中はsleepや外部コマンドの完了待ちだけを行う。復帰時は共有lockを取り直し、Gitディレクトリ・中断マーカー・
+HEADを照合してから処理を続ける。HEADが変わった場合は旧・新HEADと再実行の案内をstderrへ出して75で終了する。
+Gitの版照会はこの待機の境界で行い、最初のbootstrapはGitメタデータの直接読取だけでlockを取る。
+マージ進行controllerの中断通知と再開手順は [マージ自動進行](../review/README.md#実行と保存) を参照。
+通常の共有lockのFDはexecで閉じ、Pythonのfork子でも閉じるため、
 外部Codex/Claude・toolだけが存続しても親CLIのlockを保持しない。ただしメインのコードを使う
 子のrunner/serverは上表の自身の入口で独立に保持する。有限launcherの既存FD継承契約とは区別する。
 
@@ -179,7 +184,7 @@ boardの投稿/status、worker_status、herdr_labels、issuesの短い管理CLI�
 `src/` の学習・評価、training queue workerはこの保護の対象外。
 
 延期時はkernelの `/proc/locks` と `/proc/<PID>/cmdline` から実際の保持者を取得し、
-`lock_holders`（`entry`・`pid`・read/writeの`mode`）をgit-syncのstatus/journalに記録する。
+`lock_holders`（`entry`・`pid`・read/writeの`mode`、判別できるときは `parent_issue`）をgit-syncのstatus/journalに記録する。
 任意の引数・promptは記録しない。PIDファイルは作らず、異常終了後の古い記録で延期しない。
 取得中に終了したPIDは除き、権限不足等の詳細取得失敗は `inspection_error` として明示する。
 
@@ -198,7 +203,7 @@ checkoutは保持し、再取得の順序を変えない。更新が先ならreg
 registry transactionを終了してからrunnerを待つ経路では、次のtransactionで改めて
 checkoutから取得する。runner待機・GitHub通信をregistryの保持下へ戻さない。
 `consistent_snapshot()` はregistryを共有読取後に、自分で追加したcheckout lockを検証後に解放する。
-呼出元のGitHub I/Oでregistryを保持せず、入口の寿命lockは終了まで続く。
+呼出元のGitHub I/Oでregistryを保持せず、入口のlockは上表の外部待機区間で解放する。
 
 dispatcherの `__main__.py` / `cli.py` / `dispatch.py` も薄いbootstrapで、
 `dispatcher.cli_impl` のimport前に保護する。runは有限launcher、superviseは専用launcherという

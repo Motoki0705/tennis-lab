@@ -57,6 +57,7 @@ benchmark conditionと照合し、欠損・破損・不一致は明示エラー�
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   'video_paths=[samples/cam0.mp4,samples/cam1.mp4,samples/cam2.mp4]' \
   'camera_ids=[cam0,cam1,cam2]' 'clip_id=meiji_3cam/video_000/clip_000' \
+  event_detection.method=rule \
   ball_detection.method=gpt_annotation ball_detection.checkpoint=null \
   direct_annotation.request=chat_annotation/campaigns/scene-inputs/request.json \
   direct_annotation.request_sha256="$REQUEST_SHA256" \
@@ -92,6 +93,16 @@ scene metadataの`ok`/`partial`は従来の意味を保持する。cameraごと�
 [通常の公開と同じ契約](../README.md#成果物)で検証する。完成注釈とscene exportを検証してpublisherを再開し、
 scene stageの構築・worker受付を行わない。publisher commit後、workflow receipt保存前の中断も
 同じsnapshotへ収束する。新しい公開要求で保存注釈を上書きしない。
+
+公開再開は採用済みの `event_detection` 成果物と現在の正規化ソース識別を照合する。
+commit をまたいで入力・設定・ソース識別が一致すれば、イベントの計算時の commit を保持したまま再開できる。
+ソース識別が異なる場合は公開前に停止する。
+
+旧 `scene-completion.json` の `event_detection` 設定に `code_commit` がある場合は、
+同じsceneコマンドとstoreで
+`direct_annotation.resume=workflow cache.source=execute execution.event_detection=execute`
+を指定して再実行する。完成注釈を再利用し、新しいscene完了receiptを保存する。
+以後、公開だけを再開するときは `direct_annotation.resume=publication` を使う。
 
 ## 探索方針の比較と計測
 

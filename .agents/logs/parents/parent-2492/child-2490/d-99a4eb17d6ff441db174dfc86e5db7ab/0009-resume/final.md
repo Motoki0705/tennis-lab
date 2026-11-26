@@ -1,0 +1,5 @@
+RTMPoseとPMPoseの速度計測コードを統合し、`codex/parent-2492-issue-2490-primary` の `77f996392d03751b10bf1824b47162726bca7cb6` をpushしました。両担当が登録したPT16/TRT16の6ジョブを待ちます。追加投入は0件です。 [ドラフトPR #2500](https://github.com/Motoki0705/tennis-lab/pull/2500)
+
+同じbatch・backendのViTPose-H比を計算し、平均OKS、人物あたりのwall P50、NVMLメモリでbatch別のParetoを求める集計を追加しました。pytest 106件、pre-commit、knowledge検査が通過し、ViTPose-Hの実測値と欠損を模擬した入力でCSV・図の生成を確認しました。候補の実測値による最終比較と採用候補の評価は、6ジョブの終端後に行います。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job","0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job","0-8204399509493995139_2026-11-25T09-54-50-506004860Z_2573712_i2490-pmpose-l-pt16-speed-sync.job","0-8204399509083352450_2026-11-25T09-54-50-916647549Z_2573813_i2490-pmpose-l-trt16-speed-sync.job","0-8204399508674762212_2026-11-25T09-54-51-325237787Z_2573934_i2490-pmpose-h-pt16-speed-sync.job","0-8204399508312554524_2026-11-25T09-54-51-687445475Z_2574122_i2490-pmpose-h-trt16-speed-sync.job"]}}

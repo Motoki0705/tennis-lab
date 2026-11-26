@@ -10,10 +10,13 @@ from time import perf_counter
 from typing import Any
 
 import numpy as np
-from omegaconf import OmegaConf
 
-from src.tennis_scene.configuration import PipelineRuntimeConfig
+from src.tennis_scene.multiview_scene.configuration import MultiviewSceneConfig
 from src.tennis_scene.multiview_scene.inputs import RECIPE, read_inputs
+from src.tennis_scene.multiview_scene.publication import (
+    LEGACY_GENERATIONS,
+    open_legacy_store,
+)
 from src.tennis_scene.multiview_scene.recipe import (
     adapter_settings,
     make_clip_execution,
@@ -106,9 +109,7 @@ def run_recipe(
     *,
     prepare_only: bool,
 ) -> int:
-    cfg = PipelineRuntimeConfig.from_config(
-        OmegaConf.create(progress["pipeline_config_yaml"]), bind_inputs=False
-    )
+    cfg = MultiviewSceneConfig.from_batch_yaml(progress["pipeline_config_yaml"])
     implementation = document_digest(source_digests(PROJECT_ROOT / "src"))
     settings = adapter_settings(cfg, implementation)
     players_per_side = args.players_per_side
@@ -135,7 +136,7 @@ def run_recipe(
                 args.candidates / key,
                 players_per_side=players_per_side,
                 threshold=cfg.human_vis_threshold,
-                crops=cfg.tracking.features,
+                crops=cfg.crops,
             )
             new = prepare_store(
                 args.output / key, source, frozen, old.index_path, settings
@@ -202,8 +203,9 @@ def write_completion(
 
     for record in records:
         key = record.clip_id
-        old = StoreReader(
-            args.dataset / record.path / ANNOTATION_RELATIVE_DIR / "scene.json"
+        old = open_legacy_store(
+            args.dataset / record.path / ANNOTATION_RELATIVE_DIR,
+            args.legacy_generation or "active",
         )
         old_state = progress["clips"][key]
         stop = (
@@ -292,11 +294,18 @@ def main() -> int:
         type=Path,
         help="Frame pose candidates pinned by the integrated tracks",
     )
+    parser.add_argument(
+        "--legacy-generation",
+        choices=LEGACY_GENERATIONS,
+        help="Legacy scene generation for report (default: active)",
+    )
     parser.add_argument("--players-per-side", type=int, required=True, choices=(1, 2))
     parser.add_argument(
         "--clip", action="append", help="Select full clip ID; repeat to select several"
     )
     args = parser.parse_args()
+    if args.legacy_generation is not None and args.phase != "report":
+        parser.error("--legacy-generation is only available for report")
     if args.phase in {"prepare", "run"} and (
         args.tracks is None or args.candidates is None
     ):

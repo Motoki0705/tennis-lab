@@ -31,6 +31,7 @@ from src.tennis_scene.visualization.player_view.camera_bundle import (
 )
 from src.tennis_scene.visualization.player_view.head_camera import HeadCameraConfig
 from src.utils.checksum import dual_sha256
+from tests.support.tennis_scene.annotations import with_fixture_ball_events
 
 pytestmark = pytest.mark.integration
 
@@ -218,9 +219,12 @@ def _store(inputs: Inputs, root: Path) -> ClipStore:
     return store
 
 
+@pytest.mark.parametrize("version", [2, 3])
 def test_saved_scene_bundle_preserves_ids_frames_masks_and_placed_geometry(
-    inputs: Inputs, tmp_path: Path
+    inputs: Inputs, tmp_path: Path, version: int,
 ) -> None:
+    if version == 3:
+        save_scene_result(with_fixture_ball_events(load_scene_result(inputs.scene)), inputs.scene)
     before = _snapshot(tmp_path)
     output = tmp_path / "bundle"
     manifest = json.loads(_export(inputs, output).read_text())

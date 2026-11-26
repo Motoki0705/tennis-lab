@@ -6,3 +6,4 @@ seed: 991
 workers: 4
 min_frames: 128
 maximum_attempts: 64
+net_contact_fraction: 0.0

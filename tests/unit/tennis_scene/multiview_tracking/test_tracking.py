@@ -243,6 +243,57 @@ def test_player_residence_combines_fragments_and_marks_the_long_gap():
     assert result.observed.sum() == 15
 
 
+@pytest.mark.parametrize(
+    "include_partner", [True, False], ids=["two-players", "one-player"]
+)
+def test_compatible_fragments_share_one_doubles_slot(include_partner: bool) -> None:
+    first = Person(-3.0, -7.0)
+    partner = Person(3.0, -7.0)
+    opposite = [Person(-2.0, 7.0), Person(2.0, 7.0)]
+    timeline = []
+    for frame in range(40):
+        people = list(opposite)
+        if frame < 12 or 20 <= frame < 32:
+            people.append(first)
+        if include_partner and (frame < 7 or 20 <= frame < 27):
+            people.append(partner)
+        timeline.append(people)
+    inputs = candidates(timeline)
+    before = track(inputs, fps=10, config=TrackingConfig(2, fragment_integration=None))
+    assert [
+        decision.court_frames
+        for decision in before.selection.decisions
+        if decision.side == -1 and decision.reason == "selected"
+    ] == [12, 12]
+
+    result, integration = track_with_diagnostics(inputs, fps=10, config=TrackingConfig(2))
+    assert integration is not None
+    roster = [(first, 24), (partner, 14)] if include_partner else [(first, 24)]
+    assert result.selection.minimum_residence_frames == 10
+    assert result.selection.missing_per_side == (2 - len(roster), 0)
+    slots = {slot.track_id: slot for slot in integration.slots if slot.side == -1}
+    assert len(slots) == len(roster)
+    for person, residence in roster:
+        rows = result.observed & np.isclose(result.torso_m[:, 0], person.x)
+        person_ids = np.unique(result.track_ids[rows])
+        assert len(person_ids) == 1
+        track_id = int(person_ids[0])
+        assert track_id in result.selection.selected_track_ids
+        assert result.selection.decisions[track_id].court_frames == residence
+        assert len(slots[track_id].fragments) == 2
+        assert len(slots[track_id].joins) == 1
+
+    measured_players = (
+        result.observed
+        & (result.torso_m[:, 1] < 0)
+        & np.isin(result.track_ids, result.selection.selected_track_ids)
+    )
+    frames: NDArray[np.int64] = np.repeat(
+        np.arange(len(timeline), dtype=np.int64), np.diff(result.frame_offsets)
+    )
+    assert np.bincount(frames[measured_players]).max() == len(roster)
+
+
 @pytest.mark.parametrize("other", [Person(0.0, 0.2, build=1.8), Person(0.0, -0.2)])
 def test_fragments_require_compatible_body_size_and_court_side(other: Person):
     timeline = [

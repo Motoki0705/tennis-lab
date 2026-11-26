@@ -8,8 +8,9 @@ from pathlib import Path
 
 import pytest
 from hydra import compose, initialize_config_dir
-from omegaconf import DictConfig
+from omegaconf import DictConfig, open_dict
 
+from src.submodules.models.fasthmr.assets import CHECKPOINT_SHA256
 from src.tennis_scene import preflight
 from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
@@ -28,7 +29,8 @@ from src.utils.paths import PROJECT_ROOT
 def installation_config(tmp_path: Path) -> DictConfig:
     with initialize_config_dir(config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"), version_base="1.3"):
         return compose(config_name="pipeline", overrides=[f"paths.checkpoint_root={tmp_path / 'ckpt'}",
-            f"paths.data_root={tmp_path / 'data'}", f"paths.external_asset_root={tmp_path / 'third_party'}"])
+            f"paths.data_root={tmp_path / 'data'}", f"paths.external_asset_root={tmp_path / 'third_party'}",
+            "event_detection.method=rule"])
 
 
 def test_reports_missing_corrupt_and_extension_faults_together(tmp_path: Path) -> None:
@@ -100,7 +102,7 @@ def test_acquired_gvhmr_weights_keep_byte_pins_in_preflight(
     assert requirement.size_bytes == len(valid)
 
     def extension() -> Path:
-        return requirement.path.parent / "unused-extension.so"
+        return Path(requirement.path).parent / "unused-extension.so"
 
     accepted = check_assets([requirement], extension_validator=extension)
     assert all(check.status == "ok" for check in accepted)
@@ -125,7 +127,8 @@ def test_acquired_gvhmr_weights_keep_byte_pins_in_preflight(
 def test_standard_inventory_covers_recipe_source_sample_and_visualization(tmp_path: Path) -> None:
     with initialize_config_dir(config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"), version_base="1.3"):
         config = compose(config_name="pipeline", overrides=[f"paths.checkpoint_root={tmp_path / 'ckpt'}",
-            f"paths.data_root={tmp_path / 'data'}", f"paths.external_asset_root={tmp_path / 'third_party'}"])
+            f"paths.data_root={tmp_path / 'data'}", f"paths.external_asset_root={tmp_path / 'third_party'}",
+            "event_detection.method=rule"])
     runtime = PipelineRuntimeConfig.from_config(config)
     requirements = standard_requirements(runtime)
     paths = {item.path for item in requirements}
@@ -142,16 +145,39 @@ def test_standard_inventory_covers_recipe_source_sample_and_visualization(tmp_pa
         assert requirement.size_bytes is not None
 
 
-@pytest.mark.parametrize("profile", ["standard", "no_body", "no_people"])
+@pytest.mark.parametrize("profile", ["standard", "no_body", "no_people", "annotation"])
 def test_diagnostic_inventory_matches_typed_runtime(installation_config: DictConfig, profile: str) -> None:
-    if profile != "standard":
+    if profile in {"no_body", "no_people"}:
         installation_config.gvhmr.enabled = False
     if profile == "no_people":
         installation_config.person_observations.enabled = False
         installation_config.player_reconstruction.enabled = False
+    if profile == "annotation":
+        installation_config.event_detection.method = "annotation"
+        installation_config.event_detection.annotation_directory = "events"
+        installation_config.event_detection.annotation_benchmark_manifest = "benchmarks/v2/manifest.json"
     runtime = PipelineRuntimeConfig.from_config(installation_config)
     diagnostic = preflight.configured_requirements(installation_config)
     assert {item.name: item for item in diagnostic} == {item.name: item for item in standard_requirements(runtime)}
+    if profile == "annotation":
+        benchmark = next(item for item in diagnostic if item.name == "ball_event_annotation_benchmark")
+        assert benchmark.path == runtime.roots.data_root / "benchmarks/v2/manifest.json"
+        assert benchmark.sha256 == "0d11010fa2a10d73ba4b03ba01f107c90641868fbb8dd86978503cc761d4ac44"
+
+
+def test_fasthmr_inventory_uses_native_assets(installation_config: DictConfig) -> None:
+    installation_config.recipe = "fasthmr"
+    with open_dict(installation_config):
+        installation_config.fasthmr = dict(
+            repository="FastHMR", assets="fasthmr", backend="pt32", feature_batch_size=16, seed=0,
+        )
+    runtime = PipelineRuntimeConfig.from_config(installation_config)
+    requirements = {item.name: item for item in preflight.configured_requirements(installation_config)}
+    assert requirements == {item.name: item for item in standard_requirements(runtime)}
+    for asset in ("backbone", "fov", "mean_params", "smpl"):
+        assert requirements[f"fasthmr_{asset}"].sha256 == CHECKPOINT_SHA256[asset]
+    assert requirements["fasthmr_smpl"].path.name == "SMPL_NEUTRAL.pkl"
+    assert not {"hmr2", "gvhmr", "body_model"} & requirements.keys()
 
 
 def test_normalized_sample_spelling_keeps_byte_pins_and_companion_files(installation_config: DictConfig) -> None:
@@ -162,6 +188,24 @@ def test_normalized_sample_spelling_keeps_byte_pins_and_companion_files(installa
     sample = [item for item in diagnostic if item.name.startswith(("video_", "sample_"))]
     assert len(sample) == 5
     assert all(item.sha256 is not None for item in sample)
+
+
+def test_ecpose_inventory_selects_the_pinned_model_and_explicit_engine(installation_config: DictConfig) -> None:
+    installation_config.recipe = "ecpose"
+    with open_dict(installation_config):
+        installation_config.ecpose = dict(
+            repository="EdgeCrafter", checkpoint="ecpose/x.pth", model="ecpose-x-o365",
+            backend="trt16", engine="ecpose/x-engine", batch_size=2, confidence=0.3, box_margin=0.1,
+        )
+    runtime = PipelineRuntimeConfig.from_config(installation_config)
+    assert runtime.ecpose is not None
+    requirements = {item.name: item for item in preflight.configured_requirements(installation_config)}
+    assert requirements == {item.name: item for item in standard_requirements(runtime)}
+    assert requirements["ecpose"].sha256 == runtime.ecpose.release.sha256
+    assert requirements["ecpose_engine.plan"].path.name == "engine.plan"
+    assert requirements["ecpose_model_config"].path.name == "ecpose_x_coco.yml"
+    assert not {"detector", "vitpose", "dino_models", "dino_ops"} & requirements.keys()
+    assert {"hmr2", "gvhmr", "tracking_encoder", "aflink"} <= requirements.keys()
 
 
 def test_unreadable_association_recipe_does_not_hide_independent_assets(

@@ -39,7 +39,7 @@ with pytest.MonkeyPatch.context() as patch:
             raise OSError('scene export write failure')
         patch.setattr('src.tennis_scene.pipeline.storage.scene_export.save_scene_result', fail_export)
         overrides += ['video_paths=[' + ','.join(str(p.relative_to(root)) for p in fixture['paths']) + ']',
-                      'camera_ids=[cam0,cam1,cam2]', 'gvhmr.enabled=false']
+                      'camera_ids=[cam0,cam1,cam2]', 'gvhmr.enabled=false', 'event_detection.method=rule']
         module = 'src.tennis_scene.scripts.run_pipeline'
     else:
         from src.tennis_scene.generate_dataset import pseudo_annotation
@@ -48,7 +48,7 @@ with pytest.MonkeyPatch.context() as patch:
             fixture['paths'][0].write_bytes(b'changed before dataset publication')
             return publish(*args, **kwargs)
         patch.setattr(pseudo_annotation, 'publish_annotation', changed_before_publication)
-        overrides += ['dataset_directory=dataset', 'pipeline_overrides=["gvhmr.enabled=false"]']
+        overrides += ['dataset_directory=dataset', 'pipeline_overrides=["gvhmr.enabled=false","event_detection.method=rule"]']
         module = 'src.tennis_scene.scripts.generate_dataset'
     sys.argv = [module, *overrides]
     runpy.run_module(module, run_name='__main__')

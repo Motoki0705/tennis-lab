@@ -2,28 +2,33 @@
 
 結果 → 親の判断と理由 → 実際の行動 → 次の結果を、参照で辿る表示です。
 
-反映範囲: このHEADの記録集合 0 件。記録時刻 記録なし。
+反映範囲: このHEADの記録集合 13 件。記録時刻 2026-11-20T19:31:41.174453+00:00 〜 2026-11-20T20:23:33.606103+00:00。
 
 公開待ち: このHEADのmain反映と、まだGitに無い非公開記録は `decision-log-status` で照合してください。ここでは未公開件数や最新状態を推測しません。
 
 [上の階層](../README.md) · [親一覧](../../../../README.md)
 
-0 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 0 件。親の確認未記録: 0 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 0 件（結果イベント単位）。
+13 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 5 件。親の確認未記録: 4 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 2 件（結果イベント単位）。
 
-公開workerログ: 1 ターン（分母）。対応イベントあり: 0 ターン / 対応イベントなし: 1 ターン。イベントのみ: 0 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。
+公開workerログ: 1 ターン（分母）。対応イベントあり: 1 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。
 
 対応数は公開worker3ファイルのあるターンを分母にしたものです。イベントのみのターンを加えた和集合とは分けます。対応イベントの存在は、親判断の記録・受入・網羅性を保証しません。
 
-直近の観測（受入の判定とは別）: 結果・行動の記録なし
+直近の観測（受入の判定とは別）: [結果 4326](../../../activity-9581137583484c42a8c0a30774cc7f44/README.md#record-ed25e0a653724c66879e1dc54db7f93e) success / machine: worker&#95;logs.publish: delegation&#95;key=d-0fef16835fcc4994a343270f440eada9 / ターン: 6 / 状態: merged<br>[行動 4327](../../../activity-9581137583484c42a8c0a30774cc7f44/README.md#record-0b7636e1d58b4182aca5e42ff359ad71) 公開 / 終了（成果受入とは別）
+
+## 活動別の結果と判断
+
+| 対象・期間 | 件数と未確認 | 最新の記録 |
+| --- | --- | --- |
+| [worker&#95;logs.receive / 担当issue &#35;2335](../../../activity-dd777a34ba7345cf8e40af651d014bd8/README.md)<br>2026-11-20T19:41:38.753064+00:00 〜 2026-11-20T19:41:39.167519+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 0 件（結果イベント単位）。<br>公開workerログ: 1 ターン（分母）。対応イベントあり: 1 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 4286](../../../activity-dd777a34ba7345cf8e40af651d014bd8/README.md#record-e6ad4f9926f946d09cc4e2aa25e5c26f) partial / machine: worker&#95;logs.receive: delegation&#95;key=d-0fef16835fcc4994a343270f440eada9 / ターン: 6 / 状態: ready<br>[行動 4287](../../../activity-dd777a34ba7345cf8e40af651d014bd8/README.md#record-e5289d99d7c648ca9995edc6fac6432d) 記録 / 終了（成果受入とは別） |
+| [parent.run-worker・runner.result / 担当issue &#35;2335](../../../activity-0be029a064ed444288077926e7992607/README.md)<br>2026-11-20T19:31:41.174453+00:00 〜 2026-11-20T19:41:40.181611+00:00 | 7 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 3 件。親の確認未記録: 2 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 2 件（結果イベント単位）。<br>公開workerログ: 1 ターン（分母）。対応イベントあり: 1 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 4288](../../../activity-0be029a064ed444288077926e7992607/README.md#record-ee7f6f8241194639ad797618d66fc90f) success / machine: parent.run-worker: success / 担当issue: 2335 / 終了値: 0<br>[行動 4289](../../../activity-0be029a064ed444288077926e7992607/README.md#record-47fed755a3a1447d8547cf3a737ded62) 同じAIの継続 / 終了（成果受入とは別） |
+| [worker&#95;logs.publish / 担当issue &#35;2335](../../../activity-9581137583484c42a8c0a30774cc7f44/README.md)<br>2026-11-20T20:23:33.176658+00:00 〜 2026-11-20T20:23:33.606103+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 0 件（結果イベント単位）。<br>公開workerログ: 1 ターン（分母）。対応イベントあり: 1 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 4326](../../../activity-9581137583484c42a8c0a30774cc7f44/README.md#record-ed25e0a653724c66879e1dc54db7f93e) success / machine: worker&#95;logs.publish: delegation&#95;key=d-0fef16835fcc4994a343270f440eada9 / ターン: 6 / 状態: merged<br>[行動 4327](../../../activity-9581137583484c42a8c0a30774cc7f44/README.md#record-0b7636e1d58b4182aca5e42ff359ad71) 公開 / 終了（成果受入とは別） |
 
 [既存workerログのフォルダー](../0006-resume/README.md)
 
 | 実行（観測時点） | 最終報告 | 公開の所在 | 根拠 |
 | --- | --- | --- | --- |
-| 終了確認 | 最終報告あり | main / このHEADに公開3ファイルを確認 | このHEADの公開workerファイルと記録本文を参照 |
-
-対応イベントなし: [既存の指示](../0006-resume/instruction.md) · [既存の最終報告](../0006-resume/final.md)
-このHEADに新形式の対応記録なし。導入時期・未捕捉・捕捉失敗・未公開の区別は未確認。
+| 終了確認 | 最終報告あり | main / このHEADに公開3ファイルを確認<br>[公開PR](https://github.com/Motoki0705/tennis-lab/pull/2352)<br>[PR HEAD](https://github.com/motoki0705/tennis-lab/commit/e3fd50ed987ed15f851449fe96614a1cf882c517)<br>[照合先main（観測時点）](https://github.com/motoki0705/tennis-lab/commit/09942b1a436a852e9d7209eeb4510b160c57aa41) | 根拠非公開・記録不足: capture&#95;source=runner.result; artifact=result.json; content&#95;sha256=ab74d35bab1ec28f7a28ec5f78ef00ca5eabe8f5ed30d242b2dd1eee402ffb93; private evidence<br>根拠非公開・記録不足: capture&#95;source=runner.result; artifact=result.json; content&#95;sha256=eb77d58c32ef8d0f1905814b89c605a461a571bb16328eed617d2a923494a674; private evidence<br>根拠非公開・記録不足: capture&#95;source=runner.result; artifact=final.md; content&#95;sha256=9e25a33b2acad843a3f72caf38d4e197cc8ba1106fd8cf40bba880c409798ab3; private evidence<br>根拠非公開・記録不足: capture&#95;source=worker&#95;logs.observation; artifact=fixed worker journal snapshot; content&#95;sha256=f34c68cf2f0f2c7a94d792639fe794682c6bbfad55a4d4217e16060107b7993c; private evidence<br>ほか4件の根拠は記録本文を参照 |
 
 [instruction.md](../0006-resume/instruction.md)
 

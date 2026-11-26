@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8204370269760775669_2026-11-25T18-02-10-239224330Z_1956258_ball-refiner-shot-bounce-net-s42",
+  "name": "ball-refiner-shot-bounce-net-s42",
+  "command": "set -euo pipefail\nexpected_head=e4438667dd41162c6f4972a92146eb9b59bbba54\nexpected_manifest=b54876c074c22c055d65033a9387d2e167263fbf7e4971e2e5fe8b0009653ca0\nmanifest=/home/kamimura/projects/tennis-lab/data/ball_refiner/single_object_net_v1/manifest.json\nif [[ \"$(git rev-parse HEAD)\" != \"$expected_head\" ]] || ! git diff-index --quiet HEAD --; then\n    echo \"Training checkout differs from the registered commit\" >&2\n    exit 1\nfi\nprintf '%s  %s\\n' \"$expected_manifest\" \"$manifest\" | sha256sum --check --strict\nexec env PYTHONUNBUFFERED=1 HYDRA_FULL_ERROR=1 OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=2 timeout --foreground --kill-after=20s 59m .venv/bin/python -m src.tasks.ball_refiner_3d.scripts.train paths.data_root=/home/kamimura/projects/tennis-lab/data paths.output_root=/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-1722-issue-2567-primary paths.artifact_root=/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-1722-issue-2567-primary data.dataset=ball_refiner/single_object_net_v1 run.output_dir=ball_refiner_3d/train/regression/net-contacts-s42-v1 model=regression training.steps=4000 training.gan.enabled=false loss.event.weight=1.0 run.seed=42 run.gpus=1 ",
+  "provider": "codex",
+  "session": "01a213c4-f2ab-7e10-870b-e759ba466832",
+  "issue": "2567",
+  "resource": "half",
+  "logical_gpu_slot": "0",
+  "commit": "e4438667dd41162c6f4972a92146eb9b59bbba54",
+  "branch": "codex/parent-1722-issue-2567-primary",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-1722-issue-2567-primary",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-1722-issue-2567-primary",
+  "captured_at": "2026-11-26T03:02:11+09:00"
+}

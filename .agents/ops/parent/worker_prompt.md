@@ -27,13 +27,18 @@ PRには変更内容、受入条件に対する証拠、テストの増分と実
 最終報告は成果・branch/commit/PR・検証した事実・未確認事項・必要な判断を、案件に合う形で伝える。
 runtimeの終了は作業の成功ではない。失敗や不足を成功として報告しない。
 
-## CI・ローカルqueueの受け渡し
+## CI・ローカルqueue・長時間コマンドの受け渡し
 
-このターンで実行できる検証を済ませる。PRの作成・push、またはtraining queueの `add` が済んだら、待機対象を宣言して終了する。
+このターンで実行できる短時間（目安数十秒以内）の検証を済ませる。PRの作成・push、training queueの `add`、または長時間ローカルコマンドの起動が済んだら、待機対象を宣言して終了する。
 手動委任ではparent CLIが監視と結果の受け渡しを担当する。自律親への委任では宣言を親へ返し、継続指示を受ける。
-CI・queue jobの結果待ちに `clock.sleep`、シェルの `sleep`、状態の照会ループ、`gh run watch`、`gh pr checks --watch` を使わない。短時間でも同じ。
+CI・queue job・長時間ローカルコマンドの結果待ちに `clock.sleep`、シェルの `sleep`、状態の照会ループ、PTYの `write_stdin` 反復、`gh run watch`、`gh pr checks --watch` を使わない。短時間でも同じ。
 Issue本文や親の指示にある「成功まで確認」は担当全体の完了条件として扱い、CLIから結果を受けたターンで確かめる。
 親側が稼働を確認した共有queueへ `add` し、出力された `.job` 付きのIDを使う。委任された子によるqueue workerの `start`・`serve` は禁止。
+GPU不要な長時間ローカルコマンド（目安1分以上かかる `pytest`、`mypy`、`uv lock`、CPU評価・注釈・再現スクリプト等）は直接実行やPTY待機をせず、次の形式で独立したsystemd user serviceとして起動し、返された `job_id` を `waiting: local` で宣言する（パイプラインや複合コマンドは `--shell "..."` を使う）。
+
+```bash
+PYTHONPATH=.agents/ops .venv/bin/python -m parent.local_jobs start --name <label> -- <cmd...>
+```
 
 通常ターンは自由文の後、最終メッセージの最後に次の形式の `PARENT_RESULT` を1行だけ置く。行頭の空白とコードフェンスは省く。
 
@@ -41,5 +46,6 @@ Issue本文や親の指示にある「成功まで確認」は担当全体の完
 - 親の判断が必要 `PARENT_RESULT {"schema_version":1,"state":"needs_parent","wait":null}`。理由と依頼を自由文に書く。
 - CI `PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"ci","pr":123,"head":"0123456789abcdef0123456789abcdef01234567","resume_on_success":false}}`。実際のPR番号と完全なHEADを使う。成功後にも担当作業がある場合は `resume_on_success` を `true` にし、同じオブジェクトに `next_step` を書く。
 - ローカルqueue `PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204867199999999999_2026-11-20T00-00-00-000000000Z_12345_eval.job"]}}`。複数jobは `job_ids` にまとめる。
+- ローカル長時間コマンド `PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"local","job_ids":["20261124T000000Z_0123456789ab_pytest"]}}`。複数jobは `job_ids` にまとめる。
 
 自動CI・gate修正ターンは具体指示にある専用JSONを最終出力とする。push後のCIは呼出側のレビュー進行CLIが扱う。

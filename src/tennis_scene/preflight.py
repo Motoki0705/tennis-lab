@@ -11,22 +11,38 @@ from omegaconf import DictConfig
 from yaml import YAMLError
 
 from src.submodules.models import validate_dino_extension
+from src.submodules.models.ecpose.releases import RELEASES as EDGECRAFTER_RELEASES
+from src.submodules.models.fasthmr.assets import CHECKPOINT_SHA256
 from src.tasks.player_association.appearance.encoders import encoder_weights
 from src.tasks.player_association.association.config import (
     DEFAULT_CONFIG,
     load_association_config,
 )
+from src.tennis_scene.ball_events.annotation import MEIJI_V2_MANIFEST_SHA256
 from src.tennis_scene.configuration import (
     PipelineRuntimeConfig,
     pipeline_asset_configuration,
 )
 from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
 from src.tennis_scene.pipeline.definition import enabled_model_assets
+from src.tennis_scene.pipeline.recipes import (
+    ECPOSE_RECIPE,
+    FASTHMR_RECIPE,
+    STANDARD_RECIPE,
+    parse_recipe,
+)
 from src.utils.checksum import FileIntegrityError, dual_sha256
 from src.utils.configuration import PathContractError, PathRole
+from src.utils.models.tensorrt_artifacts import (
+    ENGINE_MANIFEST,
+    EXPORT_MANIFEST,
+    ONNX_FILE,
+    PLAN_FILE,
+)
 from src.utils.paths import PROJECT_ROOT
 from src.utils.sample_dataset import PUBLISHED_FILES
 
+_ECPOSE_ENGINE_FILES = (ENGINE_MANIFEST, EXPORT_MANIFEST, ONNX_FILE, PLAN_FILE)
 
 @dataclass(frozen=True)
 class AssetRequirement:
@@ -76,11 +92,32 @@ def configured_requirements(cfg: DictConfig) -> tuple[AssetRequirement, ...]:
         add(name, PathRole.CHECKPOINT, cast(str, path), digest=pins[name].sha256, size_bytes=pins[name].size_bytes)
 
     models = section("people_models")
+    recipe = parse_recipe(value.get("recipe", STANDARD_RECIPE))
     checkpoint("court", section("court_kp")["checkpoint"])
     checkpoint("ball", section("ball_detection")["checkpoint"])
+    event = section("event_detection")
+    if event["method"] == "refiner" and isinstance(event.get("checkpoint"), str):
+        add("ball_event_refiner", PathRole.CHECKPOINT, cast(str, event["checkpoint"]),
+            digest=cast(str | None, event.get("checkpoint_sha256")))
+    if event["method"] == "annotation" and isinstance(event.get("annotation_benchmark_manifest"), str):
+        add("ball_event_annotation_benchmark", PathRole.DATA, cast(str, event["annotation_benchmark_manifest"]),
+            digest=MEIJI_V2_MANIFEST_SHA256)
     if section("person_observations")["enabled"]:
-        checkpoint("detector", models["dino_checkpoint"])
-        checkpoint("vitpose", models["vitpose_checkpoint"])
+        if recipe == ECPOSE_RECIPE:
+            ecpose = section("ecpose")
+            release = EDGECRAFTER_RELEASES.get(cast(str, ecpose["model"]))
+            if release is None or not release.has_pose:
+                raise ValueError("ECPose requires ecpose-l-o365 or ecpose-x-o365")
+            add("ecpose", PathRole.CHECKPOINT, cast(str, ecpose["checkpoint"]),
+                digest=release.sha256, size_bytes=release.size)
+            add("ecpose_model_config", PathRole.EXTERNAL_ASSET,
+                cast(str, ecpose["repository"]), release.family, "configs", release.config)
+            if ecpose.get("engine") is not None:
+                for name in _ECPOSE_ENGINE_FILES:
+                    add(f"ecpose_{name}", PathRole.CHECKPOINT, cast(str, ecpose["engine"]), name)
+        else:
+            checkpoint("detector", models["dino_checkpoint"])
+            checkpoint("vitpose", models["vitpose_checkpoint"])
         tracking = section("person_tracking")
         tracking_path = encoder_weights(cast(str, tracking["encoder"]), checkpoint_root=roots.checkpoint_root,
                                         external_root=roots.external_asset_root)
@@ -101,19 +138,29 @@ def configured_requirements(cfg: DictConfig) -> tuple[AssetRequirement, ...]:
                 association_path = encoder_weights(association.appearance.encoder, checkpoint_root=roots.checkpoint_root,
                                                     external_root=roots.external_asset_root)
                 checkpoint("association_encoder", association_path.relative_to(roots.checkpoint_root))
-    if section("gvhmr")["enabled"]:
+    if recipe == FASTHMR_RECIPE:
+        runtime = PipelineRuntimeConfig.from_config(cfg, bind_inputs=False)
+        assert runtime.fasthmr is not None
+        fast = runtime.fasthmr
+        for name, fast_path in {**fast.inference_weights, **fast.geometry_weights}.items():
+            add(f"fasthmr_{name}", PathRole.CHECKPOINT, fast_path.relative_to(roots.checkpoint_root),
+                digest=CHECKPOINT_SHA256.get(name))
+        add("fasthmr_demo_config", PathRole.EXTERNAL_ASSET, fast.demo_config.relative_to(roots.external_asset_root))
+    elif section("gvhmr")["enabled"]:
         checkpoint("hmr2", models["hmr2_checkpoint"])
         checkpoint("gvhmr", models["gvhmr_checkpoint"])
         add("body_model", PathRole.CHECKPOINT, cast(str, models["body_models_dir"]), "smplx/SMPLX_NEUTRAL.npz",
             digest=pins["body_model"].sha256)
         for name, path in cast(Mapping[str, str], models["smpl_assets"]).items():
             checkpoint(f"smpl_{name}", path)
-    for name in ("dinov3", "smpl_faces", "smpl_smpl_neutral_joint_regressor"):
+    installation_only = ("dinov3", "smpl_faces", "smpl_smpl_neutral_joint_regressor") if recipe != FASTHMR_RECIPE else ("dinov3", "smpl_faces")
+    for name in installation_only:
         if name not in {item.name for item in requirements}:
             checkpoint(name, pins[name].filename)
-    for name, suffix in (("dino_models", "models/__init__.py"), ("dino_util", "util/__init__.py"),
-                         ("dino_ops", "models/dino/ops/src/vision.cpp")):
-        add(name, PathRole.EXTERNAL_ASSET, cast(str, models["dino_repository"]), suffix)
+    if recipe != ECPOSE_RECIPE:
+        for name, suffix in (("dino_models", "models/__init__.py"), ("dino_util", "util/__init__.py"),
+                             ("dino_ops", "models/dino/ops/src/vision.cpp")):
+            add(name, PathRole.EXTERNAL_ASSET, cast(str, models["dino_repository"]), suffix)
     for name, path in (("dinov3_hub", "dinov3/hubconf.py"), ("dinov3_backbones", "dinov3/dinov3/hub/backbones.py")):
         add(name, PathRole.EXTERNAL_ASSET, path)
     sample_pins = {roots.data_root / "samples" / item.filename: item.sha256 for item in PUBLISHED_FILES}
@@ -146,12 +193,33 @@ def standard_requirements(cfg: PipelineRuntimeConfig) -> tuple[AssetRequirement,
     """
     pins = {asset.name: asset for asset in INSTALLATION_ASSETS}
     pins["association_encoder"] = pins["tracking_encoder"]
-    requirements = [AssetRequirement(name, path, pins[name].sha256, size_bytes=pins[name].size_bytes)
-                    for name, path in enabled_model_assets(cfg).items()]
+    requirements = []
+    for name, path in enabled_model_assets(cfg).items():
+        if name.startswith("fasthmr_"):
+            requirements.append(AssetRequirement(name, path, CHECKPOINT_SHA256.get(name.removeprefix("fasthmr_"))))
+        elif name == "ecpose" and cfg.ecpose is not None:
+            release = cfg.ecpose.release
+            requirements.append(AssetRequirement(name, path, release.sha256, size_bytes=release.size))
+        elif name == "ball_event_refiner":
+            requirements.append(AssetRequirement(name, path, cfg.require_event_detection().checkpoint_sha256))
+        else:
+            pin = pins[name]
+            requirements.append(AssetRequirement(name, path, pin.sha256, size_bytes=pin.size_bytes))
+    events = cfg.event_detection
+    if events is not None and events.annotation_benchmark_manifest is not None:
+        requirements.append(AssetRequirement("ball_event_annotation_benchmark", events.annotation_benchmark_manifest,
+                                             MEIJI_V2_MANIFEST_SHA256))
+    if cfg.fasthmr is not None:
+        requirements.append(AssetRequirement("fasthmr_demo_config", cfg.fasthmr.demo_config))
+    if cfg.ecpose is not None:
+        requirements.append(AssetRequirement("ecpose_model_config", cfg.ecpose.model_config))
+        if cfg.ecpose.engine is not None:
+            requirements.extend(AssetRequirement(f"ecpose_{name}", cfg.ecpose.engine / name)
+                                for name in _ECPOSE_ENGINE_FILES)
     for name in ("dinov3", "smpl_faces"):
         asset = pins[name]
         requirements.append(AssetRequirement(name, cfg.resolver.resolve(PathRole.CHECKPOINT, asset.filename), asset.sha256))
-    if "smpl_smpl_neutral_joint_regressor" not in {item.name for item in requirements}:
+    if cfg.fasthmr is None and "smpl_smpl_neutral_joint_regressor" not in {item.name for item in requirements}:
         asset = pins["smpl_smpl_neutral_joint_regressor"]
         requirements.append(AssetRequirement(asset.name, cfg.resolver.resolve(PathRole.CHECKPOINT, asset.filename), asset.sha256))
     source_files = {
@@ -161,6 +229,8 @@ def standard_requirements(cfg: PipelineRuntimeConfig) -> tuple[AssetRequirement,
         "dinov3_hub": cfg.resolver.resolve(PathRole.EXTERNAL_ASSET, "dinov3/hubconf.py"),
         "dinov3_backbones": cfg.resolver.resolve(PathRole.EXTERNAL_ASSET, "dinov3/dinov3/hub/backbones.py"),
     }
+    if cfg.ecpose is not None:
+        source_files = {name: path for name, path in source_files.items() if not name.startswith("dino_")}
     requirements.extend(AssetRequirement(name, path) for name, path in source_files.items())
     sample_pins = {cfg.roots.data_root / "samples" / item.filename: item.sha256 for item in PUBLISHED_FILES}
     requirements.extend(AssetRequirement(f"video_{camera}", path, sample_pins.get(path))
@@ -177,6 +247,7 @@ def check_assets(
     requirements: Sequence[AssetRequirement],
     *,
     extension_validator: Callable[[], Path] = validate_dino_extension,
+    check_dino_extension: bool = True,
 ) -> tuple[AssetCheck, ...]:
     """Report every missing/corrupt/unreadable file and the CPU-only op check.
 
@@ -210,9 +281,10 @@ def check_assets(
             checks.append(AssetCheck(name, str(path), status, f"Expected SHA-256 {expected}", actual))
         except (OSError, RuntimeError, ValueError, FileIntegrityError) as error:
             checks.append(AssetCheck(name, str(path), "error", str(error)))
-    try:
-        binary = extension_validator()
-        checks.append(AssetCheck("dino_extension", str(binary), "ok", "CPU forward/backward dispatch validated; CUDA kernels untested"))
-    except (ImportError, OSError, RuntimeError) as error:
-        checks.append(AssetCheck("dino_extension", "TENNIS_LAB_DINO_EXTENSION", "error", str(error)))
+    if check_dino_extension:
+        try:
+            binary = extension_validator()
+            checks.append(AssetCheck("dino_extension", str(binary), "ok", "CPU forward/backward dispatch validated; CUDA kernels untested"))
+        except (ImportError, OSError, RuntimeError) as error:
+            checks.append(AssetCheck("dino_extension", "TENNIS_LAB_DINO_EXTENSION", "error", str(error)))
     return tuple(checks)

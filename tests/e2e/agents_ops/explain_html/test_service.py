@@ -6,10 +6,14 @@ exercise real HTTP and CLI processes, never external APIs or fixed sleeps.
 
 from __future__ import annotations
 
+import fcntl
 import json
 import os
+import shutil
+import signal
 import socket
 import subprocess
+import sys
 import time
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -295,6 +299,54 @@ def test_unexpected_editor_and_storage_errors_have_only_public_messages(
     assert secret not in response.text
 
 
+def test_main_checkout_serve_lifetime_releases_lock_even_with_stalled_adapter(
+    tmp_path: Path,
+) -> None:
+    repo = tmp_path / "repo"
+    subprocess.run(["git", "init", "-q", str(repo)], check=True)
+    ops = repo / ".agents/ops"
+    shutil.copytree(
+        REPO / ".agents/ops", ops, ignore=shutil.ignore_patterns("__pycache__")
+    )
+    (repo / "stalled_validator.py").write_text(
+        "import fcntl, signal\n"
+        "with open('.git/ops-code.lock', 'a') as lock:\n"
+        "    try:\n"
+        "        fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)\n"
+        "    except BlockingIOError:\n"
+        "        pass\n"
+        "    else:\n"
+        "        raise AssertionError('server started without checkout protection')\n"
+        "remaining, repeat = signal.getitimer(signal.ITIMER_REAL)\n"
+        "assert 3500 < remaining <= 3615 and repeat == 0\n"
+        "print('checkout lifetime armed', flush=True)\n"
+        "signal.setitimer(signal.ITIMER_REAL, 0.05)\n"
+        "signal.pause()\n",
+        encoding="utf-8",
+    )
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "explain_html",
+            "serve",
+            "--root",
+            str(tmp_path / "runtime"),
+            "--validator",
+            "stalled_validator:check",
+        ],
+        cwd=repo,
+        env={**os.environ, "PYTHONPATH": str(ops)},
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+    assert result.returncode == -signal.SIGALRM, result.stdout + result.stderr
+    assert "checkout lifetime armed" in result.stdout
+    with (repo / ".git/ops-code.lock").open("a") as updater:
+        fcntl.flock(updater, fcntl.LOCK_EX | fcntl.LOCK_NB)
+
+
 def test_public_cli_start_stop_restart_and_offline_export(editor_env: Any) -> None:
     env = editor_env
     raw_document = env.proposed.document.model_copy(
@@ -336,9 +388,7 @@ def test_public_cli_start_stop_restart_and_offline_export(editor_env: Any) -> No
     )
     process_env = {
         **os.environ,
-        "PYTHONPATH": os.pathsep.join(
-            [str(REPO / ".agents/ops"), str(validator_root)]
-        ),
+        "PYTHONPATH": os.pathsep.join([str(REPO / ".agents/ops"), str(validator_root)]),
     }
 
     def cli(command: str, *args: str) -> Any:

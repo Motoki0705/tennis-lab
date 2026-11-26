@@ -1,0 +1,1 @@
+/home/kamimura/projects/tennis-lab/outputs/plcs/i2520_v2_a2_no_bbox_aug_e100_s42/logs/version_0/checkpoints

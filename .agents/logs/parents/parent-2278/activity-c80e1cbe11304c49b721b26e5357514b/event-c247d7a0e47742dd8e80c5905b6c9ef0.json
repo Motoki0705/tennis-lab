@@ -1,0 +1,83 @@
+{
+  "record": {
+    "data": {
+      "action_id": "aa547c8cc72b4fe4b89c221bb77d12ae",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.run-worker; artifact=command response; content_sha256=15f955de4039a6f7fb019ddba3da477591dcb3e461c314c4b44b55284c1e3636; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.worker-context; artifact=saved preflight comparison inputs; content_sha256=5b5535e2af233b665ad72f53a428525b77654d42579277a08d5e7fea5b81c7bb; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "3208ed4935be40f6887a14afa326e5bd",
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.run-worker: success; {\n  \"child\": 2335,\n  \"exit_code\": 0\n}",
+      "verifies": []
+    },
+    "id": "c247d7a0e47742dd8e80c5905b6c9ef0",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "c80e1cbe11304c49b721b26e5357514b",
+      "delegation": null,
+      "issue": 2335,
+      "parent": 2278,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-20T13:50:03.311373+00:00"
+      },
+      "recorded_at": "2026-11-20T13:50:03.311391+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

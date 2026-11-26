@@ -30,8 +30,8 @@ class SlotAssignment:
     links: tuple[tuple[FragmentLink, float], ...]
 
 
-def _reachable(core: int, links: list[FragmentLink]) -> set[int]:
-    # The caller supplies links sorted by source time.
+def reachable_fragments(core: int, links: list[FragmentLink]) -> set[int]:
+    """Find fragments on a path through the core, with links sorted by source time."""
     earlier = {core}
     later = {core}
     for link in reversed(links):
@@ -71,7 +71,7 @@ def assign_slots(
             for link in links
             if link.before not in other_cores and link.after not in other_cores
         ]
-        usable = _reachable(core, options)
+        usable = reachable_fragments(core, options)
         balance = {fragment: add_row(0.0, 0.0) for fragment in sorted(usable)}
         start = add_row(1.0, 1.0)
         visit_core = add_row(1.0, 1.0)

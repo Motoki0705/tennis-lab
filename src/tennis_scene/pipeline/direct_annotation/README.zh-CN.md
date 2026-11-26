@@ -55,6 +55,7 @@ benchmark condition核对；缺失、损坏或冲突会显式停止。controller
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   'video_paths=[samples/cam0.mp4,samples/cam1.mp4,samples/cam2.mp4]' \
   'camera_ids=[cam0,cam1,cam2]' 'clip_id=meiji_3cam/video_000/clip_000' \
+  event_detection.method=rule \
   ball_detection.method=gpt_annotation ball_detection.checkpoint=null \
   direct_annotation.request=chat_annotation/campaigns/scene-inputs/request.json \
   direct_annotation.request_sha256="$REQUEST_SHA256" \
@@ -87,6 +88,16 @@ scene metadata保留原有 `ok`/`partial` 含义。每相机完成引用和测�
 缺少精度字段的旧收据按两个模型均为FP32验证。精度不一致时会在发布前停止。
 该操作验证已完成的标注和scene export，然后继续publisher，不构建scene stages或准入worker。
 publisher提交之后、workflow收据保存之前的中断也会回到原snapshot。新发布请求不覆盖已保存标注。
+
+恢复发布会将已采用的 `event_detection` artifact 与当前规范化源码标识核对。
+不同 commit 的输入、设置和源码标识一致时，恢复操作保留事件元数据中的原计算 commit。
+如果源码标识不一致，操作会在发布前停止。
+
+如果旧版 `scene-completion.json` 的 `event_detection` 设置含有 `code_commit`，
+使用相同的 scene 命令和 store，指定
+`direct_annotation.resume=workflow cache.source=execute execution.event_detection=execute`
+重新运行。该操作复用已完成的标注并保存新的场景完成收据。
+随后仅恢复发布时，使用 `direct_annotation.resume=publication`。
 
 ## 探索策略比较与测量
 
