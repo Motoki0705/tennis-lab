@@ -1,0 +1,1982 @@
+{
+  "classes": {
+    "bounce": {
+      "10": {
+        "dice_agreement": 0.9051987767584098,
+        "fraction_of_events_matched": {
+          "refiner3": 0.9024390243902439,
+          "rule": 0.9079754601226994
+        },
+        "pairs": 296
+      },
+      "2": {
+        "dice_agreement": 0.9051987767584098,
+        "fraction_of_events_matched": {
+          "refiner3": 0.9024390243902439,
+          "rule": 0.9079754601226994
+        },
+        "pairs": 296
+      },
+      "5": {
+        "dice_agreement": 0.9051987767584098,
+        "fraction_of_events_matched": {
+          "refiner3": 0.9024390243902439,
+          "rule": 0.9079754601226994
+        },
+        "pairs": 296
+      },
+      "both_zero_clips": 0,
+      "count_distribution": {
+        "refiner3": {
+          "clips": 61,
+          "events": 328,
+          "histogram": {
+            "10": 1,
+            "11": 3,
+            "12": 1,
+            "16": 1,
+            "2": 3,
+            "3": 17,
+            "4": 10,
+            "5": 8,
+            "6": 8,
+            "7": 2,
+            "8": 5,
+            "9": 2
+          },
+          "max": 16,
+          "median": 5,
+          "min": 2,
+          "p90": 9.0
+        },
+        "rule": {
+          "clips": 61,
+          "events": 326,
+          "histogram": {
+            "1": 1,
+            "10": 2,
+            "11": 2,
+            "12": 2,
+            "14": 1,
+            "19": 1,
+            "2": 10,
+            "3": 10,
+            "4": 12,
+            "5": 7,
+            "6": 3,
+            "7": 6,
+            "8": 3,
+            "9": 1
+          },
+          "max": 19,
+          "median": 4,
+          "min": 1,
+          "p90": 10.0
+        }
+      }
+    },
+    "net": {
+      "10": {
+        "dice_agreement": 0.76,
+        "fraction_of_events_matched": {
+          "refiner3": 1.0,
+          "rule": 0.6129032258064516
+        },
+        "pairs": 19
+      },
+      "2": {
+        "dice_agreement": 0.6,
+        "fraction_of_events_matched": {
+          "refiner3": 0.7894736842105263,
+          "rule": 0.4838709677419355
+        },
+        "pairs": 15
+      },
+      "5": {
+        "dice_agreement": 0.76,
+        "fraction_of_events_matched": {
+          "refiner3": 1.0,
+          "rule": 0.6129032258064516
+        },
+        "pairs": 19
+      },
+      "both_zero_clips": 35,
+      "count_distribution": {
+        "refiner3": {
+          "clips": 61,
+          "events": 19,
+          "histogram": {
+            "0": 43,
+            "1": 17,
+            "2": 1
+          },
+          "max": 2,
+          "median": 0,
+          "min": 0,
+          "p90": 1.0
+        },
+        "rule": {
+          "clips": 61,
+          "events": 31,
+          "histogram": {
+            "0": 35,
+            "1": 22,
+            "2": 3,
+            "3": 1
+          },
+          "max": 3,
+          "median": 0,
+          "min": 0,
+          "p90": 1.0
+        }
+      }
+    },
+    "shot": {
+      "10": {
+        "dice_agreement": 0.7152542372881356,
+        "fraction_of_events_matched": {
+          "refiner3": 0.9547511312217195,
+          "rule": 0.5718157181571816
+        },
+        "pairs": 211
+      },
+      "2": {
+        "dice_agreement": 0.6644067796610169,
+        "fraction_of_events_matched": {
+          "refiner3": 0.8868778280542986,
+          "rule": 0.5311653116531165
+        },
+        "pairs": 196
+      },
+      "5": {
+        "dice_agreement": 0.711864406779661,
+        "fraction_of_events_matched": {
+          "refiner3": 0.9502262443438914,
+          "rule": 0.5691056910569106
+        },
+        "pairs": 210
+      },
+      "both_zero_clips": 0,
+      "count_distribution": {
+        "refiner3": {
+          "clips": 61,
+          "events": 221,
+          "histogram": {
+            "0": 1,
+            "1": 9,
+            "10": 1,
+            "2": 11,
+            "3": 12,
+            "4": 12,
+            "5": 4,
+            "6": 5,
+            "7": 2,
+            "8": 4
+          },
+          "max": 10,
+          "median": 3,
+          "min": 0,
+          "p90": 7.0
+        },
+        "rule": {
+          "clips": 61,
+          "events": 369,
+          "histogram": {
+            "10": 2,
+            "11": 3,
+            "12": 1,
+            "15": 1,
+            "16": 1,
+            "17": 1,
+            "2": 8,
+            "3": 7,
+            "4": 10,
+            "5": 10,
+            "6": 5,
+            "7": 3,
+            "8": 3,
+            "9": 6
+          },
+          "max": 17,
+          "median": 5,
+          "min": 2,
+          "p90": 11.0
+        }
+      }
+    }
+  },
+  "eligible_clips": 61,
+  "paired_clips": 61,
+  "per_clip": {
+    "video_000/clip_000": {
+      "bounce": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 3
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 4
+      }
+    },
+    "video_000/clip_002": {
+      "bounce": {
+        "matches": {
+          "10": 9,
+          "2": 9,
+          "5": 9
+        },
+        "refiner3": 9,
+        "rule": 9
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 10,
+          "2": 10,
+          "5": 10
+        },
+        "refiner3": 10,
+        "rule": 17
+      }
+    },
+    "video_000/clip_003": {
+      "bounce": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 4
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 3
+      }
+    },
+    "video_000/clip_004": {
+      "bounce": {
+        "matches": {
+          "10": 5,
+          "2": 5,
+          "5": 5
+        },
+        "refiner3": 5,
+        "rule": 5
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 5
+      }
+    },
+    "video_000/clip_005": {
+      "bounce": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 2
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 2,
+        "rule": 2
+      }
+    },
+    "video_000/clip_006": {
+      "bounce": {
+        "matches": {
+          "10": 8,
+          "2": 8,
+          "5": 8
+        },
+        "refiner3": 8,
+        "rule": 8
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 7,
+          "2": 7,
+          "5": 7
+        },
+        "refiner3": 8,
+        "rule": 9
+      }
+    },
+    "video_000/clip_007": {
+      "bounce": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 3
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 2,
+        "rule": 3
+      }
+    },
+    "video_000/clip_008": {
+      "bounce": {
+        "matches": {
+          "10": 6,
+          "2": 6,
+          "5": 6
+        },
+        "refiner3": 6,
+        "rule": 7
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 5,
+          "2": 5,
+          "5": 5
+        },
+        "refiner3": 5,
+        "rule": 8
+      }
+    },
+    "video_000/clip_010": {
+      "bounce": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 4
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 6
+      }
+    },
+    "video_000/clip_011": {
+      "bounce": {
+        "matches": {
+          "10": 12,
+          "2": 12,
+          "5": 12
+        },
+        "refiner3": 12,
+        "rule": 12
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 2
+      },
+      "shot": {
+        "matches": {
+          "10": 7,
+          "2": 7,
+          "5": 7
+        },
+        "refiner3": 8,
+        "rule": 9
+      }
+    },
+    "video_000/clip_012": {
+      "bounce": {
+        "matches": {
+          "10": 11,
+          "2": 11,
+          "5": 11
+        },
+        "refiner3": 11,
+        "rule": 12
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 3,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 11
+      }
+    },
+    "video_000/clip_013": {
+      "bounce": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 3,
+        "rule": 2
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 3
+      }
+    },
+    "video_000/clip_014": {
+      "bounce": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 5,
+        "rule": 4
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 5
+      }
+    },
+    "video_000/clip_015": {
+      "bounce": {
+        "matches": {
+          "10": 8,
+          "2": 8,
+          "5": 8
+        },
+        "refiner3": 8,
+        "rule": 11
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 3
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 10
+      }
+    },
+    "video_000/clip_016": {
+      "bounce": {
+        "matches": {
+          "10": 7,
+          "2": 7,
+          "5": 7
+        },
+        "refiner3": 8,
+        "rule": 7
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 6,
+          "2": 6,
+          "5": 6
+        },
+        "refiner3": 6,
+        "rule": 9
+      }
+    },
+    "video_000/clip_017": {
+      "bounce": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 4
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 2
+      }
+    },
+    "video_000/clip_018": {
+      "bounce": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 3
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 2
+      }
+    },
+    "video_000/clip_019": {
+      "bounce": {
+        "matches": {
+          "10": 5,
+          "2": 5,
+          "5": 5
+        },
+        "refiner3": 5,
+        "rule": 5
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 4
+      }
+    },
+    "video_000/clip_020": {
+      "bounce": {
+        "matches": {
+          "10": 6,
+          "2": 6,
+          "5": 6
+        },
+        "refiner3": 6,
+        "rule": 6
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 7
+      }
+    },
+    "video_000/clip_021": {
+      "bounce": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 4
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 5
+      }
+    },
+    "video_000/clip_022": {
+      "bounce": {
+        "matches": {
+          "10": 7,
+          "2": 7,
+          "5": 7
+        },
+        "refiner3": 8,
+        "rule": 7
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 0,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 7,
+          "2": 6,
+          "5": 7
+        },
+        "refiner3": 7,
+        "rule": 9
+      }
+    },
+    "video_000/clip_023": {
+      "bounce": {
+        "matches": {
+          "10": 9,
+          "2": 9,
+          "5": 9
+        },
+        "refiner3": 10,
+        "rule": 11
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 2
+      },
+      "shot": {
+        "matches": {
+          "10": 7,
+          "2": 6,
+          "5": 6
+        },
+        "refiner3": 8,
+        "rule": 16
+      }
+    },
+    "video_000/clip_024": {
+      "bounce": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 3
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 2
+      }
+    },
+    "video_000/clip_025": {
+      "bounce": {
+        "matches": {
+          "10": 5,
+          "2": 5,
+          "5": 5
+        },
+        "refiner3": 5,
+        "rule": 5
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 4
+      }
+    },
+    "video_000/clip_026": {
+      "bounce": {
+        "matches": {
+          "10": 11,
+          "2": 11,
+          "5": 11
+        },
+        "refiner3": 11,
+        "rule": 14
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 7,
+          "2": 6,
+          "5": 7
+        },
+        "refiner3": 7,
+        "rule": 15
+      }
+    },
+    "video_000/clip_029": {
+      "bounce": {
+        "matches": {
+          "10": 5,
+          "2": 5,
+          "5": 5
+        },
+        "refiner3": 6,
+        "rule": 8
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 6,
+          "2": 6,
+          "5": 6
+        },
+        "refiner3": 6,
+        "rule": 11
+      }
+    },
+    "video_000/clip_030": {
+      "bounce": {
+        "matches": {
+          "10": 5,
+          "2": 5,
+          "5": 5
+        },
+        "refiner3": 5,
+        "rule": 6
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 6
+      }
+    },
+    "video_000/clip_031": {
+      "bounce": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 2
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 2
+      }
+    },
+    "video_000/clip_032": {
+      "bounce": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 3
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 4
+      }
+    },
+    "video_000/clip_033": {
+      "bounce": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 4
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 5
+      }
+    },
+    "video_000/clip_034": {
+      "bounce": {
+        "matches": {
+          "10": 10,
+          "2": 10,
+          "5": 10
+        },
+        "refiner3": 11,
+        "rule": 10
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 8,
+          "2": 8,
+          "5": 8
+        },
+        "refiner3": 8,
+        "rule": 9
+      }
+    },
+    "video_000/clip_035": {
+      "bounce": {
+        "matches": {
+          "10": 14,
+          "2": 14,
+          "5": 14
+        },
+        "refiner3": 16,
+        "rule": 19
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 6,
+        "rule": 12
+      }
+    },
+    "video_000/clip_036": {
+      "bounce": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 3
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 4
+      }
+    },
+    "video_000/clip_037": {
+      "bounce": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 3
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 3
+      }
+    },
+    "video_000/clip_038": {
+      "bounce": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 3,
+        "rule": 2
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 2,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 3
+      }
+    },
+    "video_000/clip_039": {
+      "bounce": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 6,
+        "rule": 5
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 2,
+          "5": 3
+        },
+        "refiner3": 4,
+        "rule": 7
+      }
+    },
+    "video_000/clip_041": {
+      "bounce": {
+        "matches": {
+          "10": 6,
+          "2": 6,
+          "5": 6
+        },
+        "refiner3": 7,
+        "rule": 7
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 5,
+        "rule": 6
+      }
+    },
+    "video_000/clip_042": {
+      "bounce": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 4,
+        "rule": 3
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 4
+      }
+    },
+    "video_000/clip_044": {
+      "bounce": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 5,
+        "rule": 6
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 6
+      }
+    },
+    "video_000/clip_045": {
+      "bounce": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 3,
+        "rule": 2
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 2
+      }
+    },
+    "video_000/clip_046": {
+      "bounce": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 4
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 3
+      }
+    },
+    "video_000/clip_047": {
+      "bounce": {
+        "matches": {
+          "10": 7,
+          "2": 7,
+          "5": 7
+        },
+        "refiner3": 7,
+        "rule": 10
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 5
+      }
+    },
+    "video_000/clip_048": {
+      "bounce": {
+        "matches": {
+          "10": 5,
+          "2": 5,
+          "5": 5
+        },
+        "refiner3": 6,
+        "rule": 5
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 5,
+        "rule": 5
+      }
+    },
+    "video_000/clip_049": {
+      "bounce": {
+        "matches": {
+          "10": 6,
+          "2": 6,
+          "5": 6
+        },
+        "refiner3": 6,
+        "rule": 7
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 2,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 11
+      }
+    },
+    "video_000/clip_050": {
+      "bounce": {
+        "matches": {
+          "10": 7,
+          "2": 7,
+          "5": 7
+        },
+        "refiner3": 9,
+        "rule": 7
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 6,
+          "2": 5,
+          "5": 6
+        },
+        "refiner3": 6,
+        "rule": 8
+      }
+    },
+    "video_000/clip_051": {
+      "bounce": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 2
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 2,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 4
+      }
+    },
+    "video_000/clip_052": {
+      "bounce": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 4,
+        "rule": 3
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 2,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 5
+      }
+    },
+    "video_000/clip_053": {
+      "bounce": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 5,
+        "rule": 4
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 5
+      }
+    },
+    "video_000/clip_054": {
+      "bounce": {
+        "matches": {
+          "10": 8,
+          "2": 8,
+          "5": 8
+        },
+        "refiner3": 8,
+        "rule": 8
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 6,
+          "2": 6,
+          "5": 6
+        },
+        "refiner3": 6,
+        "rule": 10
+      }
+    },
+    "video_000/clip_055": {
+      "bounce": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 6,
+        "rule": 2
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 8
+      }
+    },
+    "video_000/clip_057": {
+      "bounce": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 3
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 2
+      }
+    },
+    "video_000/clip_058": {
+      "bounce": {
+        "matches": {
+          "10": 5,
+          "2": 5,
+          "5": 5
+        },
+        "refiner3": 6,
+        "rule": 5
+      },
+      "net": {
+        "matches": {
+          "10": 2,
+          "2": 1,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 2
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 3,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 7
+      }
+    },
+    "video_000/clip_059": {
+      "bounce": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 4
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 2,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 5
+      }
+    },
+    "video_000/clip_060": {
+      "bounce": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 4
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 0,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 3,
+          "2": 3,
+          "5": 3
+        },
+        "refiner3": 3,
+        "rule": 4
+      }
+    },
+    "video_000/clip_061": {
+      "bounce": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 4
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 0,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 4
+      }
+    },
+    "video_000/clip_062": {
+      "bounce": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 4
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 2,
+        "rule": 4
+      }
+    },
+    "video_000/clip_063": {
+      "bounce": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 3,
+        "rule": 2
+      },
+      "net": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 1
+      },
+      "shot": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 2
+      }
+    },
+    "video_000/clip_065": {
+      "bounce": {
+        "matches": {
+          "10": 2,
+          "2": 2,
+          "5": 2
+        },
+        "refiner3": 3,
+        "rule": 2
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 1,
+        "rule": 3
+      }
+    },
+    "video_000/clip_066": {
+      "bounce": {
+        "matches": {
+          "10": 5,
+          "2": 5,
+          "5": 5
+        },
+        "refiner3": 5,
+        "rule": 5
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 4,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 6
+      }
+    },
+    "video_000/clip_067": {
+      "bounce": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 3,
+        "rule": 2
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 4,
+          "2": 3,
+          "5": 4
+        },
+        "refiner3": 4,
+        "rule": 5
+      }
+    },
+    "video_000/clip_068": {
+      "bounce": {
+        "matches": {
+          "10": 1,
+          "2": 1,
+          "5": 1
+        },
+        "refiner3": 3,
+        "rule": 1
+      },
+      "net": {
+        "matches": {
+          "10": 0,
+          "2": 0,
+          "5": 0
+        },
+        "refiner3": 0,
+        "rule": 0
+      },
+      "shot": {
+        "matches": {
+          "10": 5,
+          "2": 4,
+          "5": 5
+        },
+        "refiner3": 5,
+        "rule": 9
+      }
+    }
+  },
+  "unpaired_clips": []
+}
