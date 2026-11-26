@@ -64,6 +64,9 @@ def test_runtime_dependencies_come_from_component_declarations(tmp_path: Path) -
     assert nodes["gvhmr"].io.version == 2
     assert nodes["body_placement"].io.inputs["recovered"].version == 2
     assert order.index("body_view_selection") < order.index("hmr2_features") < order.index("gvhmr") < order.index("body_placement")
+    assert order[-2:] == ("scene_assembly", "event_detection")
+    assert nodes["event_detection"].bindings == {"scene": "scene_assembly"}
+    assert (nodes["event_detection"].io.inputs["scene"].version, nodes["event_detection"].io.version) == (2, 3)
 
 
 def test_missing_enabled_asset_stops_the_definition(tmp_path: Path) -> None:

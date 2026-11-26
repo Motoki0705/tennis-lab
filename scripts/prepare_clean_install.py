@@ -72,7 +72,7 @@ def gpu_commands(repo: Path, build: Path) -> tuple[str, str]:
                 "OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 "
                 f"{python} -m src.tennis_scene.scripts.run_pipeline "
                 "output_directory=tennis_scene/generate/clean_install output_name=scene "
-                "cache.directory=tennis_scene/cache/clean_install")
+                "cache.directory=tennis_scene/cache/clean_install event_detection.method=rule")
     visualization = (f"{prefix}CUDA_VISIBLE_DEVICES='' MPLBACKEND=Agg {python} "
                      "-m src.tennis_scene.scripts.visualization "
                      "input=tennis_scene/generate/clean_install/scene.npz "

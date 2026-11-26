@@ -349,7 +349,7 @@ PYTHONPATH="$PWD/outputs/dino_extension/lib" \
   OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 \
   .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   output_directory=tennis_scene/generate/clean_install output_name=scene \
-  cache.directory=tennis_scene/cache/clean_install
+  cache.directory=tennis_scene/cache/clean_install event_detection.method=rule
 ```
 
 On this repository's shared GPU, run through the [training queue](../../.agents/skills/training-queue/SKILL.md).
@@ -359,7 +359,7 @@ This is a reference measurement for one clip of the published sample. It exclude
 asset acquisition, building and visualization.
 
 The run saves `outputs/tennis_scene/generate/clean_install/scene.npz` and `scene.metadata.json`.
-Check that the metadata has `scene_schema_version=2` and `status=ok`.
+Check that the metadata has `scene_schema_version=3` and `status=ok`.
 Also use the canonical reader to check masks, reason codes and coordinate systems.
 
 ```bash

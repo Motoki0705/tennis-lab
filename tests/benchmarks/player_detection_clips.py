@@ -46,7 +46,7 @@ def compose_detector_runtime(
         f"paths.project_root={code_root}", f"paths.data_root={repo / 'data'}",
         f"paths.checkpoint_root={repo / 'ckpt'}", f"paths.external_asset_root={repo / 'third_party'}",
         f"paths.artifact_root={report}", f"paths.output_root={report}", f"paths.cache_root={report / 'cache'}",
-        f"device={device}", "output_directory=run", "ball_detection.enabled=false", "execution.court_side=load",
+        f"device={device}", "output_directory=run", "event_detection.method=rule", "ball_detection.enabled=false", "execution.court_side=load",
         "player_reconstruction.enabled=false", "ball_reconstruction.enabled=false", "gvhmr.enabled=false", *overrides,
     ]
     with initialize_config_dir(version_base="1.3", config_dir=str(code_root / "src/tennis_scene/configs")):

@@ -105,7 +105,7 @@ def main() -> None:
         f"paths.project_root={project}", f"paths.data_root={repo / 'data'}",
         f"paths.checkpoint_root={repo / 'ckpt'}", f"paths.external_asset_root={repo / 'third_party'}",
         f"paths.artifact_root={report}", f"paths.output_root={report}", f"paths.cache_root={report / 'cache'}",
-        f"device={args.device}", "output_directory=run", "person_observations.enabled=false",
+        f"device={args.device}", "output_directory=run", "event_detection.method=rule", "person_observations.enabled=false",
         "player_reconstruction.enabled=false", "gvhmr.enabled=false", *args.override,
     ]
     with initialize_config_dir(version_base="1.3", config_dir=str(project / "src/tennis_scene/configs")):

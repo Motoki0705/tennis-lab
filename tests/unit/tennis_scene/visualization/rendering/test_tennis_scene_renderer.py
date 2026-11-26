@@ -70,8 +70,9 @@ def test_v2_skeleton_does_not_require_a_recovered_mesh(tiny_scene, smpl_renderer
     plt.close(fig)
 
 
-def test_v2_speed_and_bounce_do_not_bridge_missing_3d(tiny_scene, smpl_renderer_assets) -> None:
-    tiny_scene.metadata["scene_schema_version"] = 2
+@pytest.mark.parametrize("version", [2, 3])
+def test_speed_and_bounce_do_not_bridge_missing_3d(tiny_scene, smpl_renderer_assets, version) -> None:
+    tiny_scene.metadata["scene_schema_version"] = version
     tiny_scene.ball_3d_valid = np.array([True, False, True, False, True])
     renderer = _make_renderer(TennisSceneStyle(), smpl_renderer_assets)
     speeds = renderer._get_ball_speeds(tiny_scene)

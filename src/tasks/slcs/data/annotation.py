@@ -179,9 +179,9 @@ def load_slcs_annotation(
     from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
     # Resolves through scene.json and verifies the export checksums and lineage.
     scene = load_scene_result(annotation_scene_path(annotation_dir, marker))
-    if scene.schema_version != 2:
+    if scene.schema_version < 2:
         raise DatasetManifestError(
-            f"{manifest.clip_id}: SLCS reads only SceneResult v2, got v{scene.schema_version}"
+            f"{manifest.clip_id}: SLCS reads only SceneResult v2 or v3, got v{scene.schema_version}"
         )
     context = scene.metadata.get("court_reference")
     if not isinstance(context, dict) or tuple(context.get("camera_ids", ())) != tuple(manifest.camera_ids):

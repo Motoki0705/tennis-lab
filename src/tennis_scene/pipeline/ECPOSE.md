@@ -7,7 +7,7 @@ Place the pinned EdgeCrafter repository under `paths.external_asset_root` and th
 ```bash
 # Register this CUDA command with the shared training queue.
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
-  recipe=ecpose \
+  recipe=ecpose event_detection.method=rule \
   '+ecpose={repository:EdgeCrafter,checkpoint:ecpose/ecpose_l_o3652coco.pth,model:ecpose-l-o365,backend:pt32,batch_size:1,confidence:0.3,box_margin:0.10}' \
   'video_paths=[match/cam0.mp4,match/cam1.mp4,match/cam2.mp4,match/cam3.mp4]' \
   'camera_ids=[cam0,cam1,cam2,cam3]'

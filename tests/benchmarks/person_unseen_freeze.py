@@ -34,7 +34,7 @@ def configuration(repo: Path, report: Path) -> DictConfig:
             f'paths.project_root={CODE}', f'paths.data_root={repo / "data"}',
             f'paths.checkpoint_root={repo / "ckpt"}', f'paths.external_asset_root={repo / "third_party"}',
             f'paths.output_root={report}', f'paths.artifact_root={report}',
-            f'paths.cache_root={report / "cache"}', 'output_directory=run', 'device=cuda',
+            f'paths.cache_root={report / "cache"}', 'output_directory=run', 'device=cuda', 'event_detection.method=rule',
             'people_models.runtime.vitpose.batch_size=4', 'people_models.runtime.hmr2.batch_size=4',
         ])
     return cfg

@@ -94,6 +94,10 @@ def configured_requirements(cfg: DictConfig) -> tuple[AssetRequirement, ...]:
     recipe = parse_recipe(value.get("recipe", STANDARD_RECIPE))
     checkpoint("court", section("court_kp")["checkpoint"])
     checkpoint("ball", section("ball_detection")["checkpoint"])
+    event = section("event_detection")
+    if event["method"] == "refiner" and isinstance(event.get("checkpoint"), str):
+        add("ball_event_refiner", PathRole.CHECKPOINT, cast(str, event["checkpoint"]),
+            digest=cast(str | None, event.get("checkpoint_sha256")))
     if section("person_observations")["enabled"]:
         if recipe == ECPOSE_RECIPE:
             ecpose = section("ecpose")
@@ -192,6 +196,8 @@ def standard_requirements(cfg: PipelineRuntimeConfig) -> tuple[AssetRequirement,
         elif name == "ecpose" and cfg.ecpose is not None:
             release = cfg.ecpose.release
             requirements.append(AssetRequirement(name, path, release.sha256, size_bytes=release.size))
+        elif name == "ball_event_refiner":
+            requirements.append(AssetRequirement(name, path, cfg.event_detection.checkpoint_sha256))
         else:
             pin = pins[name]
             requirements.append(AssetRequirement(name, path, pin.sha256, size_bytes=pin.size_bytes))

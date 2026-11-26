@@ -2,7 +2,7 @@
 
 [日本語](README.ja.md) · [简体中文](README.zh-CN.md)
 
-This CPU exporter snapshots a saved SceneResult v2 for the Blender and 3DGS
+This CPU exporter snapshots a saved SceneResult v2 or v3 for the Blender and 3DGS
 player-view backends. It uses the existing mesh placement, PC2 writer and court
 geometry. The head-camera exporter below consumes only that bundle; rendering
 is handled by downstream consumers.

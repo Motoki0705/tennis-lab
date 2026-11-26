@@ -29,7 +29,8 @@ from src.utils.paths import PROJECT_ROOT
 def installation_config(tmp_path: Path) -> DictConfig:
     with initialize_config_dir(config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"), version_base="1.3"):
         return compose(config_name="pipeline", overrides=[f"paths.checkpoint_root={tmp_path / 'ckpt'}",
-            f"paths.data_root={tmp_path / 'data'}", f"paths.external_asset_root={tmp_path / 'third_party'}"])
+            f"paths.data_root={tmp_path / 'data'}", f"paths.external_asset_root={tmp_path / 'third_party'}",
+            "event_detection.method=rule"])
 
 
 def test_reports_missing_corrupt_and_extension_faults_together(tmp_path: Path) -> None:
@@ -126,7 +127,8 @@ def test_acquired_gvhmr_weights_keep_byte_pins_in_preflight(
 def test_standard_inventory_covers_recipe_source_sample_and_visualization(tmp_path: Path) -> None:
     with initialize_config_dir(config_dir=str(PROJECT_ROOT / "src/tennis_scene/configs"), version_base="1.3"):
         config = compose(config_name="pipeline", overrides=[f"paths.checkpoint_root={tmp_path / 'ckpt'}",
-            f"paths.data_root={tmp_path / 'data'}", f"paths.external_asset_root={tmp_path / 'third_party'}"])
+            f"paths.data_root={tmp_path / 'data'}", f"paths.external_asset_root={tmp_path / 'third_party'}",
+            "event_detection.method=rule"])
     runtime = PipelineRuntimeConfig.from_config(config)
     requirements = standard_requirements(runtime)
     paths = {item.path for item in requirements}

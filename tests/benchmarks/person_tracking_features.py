@@ -52,7 +52,7 @@ def extract(args: argparse.Namespace) -> None:
             f"paths.project_root={code_root}", f"paths.data_root={repo / 'data'}",
             f"paths.checkpoint_root={repo / 'ckpt'}", f"paths.external_asset_root={repo / 'third_party'}",
             f"paths.output_root={report}", f"paths.artifact_root={report}",
-            f"paths.cache_root={report / 'cache'}", f"device={args.device}"])
+            f"paths.cache_root={report / 'cache'}", f"device={args.device}", "event_detection.method=rule"])
     runtime = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
     people = runtime.people
     # Fixed for this first adapter. Other encoders must declare their own dimensions/prompts.

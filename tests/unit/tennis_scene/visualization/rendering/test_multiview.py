@@ -18,6 +18,7 @@ from src.tennis_scene.visualization.rendering.tennis_scene_renderer import (
     TennisSceneStyle,
 )
 from src.utils.rendering.camera_view import CameraController
+from tests.support.tennis_scene.annotations import with_fixture_ball_events
 
 
 @pytest.fixture
@@ -61,8 +62,11 @@ def renderer(smpl_renderer_assets):
     )
 
 
-def test_same_source_frame_in_all_four_panels(multiview_scene, renderer, videos):
+@pytest.mark.parametrize("version", [2, 3])
+def test_same_source_frame_in_all_four_panels(multiview_scene, renderer, videos, version):
     # Deliberately reverse mapping insertion order: scene camera IDs own order.
+    if version == 3:
+        multiview_scene = with_fixture_ball_events(multiview_scene)
     draw = Mock(wraps=renderer.render_frame_3d)
     renderer.render_frame_3d = draw
     with MultiviewSceneRenderer(multiview_scene, renderer, dict(reversed(list(videos.items()))), width=480) as view:
