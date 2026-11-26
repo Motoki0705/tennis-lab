@@ -1,26 +1,20 @@
-"""Fixed court player-selection rule (#964, 2026-09-30), with no score/GT gate.
+"""Court player-selection rule (#964, 2026-09-30), with no score/GT gate.
 
-The calibrated z=0 plane uses the court model's singles width as a dwell
-core, doubles width as a diagnostic corridor and 5 m of baseline
-runoff: the default core is |x| <= 4.115 m and |y| <= 16.885 m.
-Neither region expands laterally past the target court's sidelines.
-The inner core adds 1.37 m of protection against noisy box-bottom projections
-at the lateral boundary; a track parked only in that border cannot qualify.
-The rule was selected on four singles dev clips, not general venue segmentation.
-Calibration/footpoint error can still misplace people; no such error bound is
-claimed. The region decides membership only: every real observation of a
-selected fragment is retained, including wide runs and invalid footpoints.
-The corridor is never an observation mask. Switch/gap cuts and ambiguous
-fragment rejection remain identity safeguards, independent of this region.
+The standard dwell and link region is the doubles width with 5 m of baseline
+runoff (|x| <= 5.485 m and |y| <= 16.885 m) across match formats. The core
+half-width can be narrowed for controlled comparisons. The region decides
+membership. All real observations of a selected fragment are retained,
+including runs outside the region and observations with invalid footpoints.
+Switch/gap cuts and ambiguous fragment rejection remain identity safeguards.
 
 Split real observations at >1 s gaps or the existing 0.25 s-window / 3 m
 footpoint jumps (not noisy single-frame steps), then connect
 temporally neighbouring fragments by court position. For a gap, compare the
 median positions within 0.1 s of each endpoint: distance <= 0.8 m + 6 m/s *
-the time between those window centres. Both fragments need a core observation,
-so a border-only bystander cannot borrow a player's dwell. A <=0.2 s overlapping
-handoff also needs spatial agreement. Available CLIP embeddings veto a link
-below cosine .8; missing appearance is explicitly recorded. Mutual nearest
+the time between those window centres. Both fragments need a core observation.
+A <=0.2 s overlapping handoff also needs spatial agreement. Available CLIP
+embeddings veto a link below cosine .8; missing appearance is explicitly
+recorded. Mutual nearest
 links must beat each runner-up by .2 in spatial-distance/limit + gap/max-gap.
 Ambiguous fragments shorter than 1 s are excluded, never forced into a chain. Count distinct
 observed core frames per chain; require 25% of the clip, THEN cap at 6 chains.
@@ -46,7 +40,7 @@ from src.tasks.player_association.geometry.switches import (
     SwitchConfig,
     switch_candidates,
 )
-from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH, HALF_SINGLES_WIDTH
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, HALF_LENGTH
 
 
 @dataclass(frozen=True)
@@ -61,8 +55,11 @@ class LinkingConfig:
     baseline_margin_m: float = 5.
     min_presence_fraction: float = .25
     max_candidates: int = 6
+    core_half_width_m: float = HALF_DOUBLES_WIDTH
 
     def __post_init__(self) -> None:
+        if not 0 < self.core_half_width_m <= HALF_DOUBLES_WIDTH:
+            raise ValueError("Selection core half-width must be positive and inside the doubles sidelines")
         values = (self.max_gap_s, self.max_handoff_s, self.position_slack_m, self.max_speed_m_s,
                   self.min_cosine, self.ambiguity_margin, self.ambiguous_min_s,
                   self.baseline_margin_m, self.min_presence_fraction)
@@ -71,12 +68,16 @@ class LinkingConfig:
                 or not 0 <= self.min_cosine <= 1 or self.max_candidates < 1:
             raise ValueError('Invalid fragment linking configuration')
 
+    @property
+    def baseline_limit_m(self) -> float:
+        return round(float(HALF_LENGTH) + self.baseline_margin_m, 12)
+
 
 def exclusive_region(points: NDArray[np.floating], config: LinkingConfig, *, core: bool) -> NDArray[np.bool_]:
     if points.shape[-1:] != (2,):
         raise ValueError('Court coordinates must be (..., 2)')
-    half_width = HALF_SINGLES_WIDTH if core else HALF_DOUBLES_WIDTH
-    return (np.abs(points[..., 0]) <= half_width) & (np.abs(points[..., 1]) <= round(HALF_LENGTH + config.baseline_margin_m, 12))
+    half_width = config.core_half_width_m if core else HALF_DOUBLES_WIDTH
+    return (np.abs(points[..., 0]) <= half_width) & (np.abs(points[..., 1]) <= config.baseline_limit_m)
 
 
 @dataclass(frozen=True)
@@ -114,7 +115,7 @@ def _pair(a: Fragment, b: Fragment, fps: float, config: LinkingConfig) -> dict[s
     if gap > config.max_gap_s or gap < -config.max_handoff_s:
         return None
     if not (a.valid & exclusive_region(a.points, config, core=True)).any() or not (b.valid & exclusive_region(b.points, config, core=True)).any():
-        return None  # a border-only bystander cannot borrow a player's dwell
+        return None
     af, bf = a.frames[a.valid], b.frames[b.valid]
     ap, bp = a.points[a.valid], b.points[b.valid]
     # Invalid footpoints remain observations, but cannot supply link evidence.
@@ -216,6 +217,8 @@ def select_linked_candidates(tracks: CameraTracks, fps: float, config: LinkingCo
         candidate['reason'] = ('selected' if candidate['selected'] else
             'candidate_cap' if candidate['in_core_frames'] >= required else 'insufficient_dwell')
     diagnostic = {'required_frames': required, 'all_tracks': len(tracks.track_ids),
+        'region': {'core_half_width_m': config.core_half_width_m,
+                   'corridor_half_width_m': HALF_DOUBLES_WIDTH, 'baseline_limit_m': config.baseline_limit_m},
         'fragments': [{'row': f.row, 'track_id': int(tracks.track_ids[f.row]), 'start': int(f.frames[0]),
                        'end': int(f.frames[-1]) + 1, 'observed_frames': len(f.frames),
                        'appearance': f.embedding is not None, 'ambiguous': i in ambiguous,

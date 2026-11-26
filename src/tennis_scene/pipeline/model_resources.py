@@ -23,7 +23,7 @@ from src.tennis_scene.pipeline.inference_runtime import ModelSpec
 from src.tennis_scene.pipeline.inference_runtime import (
     model_identities as model_identities,
 )
-from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.model_assets import BodyModelConfig, PeopleModelConfig
 from src.tennis_scene.pipeline.tensorrt_assets import TensorRTModel, tensorrt_identity
 from src.utils.io import json_value
 from src.utils.models.loading.dinov3 import dinov3_source_assets
@@ -43,7 +43,7 @@ def vitpose_tensorrt(config: PeopleModelConfig) -> TensorRTModel:
     )
 
 
-def hmr2_tensorrt(config: PeopleModelConfig) -> TensorRTModel:
+def hmr2_tensorrt(config: BodyModelConfig | PeopleModelConfig) -> TensorRTModel:
     return TensorRTModel(
         "hmr2_vit_huge",
         {"checkpoint": config.hmr2_checkpoint, "mean_params": config.smpl_assets.hmr2_mean_params},
@@ -79,7 +79,7 @@ def dino_tensorrt(config: PeopleModelConfig, height: int, width: int) -> TensorR
     )
 
 
-def gvhmr_tensorrt(config: PeopleModelConfig, *, legacy: bool = False) -> TensorRTModel:
+def gvhmr_tensorrt(config: BodyModelConfig | PeopleModelConfig, *, legacy: bool = False) -> TensorRTModel:
     batch = 1 if legacy else -1
     settings = {"attention_window": 120, "max_rotary_frames": 4096}
     return TensorRTModel(

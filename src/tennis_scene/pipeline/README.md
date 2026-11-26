@@ -17,6 +17,7 @@
 | `dataset_publication.py` | dataset完成markerの再利用判定、scene契約検証、`annotation.json`の原子的公開と失敗marker |
 | `storage/codec.py` | componentが宣言したOutput型をJSONと数値配列へ保存・復元。pickleや動的class importは使わない |
 | `storage/clip_store.py` | clipを正本とする永続store、原子的な成果物公開、`scene.json`、メモリcache |
+| `storage/scene_pointers.py` | 公開・復元時に `scene.json` と `annotation.json` を切り替え、保留中の読み込みを止める |
 | `storage/scene_export.py` | 統合sceneのimmutableなexportと`scene.json`への採用 |
 | `orchestrator.py` | 共通入力部品への動画束縛、標準recipeから1clipの計画を作成・実行・最終化、実行receipt |
 | `video_batch.py` | 同じvideoの固定clip群を1計画へ束縛し、失敗を分離してclip完成直後に公開する入口 |
@@ -307,6 +308,10 @@ v2の`source_rows`は間引き前のclip/camera通番、`duplicate_merges`はfra
 `player_selection` は校正z=0の足元から選手候補を選ぶ。固定規則の正本は
 [`court_linking.py`](../../tasks/person_tracking/court_linking.py)のdocstringと`LinkingConfig`。
 連結後のdistinct core滞在で選別し、`person_observations.max_tracks_per_camera`は最後のgroup上限だけに使う。
+シングルスとダブルスのどちらもコアは `|x| ≤ 5.485 m`、`|y| ≤ 16.885 m`。必要滞在はクリップの25%。
+選別領域とチェーンごとの滞在フレーム数・選別理由は `diagnostics.linking` に保存する。
+対応付けで求める人数は `player_association.players_per_side=1`（シングルス）または
+`player_association.players_per_side=2`（ダブルス）で指定する。
 CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だけの成功に変えない。
 `selected_player_tracks` v3の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
 追跡特徴は選別側のencoder名とモデルidentityが一致するときだけ再利用する。不一致・identity不明なら
@@ -571,19 +576,35 @@ camera scopeはnode名（例`ball_detection/cam0`）と実行identityに含む�
 
 出力は一時directoryで完了してから公開し、clip単位のlockを取って`scene.json`を更新する。
 中断途中の出力を下流へ渡さず、既存の完成artifactを上書きしない。
-`scene.json`の`artifacts`は採用版、`exports.scene`は完成した統合出力と採用した`event_detection`成果物を指す。
+`scene.json`の`artifacts`は採用版、`exports.scene`は完成した統合出力とその生成元を指す。
+v2では`scene_assembly`、v3では`scene_assembly`に依存する`event_detection`を生成元とする。
 採用componentが差し替わった時点で旧exportへの公開参照を外す。既存のimmutableなexportファイルは保持し、
 `scene.json`から統合sceneを読む際にも上流artifactの依存鎖が現採用版と一致するか検証する。
 `scene.npz`は派生した統合結果で、component間の受け渡しには使わない。
 `load_scene_result(scene.json)`またはstore directoryを指定すると、checksum検証後にその統合結果を読める。
 datasetの完成marker（`annotation.json`）は`dataset_publication.py`が公開し、
 [generate_dataset](../generate_dataset/README.md)がclipごとの呼出しと結果を管理する。
+公開・復元で二つの参照を切り替える共通の入口は `storage.scene_pointers` の
+`replace_scene_pointers(root, *, scene, annotation, receipt, recovery)`。
+`root` と保存済み `receipt` は `Path`、`scene` と `annotation` は切替先のUTF-8文字列とする。
+元のmarkerがない状態に戻す場合は `annotation=None` を渡す。`recovery` は読込エラーに含める復旧操作の文字列。
+呼び出し側は `clip_store_lock(root)` 内で切替前後の参照を検証してから呼ぶ。
+`.scene-pointer-update.json` は両参照の読み戻しが済むまで復旧記録を指す。
+読込中の保留、他の記録による切替、読み戻しの不一致は `ScenePointerUpdateError`（`ValueError` の派生型）を返す。
+復旧する書き手は同じロック内で `read_pending_scene_update(root)` の `receipt` を照合し、同じ入口で公開・復元を続ける。
 標準pipelineのmarker発行・再利用では、公開するsceneの依存を`body_placement`から
 `body_parameters` v2、`hmr2_features` v1、共通の`body_view_selection`までたどり、
 採用参照・checksumとclip/人物/segment/frameの対応を検証する。旧身体成果物は明示的に拒否する。
 
-モデル/設定/上流artifact/入力組立の変更は再計算を必要とする。現行のコードfingerprintは`src`全体を保守的に含むため、
-コード変更は全componentを無効化する。設定・checkpointだけの変更は、そのcomponentと依存先だけを無効化する。
+モデル/設定/上流artifact/入力組立の変更は再計算を必要とする。実行キーの実装識別と公開識別の
+`code_sha256` は、`src` 全体のPythonソースのSHA-256を `source_identity.py` の互換表で
+正規化して求める。互換表は対象ファイルの全ハッシュが一致する変更だけを基準版へ対応づける。
+ソース識別が変わると全componentが無効になり、設定・checkpointだけの変更はそのcomponentと依存先を無効にする。
+同じソース識別・設定・入力ならcheckoutのcommitをまたいで再利用できる。`event_detection` の
+`metadata.ball_events.provenance.code_commit` は計算時のcommitを記録し、cache/loadによる再利用時も保持する。
+設定に `code_commit` を含む旧実行キーの `event_detection` には、一度 `execute` が必要になる。
+旧公開識別の完成markerを更新するdatasetでは `overwrite=true` を使う。
+配布済みのSceneResult v3は `load_scene_result` で引き続き読み込める。
 新しい実装を差す場合は`ComponentNode`へ実装、IO、assembler、bindings、設定を登録する。runner変更は不要。
 
 ## execute / load

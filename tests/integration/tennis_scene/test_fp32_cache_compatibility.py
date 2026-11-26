@@ -8,6 +8,7 @@ import runpy
 import sys
 import tarfile
 from dataclasses import replace
+from itertools import product
 from pathlib import Path
 from typing import Any
 
@@ -256,6 +257,51 @@ def test_exact_precision_patch_compatibility_does_not_hide_later_changes(tmp_pat
     assert source_identity.compatible_source_digests({**snapshot, **unrelated_edit}) == {**baseline, **unrelated_edit}
 
 
+@pytest.fixture(scope="module")
+def pose_comparison_sources() -> tuple[dict[str, str], dict[str, str]]:
+    from src.tennis_scene.pipeline import source_identity
+
+    manifest = Path(source_identity.__file__).with_name("pose_comparison_cache_compatibility.json")
+    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    event_manifest = manifest.with_name("event_detection_cache_compatibility.json")
+    events = json.loads(event_manifest.read_text(encoding="utf-8"))["files"]
+    live = source_identity.source_digests(PROJECT_ROOT / "src")
+    # Reproduce the reviewed main revisions while retaining the other checkout sources.
+    reviewed = live | {path: pair["after"] for path, pair in files.items()}
+    reviewed.update({path: pair["after"] for path, pair in events.items()})
+    current = source_identity._compatible_patch(reviewed, event_manifest.name)
+    assert {path: current.get(path) for path in files} == {path: pair["after"] for path, pair in files.items()}
+    assert source_identity.compatible_source_digests(reviewed, tensorrt=True) == source_identity.compatible_source_digests(
+        current, tensorrt=True,
+    )
+    publisher = "tennis_scene/pipeline/dataset_publication.py"
+    edited = reviewed | {publisher: live[publisher]}
+    assert source_identity.compatible_source_digests(edited, tensorrt=True) == edited
+    tracking = {path: digest for path, digest in current.items() if path not in files}
+    tracking.update({path: pair["before"] for path, pair in files.items() if pair["before"] is not None})
+    return current, tracking
+
+
+def test_exact_pose_comparison_patch_preserves_the_standard_recipe_identity(
+    pose_comparison_sources: tuple[dict[str, str], dict[str, str]],
+) -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    current, tracking = pose_comparison_sources
+    baseline = source_identity.compatible_source_digests(tracking, tensorrt=True)
+    assert source_identity.compatible_source_digests(current, tensorrt=True) == baseline
+    for path in (
+        "tennis_scene/visualization/pose_comparison/rendering.py",
+        "tennis_scene/pipeline/source_identity.py",
+        "utils/configuration/inventory.py",
+    ):
+        changed = {**current, path: "0" * 64}
+        assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
+    inventory = "utils/configuration/inventory.py"
+    edited = current | {inventory: dual_sha256(PROJECT_ROOT / "src" / inventory)}
+    assert source_identity.compatible_source_digests(edited, tensorrt=True) == edited
+
+
 def test_exact_multiview_pose_patch_preserves_the_standard_recipe_identity() -> None:
     from src.tennis_scene.pipeline import source_identity
 
@@ -267,9 +313,82 @@ def test_exact_multiview_pose_patch_preserves_the_standard_recipe_identity() -> 
     reviewed = outside_patch | {path: pair["after"] for path, pair in files.items()}
     baseline = outside_patch | {path: pair["before"] for path, pair in files.items() if pair["before"] is not None}
     assert source_identity.compatible_source_digests(reviewed, tensorrt=True) == baseline
-    for path in ("utils/configuration/inventory.py", "tennis_scene/pipeline/video_court_side/artifact.py"):
+    for path in (
+        "utils/configuration/inventory.py",
+        "tennis_scene/pipeline/video_court_side/artifact.py",
+        "tennis_scene/multiview_pose/inputs.py",
+    ):
         changed = {**reviewed, path: "0" * 64}
         assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
+
+
+def test_event_detection_compatibility_preserves_only_the_exact_patch() -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    manifest = Path(source_identity.__file__).with_name("event_detection_cache_compatibility.json")
+    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    schema = {"tennis_scene/ball_event_schema.py": "a" * 64}
+    baseline = schema | {path: versions["before"] for path, versions in files.items()}
+    reviewed = schema | {path: versions["after"] for path, versions in files.items()}
+    assert source_identity.compatible_source_digests(reviewed, standard_recipe=True) == baseline
+    for path in files:
+        edited = reviewed | {path: "0" * 64}
+        assert source_identity.compatible_source_digests(edited, standard_recipe=True) == edited
+    changed_schema = {"tennis_scene/ball_event_schema.py": "b" * 64}
+    assert source_identity.compatible_source_digests(
+        reviewed | changed_schema, standard_recipe=True,
+    ) == baseline | changed_schema
+
+
+def test_exact_multiview_tracking_patch_preserves_the_standard_recipe_identity(
+    pose_comparison_sources: tuple[dict[str, str], dict[str, str]],
+) -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    manifest = Path(source_identity.__file__).with_name("multiview_tracking_cache_compatibility.json")
+    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    _, current = pose_comparison_sources
+    # The tracking baseline includes the newer SceneResult v3 sources.
+    baseline = {path: digest for path, digest in current.items() if path not in files}
+    baseline.update({path: pair["before"] for path, pair in files.items() if pair["before"] is not None})
+    assert source_identity.compatible_source_digests(current, tensorrt=True) == baseline
+    for path in (
+        "tennis_scene/multiview_tracking/association.py",
+        "tennis_scene/pipeline/source_identity.py",
+        "utils/configuration/inventory.py",
+    ):
+        changed = {**current, path: "0" * 64}
+        assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
+
+    pose_edit = {"tennis_scene/multiview_pose/inputs.py": "0" * 64}
+    assert source_identity.compatible_source_digests(current | pose_edit, tensorrt=True) == baseline | pose_edit
+
+
+def test_multiview_integration_preserves_main_source_identity() -> None:
+    from src.tennis_scene.pipeline import source_identity
+
+    manifest = Path(source_identity.__file__).with_name("multiview_scene_cache_compatibility.json")
+    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    current = source_identity.source_digests(PROJECT_ROOT / "src")
+    baseline = {path: digest for path, digest in current.items() if path not in files}
+    baseline.update({path: versions["before"] for path, versions in files.items() if versions["before"] is not None})
+    guarded = (
+        "utils/configuration/inventory.py",
+        "tennis_scene/multiview_scene/publication.py",
+    )
+    outside = "tennis_scene/pipeline/storage/scene_pointers.py"
+    edits = {path: {**current, path: "0" * 64} for path in (*guarded, outside)}
+
+    for recipe, people, trt, ball in product((False, True), repeat=4):
+        flags = dict(standard_recipe=recipe, standard_people=people, tensorrt=trt, ball_court_side=ball)
+        expected = source_identity.compatible_source_digests(baseline, **flags)
+        assert source_identity.compatible_source_digests(current, **flags) == expected
+        for path in guarded:
+            edited = edits[path]
+            assert source_identity._compatible_patch(edited, manifest.name) == edited
+            resolved = source_identity.compatible_source_digests(edited, **flags)
+            assert resolved[path] == edited[path] and resolved != expected
+        assert source_identity.compatible_source_digests(edits[outside], **flags) == expected | {outside: "0" * 64}
 
 
 def test_exact_tensorrt_patch_preserves_the_previous_fp32_source_identity() -> None:

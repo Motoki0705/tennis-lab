@@ -18,6 +18,7 @@ from src.tennis_scene.pipeline.components.camera_alignment import CameraAlignmen
 from src.tennis_scene.pipeline.components.triangulation import BallTriangulationOutput
 from src.tennis_scene.pipeline.contracts import ClipSource, ComponentIO, InputPort
 from src.utils.geometry.triangulation import (
+    PinholeCamera,
     PointRejection,
     TriangulatedPoints,
     triangulate_multiview,
@@ -32,6 +33,23 @@ ANNOTATION_GEOMETRY_POLICY = {
     "solver": "all_view_dlt_and_pixel_least_squares",
     "invalid_geometry": "missing_with_reason_no_view_selection",
 }
+
+
+def triangulate_annotation_positions(
+    uv: NDArray[np.float32], usable: NDArray[np.bool_], cameras: tuple[PinholeCamera, ...]
+) -> BallReconstructionResult:
+    """Fit every usable pixel with weight 1, without temporal or outlier gates."""
+    fitted = triangulate_multiview(uv.transpose(1, 0, 2), usable.T.astype(np.float64),
+        np.stack([camera.matrix for camera in cameras]), min_score=0.)
+    enough = usable.sum(0) >= 2
+    used = usable & fitted.valid[None]
+    reasons = np.where(fitted.valid, int(PointRejection.VALID),
+        np.where(enough, int(PointRejection.OPTIMIZATION_FAILED), int(PointRejection.INSUFFICIENT_VIEWS))).astype(np.uint8)
+    error = np.where(used, np.linalg.norm(fitted.reprojected.transpose(1, 0, 2) - uv, axis=-1), 0).astype(np.float32)
+    trajectory = TriangulatedPoints(np.where(fitted.valid[:, None], fitted.points, 0).astype(np.float32),
+                                   fitted.valid, reasons, used, error)
+    status = "ok" if fitted.valid.any() else "ball_invalid_geometry" if enough.any() else "ball_insufficient_support"
+    return BallReconstructionResult(uv, usable, trajectory, status)
 
 
 @dataclass(frozen=True)
@@ -93,22 +111,11 @@ class BallAnnotationTriangulationModule:
             raise ValueError("Aligned camera parameters disagree with the camera axis")
         uv = np.stack([p.uv_px for p in inputs.points])
         usable = np.stack([p.position_usable for p in inputs.points])
-        # Every usable coordinate has weight 1. No pair consensus, reprojection
-        # threshold, speed/height bound, minimum trajectory length or gap filling.
-        fitted = triangulate_multiview(uv.transpose(1, 0, 2), usable.T.astype(np.float64),
-            np.stack([c.matrix for c in geometry.cameras]), min_score=0.)
-        enough = usable.sum(0) >= 2
-        used = usable & fitted.valid[None]
-        reasons = np.where(fitted.valid, int(PointRejection.VALID),
-            np.where(enough, int(PointRejection.OPTIMIZATION_FAILED), int(PointRejection.INSUFFICIENT_VIEWS))).astype(np.uint8)
-        missing = tuple("" if valid else "invalid_multiview_geometry" if supported else "insufficient_views"
-                        for valid, supported in zip(fitted.valid, enough, strict=True))
-        error = np.where(used, np.linalg.norm(fitted.reprojected.transpose(1, 0, 2) - uv, axis=-1), 0).astype(np.float32)
-        trajectory = TriangulatedPoints(np.where(fitted.valid[:, None], fitted.points, 0).astype(np.float32),
-                                       fitted.valid, reasons, used, error)
-        status = "ok" if fitted.valid.any() else "ball_invalid_geometry" if enough.any() else "ball_insufficient_support"
-        ball = BallReconstructionResult(uv, usable, trajectory, status)
+        ball = triangulate_annotation_positions(uv, usable, geometry.cameras)
+        missing_labels = {PointRejection.VALID: "", PointRejection.INSUFFICIENT_VIEWS: "insufficient_views",
+                          PointRejection.OPTIMIZATION_FAILED: "invalid_multiview_geometry"}
+        missing = tuple(missing_labels[PointRejection(code)] for code in ball.trajectory.reasons)
         return BallAnnotationTriangulationOutput(ball, geometry.camera_ids, usable,
             np.stack([p.observed for p in inputs.points]), np.stack([p.estimated for p in inputs.points]),
-            tuple(p.point_kind for p in inputs.points), used, missing,
+            tuple(p.point_kind for p in inputs.points), ball.trajectory.inliers, missing,
             inputs.points, dict(ANNOTATION_GEOMETRY_POLICY))
