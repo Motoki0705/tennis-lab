@@ -1,0 +1,1417 @@
+{
+  "benchmark": "meiji_4cam/multiview-v2",
+  "fps": 59.94005994005994,
+  "primary_tolerance_frames": 5,
+  "processing": {
+    "refiner3": {
+      "failed": 0,
+      "ok": 69,
+      "pending": 0,
+      "total": 69
+    },
+    "rule": {
+      "failed": 0,
+      "ok": 69,
+      "pending": 0,
+      "total": 69
+    }
+  },
+  "scope": "all",
+  "scoring": {
+    "refiner3": {
+      "bounce": {
+        "10": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 22,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 10,
+              "missed": 13
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 1,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.8311688311688312,
+          "fn": 13,
+          "fp": 0,
+          "labels": 45,
+          "mean_abs_error_frames": 1.3125,
+          "mean_abs_error_ms": 21.896875,
+          "median_abs_error_frames": 1.0,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 1.0,
+          "median_signed_error_ms": 16.683333333333334,
+          "precision": 1.0,
+          "predictions": 32,
+          "recall": 0.7111111111111111,
+          "tp": 32
+        },
+        "2": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 19,
+              "missed": 3
+            },
+            "out_of_point": {
+              "matched": 9,
+              "missed": 14
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 1,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.7272727272727273,
+          "fn": 17,
+          "fp": 4,
+          "labels": 45,
+          "mean_abs_error_frames": 1.0714285714285714,
+          "mean_abs_error_ms": 17.875,
+          "median_abs_error_frames": 1.0,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 1.0,
+          "median_signed_error_ms": 16.683333333333334,
+          "precision": 0.875,
+          "predictions": 32,
+          "recall": 0.6222222222222222,
+          "tp": 28
+        },
+        "5": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 22,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 10,
+              "missed": 13
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 1,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.8311688311688312,
+          "fn": 13,
+          "fp": 0,
+          "labels": 45,
+          "mean_abs_error_frames": 1.3125,
+          "mean_abs_error_ms": 21.896875,
+          "median_abs_error_frames": 1.0,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 1.0,
+          "median_signed_error_ms": 16.683333333333334,
+          "precision": 1.0,
+          "predictions": 32,
+          "recall": 0.7111111111111111,
+          "tp": 32
+        },
+        "mismatch_context_counts_at_5_frames": {
+          "fn": {
+            "3d_within_1m_of_net_plane": 1,
+            "different_kind_within_5_frames": 1,
+            "out_of_point_label": 13
+          },
+          "fp": {}
+        }
+      },
+      "net": {
+        "10": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 0,
+              "missed": 3
+            },
+            "out_of_point": {
+              "matched": 0,
+              "missed": 1
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 1,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.0,
+          "fn": 4,
+          "fp": 1,
+          "labels": 4,
+          "mean_abs_error_frames": null,
+          "mean_abs_error_ms": null,
+          "median_abs_error_frames": null,
+          "median_abs_error_ms": null,
+          "median_signed_error_frames": null,
+          "median_signed_error_ms": null,
+          "precision": 0.0,
+          "predictions": 1,
+          "recall": 0.0,
+          "tp": 0
+        },
+        "2": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 0,
+              "missed": 3
+            },
+            "out_of_point": {
+              "matched": 0,
+              "missed": 1
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 1,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.0,
+          "fn": 4,
+          "fp": 1,
+          "labels": 4,
+          "mean_abs_error_frames": null,
+          "mean_abs_error_ms": null,
+          "median_abs_error_frames": null,
+          "median_abs_error_ms": null,
+          "median_signed_error_frames": null,
+          "median_signed_error_ms": null,
+          "precision": 0.0,
+          "predictions": 1,
+          "recall": 0.0,
+          "tp": 0
+        },
+        "5": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 0,
+              "missed": 3
+            },
+            "out_of_point": {
+              "matched": 0,
+              "missed": 1
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 1,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.0,
+          "fn": 4,
+          "fp": 1,
+          "labels": 4,
+          "mean_abs_error_frames": null,
+          "mean_abs_error_ms": null,
+          "median_abs_error_frames": null,
+          "median_abs_error_ms": null,
+          "median_signed_error_frames": null,
+          "median_signed_error_ms": null,
+          "precision": 0.0,
+          "predictions": 1,
+          "recall": 0.0,
+          "tp": 0
+        },
+        "mismatch_context_counts_at_5_frames": {
+          "fn": {
+            "3d_within_1m_of_net_plane": 4,
+            "out_of_point_label": 1
+          },
+          "fp": {
+            "3d_missing_within_5_frames": 1
+          }
+        }
+      },
+      "shot": {
+        "10": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 24,
+              "missed": 6
+            },
+            "out_of_point": {
+              "matched": 4,
+              "missed": 4
+            }
+          },
+          "excluded": {
+            "masked_labels": 1,
+            "masked_predictions": 2,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.8484848484848485,
+          "fn": 10,
+          "fp": 0,
+          "labels": 38,
+          "mean_abs_error_frames": 1.25,
+          "mean_abs_error_ms": 20.854166666666668,
+          "median_abs_error_frames": 1.0,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 0.5,
+          "median_signed_error_ms": 8.341666666666667,
+          "precision": 1.0,
+          "predictions": 28,
+          "recall": 0.7368421052631579,
+          "tp": 28
+        },
+        "2": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 23,
+              "missed": 7
+            },
+            "out_of_point": {
+              "matched": 3,
+              "missed": 5
+            }
+          },
+          "excluded": {
+            "masked_labels": 1,
+            "masked_predictions": 2,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.7878787878787878,
+          "fn": 12,
+          "fp": 2,
+          "labels": 38,
+          "mean_abs_error_frames": 1.0384615384615385,
+          "mean_abs_error_ms": 17.325000000000003,
+          "median_abs_error_frames": 1.0,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 0.5,
+          "median_signed_error_ms": 8.341666666666667,
+          "precision": 0.9285714285714286,
+          "predictions": 28,
+          "recall": 0.6842105263157895,
+          "tp": 26
+        },
+        "5": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 24,
+              "missed": 6
+            },
+            "out_of_point": {
+              "matched": 4,
+              "missed": 4
+            }
+          },
+          "excluded": {
+            "masked_labels": 1,
+            "masked_predictions": 2,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.8484848484848485,
+          "fn": 10,
+          "fp": 0,
+          "labels": 38,
+          "mean_abs_error_frames": 1.25,
+          "mean_abs_error_ms": 20.854166666666668,
+          "median_abs_error_frames": 1.0,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 0.5,
+          "median_signed_error_ms": 8.341666666666667,
+          "precision": 1.0,
+          "predictions": 28,
+          "recall": 0.7368421052631579,
+          "tp": 28
+        },
+        "mismatch_context_counts_at_5_frames": {
+          "fn": {
+            "occlusion_in_label_evidence": 1,
+            "out_of_point_label": 4,
+            "volley_label": 2
+          },
+          "fp": {}
+        }
+      }
+    },
+    "rule": {
+      "bounce": {
+        "10": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 18,
+              "missed": 4
+            },
+            "out_of_point": {
+              "matched": 7,
+              "missed": 16
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 1,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.7142857142857143,
+          "fn": 20,
+          "fp": 0,
+          "labels": 45,
+          "mean_abs_error_frames": 1,
+          "mean_abs_error_ms": 16.683333333333334,
+          "median_abs_error_frames": 1,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 0,
+          "median_signed_error_ms": 0.0,
+          "precision": 1.0,
+          "predictions": 25,
+          "recall": 0.5555555555555556,
+          "tp": 25
+        },
+        "2": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 15,
+              "missed": 7
+            },
+            "out_of_point": {
+              "matched": 7,
+              "missed": 16
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 1,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.6285714285714286,
+          "fn": 23,
+          "fp": 3,
+          "labels": 45,
+          "mean_abs_error_frames": 0.7272727272727273,
+          "mean_abs_error_ms": 12.133333333333333,
+          "median_abs_error_frames": 0.5,
+          "median_abs_error_ms": 8.341666666666667,
+          "median_signed_error_frames": 0.0,
+          "median_signed_error_ms": 0.0,
+          "precision": 0.88,
+          "predictions": 25,
+          "recall": 0.4888888888888889,
+          "tp": 22
+        },
+        "5": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 18,
+              "missed": 4
+            },
+            "out_of_point": {
+              "matched": 7,
+              "missed": 16
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 1,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.7142857142857143,
+          "fn": 20,
+          "fp": 0,
+          "labels": 45,
+          "mean_abs_error_frames": 1,
+          "mean_abs_error_ms": 16.683333333333334,
+          "median_abs_error_frames": 1,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 0,
+          "median_signed_error_ms": 0.0,
+          "precision": 1.0,
+          "predictions": 25,
+          "recall": 0.5555555555555556,
+          "tp": 25
+        },
+        "mismatch_context_counts_at_5_frames": {
+          "fn": {
+            "3d_within_1m_of_net_plane": 2,
+            "occlusion_in_label_evidence": 1,
+            "out_of_point_label": 16
+          },
+          "fp": {}
+        }
+      },
+      "net": {
+        "10": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 3,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 1,
+              "missed": 0
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 1,
+            "uncertain_predictions": 0
+          },
+          "f1": 1.0,
+          "fn": 0,
+          "fp": 0,
+          "labels": 4,
+          "mean_abs_error_frames": 3,
+          "mean_abs_error_ms": 50.050000000000004,
+          "median_abs_error_frames": 1.5,
+          "median_abs_error_ms": 25.025000000000002,
+          "median_signed_error_frames": 1.5,
+          "median_signed_error_ms": 25.025000000000002,
+          "precision": 1.0,
+          "predictions": 4,
+          "recall": 1.0,
+          "tp": 4
+        },
+        "2": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 2,
+              "missed": 1
+            },
+            "out_of_point": {
+              "matched": 0,
+              "missed": 1
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 1,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.5,
+          "fn": 2,
+          "fp": 2,
+          "labels": 4,
+          "mean_abs_error_frames": 0,
+          "mean_abs_error_ms": 0.0,
+          "median_abs_error_frames": 0.0,
+          "median_abs_error_ms": 0.0,
+          "median_signed_error_frames": 0.0,
+          "median_signed_error_ms": 0.0,
+          "precision": 0.5,
+          "predictions": 4,
+          "recall": 0.5,
+          "tp": 2
+        },
+        "5": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 3,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 0,
+              "missed": 1
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 1,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.75,
+          "fn": 1,
+          "fp": 1,
+          "labels": 4,
+          "mean_abs_error_frames": 1,
+          "mean_abs_error_ms": 16.683333333333334,
+          "median_abs_error_frames": 0,
+          "median_abs_error_ms": 0.0,
+          "median_signed_error_frames": 0,
+          "median_signed_error_ms": 0.0,
+          "precision": 0.75,
+          "predictions": 4,
+          "recall": 0.75,
+          "tp": 3
+        },
+        "mismatch_context_counts_at_5_frames": {
+          "fn": {
+            "3d_within_1m_of_net_plane": 1,
+            "out_of_point_label": 1,
+            "same_kind_6_to_10_frames_apart": 1
+          },
+          "fp": {
+            "3d_within_1m_of_net_plane": 1,
+            "outside_point_spans": 1,
+            "same_kind_6_to_10_frames_apart": 1
+          }
+        }
+      },
+      "shot": {
+        "10": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 30,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 3,
+              "missed": 5
+            }
+          },
+          "excluded": {
+            "masked_labels": 1,
+            "masked_predictions": 2,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.868421052631579,
+          "fn": 5,
+          "fp": 5,
+          "labels": 38,
+          "mean_abs_error_frames": 1.303030303030303,
+          "mean_abs_error_ms": 21.738888888888887,
+          "median_abs_error_frames": 1,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 0,
+          "median_signed_error_ms": 0.0,
+          "precision": 0.868421052631579,
+          "predictions": 38,
+          "recall": 0.868421052631579,
+          "tp": 33
+        },
+        "2": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 27,
+              "missed": 3
+            },
+            "out_of_point": {
+              "matched": 1,
+              "missed": 7
+            }
+          },
+          "excluded": {
+            "masked_labels": 1,
+            "masked_predictions": 2,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.7368421052631579,
+          "fn": 10,
+          "fp": 10,
+          "labels": 38,
+          "mean_abs_error_frames": 1,
+          "mean_abs_error_ms": 16.683333333333334,
+          "median_abs_error_frames": 1.0,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 0.0,
+          "median_signed_error_ms": 0.0,
+          "precision": 0.7368421052631579,
+          "predictions": 38,
+          "recall": 0.7368421052631579,
+          "tp": 28
+        },
+        "5": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 30,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 3,
+              "missed": 5
+            }
+          },
+          "excluded": {
+            "masked_labels": 1,
+            "masked_predictions": 2,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.868421052631579,
+          "fn": 5,
+          "fp": 5,
+          "labels": 38,
+          "mean_abs_error_frames": 1.303030303030303,
+          "mean_abs_error_ms": 21.738888888888887,
+          "median_abs_error_frames": 1,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 0,
+          "median_signed_error_ms": 0.0,
+          "precision": 0.868421052631579,
+          "predictions": 38,
+          "recall": 0.868421052631579,
+          "tp": 33
+        },
+        "mismatch_context_counts_at_5_frames": {
+          "fn": {
+            "occlusion_in_label_evidence": 1,
+            "out_of_point_label": 5
+          },
+          "fp": {
+            "3d_missing_within_5_frames": 1,
+            "3d_within_1m_of_net_plane": 1,
+            "different_kind_within_5_frames": 1,
+            "outside_point_spans": 2,
+            "same_kind_6_to_10_frames_apart": 1
+          }
+        }
+      }
+    }
+  },
+  "selected_clips": {
+    "video_000/clip_001": {
+      "label_status_counts": {
+        "certain": 10,
+        "probable": 1
+      },
+      "role": "tuning",
+      "unavailable": {},
+      "unlabelable_frames": 0,
+      "unlabelable_intervals": []
+    },
+    "video_000/clip_009": {
+      "label_status_counts": {
+        "certain": 17,
+        "probable": 4
+      },
+      "role": "tuning",
+      "unavailable": {},
+      "unlabelable_frames": 0,
+      "unlabelable_intervals": []
+    },
+    "video_000/clip_027": {
+      "label_status_counts": {
+        "certain": 3,
+        "probable": 1
+      },
+      "role": "scoring",
+      "unavailable": {},
+      "unlabelable_frames": 0,
+      "unlabelable_intervals": []
+    },
+    "video_000/clip_028": {
+      "label_status_counts": {
+        "certain": 17,
+        "probable": 14,
+        "uncertain": 1
+      },
+      "role": "scoring",
+      "unavailable": {},
+      "unlabelable_frames": 28,
+      "unlabelable_intervals": [
+        {
+          "end": 533,
+          "reason": "第1球のみ。第1サーブ後に残った球が柵の影を横切り、4視点で高さが解像できず微小な再接地と転がりを区別できない。同じ時刻帯にある第2球のf511のサーブは判定済み。",
+          "start": 506
+        }
+      ]
+    },
+    "video_000/clip_040": {
+      "label_status_counts": {
+        "certain": 7,
+        "probable": 1,
+        "uncertain": 1
+      },
+      "role": "scoring",
+      "unavailable": {},
+      "unlabelable_frames": 0,
+      "unlabelable_intervals": []
+    },
+    "video_000/clip_043": {
+      "label_status_counts": {
+        "certain": 13,
+        "probable": 3
+      },
+      "role": "scoring",
+      "unavailable": {},
+      "unlabelable_frames": 5,
+      "unlabelable_intervals": [
+        {
+          "end": 278,
+          "reason": "1本目の球の回収時、選手の身体と手元に球が隠れ、手が球を受けた瞬間を特定できない。",
+          "start": 274
+        }
+      ]
+    },
+    "video_000/clip_056": {
+      "label_status_counts": {
+        "certain": 10,
+        "probable": 3
+      },
+      "role": "scoring",
+      "unavailable": {},
+      "unlabelable_frames": 0,
+      "unlabelable_intervals": []
+    },
+    "video_000/clip_064": {
+      "label_status_counts": {
+        "certain": 15,
+        "probable": 1
+      },
+      "role": "scoring",
+      "unavailable": {},
+      "unlabelable_frames": 234,
+      "unlabelable_intervals": [
+        {
+          "end": 575,
+          "reason": "水色短パンの選手の高いロブが画角上端から外れ、4視点で球を追えない。cam2で約f441に上端に達し、f576に下降する球を再確認。",
+          "start": 442
+        },
+        {
+          "end": 981,
+          "reason": "水色短パンの選手の高いロブが画角上端から外れ、4視点で球を追えない。cam2 f881が上端付近で、cam0 f982で下降する球を再確認。",
+          "start": 882
+        }
+      ]
+    }
+  },
+  "tolerances_frames": [
+    2,
+    5,
+    10
+  ],
+  "tuning": {
+    "refiner3": {
+      "bounce": {
+        "10": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 10,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 1,
+              "missed": 3
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.88,
+          "fn": 3,
+          "fp": 0,
+          "labels": 14,
+          "mean_abs_error_frames": 0.6363636363636364,
+          "mean_abs_error_ms": 10.616666666666667,
+          "median_abs_error_frames": 1,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 1,
+          "median_signed_error_ms": 16.683333333333334,
+          "precision": 1.0,
+          "predictions": 11,
+          "recall": 0.7857142857142857,
+          "tp": 11
+        },
+        "2": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 10,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 1,
+              "missed": 3
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.88,
+          "fn": 3,
+          "fp": 0,
+          "labels": 14,
+          "mean_abs_error_frames": 0.6363636363636364,
+          "mean_abs_error_ms": 10.616666666666667,
+          "median_abs_error_frames": 1,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 1,
+          "median_signed_error_ms": 16.683333333333334,
+          "precision": 1.0,
+          "predictions": 11,
+          "recall": 0.7857142857142857,
+          "tp": 11
+        },
+        "5": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 10,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 1,
+              "missed": 3
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.88,
+          "fn": 3,
+          "fp": 0,
+          "labels": 14,
+          "mean_abs_error_frames": 0.6363636363636364,
+          "mean_abs_error_ms": 10.616666666666667,
+          "median_abs_error_frames": 1,
+          "median_abs_error_ms": 16.683333333333334,
+          "median_signed_error_frames": 1,
+          "median_signed_error_ms": 16.683333333333334,
+          "precision": 1.0,
+          "predictions": 11,
+          "recall": 0.7857142857142857,
+          "tp": 11
+        },
+        "mismatch_context_counts_at_5_frames": {
+          "fn": {
+            "out_of_point_label": 3
+          },
+          "fp": {}
+        }
+      },
+      "net": {
+        "10": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 1,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 0,
+              "missed": 0
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 1.0,
+          "fn": 0,
+          "fp": 0,
+          "labels": 1,
+          "mean_abs_error_frames": 3,
+          "mean_abs_error_ms": 50.050000000000004,
+          "median_abs_error_frames": 3,
+          "median_abs_error_ms": 50.050000000000004,
+          "median_signed_error_frames": 3,
+          "median_signed_error_ms": 50.050000000000004,
+          "precision": 1.0,
+          "predictions": 1,
+          "recall": 1.0,
+          "tp": 1
+        },
+        "2": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 0,
+              "missed": 1
+            },
+            "out_of_point": {
+              "matched": 0,
+              "missed": 0
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.0,
+          "fn": 1,
+          "fp": 1,
+          "labels": 1,
+          "mean_abs_error_frames": null,
+          "mean_abs_error_ms": null,
+          "median_abs_error_frames": null,
+          "median_abs_error_ms": null,
+          "median_signed_error_frames": null,
+          "median_signed_error_ms": null,
+          "precision": 0.0,
+          "predictions": 1,
+          "recall": 0.0,
+          "tp": 0
+        },
+        "5": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 1,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 0,
+              "missed": 0
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 1.0,
+          "fn": 0,
+          "fp": 0,
+          "labels": 1,
+          "mean_abs_error_frames": 3,
+          "mean_abs_error_ms": 50.050000000000004,
+          "median_abs_error_frames": 3,
+          "median_abs_error_ms": 50.050000000000004,
+          "median_signed_error_frames": 3,
+          "median_signed_error_ms": 50.050000000000004,
+          "precision": 1.0,
+          "predictions": 1,
+          "recall": 1.0,
+          "tp": 1
+        },
+        "mismatch_context_counts_at_5_frames": {
+          "fn": {},
+          "fp": {}
+        }
+      },
+      "shot": {
+        "10": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 7,
+              "missed": 5
+            },
+            "out_of_point": {
+              "matched": 1,
+              "missed": 4
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.64,
+          "fn": 9,
+          "fp": 0,
+          "labels": 17,
+          "mean_abs_error_frames": 0.25,
+          "mean_abs_error_ms": 4.170833333333333,
+          "median_abs_error_frames": 0.0,
+          "median_abs_error_ms": 0.0,
+          "median_signed_error_frames": 0.0,
+          "median_signed_error_ms": 0.0,
+          "precision": 1.0,
+          "predictions": 8,
+          "recall": 0.47058823529411764,
+          "tp": 8
+        },
+        "2": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 7,
+              "missed": 5
+            },
+            "out_of_point": {
+              "matched": 1,
+              "missed": 4
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.64,
+          "fn": 9,
+          "fp": 0,
+          "labels": 17,
+          "mean_abs_error_frames": 0.25,
+          "mean_abs_error_ms": 4.170833333333333,
+          "median_abs_error_frames": 0.0,
+          "median_abs_error_ms": 0.0,
+          "median_signed_error_frames": 0.0,
+          "median_signed_error_ms": 0.0,
+          "precision": 1.0,
+          "predictions": 8,
+          "recall": 0.47058823529411764,
+          "tp": 8
+        },
+        "5": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 7,
+              "missed": 5
+            },
+            "out_of_point": {
+              "matched": 1,
+              "missed": 4
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.64,
+          "fn": 9,
+          "fp": 0,
+          "labels": 17,
+          "mean_abs_error_frames": 0.25,
+          "mean_abs_error_ms": 4.170833333333333,
+          "median_abs_error_frames": 0.0,
+          "median_abs_error_ms": 0.0,
+          "median_signed_error_frames": 0.0,
+          "median_signed_error_ms": 0.0,
+          "precision": 1.0,
+          "predictions": 8,
+          "recall": 0.47058823529411764,
+          "tp": 8
+        },
+        "mismatch_context_counts_at_5_frames": {
+          "fn": {
+            "3d_within_1m_of_net_plane": 1,
+            "occlusion_in_label_evidence": 1,
+            "out_of_point_label": 4,
+            "volley_label": 2
+          },
+          "fp": {}
+        }
+      }
+    },
+    "rule": {
+      "bounce": {
+        "10": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 10,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 2,
+              "missed": 2
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.9230769230769231,
+          "fn": 2,
+          "fp": 0,
+          "labels": 14,
+          "mean_abs_error_frames": 0.5,
+          "mean_abs_error_ms": 8.341666666666667,
+          "median_abs_error_frames": 0.0,
+          "median_abs_error_ms": 0.0,
+          "median_signed_error_frames": 0.0,
+          "median_signed_error_ms": 0.0,
+          "precision": 1.0,
+          "predictions": 12,
+          "recall": 0.8571428571428571,
+          "tp": 12
+        },
+        "2": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 10,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 2,
+              "missed": 2
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.9230769230769231,
+          "fn": 2,
+          "fp": 0,
+          "labels": 14,
+          "mean_abs_error_frames": 0.5,
+          "mean_abs_error_ms": 8.341666666666667,
+          "median_abs_error_frames": 0.0,
+          "median_abs_error_ms": 0.0,
+          "median_signed_error_frames": 0.0,
+          "median_signed_error_ms": 0.0,
+          "precision": 1.0,
+          "predictions": 12,
+          "recall": 0.8571428571428571,
+          "tp": 12
+        },
+        "5": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 10,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 2,
+              "missed": 2
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.9230769230769231,
+          "fn": 2,
+          "fp": 0,
+          "labels": 14,
+          "mean_abs_error_frames": 0.5,
+          "mean_abs_error_ms": 8.341666666666667,
+          "median_abs_error_frames": 0.0,
+          "median_abs_error_ms": 0.0,
+          "median_signed_error_frames": 0.0,
+          "median_signed_error_ms": 0.0,
+          "precision": 1.0,
+          "predictions": 12,
+          "recall": 0.8571428571428571,
+          "tp": 12
+        },
+        "mismatch_context_counts_at_5_frames": {
+          "fn": {
+            "out_of_point_label": 2
+          },
+          "fp": {}
+        }
+      },
+      "net": {
+        "10": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 0,
+              "missed": 1
+            },
+            "out_of_point": {
+              "matched": 0,
+              "missed": 0
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.0,
+          "fn": 1,
+          "fp": 0,
+          "labels": 1,
+          "mean_abs_error_frames": null,
+          "mean_abs_error_ms": null,
+          "median_abs_error_frames": null,
+          "median_abs_error_ms": null,
+          "median_signed_error_frames": null,
+          "median_signed_error_ms": null,
+          "precision": null,
+          "predictions": 0,
+          "recall": 0.0,
+          "tp": 0
+        },
+        "2": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 0,
+              "missed": 1
+            },
+            "out_of_point": {
+              "matched": 0,
+              "missed": 0
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.0,
+          "fn": 1,
+          "fp": 0,
+          "labels": 1,
+          "mean_abs_error_frames": null,
+          "mean_abs_error_ms": null,
+          "median_abs_error_frames": null,
+          "median_abs_error_ms": null,
+          "median_signed_error_frames": null,
+          "median_signed_error_ms": null,
+          "precision": null,
+          "predictions": 0,
+          "recall": 0.0,
+          "tp": 0
+        },
+        "5": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 0,
+              "missed": 1
+            },
+            "out_of_point": {
+              "matched": 0,
+              "missed": 0
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.0,
+          "fn": 1,
+          "fp": 0,
+          "labels": 1,
+          "mean_abs_error_frames": null,
+          "mean_abs_error_ms": null,
+          "median_abs_error_frames": null,
+          "median_abs_error_ms": null,
+          "median_signed_error_frames": null,
+          "median_signed_error_ms": null,
+          "precision": null,
+          "predictions": 0,
+          "recall": 0.0,
+          "tp": 0
+        },
+        "mismatch_context_counts_at_5_frames": {
+          "fn": {
+            "3d_within_1m_of_net_plane": 1
+          },
+          "fp": {}
+        }
+      },
+      "shot": {
+        "10": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 12,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 2,
+              "missed": 3
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.8484848484848485,
+          "fn": 3,
+          "fp": 2,
+          "labels": 17,
+          "mean_abs_error_frames": 0.6428571428571429,
+          "mean_abs_error_ms": 10.725000000000001,
+          "median_abs_error_frames": 0.0,
+          "median_abs_error_ms": 0.0,
+          "median_signed_error_frames": 0.0,
+          "median_signed_error_ms": 0.0,
+          "precision": 0.875,
+          "predictions": 16,
+          "recall": 0.8235294117647058,
+          "tp": 14
+        },
+        "2": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 12,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 1,
+              "missed": 4
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.7878787878787878,
+          "fn": 4,
+          "fp": 3,
+          "labels": 17,
+          "mean_abs_error_frames": 0.3076923076923077,
+          "mean_abs_error_ms": 5.133333333333334,
+          "median_abs_error_frames": 0,
+          "median_abs_error_ms": 0.0,
+          "median_signed_error_frames": 0,
+          "median_signed_error_ms": 0.0,
+          "precision": 0.8125,
+          "predictions": 16,
+          "recall": 0.7647058823529411,
+          "tp": 13
+        },
+        "5": {
+          "by_point_context": {
+            "in_point": {
+              "matched": 12,
+              "missed": 0
+            },
+            "out_of_point": {
+              "matched": 2,
+              "missed": 3
+            }
+          },
+          "excluded": {
+            "masked_labels": 0,
+            "masked_predictions": 0,
+            "uncertain_labels": 0,
+            "uncertain_predictions": 0
+          },
+          "f1": 0.8484848484848485,
+          "fn": 3,
+          "fp": 2,
+          "labels": 17,
+          "mean_abs_error_frames": 0.6428571428571429,
+          "mean_abs_error_ms": 10.725000000000001,
+          "median_abs_error_frames": 0.0,
+          "median_abs_error_ms": 0.0,
+          "median_signed_error_frames": 0.0,
+          "median_signed_error_ms": 0.0,
+          "precision": 0.875,
+          "predictions": 16,
+          "recall": 0.8235294117647058,
+          "tp": 14
+        },
+        "mismatch_context_counts_at_5_frames": {
+          "fn": {
+            "out_of_point_label": 3
+          },
+          "fp": {
+            "outside_point_spans": 2
+          }
+        }
+      }
+    }
+  }
+}
