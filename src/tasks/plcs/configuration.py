@@ -200,7 +200,22 @@ _MODEL_FIELDS: dict[str, frozenset[str]] = {
             "predict_canonical_pose",
             "canonical_pose_readout",
         }
-    )
+    ),
+    "plcs_monocular_gvhmr": frozenset(
+        {
+            "name",
+            "io",
+            "hidden_dim",
+            "num_layers",
+            "num_heads",
+            "mlp_ratio",
+            "dropout",
+            "max_seq_len",
+            "sliding_window_len",
+            "enable_pva_heads",
+            "predict_static_contact",
+        }
+    ),
 }
 
 
@@ -229,6 +244,9 @@ class PLCSModelConfig:
             allowed=fields,
         )
         input_profile: str | None = None
+        expected_profile = (
+            "monocular" if name == "plcs_monocular_gvhmr" else "multiview"
+        )
         if "io" in mapping:
             io = _exact(
                 mapping["io"],
@@ -237,11 +255,10 @@ class PLCSModelConfig:
                 allowed={"input_profile"},
             )
             input_profile = _string(io, "input_profile", path="model.io")
-            if input_profile != "multiview":
+            if input_profile not in {"multiview", "monocular"}:
                 raise SemanticConfigurationError(
-                    "model.io.input_profile must be 'multiview'."
+                    "model.io.input_profile must be 'multiview' or 'monocular'."
                 )
-        expected_profile = "multiview"
         if input_profile != expected_profile:
             raise SemanticConfigurationError(
                 f"model.name={name!r} requires model.io.input_profile="
@@ -260,6 +277,7 @@ class PLCSModelConfig:
             "ffn_dim",
             "max_views",
             "max_seq_len",
+            "sliding_window_len",
             "num_task_layers",
             "rot_num_task_layers",
             "pose_num_task_layers",
@@ -273,14 +291,16 @@ class PLCSModelConfig:
         for key in {"num_layers", "num_register_tokens"} & set(mapping):
             if _integer(mapping, key, path="model") < 0:
                 raise SemanticConfigurationError(f"model.{key} must be non-negative.")
-        rope_dim = _integer(mapping, "rope_dim", path="model")
-        head_dim = hidden // heads
-        if rope_dim < 0 or rope_dim % 2 or rope_dim > head_dim:
-            raise SemanticConfigurationError(
-                "model.rope_dim must be non-negative, even, and no larger than "
-                f"the attention head dimension ({head_dim})."
-            )
+        if "rope_dim" in mapping:
+            rope_dim = _integer(mapping, "rope_dim", path="model")
+            head_dim = hidden // heads
+            if rope_dim < 0 or rope_dim % 2 or rope_dim > head_dim:
+                raise SemanticConfigurationError(
+                    "model.rope_dim must be non-negative, even, and no larger than "
+                    f"the attention head dimension ({head_dim})."
+                )
         number_fields = {
+            "mlp_ratio",
             "rope_theta",
             "rope_theta_time",
             "rope_theta_camera",
@@ -300,6 +320,8 @@ class PLCSModelConfig:
             "canonical_on_rotation_branch",
             "aux_position_on_rotation_branch",
             "detach_pose_branch",
+            "enable_pva_heads",
+            "predict_static_contact",
         } & set(mapping):
             _boolean(mapping, key, path="model")
         if "ffn_type" in mapping:
@@ -423,13 +445,55 @@ _AUGMENTATION_BLOCK_FIELDS: dict[str, frozenset[str]] = {
 }
 
 
+_MONOCULAR_AUGMENTATION_BLOCK_FIELDS: dict[str, frozenset[str]] = {
+    "monocular_bbox": frozenset(
+        {
+            "enabled",
+            "prob",
+            "scale_range",
+            "shift_xy_frac",
+            "scale_drift_std",
+            "center_drift_frac_std",
+            "drift_decay",
+            "partial_crop_prob",
+            "partial_crop_scale_range",
+            "min_box_size_px",
+        }
+    ),
+    "camera_calibration_noise": frozenset(
+        {
+            "enabled",
+            "prob",
+            "focal_rel_std",
+            "principal_point_rel_std",
+            "rotation_deg_std",
+            "translation_m_std",
+        }
+    ),
+}
+
+
 def validate_augmentation(value: object) -> Mapping[str, object]:
-    fields = frozenset({"enabled", *_AUGMENTATION_BLOCK_FIELDS})
+    required_fields = frozenset({"enabled", *_AUGMENTATION_BLOCK_FIELDS})
+    allowed_fields = frozenset(
+        {"enabled", *_AUGMENTATION_BLOCK_FIELDS, *_MONOCULAR_AUGMENTATION_BLOCK_FIELDS}
+    )
     augmentation = _exact(
-        value, path="data.augmentation", required=fields, allowed=fields
+        value,
+        path="data.augmentation",
+        required=required_fields,
+        allowed=allowed_fields,
     )
     _boolean(augmentation, "enabled", path="data.augmentation")
-    for block_name, block_fields in _AUGMENTATION_BLOCK_FIELDS.items():
+    all_blocks = {
+        **_AUGMENTATION_BLOCK_FIELDS,
+        **{
+            k: v
+            for k, v in _MONOCULAR_AUGMENTATION_BLOCK_FIELDS.items()
+            if k in augmentation
+        },
+    }
+    for block_name, block_fields in all_blocks.items():
         block = _exact(
             augmentation[block_name],
             path=f"data.augmentation.{block_name}",
@@ -473,17 +537,24 @@ def validate_augmentation(value: object) -> Mapping[str, object]:
             }:
                 _integer(block, key, path=item_path)
             elif key.endswith("_range"):
-                lo, _hi = _ordered_numeric_range(
+                lo, hi = _ordered_numeric_range(
                     block,
                     key,
                     path=item_path,
-                    positive=key == "scale_range",
+                    positive=key
+                    in {"scale_range", "partial_crop_scale_range"},
                 )
+                if key == "partial_crop_scale_range" and hi > 1.0:
+                    raise SemanticConfigurationError(
+                        f"{item_path}.{key} values must be within (0, 1]."
+                    )
                 del lo
             elif key != "prob":
                 number = _number(block, key, path=item_path)
                 if "prob" in key or key == "drift_decay":
                     _probability(number, path=f"{item_path}.{key}")
+                elif key == "min_box_size_px":
+                    _positive(number, path=f"{item_path}.{key}", allow_zero=False)
                 else:
                     _positive(number, path=f"{item_path}.{key}", allow_zero=True)
                 del item
@@ -654,15 +725,20 @@ class PLCSDataConfig:
         ):
             raise SemanticConfigurationError("data.seq_stride must be positive.")
         mode = _string(mapping, "mode", path="data")
-        allowed_modes = (
-            {"multiview_sequence"}
-            if model.input_profile == "multiview"
-            else {"frame", "sequence"}
-        )
+        if model.input_profile == "multiview":
+            allowed_modes = {"multiview_sequence"}
+        elif model.input_profile == "monocular":
+            allowed_modes = {"monocular_sequence"}
+        else:
+            allowed_modes = {"frame", "sequence"}
         if mode not in allowed_modes:
             raise SemanticConfigurationError(
                 f"data.mode={mode!r} is incompatible with "
                 f"model.io.input_profile={model.input_profile!r}."
+            )
+        if mode == "monocular_sequence" and num_views_range != (1, 1):
+            raise SemanticConfigurationError(
+                "data.mode='monocular_sequence' requires data.num_views_range=[1, 1]."
             )
         if "sampling_weights" in mapping:
             if backend != "default":
@@ -901,9 +977,43 @@ class PLCSTrainingConfig:
         )
         from src.tasks.plcs.training.losses import PLCSLossConfig
 
-        PLCSLossConfig.from_dict(
+        loss_cfg = PLCSLossConfig.from_dict(
             dict(require_config_mapping(root, "loss", path="configuration"))
         )
+        if model.name == "plcs_monocular_gvhmr":
+            if loss_cfg.world_kp_3d_weight <= 0.0:
+                raise SemanticConfigurationError(
+                    "plcs_monocular_gvhmr requires loss.world_kp_3d_weight > 0 "
+                    "(select loss=monocular_base or loss=monocular_htd)."
+                )
+            if model.boolean("enable_pva_heads"):
+                if (
+                    loss_cfg.pva_velocity_weight <= 0.0
+                    or loss_cfg.pva_acceleration_weight <= 0.0
+                ):
+                    raise SemanticConfigurationError(
+                        "plcs_monocular_gvhmr with enable_pva_heads=true requires "
+                        "positive loss.pva_velocity_weight and "
+                        "loss.pva_acceleration_weight (select loss=monocular_htd)."
+                    )
+                if (
+                    model.boolean("predict_static_contact")
+                    and loss_cfg.static_contact_weight <= 0.0
+                ):
+                    raise SemanticConfigurationError(
+                        "plcs_monocular_gvhmr with predict_static_contact=true "
+                        "requires loss.static_contact_weight > 0 (select loss=monocular_htd)."
+                    )
+            else:
+                if (
+                    loss_cfg.pva_velocity_weight > 0.0
+                    or loss_cfg.pva_acceleration_weight > 0.0
+                    or loss_cfg.static_contact_weight > 0.0
+                ):
+                    raise SemanticConfigurationError(
+                        "PVA/static-contact loss weights require "
+                        "model.enable_pva_heads=true (select model=monocular_gvhmr_htd)."
+                    )
         metrics_fields = {
             "position_threshold_m",
             "angle_threshold_deg",
@@ -1217,9 +1327,11 @@ def _validate_script_boundary(
             "frame",
             "sequence",
             "multiview_sequence",
+            "monocular_sequence",
         }:
             raise SemanticConfigurationError(
-                "data.mode must be 'frame', 'sequence', or 'multiview_sequence'."
+                "data.mode must be 'frame', 'sequence', 'multiview_sequence', or "
+                "'monocular_sequence'."
             )
         if _integer(data, "adapter_camera_index", path="data") < 0:
             raise SemanticConfigurationError(

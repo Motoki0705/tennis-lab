@@ -41,9 +41,10 @@ def configuration(overrides=()):
 @pytest.mark.parametrize("dimensions", [3])
 def test_requested_architecture_scores_only_complete_output_and_backpropagates(
     dimensions,
+    tmp_path,
 ):
     torch.set_num_threads(1)
-    config = configuration()
+    config = configuration([f"paths.data_root={tmp_path}"])
     config.model.dimensions = dimensions
     raw = training_config(config).raw
     generator = build_refiner(parse_section(ModelConfig, raw["model"])).eval()
@@ -121,7 +122,8 @@ def test_event_checkpoint_configured_ffn_roundtrips_with_checkpoint(tmp_path, ff
     metadata = checkpoint_metadata(
         model, event_sigma_frames=2.0, clock=FlightClock(9.8, 1 / 240, 4)
     )
-    assert metadata["schema"] == "ball_refiner_3d.events.v1"
+    assert metadata["schema"] == "ball_refiner_3d.events.v3"
+    assert metadata["event_classes"] == ["shot", "bounce", "net"]
     torch.save({**metadata, "model": model.state_dict()}, path)
     loaded, _ = load_checkpoint(path, torch.device("cpu"))
     assert loaded.config == config
@@ -207,10 +209,11 @@ def test_physics_and_window_settings_are_validated(overrides, message):
         training_config(configuration(overrides))
 
 
-def test_full_physics_configuration_is_accepted():
+def test_full_physics_configuration_is_accepted(tmp_path):
     settings = training_config(
         configuration(
             [
+                f"paths.data_root={tmp_path}",
                 "model.physics_heads=true",
                 "loss.physics.field_weight=1.0",
                 "loss.physics.segment_weight=1.0",

@@ -12,8 +12,8 @@
 - optional GAN・discriminator・GAN係数schedule: [training/_gan.yaml](../configs/training/_gan.yaml)
 - 実行先・resume・初期重み: [run/train.yaml](../configs/run/train.yaml)
 
-回帰の既定は全frameの正規化座標L1とイベントsoft cross-entropy。
-教師は `[1-p,p]`。位置:イベントの係数は1:1、GAN・loss係数scheduleはoff。
+回帰の既定は全frameの正規化座標L1と、クラスごとに独立したGaussian教師に対するbinary cross-entropy。
+位置とイベントの係数は1:1、GAN・loss係数scheduleはoff。
 座標はXYZを10/20/5mで割り、L1を軸・frame・batchで平均する。
 係数の比率はloss実測値や勾配量の比率とは異なる。
 Flowでは位置側をFlow matchingの速度MSEに置き換える。
@@ -42,11 +42,10 @@ loss係数schedule・学習予算・拡張の更新周期はこの数に従う�
 `predictions/` と `predictions_last/` に座標・イベント確率・対応frame・指標を保存する。
 位置RMSEはm単位のユークリッド距離。イベントはBrier scoreとsoft CEを記録する。
 
-新しい `events.v2` のresumeは、元の出力先と同じ設定・seed・dataset・CPU/CUDA種別で、
+`events.v3` のresumeは、元の出力先と同じ設定・seed・dataset・CPU/CUDA種別で、
 validationを完了した拡張block境界から行う。optimizer・scheduler・窓抽選・Flow・dropoutの乱数状態も復元する。
 `run.resume` には共通path契約のcheckpoint相対パス、または
 `{role: artifact, path: <artifact_rootからの相対パス>}` を指定する。
 
-旧 `events.v1` はoptimizer全状態のresumeに対応しない。
-`run.init_weights` なら既存の回帰／Flow重みを新しい実験の初期値に使える。
-モデル構成とGaussian幅が一致する場合だけ読み込む。
+`run.init_weights` は既存の3クラス回帰／Flow重みを新しい実験の初期値に使う。
+モデル構成とイベントの順序・Gaussian幅が一致する場合に読み込む。

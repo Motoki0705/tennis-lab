@@ -58,6 +58,8 @@ def _check_file(path: Path, location: Path, entry: Entry, info: os.stat_result) 
         reason = "not_regular"
     elif info.st_uid != os.geteuid():
         reason = "wrong_owner"
+    elif info.st_nlink == 0:
+        reason = "file_unlinked"
     elif info.st_nlink != 1:
         reason = "hardlink"
     elif info.st_mode & 0o022:
@@ -249,11 +251,21 @@ def _open_file(
 
 
 def read_state_text(path: Path, *, directory: StateDirectory | None = None) -> str:
-    with _open_file(path, "r", directory) as stream:
+    # Atomic replacement can unlink the inode between open and fstat for a
+    # lock-free reader. Open the current name again with the same checks.
+    for _ in range(3):
         try:
-            return stream.read()
-        except OSError as exc:
-            raise StateFileError(path, "access_failed", error_number=exc.errno) from exc
+            with _open_file(path, "r", directory) as stream:
+                try:
+                    return stream.read()
+                except OSError as exc:
+                    raise StateFileError(
+                        path, "access_failed", error_number=exc.errno
+                    ) from exc
+        except StateFileError as exc:
+            if exc.reason != "file_unlinked":
+                raise
+    raise StateFileError(path, "file_unlinked")
 
 
 def open_state_lock(

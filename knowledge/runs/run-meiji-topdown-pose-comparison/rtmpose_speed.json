@@ -1,0 +1,2674 @@
+{
+  "conditions": [
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 1,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "rtmpose-m",
+        "settings": {
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "flip_test": true,
+          "forward_calls_per_batch": 2,
+          "forward_dtype": "float16",
+          "fp32_operations": [
+            "RGB normalization",
+            "flip fusion",
+            "SimCC decoding"
+          ],
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            384,
+            288
+          ],
+          "mmpose_commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+          "parameters": 14056356,
+          "preprocessed_rows": 384,
+          "source_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+          "timed_input_ids_sha256": "adc0121c98e2538e0b91d05039083fc7f811ae9723e289a1772ac9a5c3b00837",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 300,
+      "engines": {},
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9636,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "files": {
+        "case_log": {
+          "bytes": 1536,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/case-logs/PT16-b1.log",
+          "sha256": "5e5e9dee213904af758b5ec4db50b855277356bcfc61cc55fed12fc7e51779fd"
+        },
+        "report": {
+          "bytes": 245262,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/rtmpose-m/PT16-b1/report.json",
+          "sha256": "d05dd3be02d9ce2ceba0c4132b866d2c2529e7faeb36f40801acbc84cd99ff8c"
+        }
+      },
+      "forward_medians_ms": {
+        "horizontal_flip": {
+          "gpu": 12.269536018371582,
+          "wall": 12.329146
+        },
+        "original": {
+          "gpu": 15.252752304077148,
+          "wall": 15.3028905
+        }
+      },
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "nvml_device_peak_sampled_bytes": 553750528,
+      "nvml_peak_minus_before_load_bytes": 134217728,
+      "nvml_used_bytes": {
+        "after_cold_start": 553750528,
+        "after_load": 450990080,
+        "after_warmup": 553750528,
+        "before_load": 419532800,
+        "block_1": 553750528,
+        "block_2": 553750528,
+        "block_3": 553750528
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "process_exit_code": 0,
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "raw_csv": "measurements/rtmpose-m-pt16.csv",
+      "samples": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 19871.124639,
+        "load": 4222.092433
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 300,
+          "items_per_second": 4198.663515019208,
+          "p50_ms": 0.2205865,
+          "p50_ms_per_item": 0.2205865,
+          "p95_ms": 0.34961075,
+          "p95_ms_per_item": 0.34961075,
+          "samples": 300,
+          "total_ms": 71.45130799999998
+        },
+        "forward": {
+          "items": 300,
+          "items_per_second": 34.471223931057615,
+          "p50_ms": 27.755688499999998,
+          "p50_ms_per_item": 27.755688499999998,
+          "p95_ms": 38.9167082,
+          "p95_ms_per_item": 38.9167082,
+          "samples": 300,
+          "total_ms": 8702.911176000001
+        },
+        "h2d": {
+          "items": 300,
+          "items_per_second": 1580.4247494768642,
+          "p50_ms": 0.40036099999999997,
+          "p50_ms_per_item": 0.40036099999999997,
+          "p95_ms": 0.7613191500000007,
+          "p95_ms_per_item": 0.7613191500000007,
+          "samples": 300,
+          "total_ms": 189.82238799999993
+        },
+        "model_gpu": {
+          "items": 300,
+          "items_per_second": 34.61343908142604,
+          "p50_ms": 27.601008415222168,
+          "p50_ms_per_item": 27.601008415222168,
+          "p95_ms": 38.82417216300965,
+          "p95_ms_per_item": 38.82417216300965,
+          "samples": 300,
+          "total_ms": 8667.153798103333
+        },
+        "postprocess": {
+          "items": 300,
+          "items_per_second": 1038.3463127718462,
+          "p50_ms": 0.9003045000000001,
+          "p50_ms_per_item": 0.9003045000000001,
+          "p95_ms": 1.42800035,
+          "p95_ms_per_item": 1.42800035,
+          "samples": 300,
+          "total_ms": 288.920947
+        },
+        "preprocess": {
+          "items": 300,
+          "items_per_second": 774.777098501139,
+          "p50_ms": 1.2401615,
+          "p50_ms_per_item": 1.2401615,
+          "p95_ms": 1.6353912000000002,
+          "p95_ms_per_item": 1.6353912000000002,
+          "samples": 300,
+          "total_ms": 387.2081410000001
+        },
+        "stage_wall": {
+          "items": 300,
+          "items_per_second": 30.897263941671095,
+          "p50_ms": 31.035136,
+          "p50_ms_per_item": 31.035136,
+          "p95_ms": 42.97870005,
+          "p95_ms_per_item": 42.97870005,
+          "samples": 300,
+          "total_ms": 9709.597606000007
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 75410944,
+      "torch_peak_reserved_bytes": 92274688,
+      "weights": {
+        "checkpoint": {
+          "bytes": 56436913,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/weights/rtmpose-m_simcc-body7_pt-body7-halpe26_700e-384x288-89e6428b_20230605.pth",
+          "sha256": "89e6428b38901b5003d0f753619e94d269999e1f5a922349f9068430387863f2"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 4,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "rtmpose-m",
+        "settings": {
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "flip_test": true,
+          "forward_calls_per_batch": 2,
+          "forward_dtype": "float16",
+          "fp32_operations": [
+            "RGB normalization",
+            "flip fusion",
+            "SimCC decoding"
+          ],
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            384,
+            288
+          ],
+          "mmpose_commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+          "parameters": 14056356,
+          "preprocessed_rows": 384,
+          "source_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+          "timed_input_ids_sha256": "5ff2702172638e5bc361a24ec7dce8f270d174a354a1eeefd9ba8b1a942156e9",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {},
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9742,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "files": {
+        "case_log": {
+          "bytes": 1536,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/case-logs/PT16-b4.log",
+          "sha256": "923326349eb059f609936c297ebf15caa509cc4ad8c9baece1ae727365e05ea4"
+        },
+        "report": {
+          "bytes": 289360,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/rtmpose-m/PT16-b4/report.json",
+          "sha256": "c8b3d8b68c06bc27c531e10392d391e8345d4f3b2c0df3ded3cd3b9e9110a31b"
+        }
+      },
+      "forward_medians_ms": {
+        "horizontal_flip": {
+          "gpu": 12.393280029296875,
+          "wall": 12.444469
+        },
+        "original": {
+          "gpu": 14.611008167266846,
+          "wall": 14.659341999999999
+        }
+      },
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "nvml_device_peak_sampled_bytes": 599887872,
+      "nvml_peak_minus_before_load_bytes": 180355072,
+      "nvml_used_bytes": {
+        "after_cold_start": 599887872,
+        "after_load": 450990080,
+        "after_warmup": 599887872,
+        "before_load": 419532800,
+        "block_1": 599887872,
+        "block_2": 599887872,
+        "block_3": 599887872
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "process_exit_code": 0,
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "raw_csv": "measurements/rtmpose-m-pt16.csv",
+      "samples": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 17966.480051,
+        "load": 2449.018205
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 1200,
+          "items_per_second": 14744.058442400561,
+          "p50_ms": 0.25186600000000003,
+          "p50_ms_per_item": 0.06296650000000001,
+          "p95_ms": 0.40525710000000015,
+          "p95_ms_per_item": 0.10131427500000004,
+          "samples": 300,
+          "total_ms": 81.388717
+        },
+        "forward": {
+          "items": 1200,
+          "items_per_second": 132.99036552881728,
+          "p50_ms": 27.494550000000004,
+          "p50_ms_per_item": 6.873637500000001,
+          "p95_ms": 52.63088185000001,
+          "p95_ms_per_item": 13.157720462500002,
+          "samples": 300,
+          "total_ms": 9023.210029
+        },
+        "h2d": {
+          "items": 1200,
+          "items_per_second": 2780.834835770118,
+          "p50_ms": 0.6808755,
+          "p50_ms_per_item": 0.170218875,
+          "p95_ms": 6.624873300000004,
+          "p95_ms_per_item": 1.656218325000001,
+          "samples": 300,
+          "total_ms": 431.5250889999998
+        },
+        "model_gpu": {
+          "items": 1200,
+          "items_per_second": 133.45921862380976,
+          "p50_ms": 27.408751964569092,
+          "p50_ms_per_item": 6.852187991142273,
+          "p95_ms": 52.4814952850342,
+          "p95_ms_per_item": 13.12037382125855,
+          "samples": 300,
+          "total_ms": 8991.510757923126
+        },
+        "postprocess": {
+          "items": 1200,
+          "items_per_second": 3874.326082770987,
+          "p50_ms": 0.9539325000000001,
+          "p50_ms_per_item": 0.23848312500000002,
+          "p95_ms": 1.7209193500000006,
+          "p95_ms_per_item": 0.43022983750000016,
+          "samples": 300,
+          "total_ms": 309.73128599999995
+        },
+        "preprocess": {
+          "items": 1200,
+          "items_per_second": 911.6887142817606,
+          "p50_ms": 4.166275499999999,
+          "p50_ms_per_item": 1.0415688749999998,
+          "p95_ms": 5.70309275,
+          "p95_ms_per_item": 1.4257731875,
+          "samples": 300,
+          "total_ms": 1316.238734999999
+        },
+        "stage_wall": {
+          "items": 1200,
+          "items_per_second": 106.83318854526571,
+          "p50_ms": 34.721875499999996,
+          "p50_ms_per_item": 8.680468874999999,
+          "p95_ms": 61.055418450000005,
+          "p95_ms_per_item": 15.263854612500001,
+          "samples": 300,
+          "total_ms": 11232.464520999993
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 105408000,
+      "torch_peak_reserved_bytes": 138412032,
+      "weights": {
+        "checkpoint": {
+          "bytes": 56436913,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/weights/rtmpose-m_simcc-body7_pt-body7-halpe26_700e-384x288-89e6428b_20230605.pth",
+          "sha256": "89e6428b38901b5003d0f753619e94d269999e1f5a922349f9068430387863f2"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 8,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "rtmpose-m",
+        "settings": {
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "flip_test": true,
+          "forward_calls_per_batch": 2,
+          "forward_dtype": "float16",
+          "fp32_operations": [
+            "RGB normalization",
+            "flip fusion",
+            "SimCC decoding"
+          ],
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            384,
+            288
+          ],
+          "mmpose_commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+          "parameters": 14056356,
+          "preprocessed_rows": 384,
+          "source_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+          "timed_input_ids_sha256": "a19b4a48919ac34307dd7dc4d958d6c171be82b78296d060ab86847ca69941b7",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {},
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9706,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "files": {
+        "case_log": {
+          "bytes": 1536,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/case-logs/PT16-b8.log",
+          "sha256": "83f32aaa9b1fceba8b11c638e9345b5207f35ac89b26a5f8ef67d34f8393d545"
+        },
+        "report": {
+          "bytes": 348105,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/rtmpose-m/PT16-b8/report.json",
+          "sha256": "65b49b09237ffdcda144dae35be27f2f7858dba0c73fa95c3eb3457227beb805"
+        }
+      },
+      "forward_medians_ms": {
+        "horizontal_flip": {
+          "gpu": 11.36942434310913,
+          "wall": 11.4271605
+        },
+        "original": {
+          "gpu": 14.362287998199463,
+          "wall": 14.4261455
+        }
+      },
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "nvml_device_peak_sampled_bytes": 692162560,
+      "nvml_peak_minus_before_load_bytes": 272629760,
+      "nvml_used_bytes": {
+        "after_cold_start": 692162560,
+        "after_load": 450990080,
+        "after_warmup": 692162560,
+        "before_load": 419532800,
+        "block_1": 692162560,
+        "block_2": 692162560,
+        "block_3": 692162560
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "process_exit_code": 0,
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "raw_csv": "measurements/rtmpose-m-pt16.csv",
+      "samples": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 5291.305448,
+        "load": 2630.355244
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 2400,
+          "items_per_second": 23376.22211010942,
+          "p50_ms": 0.323115,
+          "p50_ms_per_item": 0.040389375,
+          "p95_ms": 0.48932975000000006,
+          "p95_ms_per_item": 0.06116621875000001,
+          "samples": 300,
+          "total_ms": 102.66842900000005
+        },
+        "forward": {
+          "items": 2400,
+          "items_per_second": 269.2976526085957,
+          "p50_ms": 26.126263,
+          "p50_ms_per_item": 3.265782875,
+          "p95_ms": 53.76042715000002,
+          "p95_ms_per_item": 6.720053393750002,
+          "samples": 300,
+          "total_ms": 8912.071742000007
+        },
+        "h2d": {
+          "items": 2400,
+          "items_per_second": 4470.159500543417,
+          "p50_ms": 1.0682524999999998,
+          "p50_ms_per_item": 0.13353156249999998,
+          "p95_ms": 6.656898850000003,
+          "p95_ms_per_item": 0.8321123562500004,
+          "samples": 300,
+          "total_ms": 536.8935939999999
+        },
+        "model_gpu": {
+          "items": 2400,
+          "items_per_second": 270.19820202134594,
+          "p50_ms": 26.011263847351074,
+          "p50_ms_per_item": 3.2514079809188843,
+          "p95_ms": 53.604605913162246,
+          "p95_ms_per_item": 6.700575739145281,
+          "samples": 300,
+          "total_ms": 8882.368505954742
+        },
+        "postprocess": {
+          "items": 2400,
+          "items_per_second": 7161.801471902989,
+          "p50_ms": 1.0302310000000001,
+          "p50_ms_per_item": 0.12877887500000001,
+          "p95_ms": 1.6593045000000006,
+          "p95_ms_per_item": 0.20741306250000008,
+          "samples": 300,
+          "total_ms": 335.11121599999996
+        },
+        "preprocess": {
+          "items": 2400,
+          "items_per_second": 967.5220536130317,
+          "p50_ms": 7.7939264999999995,
+          "p50_ms_per_item": 0.9742408124999999,
+          "p95_ms": 10.709777650000001,
+          "p95_ms_per_item": 1.3387222062500002,
+          "samples": 300,
+          "total_ms": 2480.5636120000004
+        },
+        "stage_wall": {
+          "items": 2400,
+          "items_per_second": 192.89281446848798,
+          "p50_ms": 37.8286755,
+          "p50_ms_per_item": 4.7285844375,
+          "p95_ms": 66.438592,
+          "p95_ms_per_item": 8.304824,
+          "samples": 300,
+          "total_ms": 12442.143097000002
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 147302912,
+      "torch_peak_reserved_bytes": 230686720,
+      "weights": {
+        "checkpoint": {
+          "bytes": 56436913,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/weights/rtmpose-m_simcc-body7_pt-body7-halpe26_700e-384x288-89e6428b_20230605.pth",
+          "sha256": "89e6428b38901b5003d0f753619e94d269999e1f5a922349f9068430387863f2"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 1,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "rtmpose-m",
+        "settings": {
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "flip_test": true,
+          "forward_calls_per_batch": 2,
+          "forward_dtype": "float16",
+          "fp32_operations": [
+            "RGB normalization",
+            "flip fusion",
+            "SimCC decoding"
+          ],
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            384,
+            288
+          ],
+          "mmpose_commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+          "parameters": 14056356,
+          "preprocessed_rows": 384,
+          "source_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+          "timed_input_ids_sha256": "adc0121c98e2538e0b91d05039083fc7f811ae9723e289a1772ac9a5c3b00837",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 300,
+      "engines": {
+        "plan": {
+          "bytes": 30040084,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/engines/rtmpose-m/engine.plan",
+          "sha256": "e0ef59178dc4051d0087d8a7f9f4bd1715186a220e9d2c0c99bba9de8b5be152"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9709,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "files": {
+        "case_log": {
+          "bytes": 429,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/case-logs/TRT16-b1.log",
+          "sha256": "3a2a1df26b0cd10f5e1d5a2fbc129ff8bb153835df4e357e0c5c40b73aac1e66"
+        },
+        "report": {
+          "bytes": 244592,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/rtmpose-m/TRT16-b1/report.json",
+          "sha256": "3f0ac1ae77a0fc76b889fcd1facd586622b510712059f0552310cea262929ba4"
+        }
+      },
+      "forward_medians_ms": {
+        "horizontal_flip": {
+          "gpu": 2.1164480447769165,
+          "wall": 2.149109
+        },
+        "original": {
+          "gpu": 2.1588000059127808,
+          "wall": 2.1956575000000003
+        }
+      },
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "nvml_device_peak_sampled_bytes": 574722048,
+      "nvml_peak_minus_before_load_bytes": 155189248,
+      "nvml_used_bytes": {
+        "after_cold_start": 574722048,
+        "after_load": 545361920,
+        "after_warmup": 574722048,
+        "before_load": 419532800,
+        "block_1": 574722048,
+        "block_2": 574722048,
+        "block_3": 574722048
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "process_exit_code": 0,
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "raw_csv": "measurements/rtmpose-m-trt16.csv",
+      "samples": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 330.213607,
+        "load": 3473.630951
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 300,
+          "items_per_second": 4559.113996375108,
+          "p50_ms": 0.20874399999999999,
+          "p50_ms_per_item": 0.20874399999999999,
+          "p95_ms": 0.3032548,
+          "p95_ms_per_item": 0.3032548,
+          "samples": 300,
+          "total_ms": 65.802259
+        },
+        "forward": {
+          "items": 300,
+          "items_per_second": 193.02416795190373,
+          "p50_ms": 4.4367149999999995,
+          "p50_ms_per_item": 4.4367149999999995,
+          "p95_ms": 10.027881250000004,
+          "p95_ms_per_item": 10.027881250000004,
+          "samples": 300,
+          "total_ms": 1554.209522999999
+        },
+        "h2d": {
+          "items": 300,
+          "items_per_second": 2507.2999620511787,
+          "p50_ms": 0.2419175,
+          "p50_ms_per_item": 0.2419175,
+          "p95_ms": 1.2535993,
+          "p95_ms_per_item": 1.2535993,
+          "samples": 300,
+          "total_ms": 119.65062200000003
+        },
+        "model_gpu": {
+          "items": 300,
+          "items_per_second": 196.35741216820733,
+          "p50_ms": 4.336192011833191,
+          "p50_ms_per_item": 4.336192011833191,
+          "p95_ms": 9.951267361640934,
+          "p95_ms_per_item": 9.951267361640934,
+          "samples": 300,
+          "total_ms": 1527.8262057304382
+        },
+        "postprocess": {
+          "items": 300,
+          "items_per_second": 1092.9072233790341,
+          "p50_ms": 0.8329679999999999,
+          "p50_ms_per_item": 0.8329679999999999,
+          "p95_ms": 1.4795899500000012,
+          "p95_ms_per_item": 1.4795899500000012,
+          "samples": 300,
+          "total_ms": 274.497225
+        },
+        "preprocess": {
+          "items": 300,
+          "items_per_second": 758.8201977893679,
+          "p50_ms": 1.29197,
+          "p50_ms_per_item": 1.29197,
+          "p95_ms": 1.5525283500000002,
+          "p95_ms_per_item": 1.5525283500000002,
+          "samples": 300,
+          "total_ms": 395.3505730000001
+        },
+        "stage_wall": {
+          "items": 300,
+          "items_per_second": 121.51715923147596,
+          "p50_ms": 7.2793135,
+          "p50_ms_per_item": 7.2793135,
+          "p95_ms": 14.21792585,
+          "p95_ms_per_item": 14.21792585,
+          "samples": 300,
+          "total_ms": 2468.787139999999
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 1837056,
+      "torch_peak_reserved_bytes": 2097152,
+      "weights": {
+        "checkpoint": {
+          "bytes": 56436913,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/weights/rtmpose-m_simcc-body7_pt-body7-halpe26_700e-384x288-89e6428b_20230605.pth",
+          "sha256": "89e6428b38901b5003d0f753619e94d269999e1f5a922349f9068430387863f2"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 4,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "rtmpose-m",
+        "settings": {
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "flip_test": true,
+          "forward_calls_per_batch": 2,
+          "forward_dtype": "float16",
+          "fp32_operations": [
+            "RGB normalization",
+            "flip fusion",
+            "SimCC decoding"
+          ],
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            384,
+            288
+          ],
+          "mmpose_commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+          "parameters": 14056356,
+          "preprocessed_rows": 384,
+          "source_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+          "timed_input_ids_sha256": "5ff2702172638e5bc361a24ec7dce8f270d174a354a1eeefd9ba8b1a942156e9",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {
+        "plan": {
+          "bytes": 30040084,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/engines/rtmpose-m/engine.plan",
+          "sha256": "e0ef59178dc4051d0087d8a7f9f4bd1715186a220e9d2c0c99bba9de8b5be152"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9690,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "files": {
+        "case_log": {
+          "bytes": 429,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/case-logs/TRT16-b4.log",
+          "sha256": "4e7ac0103fdd0cec14d471ae18ecfc76a690a0d10b49e5b73f01501c12cef404"
+        },
+        "report": {
+          "bytes": 288813,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/rtmpose-m/TRT16-b4/report.json",
+          "sha256": "f396312881a38c6790077698025f7dd35c817346ac14acad6d2001166ac5de45"
+        }
+      },
+      "forward_medians_ms": {
+        "horizontal_flip": {
+          "gpu": 2.3386080265045166,
+          "wall": 2.378858
+        },
+        "original": {
+          "gpu": 2.3782238960266113,
+          "wall": 2.421107
+        }
+      },
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "nvml_device_peak_sampled_bytes": 597790720,
+      "nvml_peak_minus_before_load_bytes": 178257920,
+      "nvml_used_bytes": {
+        "after_cold_start": 597790720,
+        "after_load": 545361920,
+        "after_warmup": 597790720,
+        "before_load": 419532800,
+        "block_1": 597790720,
+        "block_2": 597790720,
+        "block_3": 597790720
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "process_exit_code": 0,
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "raw_csv": "measurements/rtmpose-m-trt16.csv",
+      "samples": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 304.933791,
+        "load": 2715.253072
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 1200,
+          "items_per_second": 16050.66424269535,
+          "p50_ms": 0.2365815,
+          "p50_ms_per_item": 0.059145375,
+          "p95_ms": 0.3447047000000001,
+          "p95_ms_per_item": 0.08617617500000002,
+          "samples": 300,
+          "total_ms": 74.76326100000001
+        },
+        "forward": {
+          "items": 1200,
+          "items_per_second": 762.5393258290306,
+          "p50_ms": 4.84771,
+          "p50_ms_per_item": 1.2119275,
+          "p95_ms": 6.7392898,
+          "p95_ms_per_item": 1.68482245,
+          "samples": 300,
+          "total_ms": 1573.6893290000005
+        },
+        "h2d": {
+          "items": 1200,
+          "items_per_second": 7824.404403402662,
+          "p50_ms": 0.47680500000000003,
+          "p50_ms_per_item": 0.11920125000000001,
+          "p95_ms": 0.6324002,
+          "p95_ms_per_item": 0.15810005,
+          "samples": 300,
+          "total_ms": 153.36630599999998
+        },
+        "model_gpu": {
+          "items": 1200,
+          "items_per_second": 774.9045803054929,
+          "p50_ms": 4.758975982666016,
+          "p50_ms_per_item": 1.189743995666504,
+          "p95_ms": 6.663219332695007,
+          "p95_ms_per_item": 1.6658048331737518,
+          "samples": 300,
+          "total_ms": 1548.577761054039
+        },
+        "postprocess": {
+          "items": 1200,
+          "items_per_second": 4333.08652794651,
+          "p50_ms": 0.9140315,
+          "p50_ms_per_item": 0.228507875,
+          "p95_ms": 1.2440326,
+          "p95_ms_per_item": 0.31100815,
+          "samples": 300,
+          "total_ms": 276.9388500000002
+        },
+        "preprocess": {
+          "items": 1200,
+          "items_per_second": 998.7619629689597,
+          "p50_ms": 3.8926465,
+          "p50_ms_per_item": 0.973161625,
+          "p95_ms": 5.216173350000001,
+          "p95_ms_per_item": 1.3040433375000002,
+          "samples": 300,
+          "total_ms": 1201.4874859999995
+        },
+        "stage_wall": {
+          "items": 1200,
+          "items_per_second": 359.39262707121713,
+          "p50_ms": 10.8400315,
+          "p50_ms_per_item": 2.710007875,
+          "p95_ms": 14.400199050000003,
+          "p95_ms_per_item": 3.6000497625000007,
+          "samples": 300,
+          "total_ms": 3338.966661
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 7345152,
+      "torch_peak_reserved_bytes": 25165824,
+      "weights": {
+        "checkpoint": {
+          "bytes": 56436913,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/weights/rtmpose-m_simcc-body7_pt-body7-halpe26_700e-384x288-89e6428b_20230605.pth",
+          "sha256": "89e6428b38901b5003d0f753619e94d269999e1f5a922349f9068430387863f2"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 8,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "rtmpose-m",
+        "settings": {
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "flip_test": true,
+          "forward_calls_per_batch": 2,
+          "forward_dtype": "float16",
+          "fp32_operations": [
+            "RGB normalization",
+            "flip fusion",
+            "SimCC decoding"
+          ],
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            384,
+            288
+          ],
+          "mmpose_commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+          "parameters": 14056356,
+          "preprocessed_rows": 384,
+          "source_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+          "timed_input_ids_sha256": "a19b4a48919ac34307dd7dc4d958d6c171be82b78296d060ab86847ca69941b7",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {
+        "plan": {
+          "bytes": 30040084,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/engines/rtmpose-m/engine.plan",
+          "sha256": "e0ef59178dc4051d0087d8a7f9f4bd1715186a220e9d2c0c99bba9de8b5be152"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9816,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "files": {
+        "case_log": {
+          "bytes": 429,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/case-logs/TRT16-b8.log",
+          "sha256": "c208deb7e8856d08d972a4d2ccb5749aaaf845e5a75888fe3f4626f8da8bf9c2"
+        },
+        "report": {
+          "bytes": 347752,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/rtmpose-m/TRT16-b8/report.json",
+          "sha256": "6982790f68b0246b8d1de9b67f4e45e99a7a20b6168565f8350e418f40e3f173"
+        }
+      },
+      "forward_medians_ms": {
+        "horizontal_flip": {
+          "gpu": 3.059056043624878,
+          "wall": 3.101754
+        },
+        "original": {
+          "gpu": 3.143120050430298,
+          "wall": 3.1804855
+        }
+      },
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "nvml_device_peak_sampled_bytes": 599887872,
+      "nvml_peak_minus_before_load_bytes": 180355072,
+      "nvml_used_bytes": {
+        "after_cold_start": 599887872,
+        "after_load": 545361920,
+        "after_warmup": 599887872,
+        "before_load": 419532800,
+        "block_1": 599887872,
+        "block_2": 599887872,
+        "block_3": 599887872
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "process_exit_code": 0,
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "raw_csv": "measurements/rtmpose-m-trt16.csv",
+      "samples": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 315.526808,
+        "load": 2497.720324
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 2400,
+          "items_per_second": 25503.65657082104,
+          "p50_ms": 0.2976255,
+          "p50_ms_per_item": 0.0372031875,
+          "p95_ms": 0.43381730000000013,
+          "p95_ms_per_item": 0.054227162500000016,
+          "samples": 300,
+          "total_ms": 94.10415300000005
+        },
+        "forward": {
+          "items": 2400,
+          "items_per_second": 1141.8152630719453,
+          "p50_ms": 6.2929794999999995,
+          "p50_ms_per_item": 0.7866224374999999,
+          "p95_ms": 12.40282395,
+          "p95_ms_per_item": 1.55035299375,
+          "samples": 300,
+          "total_ms": 2101.916201000001
+        },
+        "h2d": {
+          "items": 2400,
+          "items_per_second": 9303.480330816405,
+          "p50_ms": 0.805058,
+          "p50_ms_per_item": 0.10063225,
+          "p95_ms": 1.04851515,
+          "p95_ms_per_item": 0.13106439375,
+          "samples": 300,
+          "total_ms": 257.96797700000013
+        },
+        "model_gpu": {
+          "items": 2400,
+          "items_per_second": 1157.0432058863707,
+          "p50_ms": 6.201616048812866,
+          "p50_ms_per_item": 0.7752020061016083,
+          "p95_ms": 12.334904074668886,
+          "p95_ms_per_item": 1.5418630093336108,
+          "samples": 300,
+          "total_ms": 2074.252705335617
+        },
+        "postprocess": {
+          "items": 2400,
+          "items_per_second": 7126.542281739721,
+          "p50_ms": 1.0670175,
+          "p50_ms_per_item": 0.1333771875,
+          "p95_ms": 1.6149780500000004,
+          "p95_ms_per_item": 0.20187225625000005,
+          "samples": 300,
+          "total_ms": 336.76920800000016
+        },
+        "preprocess": {
+          "items": 2400,
+          "items_per_second": 1096.7654159165895,
+          "p50_ms": 6.9049914999999995,
+          "p50_ms_per_item": 0.8631239374999999,
+          "p95_ms": 10.2427559,
+          "p95_ms_per_item": 1.2803444875,
+          "samples": 300,
+          "total_ms": 2188.2528070000003
+        },
+        "stage_wall": {
+          "items": 2400,
+          "items_per_second": 475.89738826864885,
+          "p50_ms": 15.862292,
+          "p50_ms_per_item": 1.9827865,
+          "p95_ms": 22.586236000000003,
+          "p95_ms_per_item": 2.8232795000000004,
+          "samples": 300,
+          "total_ms": 5043.103953000003
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 14690304,
+      "torch_peak_reserved_bytes": 27262976,
+      "weights": {
+        "checkpoint": {
+          "bytes": 56436913,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/weights/rtmpose-m_simcc-body7_pt-body7-halpe26_700e-384x288-89e6428b_20230605.pth",
+          "sha256": "89e6428b38901b5003d0f753619e94d269999e1f5a922349f9068430387863f2"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 1,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "rtmpose-x",
+        "settings": {
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "flip_test": true,
+          "forward_calls_per_batch": 2,
+          "forward_dtype": "float16",
+          "fp32_operations": [
+            "RGB normalization",
+            "flip fusion",
+            "SimCC decoding"
+          ],
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            384,
+            288
+          ],
+          "mmpose_commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+          "parameters": 49998772,
+          "preprocessed_rows": 384,
+          "source_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+          "timed_input_ids_sha256": "adc0121c98e2538e0b91d05039083fc7f811ae9723e289a1772ac9a5c3b00837",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 300,
+      "engines": {},
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9957,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "files": {
+        "case_log": {
+          "bytes": 1536,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/case-logs/PT16-b1.log",
+          "sha256": "e3bdff9f89840bf05881fa4a5be0b16fc21a7720c075243e6669816add5d9296"
+        },
+        "report": {
+          "bytes": 245278,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/rtmpose-x/PT16-b1/report.json",
+          "sha256": "088b47a1974965d81d7c6db9f073341949b1df41c2854454c846e9f7246ed1ac"
+        }
+      },
+      "forward_medians_ms": {
+        "horizontal_flip": {
+          "gpu": 14.851840019226074,
+          "wall": 14.899701
+        },
+        "original": {
+          "gpu": 17.405567169189453,
+          "wall": 17.4407305
+        }
+      },
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "nvml_device_peak_sampled_bytes": 639733760,
+      "nvml_peak_minus_before_load_bytes": 220200960,
+      "nvml_used_bytes": {
+        "after_cold_start": 639733760,
+        "after_load": 536973312,
+        "after_warmup": 639733760,
+        "before_load": 419532800,
+        "block_1": 639733760,
+        "block_2": 639733760,
+        "block_3": 639733760
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "process_exit_code": 0,
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "raw_csv": "measurements/rtmpose-x-pt16.csv",
+      "samples": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 3688.47568,
+        "load": 4061.104718
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 300,
+          "items_per_second": 4735.8544801996395,
+          "p50_ms": 0.193008,
+          "p50_ms_per_item": 0.193008,
+          "p95_ms": 0.3374184000000002,
+          "p95_ms_per_item": 0.3374184000000002,
+          "samples": 300,
+          "total_ms": 63.34654099999997
+        },
+        "forward": {
+          "items": 300,
+          "items_per_second": 26.473862872264885,
+          "p50_ms": 33.053075,
+          "p50_ms_per_item": 33.053075,
+          "p95_ms": 79.11112665000005,
+          "p95_ms_per_item": 79.11112665000005,
+          "samples": 300,
+          "total_ms": 11331.931476999996
+        },
+        "h2d": {
+          "items": 300,
+          "items_per_second": 1963.1295349887298,
+          "p50_ms": 0.37683350000000004,
+          "p50_ms_per_item": 0.37683350000000004,
+          "p95_ms": 0.5166151500000005,
+          "p95_ms_per_item": 0.5166151500000005,
+          "samples": 300,
+          "total_ms": 152.81722100000002
+        },
+        "model_gpu": {
+          "items": 300,
+          "items_per_second": 26.542527521861246,
+          "p50_ms": 32.968111991882324,
+          "p50_ms_per_item": 32.968111991882324,
+          "p95_ms": 78.96385307312015,
+          "p95_ms_per_item": 78.96385307312015,
+          "samples": 300,
+          "total_ms": 11302.616141319275
+        },
+        "postprocess": {
+          "items": 300,
+          "items_per_second": 1133.2641246414057,
+          "p50_ms": 0.7847335,
+          "p50_ms_per_item": 0.7847335,
+          "p95_ms": 1.6284916500000002,
+          "p95_ms_per_item": 1.6284916500000002,
+          "samples": 300,
+          "total_ms": 264.72204799999986
+        },
+        "preprocess": {
+          "items": 300,
+          "items_per_second": 827.1778685451083,
+          "p50_ms": 1.106133,
+          "p50_ms_per_item": 1.106133,
+          "p95_ms": 1.62474515,
+          "p95_ms_per_item": 1.62474515,
+          "samples": 300,
+          "total_ms": 362.678949
+        },
+        "stage_wall": {
+          "items": 300,
+          "items_per_second": 24.52239995047292,
+          "p50_ms": 35.761723,
+          "p50_ms_per_item": 35.761723,
+          "p95_ms": 83.81698040000002,
+          "p95_ms_per_item": 83.81698040000002,
+          "samples": 300,
+          "total_ms": 12233.712875000003
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 155553792,
+      "torch_peak_reserved_bytes": 178257920,
+      "weights": {
+        "checkpoint": {
+          "bytes": 200397852,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/weights/rtmpose-x_simcc-body7_pt-body7-halpe26_700e-384x288-7fb6e239_20230606.pth",
+          "sha256": "7fb6e239601082a06ca8442feb7a9774b8d77a1c37911b2ad0f27c1e84be4d21"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 4,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "rtmpose-x",
+        "settings": {
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "flip_test": true,
+          "forward_calls_per_batch": 2,
+          "forward_dtype": "float16",
+          "fp32_operations": [
+            "RGB normalization",
+            "flip fusion",
+            "SimCC decoding"
+          ],
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            384,
+            288
+          ],
+          "mmpose_commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+          "parameters": 49998772,
+          "preprocessed_rows": 384,
+          "source_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+          "timed_input_ids_sha256": "5ff2702172638e5bc361a24ec7dce8f270d174a354a1eeefd9ba8b1a942156e9",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {},
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9947,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "files": {
+        "case_log": {
+          "bytes": 1536,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/case-logs/PT16-b4.log",
+          "sha256": "70328bab9288af05854ed7fd4842a391490505d0fcbe3e3cdeb2e1ab34ed5fe2"
+        },
+        "report": {
+          "bytes": 289427,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/rtmpose-x/PT16-b4/report.json",
+          "sha256": "e55760ece4a0870a78507ff995ef23eb8b913339844c0e3010fa2bb5d8a42d2a"
+        }
+      },
+      "forward_medians_ms": {
+        "horizontal_flip": {
+          "gpu": 11.460544109344482,
+          "wall": 11.490527
+        },
+        "original": {
+          "gpu": 12.418943881988525,
+          "wall": 12.450743500000002
+        }
+      },
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "nvml_device_peak_sampled_bytes": 713134080,
+      "nvml_peak_minus_before_load_bytes": 293601280,
+      "nvml_used_bytes": {
+        "after_cold_start": 713134080,
+        "after_load": 536973312,
+        "after_warmup": 713134080,
+        "before_load": 419532800,
+        "block_1": 713134080,
+        "block_2": 713134080,
+        "block_3": 713134080
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "process_exit_code": 0,
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "raw_csv": "measurements/rtmpose-x-pt16.csv",
+      "samples": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 3104.803157,
+        "load": 3521.758431
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 1200,
+          "items_per_second": 19152.016996265964,
+          "p50_ms": 0.199527,
+          "p50_ms_per_item": 0.04988175,
+          "p95_ms": 0.28037465,
+          "p95_ms_per_item": 0.0700936625,
+          "samples": 300,
+          "total_ms": 62.656586
+        },
+        "forward": {
+          "items": 1200,
+          "items_per_second": 159.6815058898121,
+          "p50_ms": 24.2379355,
+          "p50_ms_per_item": 6.059483875,
+          "p95_ms": 30.36973635,
+          "p95_ms_per_item": 7.5924340875,
+          "samples": 300,
+          "total_ms": 7514.959188999994
+        },
+        "h2d": {
+          "items": 1200,
+          "items_per_second": 7665.198832191614,
+          "p50_ms": 0.515698,
+          "p50_ms_per_item": 0.1289245,
+          "p95_ms": 0.61028455,
+          "p95_ms_per_item": 0.1525711375,
+          "samples": 300,
+          "total_ms": 156.55171200000026
+        },
+        "model_gpu": {
+          "items": 1200,
+          "items_per_second": 160.1453129863978,
+          "p50_ms": 24.17940855026245,
+          "p50_ms_per_item": 6.044852137565613,
+          "p95_ms": 30.29853768348694,
+          "p95_ms_per_item": 7.574634420871735,
+          "samples": 300,
+          "total_ms": 7493.194634437561
+        },
+        "postprocess": {
+          "items": 1200,
+          "items_per_second": 5628.545253557779,
+          "p50_ms": 0.6759895,
+          "p50_ms_per_item": 0.168997375,
+          "p95_ms": 0.8949747000000001,
+          "p95_ms_per_item": 0.22374367500000003,
+          "samples": 300,
+          "total_ms": 213.198961
+        },
+        "preprocess": {
+          "items": 1200,
+          "items_per_second": 1153.3990287313286,
+          "p50_ms": 3.435562,
+          "p50_ms_per_item": 0.8588905,
+          "p95_ms": 3.8588947,
+          "p95_ms_per_item": 0.964723675,
+          "samples": 300,
+          "total_ms": 1040.4031649999997
+        },
+        "stage_wall": {
+          "items": 1200,
+          "items_per_second": 132.84245539769566,
+          "p50_ms": 29.234814,
+          "p50_ms_per_item": 7.3087035,
+          "p95_ms": 35.434680400000005,
+          "p95_ms_per_item": 8.858670100000001,
+          "samples": 300,
+          "total_ms": 9033.256697999996
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 202945024,
+      "torch_peak_reserved_bytes": 251658240,
+      "weights": {
+        "checkpoint": {
+          "bytes": 200397852,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/weights/rtmpose-x_simcc-body7_pt-body7-halpe26_700e-384x288-7fb6e239_20230606.pth",
+          "sha256": "7fb6e239601082a06ca8442feb7a9774b8d77a1c37911b2ad0f27c1e84be4d21"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "PT16",
+        "batch_size": 8,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "rtmpose-x",
+        "settings": {
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "flip_test": true,
+          "forward_calls_per_batch": 2,
+          "forward_dtype": "float16",
+          "fp32_operations": [
+            "RGB normalization",
+            "flip fusion",
+            "SimCC decoding"
+          ],
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            384,
+            288
+          ],
+          "mmpose_commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+          "parameters": 49998772,
+          "preprocessed_rows": 384,
+          "source_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+          "timed_input_ids_sha256": "a19b4a48919ac34307dd7dc4d958d6c171be82b78296d060ab86847ca69941b7",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {},
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 10055,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "files": {
+        "case_log": {
+          "bytes": 1536,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/case-logs/PT16-b8.log",
+          "sha256": "bba0bfb230853a39db1308fe604ac41a5df6f24f943efee82c3ec8e9579e9863"
+        },
+        "report": {
+          "bytes": 348154,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/rtmpose-x/PT16-b8/report.json",
+          "sha256": "269e03f9c6cc85a715d8b2efe55c6ff758a0b24b72d4e4584d29dc648ef012de"
+        }
+      },
+      "forward_medians_ms": {
+        "horizontal_flip": {
+          "gpu": 17.973440170288086,
+          "wall": 18.0192895
+        },
+        "original": {
+          "gpu": 18.433568000793457,
+          "wall": 18.4819095
+        }
+      },
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "nvml_device_peak_sampled_bytes": 807505920,
+      "nvml_peak_minus_before_load_bytes": 387973120,
+      "nvml_used_bytes": {
+        "after_cold_start": 807505920,
+        "after_load": 536973312,
+        "after_warmup": 807505920,
+        "before_load": 419532800,
+        "block_1": 807505920,
+        "block_2": 807505920,
+        "block_3": 807505920
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "process_exit_code": 0,
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "raw_csv": "measurements/rtmpose-x-pt16.csv",
+      "samples": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 2826.267716,
+        "load": 3457.254555
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 2400,
+          "items_per_second": 28993.520032837085,
+          "p50_ms": 0.261594,
+          "p50_ms_per_item": 0.03269925,
+          "p95_ms": 0.35572400000000004,
+          "p95_ms_per_item": 0.044465500000000005,
+          "samples": 300,
+          "total_ms": 82.77711700000003
+        },
+        "forward": {
+          "items": 2400,
+          "items_per_second": 217.93876646997637,
+          "p50_ms": 36.549803499999996,
+          "p50_ms_per_item": 4.5687254374999995,
+          "p95_ms": 37.724062499999995,
+          "p95_ms_per_item": 4.715507812499999,
+          "samples": 300,
+          "total_ms": 11012.26752299999
+        },
+        "h2d": {
+          "items": 2400,
+          "items_per_second": 9110.20159919568,
+          "p50_ms": 0.869373,
+          "p50_ms_per_item": 0.108671625,
+          "p95_ms": 0.9838107,
+          "p95_ms_per_item": 0.1229763375,
+          "samples": 300,
+          "total_ms": 263.440932
+        },
+        "model_gpu": {
+          "items": 2400,
+          "items_per_second": 218.47176688866458,
+          "p50_ms": 36.4649600982666,
+          "p50_ms_per_item": 4.558120012283325,
+          "p95_ms": 37.640582942962645,
+          "p95_ms_per_item": 4.705072867870331,
+          "samples": 300,
+          "total_ms": 10985.401153564453
+        },
+        "postprocess": {
+          "items": 2400,
+          "items_per_second": 8684.157181594996,
+          "p50_ms": 0.896976,
+          "p50_ms_per_item": 0.112122,
+          "p95_ms": 1.07614245,
+          "p95_ms_per_item": 0.13451780625,
+          "samples": 300,
+          "total_ms": 276.365334
+        },
+        "preprocess": {
+          "items": 2400,
+          "items_per_second": 1181.5416223986097,
+          "p50_ms": 6.7387535,
+          "p50_ms_per_item": 0.8423441875,
+          "p95_ms": 7.12641885,
+          "p95_ms_per_item": 0.89080235625,
+          "samples": 300,
+          "total_ms": 2031.2445660000003
+        },
+        "stage_wall": {
+          "items": 2400,
+          "items_per_second": 174.80236436448615,
+          "p50_ms": 45.630576,
+          "p50_ms_per_item": 5.703822,
+          "p95_ms": 46.86070935,
+          "p95_ms_per_item": 5.85758866875,
+          "samples": 300,
+          "total_ms": 13729.791405999986
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 270169600,
+      "torch_peak_reserved_bytes": 346030080,
+      "weights": {
+        "checkpoint": {
+          "bytes": 200397852,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/weights/rtmpose-x_simcc-body7_pt-body7-halpe26_700e-384x288-7fb6e239_20230606.pth",
+          "sha256": "7fb6e239601082a06ca8442feb7a9774b8d77a1c37911b2ad0f27c1e84be4d21"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 1,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "rtmpose-x",
+        "settings": {
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "flip_test": true,
+          "forward_calls_per_batch": 2,
+          "forward_dtype": "float16",
+          "fp32_operations": [
+            "RGB normalization",
+            "flip fusion",
+            "SimCC decoding"
+          ],
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            384,
+            288
+          ],
+          "mmpose_commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+          "parameters": 49998772,
+          "preprocessed_rows": 384,
+          "source_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+          "timed_input_ids_sha256": "adc0121c98e2538e0b91d05039083fc7f811ae9723e289a1772ac9a5c3b00837",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 300,
+      "engines": {
+        "plan": {
+          "bytes": 102454292,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/engines/rtmpose-x/engine.plan",
+          "sha256": "4a70aabd7c228c1947169fc546bb65d76cc63ff960b2003a3029a8f77bb9e379"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 10437,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "files": {
+        "case_log": {
+          "bytes": 429,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/case-logs/TRT16-b1.log",
+          "sha256": "0a285898835a4aff820f4753cb90ad1e3045d8436589945d37a53007d9108aee"
+        },
+        "report": {
+          "bytes": 244523,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/rtmpose-x/TRT16-b1/report.json",
+          "sha256": "cb0998012c3a9743b249aefcbb1384b4d6ce00ade5457b84acf45a90ec015bf1"
+        }
+      },
+      "forward_medians_ms": {
+        "horizontal_flip": {
+          "gpu": 3.2378880977630615,
+          "wall": 3.28468
+        },
+        "original": {
+          "gpu": 3.2335519790649414,
+          "wall": 3.2777265
+        }
+      },
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "nvml_device_peak_sampled_bytes": 732008448,
+      "nvml_peak_minus_before_load_bytes": 312475648,
+      "nvml_used_bytes": {
+        "after_cold_start": 732008448,
+        "after_load": 702648320,
+        "after_warmup": 732008448,
+        "before_load": 419532800,
+        "block_1": 732008448,
+        "block_2": 732008448,
+        "block_3": 732008448
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "process_exit_code": 0,
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "raw_csv": "measurements/rtmpose-x-trt16.csv",
+      "samples": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 348.689761,
+        "load": 4355.476654
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 300,
+          "items_per_second": 4921.7829434332425,
+          "p50_ms": 0.1929245,
+          "p50_ms_per_item": 0.1929245,
+          "p95_ms": 0.28448715,
+          "p95_ms_per_item": 0.28448715,
+          "samples": 300,
+          "total_ms": 60.95352100000001
+        },
+        "forward": {
+          "items": 300,
+          "items_per_second": 141.74247590931054,
+          "p50_ms": 6.612220000000001,
+          "p50_ms_per_item": 6.612220000000001,
+          "p95_ms": 9.416131250000005,
+          "p95_ms_per_item": 9.416131250000005,
+          "samples": 300,
+          "total_ms": 2116.5144610000007
+        },
+        "h2d": {
+          "items": 300,
+          "items_per_second": 4444.279248938732,
+          "p50_ms": 0.215723,
+          "p50_ms_per_item": 0.215723,
+          "p95_ms": 0.3268782,
+          "p95_ms_per_item": 0.3268782,
+          "samples": 300,
+          "total_ms": 67.502509
+        },
+        "model_gpu": {
+          "items": 300,
+          "items_per_second": 143.59045969166303,
+          "p50_ms": 6.525152087211609,
+          "p50_ms_per_item": 6.525152087211609,
+          "p95_ms": 9.347766625881198,
+          "p95_ms_per_item": 9.347766625881198,
+          "samples": 300,
+          "total_ms": 2089.275294780731
+        },
+        "postprocess": {
+          "items": 300,
+          "items_per_second": 1328.6521963894088,
+          "p50_ms": 0.7042615000000001,
+          "p50_ms_per_item": 0.7042615000000001,
+          "p95_ms": 1.0140921500000004,
+          "p95_ms_per_item": 1.0140921500000004,
+          "samples": 300,
+          "total_ms": 225.7927250000002
+        },
+        "preprocess": {
+          "items": 300,
+          "items_per_second": 957.0449972410779,
+          "p50_ms": 1.003707,
+          "p50_ms_per_item": 1.003707,
+          "p95_ms": 1.2607744,
+          "p95_ms_per_item": 1.2607744,
+          "samples": 300,
+          "total_ms": 313.4648850000002
+        },
+        "stage_wall": {
+          "items": 300,
+          "items_per_second": 105.77170293530821,
+          "p50_ms": 9.0147425,
+          "p50_ms_per_item": 9.0147425,
+          "p95_ms": 12.10731940000001,
+          "p95_ms_per_item": 12.10731940000001,
+          "samples": 300,
+          "total_ms": 2836.297343
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 1837056,
+      "torch_peak_reserved_bytes": 2097152,
+      "weights": {
+        "checkpoint": {
+          "bytes": 200397852,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/weights/rtmpose-x_simcc-body7_pt-body7-halpe26_700e-384x288-7fb6e239_20230606.pth",
+          "sha256": "7fb6e239601082a06ca8442feb7a9774b8d77a1c37911b2ad0f27c1e84be4d21"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 4,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "rtmpose-x",
+        "settings": {
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "flip_test": true,
+          "forward_calls_per_batch": 2,
+          "forward_dtype": "float16",
+          "fp32_operations": [
+            "RGB normalization",
+            "flip fusion",
+            "SimCC decoding"
+          ],
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            384,
+            288
+          ],
+          "mmpose_commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+          "parameters": 49998772,
+          "preprocessed_rows": 384,
+          "source_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+          "timed_input_ids_sha256": "5ff2702172638e5bc361a24ec7dce8f270d174a354a1eeefd9ba8b1a942156e9",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {
+        "plan": {
+          "bytes": 102454292,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/engines/rtmpose-x/engine.plan",
+          "sha256": "4a70aabd7c228c1947169fc546bb65d76cc63ff960b2003a3029a8f77bb9e379"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9563,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "files": {
+        "case_log": {
+          "bytes": 429,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/case-logs/TRT16-b4.log",
+          "sha256": "3aeb0c83669fa09a03fa701e8e41f6f12310693a1b841d752d8cb94f2667a230"
+        },
+        "report": {
+          "bytes": 288632,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/rtmpose-x/TRT16-b4/report.json",
+          "sha256": "f6fa487dba3ffc70d9b40b1017fc8357d0f49569cc174cf0a8bd99a7c8cdbb0b"
+        }
+      },
+      "forward_medians_ms": {
+        "horizontal_flip": {
+          "gpu": 4.7944958209991455,
+          "wall": 4.8398635
+        },
+        "original": {
+          "gpu": 4.78652811050415,
+          "wall": 4.834026
+        }
+      },
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "nvml_device_peak_sampled_bytes": 755077120,
+      "nvml_peak_minus_before_load_bytes": 335544320,
+      "nvml_used_bytes": {
+        "after_cold_start": 755077120,
+        "after_load": 702648320,
+        "after_warmup": 755077120,
+        "before_load": 419532800,
+        "block_1": 755077120,
+        "block_2": 755077120,
+        "block_3": 755077120
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "process_exit_code": 0,
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "raw_csv": "measurements/rtmpose-x-trt16.csv",
+      "samples": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 357.781618,
+        "load": 3973.017036
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 1200,
+          "items_per_second": 18035.71793580007,
+          "p50_ms": 0.207818,
+          "p50_ms_per_item": 0.0519545,
+          "p95_ms": 0.29634505,
+          "p95_ms_per_item": 0.0740862625,
+          "samples": 300,
+          "total_ms": 66.53463999999997
+        },
+        "forward": {
+          "items": 1200,
+          "items_per_second": 404.84834365864725,
+          "p50_ms": 9.690634500000002,
+          "p50_ms_per_item": 2.4226586250000004,
+          "p95_ms": 10.53938895,
+          "p95_ms_per_item": 2.6348472375,
+          "samples": 300,
+          "total_ms": 2964.072890000001
+        },
+        "h2d": {
+          "items": 1200,
+          "items_per_second": 7847.745728172806,
+          "p50_ms": 0.509292,
+          "p50_ms_per_item": 0.127323,
+          "p95_ms": 0.5797884999999999,
+          "p95_ms_per_item": 0.14494712499999998,
+          "samples": 300,
+          "total_ms": 152.91015299999998
+        },
+        "model_gpu": {
+          "items": 1200,
+          "items_per_second": 408.57332824264876,
+          "p50_ms": 9.595263957977295,
+          "p50_ms_per_item": 2.3988159894943237,
+          "p95_ms": 10.44933433532715,
+          "p95_ms_per_item": 2.6123335838317874,
+          "samples": 300,
+          "total_ms": 2937.0492811203003
+        },
+        "postprocess": {
+          "items": 1200,
+          "items_per_second": 4939.133107641019,
+          "p50_ms": 0.7803455,
+          "p50_ms_per_item": 0.195086375,
+          "p95_ms": 1.02962285,
+          "p95_ms_per_item": 0.2574057125,
+          "samples": 300,
+          "total_ms": 242.95761499999995
+        },
+        "preprocess": {
+          "items": 1200,
+          "items_per_second": 1180.5089914441253,
+          "p50_ms": 3.3679675,
+          "p50_ms_per_item": 0.841991875,
+          "p95_ms": 3.5876359,
+          "p95_ms_per_item": 0.896908975,
+          "samples": 300,
+          "total_ms": 1016.510682
+        },
+        "stage_wall": {
+          "items": 1200,
+          "items_per_second": 266.97671865500064,
+          "p50_ms": 14.797176499999999,
+          "p50_ms_per_item": 3.6992941249999998,
+          "p95_ms": 15.99286675,
+          "p95_ms_per_item": 3.9982166875,
+          "samples": 300,
+          "total_ms": 4494.773949000003
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 7345152,
+      "torch_peak_reserved_bytes": 25165824,
+      "weights": {
+        "checkpoint": {
+          "bytes": 200397852,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/weights/rtmpose-x_simcc-body7_pt-body7-halpe26_700e-384x288-7fb6e239_20230606.pth",
+          "sha256": "7fb6e239601082a06ca8442feb7a9774b8d77a1c37911b2ad0f27c1e84be4d21"
+        }
+      }
+    },
+    {
+      "case": {
+        "backend": "TRT16",
+        "batch_size": 8,
+        "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+        "item_unit": "person-crop",
+        "name": "rtmpose-x",
+        "settings": {
+          "crop_box": "native xyxy from the #2496 crop index",
+          "cuda_stream": "non-default",
+          "dataset_id": "meiji_4cam/person-model-speed-v1",
+          "flip_test": true,
+          "forward_calls_per_batch": 2,
+          "forward_dtype": "float16",
+          "fp32_operations": [
+            "RGB normalization",
+            "flip fusion",
+            "SimCC decoding"
+          ],
+          "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+          "host_threads": 4,
+          "input_decode": "predecoded BGR",
+          "input_hw": [
+            384,
+            288
+          ],
+          "mmpose_commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+          "parameters": 49998772,
+          "preprocessed_rows": 384,
+          "source_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+          "timed_input_ids_sha256": "a19b4a48919ac34307dd7dc4d958d6c171be82b78296d060ab86847ca69941b7",
+          "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+        }
+      },
+      "conversion": [],
+      "distinct_inputs": 384,
+      "engines": {
+        "plan": {
+          "bytes": 102454292,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/engines/rtmpose-x/engine.plan",
+          "sha256": "4a70aabd7c228c1947169fc546bb65d76cc63ff960b2003a3029a8f77bb9e379"
+        }
+      },
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "cuda": "13.0",
+        "cuda_device": "cuda:0",
+        "driver": "621.24",
+        "fp32_precision": {
+          "cudnn": "ieee",
+          "cudnn_conv": "ieee",
+          "matmul": "ieee"
+        },
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "gpu_total_bytes": 17074749440,
+        "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+        "max_memory_clock_mhz": 14001,
+        "max_sm_clock_mhz": 3090,
+        "memory_clock_mhz": 405,
+        "power_limit_mw": 180000,
+        "power_mw": 9702,
+        "sm_clock_mhz": 180,
+        "telemetry_errors": {},
+        "tensorrt": {
+          "tensorrt_cu13": "10.14.1.48.post1"
+        },
+        "torch": "2.13.0+cu130"
+      },
+      "failure": null,
+      "files": {
+        "case_log": {
+          "bytes": 429,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/case-logs/TRT16-b8.log",
+          "sha256": "e7f1818893a792568e38ac0d2b2c32ec29251f987ea400f5b196f8c57ccb04e1"
+        },
+        "report": {
+          "bytes": 347454,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/rtmpose-x/TRT16-b8/report.json",
+          "sha256": "d46d6a7a5686fb99edb8f275cb739aa116dde29f580eefd80629fbd97ec60c99"
+        }
+      },
+      "forward_medians_ms": {
+        "horizontal_flip": {
+          "gpu": 7.570016145706177,
+          "wall": 7.6218905
+        },
+        "original": {
+          "gpu": 7.655472040176392,
+          "wall": 7.697673999999999
+        }
+      },
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "nvml_device_peak_sampled_bytes": 757174272,
+      "nvml_peak_minus_before_load_bytes": 337641472,
+      "nvml_used_bytes": {
+        "after_cold_start": 757174272,
+        "after_load": 702648320,
+        "after_warmup": 757174272,
+        "before_load": 419532800,
+        "block_1": 757174272,
+        "block_2": 757174272,
+        "block_3": 757174272
+      },
+      "parity": null,
+      "parity_not_evaluated_reason": "PT32計測はスコープ外（ユーザー判断 2026-11-25）",
+      "parity_status": "not_evaluated",
+      "process_exit_code": 0,
+      "protocol": {
+        "batch_sizes": [
+          1,
+          4,
+          8
+        ],
+        "blocks": 3,
+        "iterations_per_block": 100,
+        "warmup": 30
+      },
+      "raw_csv": "measurements/rtmpose-x-trt16.csv",
+      "samples": 300,
+      "schema_version": 3,
+      "setup_wall_ms": {
+        "cold_start": 363.546015,
+        "load": 3932.911465
+      },
+      "status": "ok",
+      "summary": {
+        "d2h": {
+          "items": 2400,
+          "items_per_second": 29127.140429152976,
+          "p50_ms": 0.26336800000000005,
+          "p50_ms_per_item": 0.032921000000000006,
+          "p95_ms": 0.3507716,
+          "p95_ms_per_item": 0.04384645,
+          "samples": 300,
+          "total_ms": 82.397378
+        },
+        "forward": {
+          "items": 2400,
+          "items_per_second": 520.8479365169283,
+          "p50_ms": 15.324929999999998,
+          "p50_ms_per_item": 1.9156162499999998,
+          "p95_ms": 15.61414875,
+          "p95_ms_per_item": 1.95176859375,
+          "samples": 300,
+          "total_ms": 4607.870804000002
+        },
+        "h2d": {
+          "items": 2400,
+          "items_per_second": 9436.426083843427,
+          "p50_ms": 0.8203400000000001,
+          "p50_ms_per_item": 0.10254250000000001,
+          "p95_ms": 0.9582863500000001,
+          "p95_ms_per_item": 0.11978579375000001,
+          "samples": 300,
+          "total_ms": 254.3335769999999
+        },
+        "model_gpu": {
+          "items": 2400,
+          "items_per_second": 524.0625667897265,
+          "p50_ms": 15.231375932693481,
+          "p50_ms_per_item": 1.9039219915866852,
+          "p95_ms": 15.518737292289734,
+          "p95_ms_per_item": 1.9398421615362167,
+          "samples": 300,
+          "total_ms": 4579.60585641861
+        },
+        "postprocess": {
+          "items": 2400,
+          "items_per_second": 7623.751183098979,
+          "p50_ms": 1.0221215,
+          "p50_ms_per_item": 0.1277651875,
+          "p95_ms": 1.2535395,
+          "p95_ms_per_item": 0.1566924375,
+          "samples": 300,
+          "total_ms": 314.8056569999998
+        },
+        "preprocess": {
+          "items": 2400,
+          "items_per_second": 1188.4469432589021,
+          "p50_ms": 6.69543,
+          "p50_ms_per_item": 0.83692875,
+          "p95_ms": 7.08727485,
+          "p95_ms_per_item": 0.88590935625,
+          "samples": 300,
+          "total_ms": 2019.442276
+        },
+        "stage_wall": {
+          "items": 2400,
+          "items_per_second": 326.87601278829675,
+          "p50_ms": 24.3813385,
+          "p50_ms_per_item": 3.0476673125,
+          "p95_ms": 25.25973525,
+          "p95_ms_per_item": 3.15746690625,
+          "samples": 300,
+          "total_ms": 7342.233464999999
+        }
+      },
+      "timed_clips": [
+        "video_000/clip_003",
+        "video_000/clip_004",
+        "video_000/clip_013",
+        "video_000/clip_028",
+        "video_000/clip_040",
+        "video_000/clip_057"
+      ],
+      "torch_peak_allocated_bytes": 14690304,
+      "torch_peak_reserved_bytes": 27262976,
+      "weights": {
+        "checkpoint": {
+          "bytes": 200397852,
+          "path": ".claude/worktrees/parent-2492-issue-2490-rtmpose/outputs/rtmpose/weights/rtmpose-x_simcc-body7_pt-body7-halpe26_700e-384x288-7fb6e239_20230606.pth",
+          "sha256": "7fb6e239601082a06ca8442feb7a9774b8d77a1c37911b2ad0f27c1e84be4d21"
+        }
+      }
+    }
+  ],
+  "harness_merge_commit": "59faa32a28d2f54e6492abdba2429846fa0397e3",
+  "input_id": "meiji_4cam/person-model-speed-v1",
+  "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+  "jobs": {
+    "rtmpose-m": {
+      "clean_execution_snapshot": true,
+      "files": {
+        "case_exits": {
+          "bytes": 81,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/measurements/case-exits.tsv",
+          "sha256": "336570347ee3d8b60ed3ed37497af098fd9d53b5329a9dd95e9a69d3b4912836"
+        },
+        "command": {
+          "bytes": 3311,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/repro.sh",
+          "sha256": "b66a6d561f0d62a3c4080ab6722a5fbe725c432744c376008f48dada7433e82d"
+        },
+        "job_log": {
+          "bytes": 1626,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/comparison-evidence/queue.log",
+          "sha256": "9760124f8cec08bd8e5b6c3b8f5d0a31f3eea41b96d4769690db427fd3d80c68"
+        },
+        "metadata": {
+          "bytes": 3188,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/run.json",
+          "sha256": "b219d1db155c53ff0c929c6e8c78d7fac228962cb6e93ce82af1b2887064c8ac"
+        },
+        "working_tree_status": {
+          "bytes": 0,
+          "path": ".training_queue/repro/0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed/git_status.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "job_id": "0-8204399428034176235_2026-11-25T09-56-11-965823764Z_2585778_i2490-rtmpose-m-low-precision-speed.job",
+      "queue_state": "done"
+    },
+    "rtmpose-x": {
+      "clean_execution_snapshot": true,
+      "files": {
+        "case_exits": {
+          "bytes": 81,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/measurements/case-exits.tsv",
+          "sha256": "336570347ee3d8b60ed3ed37497af098fd9d53b5329a9dd95e9a69d3b4912836"
+        },
+        "command": {
+          "bytes": 3311,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/repro.sh",
+          "sha256": "2020b944da71cefa1af3d3e438607460a68c57c9b6da4ec94bb58502b998fb95"
+        },
+        "job_log": {
+          "bytes": 1626,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/comparison-evidence/queue.log",
+          "sha256": "d2ba0a45becda9a3a384e28f71cca0336079b6a77de4147db966b6de2e4d4125"
+        },
+        "metadata": {
+          "bytes": 3188,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/run.json",
+          "sha256": "a4a3d071d94ec13dc74254762870070d282388bdf54198baa2e69e41a2d551b7"
+        },
+        "working_tree_status": {
+          "bytes": 0,
+          "path": ".training_queue/repro/0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed/git_status.txt",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "job_id": "0-8204399427688229043_2026-11-25T09-56-12-311770956Z_2585722_i2490-rtmpose-x-low-precision-speed.job",
+      "queue_state": "done"
+    }
+  },
+  "measurement_commit": "645bf735dc4a183c46ce1a9448bbd8eee8d0ec30",
+  "measurements": [
+    {
+      "bytes": 86171,
+      "path": "measurements/rtmpose-m-pt16.csv",
+      "sha256": "54d75c5b5d072a3a26580337b3719cc783e5eaa93bd27d601e3a1ae1f8eb2aa9"
+    },
+    {
+      "bytes": 84590,
+      "path": "measurements/rtmpose-m-trt16.csv",
+      "sha256": "9abc104e16519829fd0b1b3ee2bc8e13a3a6028c260bcbf7660b1efc7d1184b3"
+    },
+    {
+      "bytes": 86061,
+      "path": "measurements/rtmpose-x-pt16.csv",
+      "sha256": "cae90674a82bb3d9a1b7f9d5e3d402ffb539c0093077b503756d297450924134"
+    },
+    {
+      "bytes": 85303,
+      "path": "measurements/rtmpose-x-trt16.csv",
+      "sha256": "cc7461db98db141be3e2f87029c2a23c313e3be7ebc60be2966a6fdf8bb77ec7"
+    }
+  ],
+  "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2",
+  "total_timed_repetitions": 3600
+}

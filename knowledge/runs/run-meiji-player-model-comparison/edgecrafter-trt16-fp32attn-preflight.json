@@ -1,0 +1,234 @@
+{
+  "accuracy_image_batch_size": 1,
+  "cohort_manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+  "condition": "trt16-fp32attn",
+  "models": {
+    "ecdet-l-coco": {
+      "base_onnx": {
+        "path": "outputs/player-model-comparison/ecdet-l-coco/trt16-trace2/engine/model.onnx",
+        "sha256": "fa8b643c82da715aee5df2dc556a19ecdf73b9729af1aba938607c564a484c2a"
+      },
+      "disposition": "reused_plan",
+      "engine_directory": "outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine",
+      "export_manifest": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine/export.json",
+        "sha256": "9d85bcf57798062b3a171d8ad3dc6f25dc55111f55011d8b24c1231c5bca7f15"
+      },
+      "onnx": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine/model.onnx",
+        "sha256": "60a6c044b4ad70495edb03b6c7dbce3495cb92b36316ad31a84da5ed126a04c5"
+      },
+      "plan": {
+        "path": "outputs/player-model-comparison/trt16-diagnosis-v3/ecdet-l-coco-fp32-attention/engine/engine.plan",
+        "sha256": "da7991d880b75f2da28882825865a79e190229be0e7287bf5240cf89fb5a0279"
+      },
+      "verified_fp32_operations": 8,
+      "weight_sha256": "60e48c51b33d70acf8e3a3faddbdb70b0876c64509b74cb623106cc7c31e85a1"
+    },
+    "ecdet-l-o365": {
+      "base_onnx": {
+        "path": "outputs/player-model-comparison/ecdet-l-o365/trt16-trace2/engine/model.onnx",
+        "sha256": "c1b4aee5b46e8486ea71b7fd234ed24a126ebb3607d199f845d35a07db5b0a19"
+      },
+      "disposition": "prepared_onnx",
+      "engine_directory": "outputs/player-model-comparison/ecdet-l-o365/trt16-fp32attn/engine",
+      "export_manifest": {
+        "path": "outputs/player-model-comparison/ecdet-l-o365/trt16-fp32attn/engine/export.json",
+        "sha256": "ddf4c8c18a6193fab38e525d64345241cc540d95fdc22534aeb0839ef6c063b7"
+      },
+      "onnx": {
+        "path": "outputs/player-model-comparison/ecdet-l-o365/trt16-fp32attn/engine/model.onnx",
+        "sha256": "05d30688aca18836e0364fdf53956630ed8a129ef573d3a9b53bb7309f14d77a"
+      },
+      "rewrite_receipt": {
+        "artifact": {
+          "path": "outputs/player-model-comparison/ecdet-l-o365/trt16-fp32attn/onnx-rewrite.json",
+          "sha256": "fb69207c4e376bfeb44bb24a369767985eb0513229d7fec316e2537e1aa0e9df"
+        },
+        "base_onnx_sha256": "c1b4aee5b46e8486ea71b7fd234ed24a126ebb3607d199f845d35a07db5b0a19",
+        "condition": "trt16-fp32attn",
+        "disposition": "prepared",
+        "failure": null,
+        "model_id": "ecdet-l-o365",
+        "onnx_sha256": "05d30688aca18836e0364fdf53956630ed8a129ef573d3a9b53bb7309f14d77a",
+        "phase": "onnx_export",
+        "softmax_nodes": [
+          "/model/decoder/decoder/layers.0/self_attn/Softmax",
+          "/model/decoder/decoder/layers.1/self_attn/Softmax",
+          "/model/decoder/decoder/layers.2/self_attn/Softmax",
+          "/model/decoder/decoder/layers.3/self_attn/Softmax"
+        ],
+        "wall_ms": 15748.320126,
+        "weight_sha256": "6259432a6184029e17cb008dcd3fa6ebf036c3e10cd56aa552a0d848ddcef19e"
+      },
+      "verified_fp32_operations": 8,
+      "weight_sha256": "6259432a6184029e17cb008dcd3fa6ebf036c3e10cd56aa552a0d848ddcef19e"
+    },
+    "ecdet-x-coco": {
+      "base_onnx": {
+        "path": "outputs/player-model-comparison/ecdet-x-coco/trt16-trace2/engine/model.onnx",
+        "sha256": "899e62e3a6ae70b2db10e6fe6fbda3bdeef2cfe7260259dcf11445be7fe8c5ed"
+      },
+      "disposition": "prepared_onnx",
+      "engine_directory": "outputs/player-model-comparison/ecdet-x-coco/trt16-fp32attn/engine",
+      "export_manifest": {
+        "path": "outputs/player-model-comparison/ecdet-x-coco/trt16-fp32attn/engine/export.json",
+        "sha256": "19592ea34670b91c06619e45ecc273fce24e56a751f0cb7920c6a02605bbad15"
+      },
+      "onnx": {
+        "path": "outputs/player-model-comparison/ecdet-x-coco/trt16-fp32attn/engine/model.onnx",
+        "sha256": "887e4871deb2c39b6738c8438bd2f6490392336d69dfa3c5ed42d170019eda5a"
+      },
+      "rewrite_receipt": {
+        "artifact": {
+          "path": "outputs/player-model-comparison/ecdet-x-coco/trt16-fp32attn/onnx-rewrite.json",
+          "sha256": "1282786445587860f453bd82c9ebaf78cb837dad10a765cc521006882546118a"
+        },
+        "base_onnx_sha256": "899e62e3a6ae70b2db10e6fe6fbda3bdeef2cfe7260259dcf11445be7fe8c5ed",
+        "condition": "trt16-fp32attn",
+        "disposition": "prepared",
+        "failure": null,
+        "model_id": "ecdet-x-coco",
+        "onnx_sha256": "887e4871deb2c39b6738c8438bd2f6490392336d69dfa3c5ed42d170019eda5a",
+        "phase": "onnx_export",
+        "softmax_nodes": [
+          "/model/decoder/decoder/layers.0/self_attn/Softmax",
+          "/model/decoder/decoder/layers.1/self_attn/Softmax",
+          "/model/decoder/decoder/layers.2/self_attn/Softmax",
+          "/model/decoder/decoder/layers.3/self_attn/Softmax"
+        ],
+        "wall_ms": 22362.099431,
+        "weight_sha256": "c87394be021b573fd8e25969b85a8670127120c9d0209ac7807fbadae1a5cec6"
+      },
+      "verified_fp32_operations": 8,
+      "weight_sha256": "c87394be021b573fd8e25969b85a8670127120c9d0209ac7807fbadae1a5cec6"
+    },
+    "ecdet-x-o365": {
+      "base_onnx": {
+        "path": "outputs/player-model-comparison/ecdet-x-o365/trt16-trace2/engine/model.onnx",
+        "sha256": "fca8a60ab0d2733ea01236f7bcdabc66517843475028d5f84ea2c9fba4d64cdf"
+      },
+      "disposition": "prepared_onnx",
+      "engine_directory": "outputs/player-model-comparison/ecdet-x-o365/trt16-fp32attn/engine",
+      "export_manifest": {
+        "path": "outputs/player-model-comparison/ecdet-x-o365/trt16-fp32attn/engine/export.json",
+        "sha256": "6593ae72fd5a9835fe053740565d158d8ecede06fdef9563a613e9b2ac01896c"
+      },
+      "onnx": {
+        "path": "outputs/player-model-comparison/ecdet-x-o365/trt16-fp32attn/engine/model.onnx",
+        "sha256": "b6993447d6422dea253fd5030a809f45b994951b38d75d6bd6eb3732b2c15f8f"
+      },
+      "rewrite_receipt": {
+        "artifact": {
+          "path": "outputs/player-model-comparison/ecdet-x-o365/trt16-fp32attn/onnx-rewrite.json",
+          "sha256": "d9876f236a3a3cc1d68eedacbf68e53d92da93f3eac3316dd04385e376d56fea"
+        },
+        "base_onnx_sha256": "fca8a60ab0d2733ea01236f7bcdabc66517843475028d5f84ea2c9fba4d64cdf",
+        "condition": "trt16-fp32attn",
+        "disposition": "prepared",
+        "failure": null,
+        "model_id": "ecdet-x-o365",
+        "onnx_sha256": "b6993447d6422dea253fd5030a809f45b994951b38d75d6bd6eb3732b2c15f8f",
+        "phase": "onnx_export",
+        "softmax_nodes": [
+          "/model/decoder/decoder/layers.0/self_attn/Softmax",
+          "/model/decoder/decoder/layers.1/self_attn/Softmax",
+          "/model/decoder/decoder/layers.2/self_attn/Softmax",
+          "/model/decoder/decoder/layers.3/self_attn/Softmax"
+        ],
+        "wall_ms": 21439.741576,
+        "weight_sha256": "be9c77cd4def8aadd0cc679944ba57412f363de2d44f7c6b900289e61316314c"
+      },
+      "verified_fp32_operations": 8,
+      "weight_sha256": "be9c77cd4def8aadd0cc679944ba57412f363de2d44f7c6b900289e61316314c"
+    },
+    "ecpose-l-o365": {
+      "base_onnx": {
+        "path": "outputs/player-model-comparison/ecpose-l-o365/trt16-trace2/engine/model.onnx",
+        "sha256": "2bac47a53ab2c4a8be0a0fc1393cfab2e025206c105989d35ac0d15638923732"
+      },
+      "disposition": "not_applicable",
+      "observed_self_attention_softmax": [
+        "/model/decoder/decoder/layers.0/within_attn/Softmax",
+        "/model/decoder/decoder/layers.0/across_attn/Softmax",
+        "/model/decoder/decoder/layers.1/within_attn/Softmax",
+        "/model/decoder/decoder/layers.1/across_attn/Softmax",
+        "/model/decoder/decoder/layers.2/within_attn/Softmax",
+        "/model/decoder/decoder/layers.2/across_attn/Softmax",
+        "/model/decoder/decoder/layers.3/within_attn/Softmax",
+        "/model/decoder/decoder/layers.3/across_attn/Softmax"
+      ],
+      "reason": "AttentionRewriteUnavailable: ecpose-l-o365 has 0 of the diagnosed decoder self_attn layout with four Softmax nodes. Found ECPose attention branches ['across_attn', 'within_attn'].",
+      "rewrite_receipt": {
+        "artifact": {
+          "path": "outputs/player-model-comparison/ecpose-l-o365/trt16-fp32attn/onnx-rewrite.json",
+          "sha256": "3b2919a3f9c88fba0acc8bb12c7093e7aa9e6239a4f6a6c8481217b519243633"
+        },
+        "base_onnx_sha256": "2bac47a53ab2c4a8be0a0fc1393cfab2e025206c105989d35ac0d15638923732",
+        "condition": "trt16-fp32attn",
+        "disposition": "not_applicable",
+        "failure": {
+          "message": "AttentionRewriteUnavailable: ecpose-l-o365 has 0 of the diagnosed decoder self_attn layout with four Softmax nodes. Found ECPose attention branches ['across_attn', 'within_attn'].",
+          "phase": "onnx_export",
+          "status": "conversion_failed"
+        },
+        "model_id": "ecpose-l-o365",
+        "phase": "onnx_export",
+        "wall_ms": null
+      },
+      "weight_sha256": "091ad72c92ee5de3383176cbae8e8836e9cacf2b9fbec94c11c855fbfe35343c"
+    },
+    "ecpose-x-o365": {
+      "base_onnx": {
+        "path": "outputs/player-model-comparison/ecpose-x-o365/trt16-trace2/engine/model.onnx",
+        "sha256": "597ff7b61c45670508b14aca85f6d469e7b996e6b9cb38c0ca7489d1ce0383ee"
+      },
+      "disposition": "not_applicable",
+      "observed_self_attention_softmax": [
+        "/model/decoder/decoder/layers.0/within_attn/Softmax",
+        "/model/decoder/decoder/layers.0/across_attn/Softmax",
+        "/model/decoder/decoder/layers.1/within_attn/Softmax",
+        "/model/decoder/decoder/layers.1/across_attn/Softmax",
+        "/model/decoder/decoder/layers.2/within_attn/Softmax",
+        "/model/decoder/decoder/layers.2/across_attn/Softmax",
+        "/model/decoder/decoder/layers.3/within_attn/Softmax",
+        "/model/decoder/decoder/layers.3/across_attn/Softmax"
+      ],
+      "reason": "AttentionRewriteUnavailable: ecpose-x-o365 has 0 of the diagnosed decoder self_attn layout with four Softmax nodes. Found ECPose attention branches ['across_attn', 'within_attn'].",
+      "rewrite_receipt": {
+        "artifact": {
+          "path": "outputs/player-model-comparison/ecpose-x-o365/trt16-fp32attn/onnx-rewrite.json",
+          "sha256": "42367a34ed359c0937f21884e31580fccb670d4d9e735e575a3500fe2f8ab257"
+        },
+        "base_onnx_sha256": "597ff7b61c45670508b14aca85f6d469e7b996e6b9cb38c0ca7489d1ce0383ee",
+        "condition": "trt16-fp32attn",
+        "disposition": "not_applicable",
+        "failure": {
+          "message": "AttentionRewriteUnavailable: ecpose-x-o365 has 0 of the diagnosed decoder self_attn layout with four Softmax nodes. Found ECPose attention branches ['across_attn', 'within_attn'].",
+          "phase": "onnx_export",
+          "status": "conversion_failed"
+        },
+        "model_id": "ecpose-x-o365",
+        "phase": "onnx_export",
+        "wall_ms": null
+      },
+      "weight_sha256": "2d79c0fd21831e4f3e6d5ba7bfa10b5e6e8ecb2641180299d7a1bd968b33f4f6"
+    }
+  },
+  "reference_diagnosis": {
+    "path": "knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt-diagnosis-v3.json",
+    "sha256": "dc9c97923890061b7232ba7ac06ad319c0e1f14afc11fc1f42abad715a7a9e00"
+  },
+  "reference_diagnosis_batch_order_matches": {
+    "candidate_rows": 160,
+    "matches_at_iou_0_50": 122,
+    "reference_rows": 158
+  },
+  "schema_version": 1,
+  "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364",
+  "speed_image_batch_sizes": [
+    1,
+    2
+  ],
+  "speed_input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62"
+}

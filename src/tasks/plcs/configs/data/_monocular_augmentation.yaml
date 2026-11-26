@@ -1,0 +1,24 @@
+defaults:
+  - _augmentation
+  - _self_
+
+augmentation:
+  monocular_bbox:
+    enabled: true
+    prob: 1.0
+    scale_range: [1.05, 1.35]
+    shift_xy_frac: 0.08
+    scale_drift_std: 0.02
+    center_drift_frac_std: 0.02
+    drift_decay: 0.85
+    partial_crop_prob: 0.15
+    partial_crop_scale_range: [0.72, 0.92]
+    min_box_size_px: 16.0
+
+  camera_calibration_noise:
+    enabled: true
+    prob: 1.0
+    focal_rel_std: 0.0025
+    principal_point_rel_std: 0.0012
+    rotation_deg_std: 0.08
+    translation_m_std: 0.03

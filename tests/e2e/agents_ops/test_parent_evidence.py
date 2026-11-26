@@ -109,6 +109,9 @@ def test_register_verifies_evidence_while_labelled_listing_lags(
     first = json.loads(p.cli("register").stdout)
     assert first["assignment"] == "active"
     assert first["parent_action_applied"] is True
+    journal = p.root / "private-state/tennis-lab-agents/parent-sessions/evidence-issues"
+    [binding] = journal.glob("*.json")
+    assert json.loads(binding.read_text())["state"] == "bound"
     assert json.loads(p.cli("evidence").stdout)["number"] == 9000
     p.cli("register")
     [assigned] = evidence_comments(p.state())

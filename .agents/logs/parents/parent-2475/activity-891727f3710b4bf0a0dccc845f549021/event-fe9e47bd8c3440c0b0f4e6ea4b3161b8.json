@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "9cb9024cb92c48c0a03ca1cf14dac241",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.merge-continue; artifact=command response; content_sha256=178dd5e7bc24247cd6d6099f2ed3bbf637c2b78384f56a6de03eaeec4d9a04e6; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "failure",
+      "summary": "parent.merge-continue: post-start failure; FileNotFoundError; details in private evidence",
+      "verifies": []
+    },
+    "id": "fe9e47bd8c3440c0b0f4e6ea4b3161b8",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "891727f3710b4bf0a0dccc845f549021",
+      "delegation": null,
+      "issue": null,
+      "parent": 2475,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-25T12:01:53.856036+00:00"
+      },
+      "recorded_at": "2026-11-25T12:01:53.856054+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

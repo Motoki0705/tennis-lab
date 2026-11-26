@@ -1,0 +1,9 @@
+defaults:
+  - monocular_base
+  - _self_
+
+pva_velocity_weight: 0.5
+pva_acceleration_weight: 0.1
+kinematic_velocity_consistency_weight: 0.5
+kinematic_acceleration_consistency_weight: 0.1
+static_contact_weight: 0.25

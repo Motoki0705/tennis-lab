@@ -6,6 +6,7 @@ from typing import Any
 
 import numpy as np
 from numpy.typing import NDArray
+from scipy.optimize import linear_sum_assignment
 
 
 def pick_event_frames(
@@ -31,12 +32,30 @@ def pick_event_frames(
     return np.array(sorted(accepted), dtype=np.int64)
 
 
+def match_event_offsets(
+    predicted: NDArray[np.integer], truth: NDArray[np.integer], tolerance: int
+) -> NDArray[np.int64]:
+    """Signed offsets for the most matches, then the smallest total absolute error."""
+    frames = np.unique(predicted.astype(np.int64))
+    targets = np.unique(truth.astype(np.int64))
+    offsets = frames[:, None] - targets[None, :]
+    distances = np.abs(offsets)
+    # One invalid pair costs more than all possible valid timing errors combined.
+    penalty = min(len(frames), len(targets)) * tolerance + 1
+    rows, columns = linear_sum_assignment(
+        np.where(distances <= tolerance, distances, penalty)
+    )
+    return np.asarray(
+        offsets[rows, columns][distances[rows, columns] <= tolerance], dtype=np.int64
+    )
+
+
 def event_detection_report(
     predicted: list[NDArray[np.integer]],
     truth: list[NDArray[np.integer]],
     tolerance: int,
 ) -> dict[str, Any]:
-    """Greedy nearest matching within ``tolerance`` frames, pooled over rallies.
+    """Optimal one-to-one matching within ``tolerance`` frames, pooled over rallies.
 
     ``segmentation_failure_rate`` is the share of rallies with any missed or
     spurious event, i.e. whose predicted flight segments differ from the truth.
@@ -47,18 +66,10 @@ def event_detection_report(
     for frames, targets in zip(predicted, truth, strict=True):
         predicted_count += len(frames)
         true_count += len(targets)
-        pairs = sorted(
-            (abs(int(p) - int(t)), int(p), int(t)) for p in frames for t in targets
-        )
-        used_p: set[int] = set()
-        used_t: set[int] = set()
-        for distance, p, t in pairs:
-            if distance <= tolerance and p not in used_p and t not in used_t:
-                used_p.add(p)
-                used_t.add(t)
-                offsets.append(p - t)
-        matched += len(used_t)
-        exact += len(used_t) == len(frames) == len(targets)
+        rally_offsets = match_event_offsets(frames, targets, tolerance)
+        offsets.extend(rally_offsets.tolist())
+        matched += len(rally_offsets)
+        exact += len(rally_offsets) == len(frames) == len(targets)
     return {
         "tolerance_frames": tolerance,
         "predicted": predicted_count,

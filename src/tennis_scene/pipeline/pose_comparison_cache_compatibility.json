@@ -1,9 +1,9 @@
 {
-  "baseline_commit": "590c2377810762fdea0d5485d10307e612de51eb",
+  "baseline_commit": "fcb97df3a64e4445efee3d943e419dd5bd928201",
   "files": {
     "tennis_scene/pipeline/source_identity.py": {
-      "before": "3a608ef31c5d0d396e514eef1c23d106e37dfa8b406e3a1467c347958e218bd6",
-      "after": "1c8bc1b4013eff0f8f16c2c39f088031051f4a94d45630bd076dba1376cca767"
+      "before": "1699f8ce7b61446fe14f33f3f223e8f843b4dca70e317d843172aa5bd170a046",
+      "after": "6506b94686955f192c6edf36092cd393e1d229876423f3e7bf90863bc3c00b99"
     },
     "tennis_scene/visualization/pose_comparison/__init__.py": {
       "before": null,
@@ -26,8 +26,8 @@
       "after": "38e4243af2faa48cb859fa040f873cd9bd829e83d7f4463632db8e40ccc1a1da"
     },
     "utils/configuration/inventory.py": {
-      "before": "d1f78faac1ef561bfff0d6fe594ad93c8ea17804b7cd28067d5d43608c13a4eb",
-      "after": "8df03fe5083ee939967c670485d68c0660fb875bbca6cac5c3c1f498c11ea31d"
+      "before": "b7522c16ce54dab728ec3cea161df35e99d6189e9e6203ba8398931ad6ff3da0",
+      "after": "964c270b626c39fc554b85403aa30a6c17beaebd396954ae5fd6a753bdeffc02"
     }
   }
 }

@@ -61,17 +61,33 @@
 
 ## 予約した未見3 clip
 
-#964 r18の保存物を点検した。3 clipとも全画面DINOと部分参照ラベルのファイルがあり、追跡前のViTPoseのポートは全9カメラで欠けていた。video_000/clip_002 と video_002/clip_003 は、固定されたボール参照と3視点の校正がある。計22,939行のViTPoseを補えば新経路で評価できる。r18のvideo_001/clip_003はcam0校正とボール参照の向きが欠測だった。未見の採点にはこの実装と `meiji3.json` の `config` を固定した。採点回数は0。 [予約入力の点検](holdout-inputs.json)
+#964 r18には3 clipとも全画面DINOと人手の部分参照ラベルがあり、追跡前のViTPoseのポートは全9カメラで欠けていた。`video_000/clip_002` と `video_002/clip_003` は固定されたボール参照と3視点の校正があり、`video_001/clip_003` はcam0校正とボール参照の向きが欠測していた。未見の採点には実装 `466ba35cfacc496a9b8b895de2f85fad6a8dd849` と `meiji3.json` の `config` を固定した。 [予約入力の点検](holdout-inputs.json)
 
 `video_001/clip_003` には、9フレームから作った別runのCourt投影点が残っていた。3本の動画SHA-256を照合し、cam0の14投影点から既存の平面pinhole fitで校正を復元した。RMSEは3.13 px、既存の校正上限は11.01 px。cam1・cam2はr18の校正を使った。このRMSEは保存済みhomographyからの投影点に対する値で、Court診断で元の検出点と比較したP95残差は15.84 pxだった。
 
 同じclipのボール注釈から実際に見える点を選び、#932の設定で1,249フレームを採点した。cam0を基準にcam0／cam1／cam2のhalf-turnは `[false, false, true]`、最良仮説の支持は91.35%、次点との差は0.475。親は2026-11-24にこの校正と向きを予約評価に使うことを承認した。 [保存済みCourt投影点](../run-slcs-meiji-court-visual-qc-v1/results.json) [復元した行列とボール判定](holdout-camera-recovery.json)
 
-3 clip・9カメラの38,421検出行を、開発用と同じcheckpoint・FP32・flip test・bbox拡張率で処理する計画を作成した。GPUの本推論は共有training queueから `holdout_pose.py infer` を実行し、固定した `pose-plan.json` のSHA-256を渡す。公開先には `person_detections` とその行を保持した `person_pose_features` のみを保存する。9カメラの読み戻し後に `complete.json` ができる。CPUの実モデル確認では1フレームの3行が入力行と一致した。模擬出力では1カメラを保存後に中断し、続きから9カメラ・38,421行を読み戻した。 [計画のdigestと検証結果](holdout-pose-preparation.json)
+共有GPUロックのACL復旧後、ジョブ `0-8204503069350331066_2026-11-24T05-08-50-649668933Z_150553_i2444-holdout-vitpose.job` が完了した。開発用と同じcheckpoint・FP32・flip test・bbox拡張率で、3 clip・9カメラの38,421検出行にViTPoseを付与した。固定計画および9視点の元動画・検出行・成果物のジョブ由来を照合した。 [固定計画と準備時の検証](holdout-pose-preparation.json)
 
-2026-11-24に共有GPUロックの `gpu.lock`、`gpu.lock.gate`、`gpu.lock.slot-0`、`gpu.lock.slot-1` を再確認した。4ファイルともACLのmaskは `---` で、読み書き権限の確認を通らなかった。queue投入は0件で、予約人物ラベルはr18のSHA照合まで行った。模擬poseと模擬ラベルで、完了前の拒否、9視点と補完校正の読み戻し、3 clipと2 clipの集計、二度目の採点の拒否を確認した。実データの人物採点は0回。
+#2445に渡す入力はこのworktreeの `outputs/i2444/holdout/vitpose/stores/<video>/<clip>/scene.json` で、`person_detections` と全行の `person_pose_features` を持つ。完了記録は `outputs/i2444/holdout/vitpose/complete.json`。SHA-256は `4966ade3bec4fea665a2613f1e9255117de70f1f2a58fa12aa7ccef0ecbe7270`。
 
-復旧後の継続ターンでは、同じworktreeで4ファイルの読み書き権限と親が管理する共有queueの稼働を確認し、固定計画を一度投入する。 `CODEX_THREAD_ID` はその継続セッションのIDを指定する。
+### 人手の部分参照ラベルでの採点
+
+取得したposeを固定設定で一度だけ採点した。IoU 0.5以上で照合したr18の部分参照に基づいて、フレームごとのカメラ間対応を数えた。全ラベルの指標では非選手を含むリンクもFPに数える。選手同士の指標も同じ採点から集計した。
+
+| 対象 | 照合したラベルbox | micro pair F1 | 選手同士のmicro pair F1 | TP／FP／FN（全ラベル） |
+|---|---:|---:|---:|---:|
+| video_000/clip_002 | 14,088／14,088 | 0.7724 | 0.9011 | 6,465／2,394／1,416 |
+| video_001/clip_003（校正補完） | 15,399／15,399 | 0.7671 | 0.8512 | 7,016／1,824／2,436 |
+| video_002/clip_003 | 8,645／8,645 | 0.6808 | 0.8110 | 3,028／1,433／1,406 |
+| **全3 clip** | **38,132／38,132** | **0.7517** | **0.8621** | **16,509／5,651／5,258** |
+| **補完clipを除く2 clip** | **22,733／22,733** | **0.7406** | **0.8703** | **9,493／3,827／2,822** |
+
+採点時のHEADは `590c2377810762fdea0d5485d10307e612de51eb`。CPUの経過時間は61.49秒、終了値0。採点開始記録と結果の入力SHAを照合し、2集計のTP・FP・FNがclip別の和と一致した。 [採点結果と入力SHA](holdout-pair-score.json)
+
+### 実行コマンド
+
+ViTPoseは、同じworktreeで4ファイルの読み書き権限と親が管理する共有queueの稼働を確認して投入した。 `CODEX_THREAD_ID` には投入時のセッションIDを使った。
 
 ```bash
 (
@@ -90,10 +106,47 @@
 )
 ```
 
-共有queueから返る `.job` IDを親CLIに渡す。 `lock-namespace` で失敗した場合は親にその状態を返す。成功の継続指示を受けたターンで、次のCPU採点を実行する。採点器は全入力と復元を確認してから `scoring-attempt.json` を作り、固定設定で全3 clipを一括採点する。 `pair-score.json` に全3 clipと補完clipを除く2 clipの指標を保存する。採点後は設定を固定する。
+親CLIが完了を確認した後、以下のコマンドで採点した。採点器は `vitpose/scoring-attempt.json` を排他的に作成し、`pair-score.json` に両集計を保存した。
 
 ```bash
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-score outputs/i2444/holdout
+```
+
+### 未見評価の再現
+
+`holdout-plan` と `holdout-score` は、採点時の `590c2377810762fdea0d5485d10307e612de51eb` で実行する。この版には両方の入口があり、`src` は固定ソルバー `466ba35cfacc496a9b8b895de2f85fad6a8dd849` と一致する。`_solver_config()` は `src` と `meiji3.json` の設定を照合して採点条件を守る。main取り込み後のHEADでは `src` の差分を検出するため、入力を処理する前に停止する。
+
+採点版を別worktreeに取り出し、共有入力とvenv、出力先を初期化する。 [worktreeの初期化手順](../../../.agents/ops/storage_tier/README.md#worktrees-and-service)
+
+```bash
+main=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+replay_tree="$main/.claude/worktrees/i2444-holdout-590c2377"
+git -C "$main" worktree add --detach "$replay_tree" 590c2377810762fdea0d5485d10307e612de51eb
+```
+
+固定入力は採点時の `pose-plan.json`、`vitpose/complete.json`、`vitpose/stores/` と、計画が指すr18観測アーカイブおよび人手部分参照ラベル。補完校正と各ラベルのSHA-256は公開済みの採点JSONに記録した。初期化後に同じシェルで以下を実行すると、固定ストアを参照して新しい出力先に採点開始記録と結果を保存する。 [採点結果と入力SHA](holdout-pair-score.json)
+
+```bash
+cd "$replay_tree"
+run=knowledge/runs/run-multiview-pose-link-recall-20261124
+original="/mnt/wsl/tennis-data$main/.worktree-outputs/parent-1739-issue-2444-primary/i2444/holdout"
+replay_dir=$(mktemp -d outputs/i2444-holdout-replay.XXXXXXXX)
+mkdir "$replay_dir/vitpose"
+cp "$original/pose-plan.json" "$replay_dir/pose-plan.json"
+cp "$original/vitpose/complete.json" "$replay_dir/vitpose/complete.json"
+ln -s "$original/vitpose/stores" "$replay_dir/vitpose/stores"
+printf '%s  %s\n' \
+  6043c92a2f0cb58a5e3583bb6230e75d40e5695de9e40549f47e5d4ca8d33be9 "$replay_dir/pose-plan.json" \
+  4966ade3bec4fea665a2613f1e9255117de70f1f2a58fa12aa7ccef0ecbe7270 "$replay_dir/vitpose/complete.json" |
+  sha256sum -c - &&
+  bash "$run/reproduce.sh" holdout-score "$replay_dir"
+```
+
+計画を生成し直す場合も、同じ採点版と採点時のアーカイブ・データパスを使う。生成結果を保存済み計画と照合する。
+
+```bash
+bash "$run/reproduce.sh" holdout-plan "$replay_dir/plan-check" &&
+  cmp "$original/pose-plan.json" "$replay_dir/plan-check/pose-plan.json"
 ```
 
 ## 再現
@@ -106,7 +159,6 @@ bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh meiji3
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh meiji4
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-inputs
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-recovery outputs/i2444/holdout
-bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-plan outputs/i2444/holdout
 ```
 
 公開するのは再現コードと指標・digest。元映像と骨格配列はローカルに保存する。

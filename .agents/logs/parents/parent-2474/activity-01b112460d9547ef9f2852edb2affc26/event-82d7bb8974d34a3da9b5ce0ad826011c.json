@@ -1,0 +1,175 @@
+{
+  "record": {
+    "data": {
+      "action_id": "de3a5b251f4440edb03db961031c9df5",
+      "auxiliary": {
+        "effective_model": {
+          "status": "observed",
+          "value": {
+            "effort": {
+              "status": "observed",
+              "value": "max"
+            },
+            "model": {
+              "status": "observed",
+              "value": "gpt-6.2-sol"
+            },
+            "source": {
+              "kind": "unavailable",
+              "reason": "capture_source=runner.result; artifact=result.json; content_sha256=99ca0ac736fbc3d0f8479137ac1aaf316375f0e5472ab3a0ee1fe443a3fc03c5; private evidence"
+            }
+          }
+        },
+        "elapsed_seconds": {
+          "status": "observed",
+          "value": {
+            "source": {
+              "kind": "unavailable",
+              "reason": "capture_source=runner.result; artifact=result.json; content_sha256=99ca0ac736fbc3d0f8479137ac1aaf316375f0e5472ab3a0ee1fe443a3fc03c5; private evidence"
+            },
+            "value": 668.6799740791321
+          }
+        },
+        "selected_model": {
+          "status": "observed",
+          "value": {
+            "effort": "max",
+            "model": "gpt-6.2-sol",
+            "source": {
+              "kind": "unavailable",
+              "reason": "capture_source=runner.result; artifact=contract.settings (selection_sources retained in private snapshot); content_sha256=693587947068a702d60d11530c5bbcf44ecc10424bd268e8c309e0a2c5ef31da; private evidence"
+            },
+            "specified_by": "settings"
+          }
+        },
+        "usage": {
+          "status": "observed",
+          "value": {
+            "basis": "turn",
+            "cached_input_tokens": {
+              "status": "observed",
+              "value": 8301568
+            },
+            "counter_key": "0d3efb8f345040068205a98a3043414e",
+            "input_tokens": {
+              "status": "observed",
+              "value": 8537656
+            },
+            "output_tokens": {
+              "status": "observed",
+              "value": 64251
+            },
+            "source": {
+              "kind": "unavailable",
+              "reason": "capture_source=runner.result; artifact=result.json; content_sha256=99ca0ac736fbc3d0f8479137ac1aaf316375f0e5472ab3a0ee1fe443a3fc03c5; private evidence"
+            },
+            "total_tokens": {
+              "reason": "total_tokens not reported",
+              "status": "unavailable"
+            }
+          }
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.run-worker; artifact=result.json; content_sha256=99ca0ac736fbc3d0f8479137ac1aaf316375f0e5472ab3a0ee1fe443a3fc03c5; private evidence"
+        },
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.worker-context; artifact=saved preflight comparison inputs; content_sha256=26fb4a31b4841450a1c2224afa8226878f6a1791d91b2d04d32bca948a2a9736; private evidence"
+        }
+      ],
+      "final_report": {
+        "status": "observed",
+        "value": {
+          "kind": "unavailable",
+          "reason": "capture_source=runner.result; artifact=final.md; content_sha256=1301be02e63f2e45ad2c8e9a2cbe4586e0294c85e917773f742560e67956cb81; private evidence"
+        }
+      },
+      "observation": {
+        "execution": {
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=runner.result; artifact=result.json; content_sha256=99ca0ac736fbc3d0f8479137ac1aaf316375f0e5472ab3a0ee1fe443a3fc03c5; private evidence"
+            }
+          ],
+          "state": "ended"
+        },
+        "final": {
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=runner.result; artifact=final.md; content_sha256=1301be02e63f2e45ad2c8e9a2cbe4586e0294c85e917773f742560e67956cb81; private evidence"
+            }
+          ],
+          "state": "present"
+        },
+        "kind": "worker_turn",
+        "publication": {
+          "error": null,
+          "evidence": [
+            {
+              "kind": "unavailable",
+              "reason": "capture_source=runner.result; artifact=result.json; content_sha256=99ca0ac736fbc3d0f8479137ac1aaf316375f0e5472ab3a0ee1fe443a3fc03c5; private evidence"
+            }
+          ],
+          "main_revision": null,
+          "pr_head": null,
+          "pr_url": null,
+          "stage": null,
+          "state": "unknown"
+        },
+        "version": 1
+      },
+      "observer": "machine",
+      "previous_result_id": "7f0f00d0ac6043e1ab067cd72b5ec593",
+      "repeat": null,
+      "status": "success",
+      "summary": "runner.result: completed; turn_end_reason=completed; exit_code=0; task acceptance unconfirmed",
+      "verifies": []
+    },
+    "id": "82d7bb8974d34a3da9b5ce0ad826011c",
+    "kind": "result",
+    "schema_version": 2,
+    "scope": {
+      "activity_key": "01b112460d9547ef9f2852edb2affc26",
+      "delegation": {
+        "key": "d-ba58315bda704b3eacfa942183071b8f",
+        "turn": 2
+      },
+      "issue": 2432,
+      "parent": 2474,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "status": "observed",
+        "value": "2026-11-24T07:48:54.174230+00:00"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-24T07:48:54.182103+00:00"
+      },
+      "recorded_at": "2026-11-24T07:48:54.182110+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
