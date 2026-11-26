@@ -17,13 +17,19 @@ from src.tasks.base.generate_dataset import PHYSICAL_COURT_TARGET_FRAME_ID
 from src.tasks.base.visualization.review.court import court_edges, court_keypoints
 from src.tasks.base.visualization.review.payload import ScenePayload, pack_entity_frames
 from src.tasks.slcs.configuration import SLCS_DATA_SCHEMA, SLCSDataRuntimeConfig
-from src.tasks.slcs.data.annotation import SLCSDataIndex, slcs_annotation_dir
+from src.tasks.slcs.data.annotation import (
+    SLCS_ANNOTATION_FILENAME,
+    SLCSDataIndex,
+    slcs_annotation_dir,
+)
 from src.tasks.slcs.data.dataset import SLCSDataConfig, load_clip_arrays
 from src.tennis_scene.generate_dataset.manifest import (
     ClipManifest,
     DatasetClipRecord,
     validate_id_component,
 )
+from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
+from src.tennis_scene.pipeline.storage.scene_pointers import stable_scene_pointers
 from src.utils.configuration import PathResolver, PathRole, RuntimePathRoots
 from src.utils.paths import PROJECT_ROOT
 from src.utils.schema.court import COURT_COORD_SCALE_XYZ
@@ -130,14 +136,13 @@ class SLCSDatasetReviewService:
     def _revision(self, record: DatasetClipRecord) -> str:
         clip_dir = self._contained(self.root / record.path)
         annotation = slcs_annotation_dir(clip_dir)
-        from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
-        marker = json.loads((annotation / "annotation.json").read_text())
-        scene_path = annotation_scene_path(annotation, marker)
-        digest = hashlib.sha256()
+        with stable_scene_pointers(annotation):
+            marker = self._contained(annotation / SLCS_ANNOTATION_FILENAME).read_bytes()
+            scene_path = annotation_scene_path(annotation, json.loads(marker))
+        digest = hashlib.sha256(marker)
         for path in (
             self.root / "dataset.json",
             clip_dir / "clip.json",
-            annotation / "annotation.json",
             scene_path,
             scene_path.with_suffix(".metadata.json"),
         ):

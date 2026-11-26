@@ -38,6 +38,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelSpec,
 )
 from src.tennis_scene.pipeline.model_assets import file_identity
+from src.tennis_scene.pipeline.source_identity import source_commit
 from src.tennis_scene.schema import SceneResult
 
 EVENT_DETECTION = "event_detection"
@@ -98,8 +99,8 @@ class EventDetectionConfig:
         self.require_checkpoint()
         return RefinerPredictor.from_checkpoint(self.checkpoint, device=self.device)
 
-    def settings(self, code_commit: str) -> dict[str, Any]:
-        settings: dict[str, Any] = {"method": self.method, "code_commit": code_commit}
+    def settings(self) -> dict[str, Any]:
+        settings: dict[str, Any] = {"method": self.method}
         if self.method == "rule":
             settings["thresholds"] = asdict(self.thresholds)
         elif self.method == "refiner":
@@ -157,7 +158,7 @@ class EventDetectionModule(InferenceComponent[EventDetectionInput, EventDetectio
         {"scene": InputPort("scene_result", 2)}, "scene_result", 3,
     )
 
-    def __init__(self, config: EventDetectionConfig, clip_id: str, *, code_commit: str) -> None:
+    def __init__(self, config: EventDetectionConfig, clip_id: str, *, code_commit: str | None = None) -> None:
         self.config, self.clip_id, self.code_commit = config, clip_id, code_commit
         self._specs = config.model_specs()
         self._assets: dict[str, dict[str, str]] = {}
@@ -171,7 +172,7 @@ class EventDetectionModule(InferenceComponent[EventDetectionInput, EventDetectio
         return self._specs
 
     def cache_identity(self) -> dict[str, Any]:
-        settings = self.config.settings(self.code_commit)
+        settings = self.config.settings()
         if self.config.method == "annotation":
             settings.update(annotation_digests(self._assets))
         return settings
@@ -225,6 +226,7 @@ class EventDetectionModule(InferenceComponent[EventDetectionInput, EventDetectio
             coverage = np.ones(scene.num_frames, dtype=np.bool_)
             columns = {"ball_event_score": np.asarray([event["score"] for event in events], dtype=np.float32)}
             evidence = {"events": events}
+        provenance["code_commit"] = source_commit() if self.code_commit is None else self.code_commit
         values = {item.name: getattr(scene, item.name) for item in fields(SceneResult)}
         values.update(
             columns,

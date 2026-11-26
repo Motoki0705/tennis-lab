@@ -1,6 +1,6 @@
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-11-25
+更新日: 2026-11-26
 
 研究トピックごとの**現在の判断**（採用中の構成とその根拠、未解決の課題、次の実験）をまとめた入口です。数値・条件・考察の正本は各[ノード](nodes/)、再現手順は[runs](runs/)にあります。2026-11-05までの日付順の記録は、[凍結アーカイブ](history/summary-2026-11-05.md)に原文のまま残しています。
 
@@ -26,7 +26,7 @@
 - **動画一括推論の過去GPU証拠**: C4の[共有court_side・明示fp16・ダブルス2](nodes/tennis_scene/000064-run-i1752-shared-fp16-20261118.md)で000/037/027の全114nodeが1計画で完了し、GVHMR配置・scene公開まで通りました。各side2 identity、C3管理7resourceは各1load/unload。CPU AFLinkの都度loadは別に記録しています。[同じfp16での単一027比較](nodes/tennis_scene/000065-run-i1752-shared-fp16-reference-20261118.md)は最終scene29配列・metadata・全離散値がexactですが、Ball補助evidence9配列が従来許容を超え、全component一致は未達です。原因と採否は親レビューに残します。69clipは未実行で、25.27〜25.88時間はballありの短い3clipからの条件付き投影で、現行player-only本番の時間ではありません。C1同期・初回compile等を含み、共有side・精度・profilerの差を単独の高速化率にはしません。
 
 - **TensorRTの人物モデル単体比較**　ViTPose-HはFP16が許容差内で中央値54.423→8.468 ms。INT8・FP8には最大5 pxの基準を超える関節があり、E2E候補はFP16です。HMR2はFP8も単体精度の基準を満たし、中央値5.399 msでした。CLIP-ReIDの新INT8・FP8は、同じ2クリップから設定選定用12 cropを除いた224件で、cosine P05が0.999602／0.995416、FP32とのID一致が両方224/224でした。下流の時系列・人物対応と速度はE2Eで確認します。[固定入力の全条件比較](nodes/tennis_scene/000077-run-i2303-vit-tensorrt.md)
-- **TensorRT FP16の全クリップ評価**　固定court・ボール無効で `meiji_4cam/video_000` の69件を一括評価し、55件が生成されました。14件は人物対応またはコート向きで停止しました。再構築は12時間10分58秒、Peak VRAM 1.76 GiB、Peak RSS 6.16 GiBでした。GPU遊休時のCPU処理ではプレーヤーの三角測量が最多でした。採否は判断待ちです。 [全件評価と診断](nodes/tennis_scene/000083-run-i2363-trt-player-video.md)
+- **TensorRT FP16の全クリップ評価**　固定court・ボール無効で `meiji_4cam/video_000` の69件中55件を生成しました。人物対応またはコート向きで停止した14件では、次点groupに実選手が含まれる視点間対応や、検出・追跡に残った選手が選別で外れる例があり、確認した検出行を除去した8件では停止が続きました。再構築は12時間10分58秒、Peak VRAM 1.76 GiB、Peak RSS 6.16 GiB。GPU遊休時のCPU処理では選手の三角測量が最多でした。採否は判断待ちです。 [全件評価](nodes/tennis_scene/000083-run-i2363-trt-player-video.md) · [停止14件の観測診断](nodes/tennis_scene/000101-run-meiji-stopped-clip-observations.md)
 - **人物モデルの共通速度基準**　固定6 clipで現行DINO、ViTPose-Hのflipあり・なし、HMR2特徴＋GVHMRのPT16・TRT16を再計測し、全22条件で計時が完了しました。parityは未判定です。検出・姿勢の比較図には疑似GTによる精度と実測速度を使います。PT32の暫定速度と初回parityは初回記録を参照してください。 [再計測の基準値](nodes/tennis_scene/000086-run-person-model-speed-low-precision.md) · [初回記録](nodes/tennis_scene/000085-run-person-model-speed-baseline.md)
 - **身体復元の採否**　共通ハーネスの実測で速度優位を確認できなかったため、FastHMRへの置き換えを見送りました。標準recipeはGVHMRを使い、`recipe=fasthmr` で別経路を選べます。 [速度と採否の記録](nodes/tennis_scene/000095-run-fasthmr-camerahmr-pt16-speed.md)
 - **2D姿勢の置換候補**　固定疑似BBoxではRTMPose-X TRT16が、ViTPose-H flipありTRT16に対しbatch 1のwall P50を28.7%、P95を10.1%、NVMLピークを60.2%削減し、平均OKSは0.95ポイント低下しました。実DINO BBoxと3D再構成で下流品質を確認する優先候補です。採用にはconfidenceの較正と重み・engineの利用条件の確認が残ります。 [固定疑似GTと実測の比較](nodes/tennis_scene/000091-run-meiji-topdown-pose-comparison.md)
@@ -62,9 +62,11 @@
 ## 人物（player_detection・person_tracking・player_association）
 
 - **現行**: 2D検出はCOCO事前学習のDINO（personクラス、全画面、閾値.30）で全人物の候補を出し、選手かどうかはコート座標での滞在で判定します（#964のユーザー判断）。追跡はStrongSORT++＋pose/CLIPで、重複boxの統合は既定でoffです（[run 11](nodes/person_tracking/000013-run-i964-default-merge-r11-20260930.md)）。camera間の対応は、box下端の足元距離とCLIP-ReIDの外観をMILPで統合し、無ラベルclipで再較正した候補Aを既定にしました（[run 14](nodes/player_association/000005-run-i964-recalibration-fit-r14-20261001.md)、[run 16](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)）。
+- **選手選別**　全試合形式でダブルス幅・滞在25%を既定にしました。meiji_4cam全69件の保存観測を使った再生で、3D選手フレームは13,218件増え、停止は14件から11件に減りました。Meiji 3cam開発用4件の選別数は同じでした。4カメラの誤選別率は未測定です。[選別の比較](nodes/person_tracking/000014-run-i2440-player-selection.md)
 - **根拠と限界**: 追跡方式は指標ごとに優位が入れ替わり、一律の勝者はありません（[run 10](nodes/person_tracking/000012-run-i964-tracker-hybrids-r10-20260930.md)）。予約した未見3clipの一回採点はpair F1 .720（3clip中2clipで決定）で、side欠測のclipも母数に残しています。旧追跡でのMeiji 4clip評価（[pair F1 0.997](nodes/player_association/000002-run-i933-association-meiji.md)）は、旧検出・旧追跡に限った結果です。AFLinkの重みは、利用条件が一次資料で未確認のまま使っています（[LICENSES.md](../LICENSES.md)）。
 - **検出・統合姿勢の置換候補**　固定Meiji 4camの6 clipでRF-DETR-L TRT16はRecall@0.50が96.81%、計時P50が26.43 ms/画像でした。DINO TRT16は96.67%、94.79 ms/画像です。ECDet-X O365 PT16はRecall@0.50/0.75が97.97%/46.62%、計時P50は50.75 ms/画像でした。検出候補の実BBoxを使ったViTPose-Hと下流品質の確認が残ります。ECPoseは高速で、欠測込み平均OKSは大きく低下しました。 [比較と採用時の制約](nodes/player_detection/000011-run-meiji-player-model-comparison.md)
 - **次の実験**: clip_000の全pipelineでの品質確認と、ダブルスの実データでの検証。#937で学習した選手検出器は、明示的なcheckpoint指定のときだけ使います。
+- **後続の方針**　既存経路での再構成は #2460 のパイロットまでとし、#2445 の3D軌跡による選手選別は新経路の #2470 に統合します。[担当親の方針](https://github.com/Motoki0705/tennis-lab/issues/1739#issuecomment-7184189944)
 
 ## コートside（court_side）
 

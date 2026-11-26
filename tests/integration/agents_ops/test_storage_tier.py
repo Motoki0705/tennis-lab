@@ -2151,8 +2151,8 @@ def test_blocked_writer_is_released_and_lease_break_is_audited(
 ) -> None:
     unit = lab.unit()
     alias = lab.config.repo / "outside-lease-alias.bin"
-    if when == "after-unlink-check":
-        os.link(lab.config.repo / unit.path / "a.bin", alias)
+    # Both opens must reach the same inode across the claim and unlink.
+    os.link(lab.config.repo / unit.path / "a.bin", alias)
     lab.mirror(unit)
     removal = importlib.import_module("storage_tier.removal")
     original_hash, original_unlink = removal.hashlib.file_digest, os.unlink
@@ -2173,10 +2173,10 @@ os.close(fd)
 print('written', flush=True)
 """
 
-    def start_writer(target: Path) -> None:
+    def start_writer() -> None:
         nonlocal child
         child = subprocess.Popen(
-            [sys.executable, "-c", script, str(target)],
+            [sys.executable, "-c", script, str(alias)],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
@@ -2193,7 +2193,7 @@ print('written', flush=True)
             and when == "before-unlink"
             and opened.parent.name.startswith(".storage-tier-retained-")
         ):
-            start_writer(opened)
+            start_writer()
         return result
 
     def at_unlink(path: Any, *args: Any, **kwargs: Any) -> Any:
@@ -2201,7 +2201,7 @@ print('written', flush=True)
         if child is None and when == "after-final-check" and fd is not None:
             retained = Path(os.readlink(f"/proc/self/fd/{fd}"))
             if retained.name.startswith(".storage-tier-retained-"):
-                start_writer(retained / path)
+                start_writer()
         return original_unlink(path, *args, **kwargs)
 
     def after_post_unlink_check(path: Path, value: dict[str, Any]) -> None:
@@ -2212,7 +2212,7 @@ print('written', flush=True)
             and value.get("event") == "removed"
             and value.get("entry") == "a.bin"
         ):
-            start_writer(alias)
+            start_writer()
 
     monkeypatch.setattr(removal.hashlib, "file_digest", after_hash)
     monkeypatch.setattr(os, "unlink", at_unlink)
@@ -2230,6 +2230,7 @@ print('written', flush=True)
                     child.kill()
                     child.wait(timeout=10)
     assert child is not None and code == 1, report
+    assert lab.filesystem.read_bytes(alias) == b"pear!\n"
     interrupted = next(r for r in lab.records() if r["event"] == "deletion_interrupted")
     journal = [
         json.loads(row)
