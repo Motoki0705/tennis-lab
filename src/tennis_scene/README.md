@@ -47,6 +47,9 @@ componentのIO宣言、入力組立、runner、clip store、保存形式とexecu
 [pipeline/README.md](pipeline/README.md)です。
 storeの採用済みartifactは、推論もstoreへの書き込みもせずにHTML galleryで確認できます。
 
+全人物の3D再構成を試すCPU入口は、[フレーム別の候補生成](multiview_pose/README.md)と
+[時間追跡・選手選別](multiview_tracking/README.md)にあります。
+
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.visualize_component_store --store <clip>/annotations/tennis_scene --output <dir> [--videos]
 ```
@@ -231,6 +234,45 @@ camera IDと動画を明示的に対応付け、sceneと動画の解像度・FPS
 SceneResult v2・v3の有効性maskを既存rendererへそのまま渡します。
 README用GIFのCPU生成コマンド・入力hash・目視確認結果は
 [LOESS導入後の再生成・比較記録](../../knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照してください。
+
+## フレーム別の3D人物比較ページ
+
+`pose_comparison` は、meiji_4cam の採用中の `SceneResult` と
+[`frame_pose_candidates` v1](multiview_pose/README.md) を、同じ元フレームの4視点とコート上面図に並べます。
+選定は i2363 の初回 `progress.json` を使います。停止14本と、成功55本をID順に並べて seed 42 で抽出した
+`clip_009`・`clip_052` が対象です。候補は割当改善後に再計測した `refine/timing/meiji4` を使います。
+[再計測と成果物の版](../../knowledge/runs/run-multiview-pose-link-recall-20261124/README.md#meiji_4cam全69-clip)
+
+リポジトリのrootで、保存済みの入力を指定して実行します。CPUで描画・圧縮します。
+
+```bash
+.venv/bin/python -m src.tennis_scene.visualization.pose_comparison \
+  --dataset "$I2363_RUN/inputs/dataset" \
+  --progress "$I2363_RUN/all/progress/d1df39596d4f47f1896cb535191e7040/progress.json" \
+  --candidates "$POSE_OUTPUT/refine/timing/meiji4" \
+  --pose-record knowledge/runs/run-multiview-pose-link-recall-20261124/meiji4.json \
+  --output outputs/pose-comparison
+```
+
+`I2363_RUN` は保存済みの `i2363-all-v1`、`POSE_OUTPUT` は #2444 の `outputs/i2444` です。
+`index.html` を開くと、同じディレクトリ内のMP4とポスターを閲覧できます。
+`manifest.json` にclipの選定、表示した `scene_assembly`、対応する候補artifact・版、動画SHA-256、元フレームでの指標を保存します。
+`--clip clip_012` などを指定すると、選定済みのclipだけを描画できます。複数指定も可能です。
+
+旧経路は各clipの `annotations/tennis_scene/scene.json` で採用したSceneResult v2・v3の系譜をたどり、
+exportと描画に使う `scene_assembly`・カメラの版を照合します。
+3D関節がなければ残存する2Dトラックと初回の停止理由を表示します。
+採用中のシーンに有効なボール3Dがある場合は、カメラ行列を照合して同じ球を両側に表示します。
+採用先が変わったら、同じコマンドの `--output` に新しいディレクトリを指定するとその時点の版で作り直せます。
+
+動画は1888×488のH.264、CRF 21、元の3フレームごと（約19.98 fps）で、clipの時間軸全体を表示します。
+容量は1動画15 MB、ページ全体200 MBが上限です。上限を超える入力では `--crf` と `--frame-step` で調整できます。
+コート上面の点は有効な腰関節の中心を使い、腰が欠けた骨格は肩、最後に残存関節の中心を使います。
+未使用視点への再投影は、採用した人物IDに対応する実2D関節があり、正深度に投影できる有効3D関節のうち、
+その視点が復元のinlierに含まれなかった組を集計します。#2470 の `multiview_scene report` と同じ定義です。
+旧経路は採用シーンの2D観測と骨格のinlier mask、新経路は候補の `reprojection_valid` と `inlier_mask` を使います。
+元解像度での残差の中央値・P95と、分母になる関節・視点の組数を表示します。採点対象が0件の場合は理由を表示します。
+段階2の表示は `stages` に同じclip IDで動画と指標を加えられます。
 
 ## Blenderアニメーション
 
