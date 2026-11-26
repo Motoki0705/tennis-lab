@@ -72,10 +72,16 @@ class TemporalTransformer(nn.Module):
     def trunk(
         self, features: Tensor, padding: Tensor, time_features: Tensor | None = None
     ) -> Tensor:
-        token = self.input_dropout(self.input(features))
+        token = self.embed(features)
         if time_features is not None:
             token = token + time_features[:, None]
-        length = features.shape[1]
+        return self.trunk_from_tokens(token, padding)
+
+    def embed(self, features: Tensor) -> Tensor:
+        return self.input_dropout(self.input(features))
+
+    def trunk_from_tokens(self, token: Tensor, padding: Tensor) -> Tensor:
+        length = token.shape[1]
         if length > MAX_FRAMES:
             raise ValueError(f"Sequences are limited to {MAX_FRAMES} frames")
         keep = (~padding)[:, None, :].expand(-1, length, -1)

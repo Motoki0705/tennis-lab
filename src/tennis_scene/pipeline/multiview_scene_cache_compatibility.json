@@ -79,7 +79,7 @@
     },
     "utils/configuration/inventory.py": {
       "before": "aa81f9f01b4254e26706f367b69e0e9c7c88cd5c7b216cb411a0c854608c3933",
-      "after": "4417b30cb65f023b56f251007306033e1ae1fc6cb2847f40a0d077e4679ccaa8"
+      "after": "95b4cd05267ed635be8af4d581eb9d38cf7efc69a0cbb300fce72fccca8ba0e4"
     }
   }
 }
