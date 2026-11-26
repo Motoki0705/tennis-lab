@@ -262,13 +262,20 @@ def pose_comparison_sources() -> tuple[dict[str, str], dict[str, str]]:
 
     manifest = Path(source_identity.__file__).with_name("pose_comparison_cache_compatibility.json")
     files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    event_manifest = manifest.with_name("event_detection_cache_compatibility.json")
+    events = json.loads(event_manifest.read_text(encoding="utf-8"))["files"]
     live = source_identity.source_digests(PROJECT_ROOT / "src")
-    # The comparison manifest records the combined sources before the event-cache change.
-    current = source_identity._compatible_patch(live, "event_detection_cache_compatibility.json")
+    # Reproduce the reviewed main revisions while retaining the other checkout sources.
+    reviewed = live | {path: pair["after"] for path, pair in files.items()}
+    reviewed.update({path: pair["after"] for path, pair in events.items()})
+    current = source_identity._compatible_patch(reviewed, event_manifest.name)
     assert {path: current.get(path) for path in files} == {path: pair["after"] for path, pair in files.items()}
-    assert source_identity.compatible_source_digests(live, tensorrt=True) == source_identity.compatible_source_digests(
+    assert source_identity.compatible_source_digests(reviewed, tensorrt=True) == source_identity.compatible_source_digests(
         current, tensorrt=True,
     )
+    publisher = "tennis_scene/pipeline/dataset_publication.py"
+    edited = reviewed | {publisher: live[publisher]}
+    assert source_identity.compatible_source_digests(edited, tensorrt=True) == edited
     tracking = {path: digest for path, digest in current.items() if path not in files}
     tracking.update({path: pair["before"] for path, pair in files.items() if pair["before"] is not None})
     return current, tracking
@@ -289,6 +296,9 @@ def test_exact_pose_comparison_patch_preserves_the_standard_recipe_identity(
     ):
         changed = {**current, path: "0" * 64}
         assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
+    inventory = "utils/configuration/inventory.py"
+    edited = current | {inventory: dual_sha256(PROJECT_ROOT / "src" / inventory)}
+    assert source_identity.compatible_source_digests(edited, tensorrt=True) == edited
 
 
 def test_exact_multiview_pose_patch_preserves_the_standard_recipe_identity() -> None:
