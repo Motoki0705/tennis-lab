@@ -7,6 +7,7 @@ from hashlib import sha256
 from pathlib import Path
 
 import numpy as np
+import pytest
 
 from src.tennis_scene.ball_events.meiji_benchmark import (
     CLIP_IDS,
@@ -26,6 +27,36 @@ from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec
 from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.schema import SceneResult
+from src.tennis_scene.scripts import build_meiji_event_benchmark
+from src.utils.configuration import PathContractError
+
+
+@pytest.mark.parametrize(
+    ("invalid_input", "message"),
+    [("base", r"meiji_event_benchmark\.base"), ("annotations", r"annotations must be an existing directory")],
+)
+def test_cli_rejects_invalid_input_directories_before_replay(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid_input: str, message: str,
+) -> None:
+    base = tmp_path / "base"
+    annotations = tmp_path / "annotations"
+    output = tmp_path / "output"
+    if invalid_input != "base":
+        base.mkdir()
+    if invalid_input == "annotations":
+        annotations.touch()
+    else:
+        annotations.mkdir()
+
+    def unexpected_replay(*_args: Path) -> None:
+        pytest.fail("Invalid input reached the benchmark builder")
+
+    monkeypatch.setattr(build_meiji_event_benchmark, "build_meiji_benchmark", unexpected_replay)
+    with pytest.raises(PathContractError, match=message):
+        build_meiji_event_benchmark.main([
+            "--base", str(base), "--annotations", str(annotations), "--output", str(output),
+        ])
+    assert not output.exists()
 
 
 def test_stratification_partitions_clips_and_pins_scoring_set() -> None:
