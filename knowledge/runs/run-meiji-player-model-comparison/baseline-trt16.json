@@ -1,0 +1,160 @@
+{
+  "dino-swin-l": {
+    "condition": {
+      "backend": "trt16",
+      "benchmark_id": "meiji_4cam/multiview-player-evaluation-v1",
+      "has_pose": false,
+      "manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+      "model_id": "dino-swin-l",
+      "schema": "player_model_predictions_v1"
+    },
+    "metrics": {
+      "detection": {
+        "matched_at_iou_0_50": 25401,
+        "recall_by_iou": {
+          "0.50": 0.9666996498706043,
+          "0.75": 0.4706576343431268
+        },
+        "references": 26276,
+        "unmatched_predictions": 24266
+      },
+      "detection_by_size": {
+        "large": {
+          "recall_by_iou": {
+            "0.50": 0.9914874551971327,
+            "0.75": 0.6563620071684588
+          },
+          "references": 4464
+        },
+        "medium": {
+          "recall_by_iou": {
+            "0.50": 0.9768922423956614,
+            "0.75": 0.45932563074746524
+          },
+          "references": 8482
+        },
+        "small": {
+          "recall_by_iou": {
+            "0.50": 0.9519129782445611,
+            "0.75": 0.4156789197299325
+          },
+          "references": 13330
+        }
+      },
+      "images": 6844
+    },
+    "outputs": {
+      "accuracy.json": {
+        "path": "outputs/player-model-comparison/dino-swin-l/trt16/accuracy.json",
+        "sha256": "472a133341e31fd50581cfd58d333093004dbd2fa36e2d0e0cc6736f863fc99f"
+      },
+      "predictions.jsonl": {
+        "path": "outputs/player-model-comparison/dino-swin-l/trt16/predictions.jsonl",
+        "sha256": "71b43453c7c49d1372197369c7274aa94da13c82a8344e5e74fb0f387cff992d"
+      }
+    }
+  },
+  "dino-swin-l-vitpose-h": {
+    "condition": {
+      "backend": "trt16",
+      "benchmark_id": "meiji_4cam/multiview-player-evaluation-v1",
+      "has_pose": true,
+      "manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+      "model_id": "dino-swin-l-vitpose-h",
+      "schema": "player_model_predictions_v1"
+    },
+    "metrics": {
+      "detection": {
+        "matched_at_iou_0_50": 25401,
+        "recall_by_iou": {
+          "0.50": 0.9666996498706043,
+          "0.75": 0.4706576343431268
+        },
+        "references": 26276,
+        "unmatched_predictions": 24266
+      },
+      "detection_by_size": {
+        "large": {
+          "recall_by_iou": {
+            "0.50": 0.9914874551971327,
+            "0.75": 0.6563620071684588
+          },
+          "references": 4464
+        },
+        "medium": {
+          "recall_by_iou": {
+            "0.50": 0.9768922423956614,
+            "0.75": 0.45932563074746524
+          },
+          "references": 8482
+        },
+        "small": {
+          "recall_by_iou": {
+            "0.50": 0.9519129782445611,
+            "0.75": 0.4156789197299325
+          },
+          "references": 13330
+        }
+      },
+      "images": 6844,
+      "pose": {
+        "matched_only": {
+          "eligible_joints": 429996,
+          "oks": {
+            "count": 25344,
+            "mean": 0.7771780300850577,
+            "median": 0.7941792360922252,
+            "p95": 0.9445360719780677
+          },
+          "pck": {
+            "0.1": 0.79353528870036,
+            "0.2": 0.965413631754714
+          },
+          "pixel_error_px": {
+            "count": 429996,
+            "mean": 4.503171572535353,
+            "median": 3.406016705422964,
+            "p95": 11.7988038337094
+          },
+          "pose_references": 25344,
+          "pose_references_with_prediction": 25344,
+          "predicted_joints": 429996,
+          "valid_joint_fraction": 1.0
+        },
+        "with_detection_coverage": {
+          "eligible_joints": 437714,
+          "oks": {
+            "count": 25811,
+            "mean": 0.7631165005027198,
+            "median": 0.7917550901065785,
+            "p95": 0.94404421259578
+          },
+          "pck": {
+            "0.1": 0.7795432634094409,
+            "0.2": 0.9483909584797379
+          },
+          "pixel_error_px": {
+            "count": 429996,
+            "mean": 4.503171572535353,
+            "median": 3.406016705422964,
+            "p95": 11.7988038337094
+          },
+          "pose_references": 25811,
+          "pose_references_with_prediction": 25344,
+          "predicted_joints": 429996,
+          "valid_joint_fraction": 0.9823674819631083
+        }
+      }
+    },
+    "outputs": {
+      "accuracy.json": {
+        "path": "outputs/player-model-comparison/dino-swin-l-vitpose-h/trt16/accuracy.json",
+        "sha256": "45f43e3a7ffc35e35b618eb7da5574fcb86954c3a9ca8d50e5f12dfcdb1ca351"
+      },
+      "predictions.jsonl": {
+        "path": "outputs/player-model-comparison/dino-swin-l-vitpose-h/trt16/predictions.jsonl",
+        "sha256": "3b8f03e27c7a9f2f15327ec4788841b65d4eb977a58cdb4a12ab3f0034cb4dae"
+      }
+    }
+  }
+}

@@ -16,6 +16,7 @@ from contextlib import ExitStack, contextmanager
 from pathlib import Path
 from typing import Any
 
+from lib.checkout_lock import CheckoutRefused, checkout_wait
 from lib.ops_review.progression import (
     KNOWLEDGE_MERGE,
     Engine,
@@ -470,14 +471,16 @@ def wait(path: Path, *, after: int = 0, timeout: float | None = None) -> dict[st
     deadline = time.monotonic() + timeout if timeout is not None else None
     while True:
         state = read(path)
-        if any(e["id"] > after for e in state["events"]) or state["status"] in {
-            "completed",
-            "transferred",
-        }:
+        if (
+            state.get("checkout_interrupted")
+            or any(e["id"] > after for e in state["events"])
+            or state["status"] in {"completed", "transferred"}
+        ):
             return view(path)
         if deadline is not None and time.monotonic() >= deadline:
             return {**view(path), "wait_timed_out": True}
-        time.sleep(0.25)
+        with checkout_wait():
+            time.sleep(0.25)
 
 
 def completion(store: Store, repo: str, parent: int, pr: int) -> dict[str, Any]:
@@ -512,6 +515,9 @@ def completion(store: Store, repo: str, parent: int, pr: int) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", type=Path, required=True)
+    parser.add_argument(
+        "--deliver-checkout-interruption", action="store_true", help=argparse.SUPPRESS
+    )
     args = parser.parse_args()
     from lib.ops_review.progression_backend import LiveBackend
     from lib.ops_review.review_locks import PRLeaseConflict, targets
@@ -522,6 +528,10 @@ def main() -> int:
         with controller_lock(path), ExitStack() as leases:
             state = read(path)
             engine = Engine(path, LiveBackend(state, store), state=state)
+            if args.deliver_checkout_interruption:
+                if state.get("checkout_interrupted"):
+                    engine.deliver()
+                return 0
             try:
                 leases.enter_context(targets(store.directory, state))
             except PRLeaseConflict as exc:
@@ -531,6 +541,24 @@ def main() -> int:
                 result = engine.run()
             print(json.dumps(view(path), ensure_ascii=False))
             return 0 if result["status"] == "completed" else 1
+    except CheckoutRefused:
+        # Release controller/PR leases before a fresh CLI takes the state lock.
+        # That CLI only delivers the durable notice under the current checkout.
+        try:
+            subprocess.run(
+                [
+                    sys.executable,
+                    str(Path(__file__).with_name("merge_gate.py")),
+                    "--state",
+                    str(path),
+                    "--deliver-checkout-interruption",
+                ],
+                timeout=60,
+                check=True,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            print(f"checkout interruption notice pending: {exc}", file=sys.stderr)
+        return 75
     except (ValueError, OSError) as exc:
         print(str(exc), file=sys.stderr)
         return 2

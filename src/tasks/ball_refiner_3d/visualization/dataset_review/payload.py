@@ -11,6 +11,7 @@ from src.tasks.ball_refiner_3d.data.schema import CorruptedTrajectory, Rally
 from src.tasks.ball_refiner_3d.data.targets.events import gaussian_event_target
 from src.tasks.ball_refiner_3d.evaluation.baselines import linear_baseline
 from src.tasks.ball_refiner_3d.evaluation.physics import DEFAULT_PROTOCOL
+from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
 from src.tasks.ball_refiner_3d.physics.units import PHYSICAL_FIELD_COLUMNS, SURFACES
 from src.tasks.ball_refiner_3d.training.metrics import error_metrics, event_neighborhood
 from src.tasks.base.visualization.review.court import court_edges, court_keypoints
@@ -57,7 +58,7 @@ class ModelOutputs:
     """One checkpoint's outputs for one rally; ``physics`` only for physics heads."""
 
     coordinates: np.ndarray  # (T,3) m
-    event_probability: np.ndarray  # (T,)
+    event_probability: np.ndarray  # (T,3) ordered by EVENT_CLASSES
     physics: PhysicsOutputs | None
 
 
@@ -162,6 +163,7 @@ def scene_payload(
             }
             for v in range(len(rally.uv))
         ],
+        "event_classes": list(EVENT_CLASSES),
         "event_probability": model.event_probability.tolist()
         if model is not None
         else None,

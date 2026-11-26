@@ -1,0 +1,664 @@
+{
+  "assets": {
+    "smpl_coco17_regressor": {
+      "sha256": "bacdaf756629493994cc869f4c27d179f5e4a5d06b8797ee3dcb94571522079f",
+      "source": "https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smpl_coco17_J_regressor.pt"
+    },
+    "smpl_neutral_joint_regressor": {
+      "sha256": "70e3213bd30fe8d8ce37b54675282745e406f915a51511a003aeff99b6da04cf",
+      "source": "https://github.com/zju3dv/GVHMR/blob/ee960bb6e2ea2d381aa97f08e9b71ef320b624b1/hmr4d/utils/body_model/smpl_neutral_J_regressor.pt"
+    }
+  },
+  "benchmark_id": "meiji_4cam/multiview-player-evaluation-v1",
+  "body_recovery_manifest_id": "meiji_4cam/multiview-player-evaluation-v1/body-recovery-inputs",
+  "clips": [
+    {
+      "all_players_inferred_frames": 185,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2",
+        "cam3"
+      ],
+      "clip_id": "video_000/clip_003",
+      "gvhmr_frames_by_player": {
+        "0": 185,
+        "1": 185,
+        "2": 185,
+        "6": 185
+      },
+      "overlays": [
+        {
+          "camera_id": "cam0",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_003/cam0.png",
+            "sha256": "0be533540c012147bfd554f376c7c268f3a2385cd54e5344da58ead1e71d00dd"
+          },
+          "source_frame": 120,
+          "video": {
+            "path": "clips/clip_003/cam0.mp4",
+            "sha256": "e97042dd1804f35fcae1b3a810638f8eaedf34a96da02c181ac0be5606f60772"
+          },
+          "video_frames": 185
+        },
+        {
+          "camera_id": "cam1",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_003/cam1.png",
+            "sha256": "6b5f3a037349c9bb7df455e0d911abee018ec33d24ee3c071b768c68a3aeecd0"
+          },
+          "source_frame": 120,
+          "video": {
+            "path": "clips/clip_003/cam1.mp4",
+            "sha256": "d106073aa26f93a983428fe6e9ea35cd61083e5859ea54c67f45731d33b58959"
+          },
+          "video_frames": 185
+        },
+        {
+          "camera_id": "cam2",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_003/cam2.png",
+            "sha256": "b45e28d4d62c97a836b79d7594ecc7b22013d85ee2d1db17b7b8809c81e2a199"
+          },
+          "source_frame": 120,
+          "video": {
+            "path": "clips/clip_003/cam2.mp4",
+            "sha256": "5bce5a4842855464c2bee1f56558f4f1d48fe6cf1879da5f8cb3ab320419cda0"
+          },
+          "video_frames": 185
+        },
+        {
+          "camera_id": "cam3",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_003/cam3.png",
+            "sha256": "e242e0c6873e2baf1370545586b3d094700da26dfd14159e33e79f1268987216"
+          },
+          "source_frame": 120,
+          "video": {
+            "path": "clips/clip_003/cam3.mp4",
+            "sha256": "6874e17894a79540d26a7c11345a61cfdf306e3c5f5b2e7aafb17eba4757e800"
+          },
+          "video_frames": 185
+        }
+      ],
+      "player_ids": [
+        0,
+        1,
+        2,
+        6
+      ],
+      "selection": {
+        "all_four_placed_fraction": 1.0,
+        "all_four_placed_frames": 369,
+        "court_xy_speed_mps": {
+          "median": 0.7804133892059326,
+          "p90": 2.8760502338409424
+        },
+        "observed_bbox_height_px": {
+          "count": 5834,
+          "p10_p50_p90": [
+            42.600146484375,
+            70.58552551269531,
+            173.53204650878905
+          ]
+        },
+        "player_overlap_fraction": 0.11382113821138211,
+        "player_overlap_frames": 42,
+        "reason": "Reference clip with four valid placed meshes throughout",
+        "source_clip_duration_sec": 6.15615
+      },
+      "source_frames": 369
+    },
+    {
+      "all_players_inferred_frames": 143,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2",
+        "cam3"
+      ],
+      "clip_id": "video_000/clip_057",
+      "gvhmr_frames_by_player": {
+        "0": 143,
+        "2": 143,
+        "3": 143,
+        "4": 143
+      },
+      "overlays": [
+        {
+          "camera_id": "cam0",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_057/cam0.png",
+            "sha256": "2f22a5e70130a995f306a7c39f3aa958d59e7db158bb2922b8d0f742d84beb3f"
+          },
+          "source_frame": 142,
+          "video": {
+            "path": "clips/clip_057/cam0.mp4",
+            "sha256": "b20774f4269a029b31e82daa031dd03e4bc554c57f6580ae1be800f395484a7d"
+          },
+          "video_frames": 143
+        },
+        {
+          "camera_id": "cam1",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_057/cam1.png",
+            "sha256": "48d2ac3d1822208ff7624807bb996ddb0c03e680b9f873f962a56b34bb2747ec"
+          },
+          "source_frame": 142,
+          "video": {
+            "path": "clips/clip_057/cam1.mp4",
+            "sha256": "2d8da891918e06fb57fea22a6e9b33e857e0868591b01725ce4ce577c8090972"
+          },
+          "video_frames": 143
+        },
+        {
+          "camera_id": "cam2",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_057/cam2.png",
+            "sha256": "ff6a5091cc055580df8e2c4a17479d99d0df87e27c8d229e53639c45f6d80f83"
+          },
+          "source_frame": 142,
+          "video": {
+            "path": "clips/clip_057/cam2.mp4",
+            "sha256": "b5833d91bacdebf976e79e9f554868cfb413aab0bdb8c218ccb91bca15f62e8a"
+          },
+          "video_frames": 143
+        },
+        {
+          "camera_id": "cam3",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_057/cam3.png",
+            "sha256": "adaf94cc0f15c988303af42adcf09f8f79c27fa8c52239d7dfc82d0eb1913f1f"
+          },
+          "source_frame": 142,
+          "video": {
+            "path": "clips/clip_057/cam3.mp4",
+            "sha256": "7aef3a3a5c09c02e1643057deb34bb5572239393652657bfea8e292d611a35ad"
+          },
+          "video_frames": 143
+        }
+      ],
+      "player_ids": [
+        0,
+        2,
+        3,
+        4
+      ],
+      "selection": {
+        "all_four_placed_fraction": 0.9929824561403509,
+        "all_four_placed_frames": 283,
+        "court_xy_speed_mps": {
+          "median": 0.38430726528167725,
+          "p90": 1.2627829313278198
+        },
+        "observed_bbox_height_px": {
+          "count": 4489,
+          "p10_p50_p90": [
+            45.66778564453125,
+            71.201416015625,
+            165.34195556640626
+          ]
+        },
+        "player_overlap_fraction": 0.37894736842105264,
+        "player_overlap_frames": 108,
+        "reason": "Largest fraction of frames with observed player overlap",
+        "source_clip_duration_sec": 4.7547500000000005
+      },
+      "source_frames": 285
+    },
+    {
+      "all_players_inferred_frames": 207,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2",
+        "cam3"
+      ],
+      "clip_id": "video_000/clip_004",
+      "gvhmr_frames_by_player": {
+        "0": 292,
+        "1": 294,
+        "22": 209,
+        "4": 294
+      },
+      "overlays": [
+        {
+          "camera_id": "cam0",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_004/cam0.png",
+            "sha256": "9414a2e2edddbb821cb889bdca9bab18584da64ca3887ed3cb49cc7cf5cdb343"
+          },
+          "source_frame": 294,
+          "video": {
+            "path": "clips/clip_004/cam0.mp4",
+            "sha256": "5fe592454711763673f34d3688fb8122e3615e9f3634706a112f4df073056a8b"
+          },
+          "video_frames": 294
+        },
+        {
+          "camera_id": "cam1",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_004/cam1.png",
+            "sha256": "9dd051956d9633a06fd59249ec05540c88d26b1aa7bfb3ec47715480b4df5912"
+          },
+          "source_frame": 294,
+          "video": {
+            "path": "clips/clip_004/cam1.mp4",
+            "sha256": "8949d0ab142bbe98d3b8ba91ec7448ee689652003489da29b058e0800bb184d5"
+          },
+          "video_frames": 294
+        },
+        {
+          "camera_id": "cam2",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_004/cam2.png",
+            "sha256": "8e1f3ea4bd22644ad4ee97c2fe8b69447abfb2fa680c623c6baf40f0b2578d99"
+          },
+          "source_frame": 294,
+          "video": {
+            "path": "clips/clip_004/cam2.mp4",
+            "sha256": "15dd4d20b9117ceae9b2d4c6cad95c33f12e75300f30079aa634f8392a648cc3"
+          },
+          "video_frames": 294
+        },
+        {
+          "camera_id": "cam3",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_004/cam3.png",
+            "sha256": "02291488412087317f8407e1c2d600770d216f2aec0f1be9ccf464e8e6985367"
+          },
+          "source_frame": 294,
+          "video": {
+            "path": "clips/clip_004/cam3.mp4",
+            "sha256": "2c711633072e7620673e118ee4051b8b79a216d07e55c242c7df28c355a25150"
+          },
+          "video_frames": 294
+        }
+      ],
+      "player_ids": [
+        0,
+        1,
+        4,
+        22
+      ],
+      "selection": {
+        "all_four_placed_fraction": 0.6621160409556314,
+        "all_four_placed_frames": 388,
+        "court_xy_speed_mps": {
+          "median": 0.7095232009887695,
+          "p90": 2.0791499614715576
+        },
+        "observed_bbox_height_px": {
+          "count": 8379,
+          "p10_p50_p90": [
+            41.77927856445312,
+            67.99417114257812,
+            157.14898681640625
+          ]
+        },
+        "player_overlap_fraction": 0.3532423208191126,
+        "player_overlap_frames": 207,
+        "reason": "Frequent player overlap and missing body placement",
+        "source_clip_duration_sec": 9.776433333333333
+      },
+      "source_frames": 586
+    },
+    {
+      "all_players_inferred_frames": 98,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2",
+        "cam3"
+      ],
+      "clip_id": "video_000/clip_013",
+      "gvhmr_frames_by_player": {
+        "0": 235,
+        "10": 206,
+        "2": 235,
+        "5": 127
+      },
+      "overlays": [
+        {
+          "camera_id": "cam0",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_013/cam0.png",
+            "sha256": "616144a5d6f46fd117ddc495aba50ea31e030b1394f6609424fed7c2517505b9"
+          },
+          "source_frame": 234,
+          "video": {
+            "path": "clips/clip_013/cam0.mp4",
+            "sha256": "a328c25f6d5a558464e2170cfd7b68ef8755f02e26569e4a7f1a4826706c61c3"
+          },
+          "video_frames": 235
+        },
+        {
+          "camera_id": "cam1",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_013/cam1.png",
+            "sha256": "e78f93b00cf396c824e7dc7099ff4cfcabcada99353474c882f141ab0d573a1a"
+          },
+          "source_frame": 234,
+          "video": {
+            "path": "clips/clip_013/cam1.mp4",
+            "sha256": "7a59a58218e4dd2902a0abeaae8cd7f8f56208bfbd92f7c9ec4da64699235bdd"
+          },
+          "video_frames": 235
+        },
+        {
+          "camera_id": "cam2",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_013/cam2.png",
+            "sha256": "37c7ddc72808ee16b795a8177c98aec11718c4c30ce3815f13ce130cd4ab8d77"
+          },
+          "source_frame": 234,
+          "video": {
+            "path": "clips/clip_013/cam2.mp4",
+            "sha256": "2aefa5024cbc3bfcb121d0fa40da73096195e102d793da134c33e95cd6c2d325"
+          },
+          "video_frames": 235
+        },
+        {
+          "camera_id": "cam3",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_013/cam3.png",
+            "sha256": "b57e8183e1ab2a15674ddf26c28be901a2456e264ff88b3790982f9888f95efa"
+          },
+          "source_frame": 234,
+          "video": {
+            "path": "clips/clip_013/cam3.mp4",
+            "sha256": "2b013fbb10f4256e7933bebb6a57fda873cb701f3b42f36229e2e30246c275af"
+          },
+          "video_frames": 235
+        }
+      ],
+      "player_ids": [
+        0,
+        2,
+        5,
+        10
+      ],
+      "selection": {
+        "all_four_placed_fraction": 0.4157782515991471,
+        "all_four_placed_frames": 195,
+        "court_xy_speed_mps": {
+          "median": 0.34592604637145996,
+          "p90": 1.4915891885757446
+        },
+        "observed_bbox_height_px": {
+          "count": 6071,
+          "p10_p50_p90": [
+            42.35626220703125,
+            68.97943115234375,
+            165.6380615234375
+          ]
+        },
+        "player_overlap_fraction": 0.27505330490405117,
+        "player_overlap_frames": 129,
+        "reason": "Frequent missing body placement",
+        "source_clip_duration_sec": 7.824483333333333
+      },
+      "source_frames": 469
+    },
+    {
+      "all_players_inferred_frames": 208,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2",
+        "cam3"
+      ],
+      "clip_id": "video_000/clip_040",
+      "gvhmr_frames_by_player": {
+        "0": 209,
+        "1": 209,
+        "2": 208,
+        "4": 209
+      },
+      "overlays": [
+        {
+          "camera_id": "cam0",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_040/cam0.png",
+            "sha256": "eb39c38fff3603fb037f0750bdf066d8ed2af1063057f3fd14cd185edea4e7b1"
+          },
+          "source_frame": 208,
+          "video": {
+            "path": "clips/clip_040/cam0.mp4",
+            "sha256": "68d3eb35108f574cebf441d20399545cb3e8f1a2864c74b9ac1176c3d9271e02"
+          },
+          "video_frames": 209
+        },
+        {
+          "camera_id": "cam1",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_040/cam1.png",
+            "sha256": "3f88bd33a0dd23b179bbd68c8ba6ccabbfe5c7e66283a16fe068224b2d2c096e"
+          },
+          "source_frame": 208,
+          "video": {
+            "path": "clips/clip_040/cam1.mp4",
+            "sha256": "60576819d4f13544cddfd8e00e5f0b1c1182942ce24845282c6cfcc6f8f2eabd"
+          },
+          "video_frames": 209
+        },
+        {
+          "camera_id": "cam2",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_040/cam2.png",
+            "sha256": "9ea2036c62b58a879db45036ff9e283a42bf20d807f8278792d3e74c1c2678d8"
+          },
+          "source_frame": 208,
+          "video": {
+            "path": "clips/clip_040/cam2.mp4",
+            "sha256": "9b85865e737fd80d931b865560d31a5dcaceb5f41ea94707c5e76118d9fc5571"
+          },
+          "video_frames": 209
+        },
+        {
+          "camera_id": "cam3",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_040/cam3.png",
+            "sha256": "db6db539db2b6ec76518b6ea7d1f4612f6492dcb06986b49fb8cab2bf0fe7a94"
+          },
+          "source_frame": 208,
+          "video": {
+            "path": "clips/clip_040/cam3.mp4",
+            "sha256": "0c733a6c0a86850482a870f7771d073401b566697cfaab54afec6ec454c1b944"
+          },
+          "video_frames": 209
+        }
+      ],
+      "player_ids": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "selection": {
+        "all_four_placed_fraction": 0.9928057553956835,
+        "all_four_placed_frames": 414,
+        "court_xy_speed_mps": {
+          "median": 0.6656001210212708,
+          "p90": 3.670557975769043
+        },
+        "observed_bbox_height_px": {
+          "count": 6623,
+          "p10_p50_p90": [
+            45.92396850585938,
+            65.70196533203125,
+            129.00479736328126
+          ]
+        },
+        "player_overlap_fraction": 0.19184652278177458,
+        "player_overlap_frames": 80,
+        "reason": "Small people and quick movement",
+        "source_clip_duration_sec": 6.95695
+      },
+      "source_frames": 417
+    },
+    {
+      "all_players_inferred_frames": 643,
+      "camera_ids": [
+        "cam0",
+        "cam1",
+        "cam2",
+        "cam3"
+      ],
+      "clip_id": "video_000/clip_028",
+      "gvhmr_frames_by_player": {
+        "0": 643,
+        "1": 645,
+        "2": 645,
+        "6": 645
+      },
+      "overlays": [
+        {
+          "camera_id": "cam0",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_028/cam0.png",
+            "sha256": "dc9fda8cbe3ceb16af6832a62d903f5e0050fe58b8399f421eb582b9ff36dd3c"
+          },
+          "source_frame": 643,
+          "video": {
+            "path": "clips/clip_028/cam0.mp4",
+            "sha256": "ae2ba28b02da8d336e2f8b3508f274db71d5fe5caa1f05fb800dd1c69416f449"
+          },
+          "video_frames": 645
+        },
+        {
+          "camera_id": "cam1",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_028/cam1.png",
+            "sha256": "4d41b515c77ae2eea9522f0d239bc11ae6cae80c656f1ee58e08fd9cc62ce1bf"
+          },
+          "source_frame": 643,
+          "video": {
+            "path": "clips/clip_028/cam1.mp4",
+            "sha256": "b76b58c8ff17e21af47d70640c8042c6b52141affdade13e35feeb6d9fa1fd4b"
+          },
+          "video_frames": 645
+        },
+        {
+          "camera_id": "cam2",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_028/cam2.png",
+            "sha256": "059d181e67e2c06377a26555036d8e96826af79c5dae16760f838ccf8d68ff19"
+          },
+          "source_frame": 643,
+          "video": {
+            "path": "clips/clip_028/cam2.mp4",
+            "sha256": "fe0ac051a91ef1e6165d64d2ada478f80dd70e395e9ffaf82bdb921eb29e9465"
+          },
+          "video_frames": 645
+        },
+        {
+          "camera_id": "cam3",
+          "fps": 29.97002997002997,
+          "representative_frame": {
+            "path": "clips/clip_028/cam3.png",
+            "sha256": "6f0763b6811c775a47a2912531a7ea8026d1a8728cc53283571092ed68959aab"
+          },
+          "source_frame": 643,
+          "video": {
+            "path": "clips/clip_028/cam3.mp4",
+            "sha256": "ab6d48ea60f8d1a7a09e39d001d5c62b5ca6f02249bc738bd75a164a9ea319a2"
+          },
+          "video_frames": 645
+        }
+      ],
+      "player_ids": [
+        0,
+        1,
+        2,
+        6
+      ],
+      "selection": {
+        "all_four_placed_fraction": 0.9945652173913043,
+        "all_four_placed_frames": 1281,
+        "court_xy_speed_mps": {
+          "median": 0.5941178798675537,
+          "p90": 2.2645533084869385
+        },
+        "observed_bbox_height_px": {
+          "count": 20352,
+          "p10_p50_p90": [
+            44.59364624023438,
+            67.67962646484375,
+            147.13824462890628
+          ]
+        },
+        "player_overlap_fraction": 0.06055900621118013,
+        "player_overlap_frames": 78,
+        "reason": "Long rally for temporal stability",
+        "source_clip_duration_sec": 21.488133333333334
+      },
+      "source_frames": 1288
+    }
+  ],
+  "directory": "data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-player-evaluation-v1",
+  "evaluation_frames": 1711,
+  "evaluation_images": 6844,
+  "files": {
+    "body_recovery_manifest": {
+      "path": "body_recovery_manifest.json",
+      "sha256": "0b823674c269b395f2e67de2cb84851e8dcba7409b928ced92b69639480c939f"
+    },
+    "cohort_manifest": {
+      "path": "manifest.json",
+      "sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580"
+    },
+    "projection_audit": {
+      "path": "projection_audit.json",
+      "sha256": "c6c9296b9c884a96784be86854561c387d2f9514f1c281fda44ce8362999bd6c"
+    },
+    "quality_counts": {
+      "path": "quality_counts.csv",
+      "sha256": "8eaec19a18b6f7ed5feec7040c33de819f145bee4f83b5a8d1f8812343abbb69"
+    },
+    "sha256sums": {
+      "path": "SHA256SUMS",
+      "sha256": "1881e03ae5e05961a4aa3890a9490f60f3bf7e6d8e0f8ab071d825c64efef604"
+    },
+    "vitpose_smoke": {
+      "path": "vitpose_smoke.json",
+      "sha256": "0058863bf919f2ba113bc2102627aac55e08af45ce37075f8e082cf166edbd55"
+    }
+  },
+  "generator_commit": "dfbacf508967003eaa3cecb98c48dab44eeb7e42",
+  "reference_policy": {
+    "box_margin": 0.1,
+    "min_box_joints": 12,
+    "min_supporting_views": 2,
+    "occlusion_depth_gap_m": 0.25
+  },
+  "sha256sum_verified_files": 66,
+  "source_benchmark": {
+    "benchmark_id": "meiji_4cam/multiview-v1",
+    "manifest_sha256": "b9a33f87ac980c55ebc285c9a5a6f5edd657687be920aea2e14857c1ee845a45"
+  },
+  "source_frames": 3414
+}

@@ -11,7 +11,6 @@ from typing import Any, cast
 import numpy as np
 import torch
 from omegaconf import DictConfig, OmegaConf, open_dict
-from scipy.optimize import linear_sum_assignment
 from torch import Tensor
 
 from src.tasks.base.generate_dataset import build_physical_court_provenance
@@ -37,6 +36,7 @@ from src.utils.geometry.triangulation import (
     PointTriangulationConfig,
     triangulate_points,
 )
+from src.utils.physics.ball.events import match_event_offsets
 from src.utils.physics.ball.fitting import FitSettings, fit_flight_physics
 from src.utils.schema.court import STANDARD_COURT_CONFIG, court_keypoints_3d
 from src.utils.schema.court_normalization import (
@@ -298,13 +298,7 @@ def event_diagnostic(
         np.flatnonzero(predicted)[1:] if predicted[0] else np.flatnonzero(predicted),
         np.flatnonzero(target)[1:] if target[0] else np.flatnonzero(target),
     )
-    distances = np.abs(a[:, None] - b[None, :])
-    # Maximize valid one-to-one matches before minimizing total timing error.
-    # Nearest-first matching can consume a target needed by a later event.
-    penalty = (len(a) + len(b) + 1) * 3
-    rows, columns = linear_sum_assignment(np.where(distances <= 2, distances, penalty))
-    matched = distances[rows, columns]
-    offsets = (matched[matched <= 2] * dt).tolist()
+    offsets = (np.abs(match_event_offsets(a, b, tolerance=2)) * dt).tolist()
     tp = len(offsets)
     return {
         "true_positive": tp,

@@ -1,0 +1,852 @@
+{
+  "benchmark_id": "meiji_4cam/multiview-v2",
+  "checkpoint_fps": 60.0,
+  "clips": {
+    "video_000/clip_000": {
+      "events": {
+        "bounce": 3,
+        "net": 1,
+        "shot": 2
+      },
+      "predictions": "predictions/refiner3/video_000/clip_000.json",
+      "reason": null,
+      "sha256": "95ba13c4ae5f4b1b8b59bd4d8c8ebf9c7bf31dddd66b7a431a8ac8c5b87f6b5a",
+      "status": "ok",
+      "valid_ball_frames": 356
+    },
+    "video_000/clip_001": {
+      "events": {
+        "bounce": 5,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_001.json",
+      "reason": null,
+      "sha256": "55500771daf6642b92c950f36e5793e3d867a98345f25aa3f55f41749c822d02",
+      "status": "ok",
+      "valid_ball_frames": 561
+    },
+    "video_000/clip_002": {
+      "events": {
+        "bounce": 9,
+        "net": 0,
+        "shot": 10
+      },
+      "predictions": "predictions/refiner3/video_000/clip_002.json",
+      "reason": null,
+      "sha256": "ce505b7b393f103597aa1318a2ab5039c266478e8e616bb06c42b7041409fbac",
+      "status": "ok",
+      "valid_ball_frames": 1516
+    },
+    "video_000/clip_003": {
+      "events": {
+        "bounce": 4,
+        "net": 0,
+        "shot": 2
+      },
+      "predictions": "predictions/refiner3/video_000/clip_003.json",
+      "reason": null,
+      "sha256": "d61141aa86489fe9eb3bbbe8a8848c78c786baf3e466714e5bf29cc24a9e4154",
+      "status": "ok",
+      "valid_ball_frames": 369
+    },
+    "video_000/clip_004": {
+      "events": {
+        "bounce": 5,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_004.json",
+      "reason": null,
+      "sha256": "4d873e21ff82525c984c1f5082f702568d2684b74771f1080bf1609e195293a7",
+      "status": "ok",
+      "valid_ball_frames": 586
+    },
+    "video_000/clip_005": {
+      "events": {
+        "bounce": 2,
+        "net": 1,
+        "shot": 2
+      },
+      "predictions": "predictions/refiner3/video_000/clip_005.json",
+      "reason": null,
+      "sha256": "a7427d95bd3730da50bfa19df3562b82ff507ba74dc9f485efc69ed9dffcb9bb",
+      "status": "ok",
+      "valid_ball_frames": 314
+    },
+    "video_000/clip_006": {
+      "events": {
+        "bounce": 8,
+        "net": 0,
+        "shot": 8
+      },
+      "predictions": "predictions/refiner3/video_000/clip_006.json",
+      "reason": null,
+      "sha256": "d90248c58473c8028b0c334699c5ebd96b08aea999f2391fe75ba2c6bdcc4abd",
+      "status": "ok",
+      "valid_ball_frames": 867
+    },
+    "video_000/clip_007": {
+      "events": {
+        "bounce": 3,
+        "net": 0,
+        "shot": 2
+      },
+      "predictions": "predictions/refiner3/video_000/clip_007.json",
+      "reason": null,
+      "sha256": "08e864752efe0f6880b7ba1d1eef70673e3b6886920d69e2bfa221a0936b405e",
+      "status": "ok",
+      "valid_ball_frames": 401
+    },
+    "video_000/clip_008": {
+      "events": {
+        "bounce": 6,
+        "net": 0,
+        "shot": 5
+      },
+      "predictions": "predictions/refiner3/video_000/clip_008.json",
+      "reason": null,
+      "sha256": "5c1d515dadb9632dcbf023d23d220d075b5b5b93eb1142599d728fc407ca3806",
+      "status": "ok",
+      "valid_ball_frames": 626
+    },
+    "video_000/clip_009": {
+      "events": {
+        "bounce": 6,
+        "net": 1,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_009.json",
+      "reason": null,
+      "sha256": "e7608cddd0fa30ce77b2ebfe9682eab9cf51dca739f84333b18c8376b569f7c5",
+      "status": "ok",
+      "valid_ball_frames": 974
+    },
+    "video_000/clip_010": {
+      "events": {
+        "bounce": 4,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_010.json",
+      "reason": null,
+      "sha256": "776c855313ca3cdf0ab526ef8d77ed198dddfc3396a6d5aa5d60abc499d9b31e",
+      "status": "ok",
+      "valid_ball_frames": 545
+    },
+    "video_000/clip_011": {
+      "events": {
+        "bounce": 12,
+        "net": 1,
+        "shot": 8
+      },
+      "predictions": "predictions/refiner3/video_000/clip_011.json",
+      "reason": null,
+      "sha256": "1f8fba5d433527847ce197026e3c242899d46c117ff3d3b149341fa3e34256e9",
+      "status": "ok",
+      "valid_ball_frames": 1147
+    },
+    "video_000/clip_012": {
+      "events": {
+        "bounce": 11,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_012.json",
+      "reason": null,
+      "sha256": "cb0a526e386113adfcf13b7cc43d32bf30e8c54efdf58b935d72ea2af23edb0b",
+      "status": "ok",
+      "valid_ball_frames": 1017
+    },
+    "video_000/clip_013": {
+      "events": {
+        "bounce": 3,
+        "net": 1,
+        "shot": 2
+      },
+      "predictions": "predictions/refiner3/video_000/clip_013.json",
+      "reason": null,
+      "sha256": "015c7eb4521e1da945f2c17f03f7447953d727ea2562ad5dce7bd1e5efab0b5b",
+      "status": "ok",
+      "valid_ball_frames": 469
+    },
+    "video_000/clip_014": {
+      "events": {
+        "bounce": 5,
+        "net": 0,
+        "shot": 2
+      },
+      "predictions": "predictions/refiner3/video_000/clip_014.json",
+      "reason": null,
+      "sha256": "bfceb9ae8e375510d0db78ea9b2b6261448f81ce44797f3b9c5874c75f0973f9",
+      "status": "ok",
+      "valid_ball_frames": 463
+    },
+    "video_000/clip_015": {
+      "events": {
+        "bounce": 8,
+        "net": 1,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_015.json",
+      "reason": null,
+      "sha256": "8192b514fa4ee88454fbb04188d7e97c924b529159a95f0fb961767fcf70c620",
+      "status": "ok",
+      "valid_ball_frames": 828
+    },
+    "video_000/clip_016": {
+      "events": {
+        "bounce": 8,
+        "net": 0,
+        "shot": 6
+      },
+      "predictions": "predictions/refiner3/video_000/clip_016.json",
+      "reason": null,
+      "sha256": "bc696aa8c0e53a3889d225971297dacc744e7238a295a8f7456bd14613239fb5",
+      "status": "ok",
+      "valid_ball_frames": 1214
+    },
+    "video_000/clip_017": {
+      "events": {
+        "bounce": 3,
+        "net": 0,
+        "shot": 1
+      },
+      "predictions": "predictions/refiner3/video_000/clip_017.json",
+      "reason": null,
+      "sha256": "d505f20a1d008b7e9fd9a7832161b895d51486af8512ab1a2b7649651c263a04",
+      "status": "ok",
+      "valid_ball_frames": 364
+    },
+    "video_000/clip_018": {
+      "events": {
+        "bounce": 3,
+        "net": 0,
+        "shot": 1
+      },
+      "predictions": "predictions/refiner3/video_000/clip_018.json",
+      "reason": null,
+      "sha256": "79e11fb429461ad7f5fd68720ff0c9379e4a21081455feafe2c9aa9889712c77",
+      "status": "ok",
+      "valid_ball_frames": 386
+    },
+    "video_000/clip_019": {
+      "events": {
+        "bounce": 5,
+        "net": 1,
+        "shot": 1
+      },
+      "predictions": "predictions/refiner3/video_000/clip_019.json",
+      "reason": null,
+      "sha256": "e14e50dac6f333459b3c8635ea86b3c91ce67eca9292d61356c4b88588777ba0",
+      "status": "ok",
+      "valid_ball_frames": 569
+    },
+    "video_000/clip_020": {
+      "events": {
+        "bounce": 6,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_020.json",
+      "reason": null,
+      "sha256": "2f9fa2a5de804507ceeb21323bf56be73989b5bb1814948e3105f9e6360e0404",
+      "status": "ok",
+      "valid_ball_frames": 651
+    },
+    "video_000/clip_021": {
+      "events": {
+        "bounce": 4,
+        "net": 0,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_021.json",
+      "reason": null,
+      "sha256": "e8db999fdbc8d68c66970fa0bbf55b76166fd999a45bc403091a4af1971ff1cd",
+      "status": "ok",
+      "valid_ball_frames": 513
+    },
+    "video_000/clip_022": {
+      "events": {
+        "bounce": 8,
+        "net": 1,
+        "shot": 7
+      },
+      "predictions": "predictions/refiner3/video_000/clip_022.json",
+      "reason": null,
+      "sha256": "b2ab1d5ff89cfe7d6572f98998413f538a40f2896114a3f41b89a1e61cdfce0d",
+      "status": "ok",
+      "valid_ball_frames": 1044
+    },
+    "video_000/clip_023": {
+      "events": {
+        "bounce": 10,
+        "net": 1,
+        "shot": 8
+      },
+      "predictions": "predictions/refiner3/video_000/clip_023.json",
+      "reason": null,
+      "sha256": "9e1f368d0dad5aa6385c264a43afc21bebe4371ab934f2928fe97eb12e8bafbe",
+      "status": "ok",
+      "valid_ball_frames": 1736
+    },
+    "video_000/clip_024": {
+      "events": {
+        "bounce": 3,
+        "net": 0,
+        "shot": 0
+      },
+      "predictions": "predictions/refiner3/video_000/clip_024.json",
+      "reason": null,
+      "sha256": "67a9efd8833ba912d999acc627db94bf077a86e94fb0784f3e3a2bcb92f8627c",
+      "status": "ok",
+      "valid_ball_frames": 397
+    },
+    "video_000/clip_025": {
+      "events": {
+        "bounce": 5,
+        "net": 1,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_025.json",
+      "reason": null,
+      "sha256": "0f10bc980d64d3f488077395c2a314847068f10818f8658f64745ad1dcda28b1",
+      "status": "ok",
+      "valid_ball_frames": 505
+    },
+    "video_000/clip_026": {
+      "events": {
+        "bounce": 11,
+        "net": 0,
+        "shot": 7
+      },
+      "predictions": "predictions/refiner3/video_000/clip_026.json",
+      "reason": null,
+      "sha256": "c6d471d26af955b1f6393541919f4249777592a5d12f53bb891766d93949a239",
+      "status": "ok",
+      "valid_ball_frames": 1262
+    },
+    "video_000/clip_027": {
+      "events": {
+        "bounce": 2,
+        "net": 0,
+        "shot": 1
+      },
+      "predictions": "predictions/refiner3/video_000/clip_027.json",
+      "reason": null,
+      "sha256": "c190565e873a285a02b850b749d07af310b4b46eeb1c58e649e96bf9c0b68b53",
+      "status": "ok",
+      "valid_ball_frames": 235
+    },
+    "video_000/clip_028": {
+      "events": {
+        "bounce": 7,
+        "net": 0,
+        "shot": 10
+      },
+      "predictions": "predictions/refiner3/video_000/clip_028.json",
+      "reason": null,
+      "sha256": "df7e1ae78c94ffdb3b1a667c27fe14b78a45dce30cdc063e9ddf7a9360fe68ea",
+      "status": "ok",
+      "valid_ball_frames": 1288
+    },
+    "video_000/clip_029": {
+      "events": {
+        "bounce": 6,
+        "net": 0,
+        "shot": 6
+      },
+      "predictions": "predictions/refiner3/video_000/clip_029.json",
+      "reason": null,
+      "sha256": "d452284436ca45213e9a13aef3765dd2c20c54567f84d58eb97fe2db9a366f8c",
+      "status": "ok",
+      "valid_ball_frames": 990
+    },
+    "video_000/clip_030": {
+      "events": {
+        "bounce": 5,
+        "net": 0,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_030.json",
+      "reason": null,
+      "sha256": "a2fd8d77f8dfb172dcadd36e5440efa7b9ccbf632a9ecd1d34baf55e24904c5a",
+      "status": "ok",
+      "valid_ball_frames": 515
+    },
+    "video_000/clip_031": {
+      "events": {
+        "bounce": 2,
+        "net": 0,
+        "shot": 1
+      },
+      "predictions": "predictions/refiner3/video_000/clip_031.json",
+      "reason": null,
+      "sha256": "dce1c43e689672fcc7054c38f26c1f9f4f8b97d422b0b4a713d3c51777309b34",
+      "status": "ok",
+      "valid_ball_frames": 321
+    },
+    "video_000/clip_032": {
+      "events": {
+        "bounce": 3,
+        "net": 0,
+        "shot": 2
+      },
+      "predictions": "predictions/refiner3/video_000/clip_032.json",
+      "reason": null,
+      "sha256": "9721dff386e030f75c642ac5c3f9bf1ac68f66dbe6d7f36b9f6ba8ab7b7c1108",
+      "status": "ok",
+      "valid_ball_frames": 451
+    },
+    "video_000/clip_033": {
+      "events": {
+        "bounce": 4,
+        "net": 0,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_033.json",
+      "reason": null,
+      "sha256": "9f0872de5131bc43843291e5a8be5002395421febff7ef5b5fe78de1f86a6fbb",
+      "status": "ok",
+      "valid_ball_frames": 415
+    },
+    "video_000/clip_034": {
+      "events": {
+        "bounce": 11,
+        "net": 1,
+        "shot": 8
+      },
+      "predictions": "predictions/refiner3/video_000/clip_034.json",
+      "reason": null,
+      "sha256": "5405263f597fc7d5ebe805e8835613dd73d3492adf79bef0998209c96cdd96ef",
+      "status": "ok",
+      "valid_ball_frames": 1124
+    },
+    "video_000/clip_035": {
+      "events": {
+        "bounce": 16,
+        "net": 0,
+        "shot": 6
+      },
+      "predictions": "predictions/refiner3/video_000/clip_035.json",
+      "reason": null,
+      "sha256": "e3d92cc0fe587137d3cdc48a69e7dc9da09233b2e19e606d8399339e9901cf6b",
+      "status": "ok",
+      "valid_ball_frames": 2108
+    },
+    "video_000/clip_036": {
+      "events": {
+        "bounce": 3,
+        "net": 0,
+        "shot": 2
+      },
+      "predictions": "predictions/refiner3/video_000/clip_036.json",
+      "reason": null,
+      "sha256": "e76125f2662441a0402ae02f68cfdc58220cc8b95a636d3753f6bc55ba5f5b27",
+      "status": "ok",
+      "valid_ball_frames": 405
+    },
+    "video_000/clip_037": {
+      "events": {
+        "bounce": 3,
+        "net": 0,
+        "shot": 1
+      },
+      "predictions": "predictions/refiner3/video_000/clip_037.json",
+      "reason": null,
+      "sha256": "fb1ae71a1834f5fdaa821e62ec4eadee37ee2daba9babb08056ed347affa1ff5",
+      "status": "ok",
+      "valid_ball_frames": 292
+    },
+    "video_000/clip_038": {
+      "events": {
+        "bounce": 3,
+        "net": 1,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_038.json",
+      "reason": null,
+      "sha256": "b5e6dc980937992a37a2a4a22b1b54a432297aeec124885b561991a771fc8908",
+      "status": "ok",
+      "valid_ball_frames": 337
+    },
+    "video_000/clip_039": {
+      "events": {
+        "bounce": 6,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_039.json",
+      "reason": null,
+      "sha256": "59b9bb79961df29421285fed085c999e05a16691cf24212a3a3da031fa62d8c6",
+      "status": "ok",
+      "valid_ball_frames": 873
+    },
+    "video_000/clip_040": {
+      "events": {
+        "bounce": 4,
+        "net": 0,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_040.json",
+      "reason": null,
+      "sha256": "2691bb5bbe81bfcde90416637f2627412ea47d9a623dbded79d25bf8172675ac",
+      "status": "ok",
+      "valid_ball_frames": 417
+    },
+    "video_000/clip_041": {
+      "events": {
+        "bounce": 7,
+        "net": 0,
+        "shot": 5
+      },
+      "predictions": "predictions/refiner3/video_000/clip_041.json",
+      "reason": null,
+      "sha256": "681edfbfac1d75d243833505b2f65dba86e0fef8f711d7d6e4ef5747dbaba2b1",
+      "status": "ok",
+      "valid_ball_frames": 781
+    },
+    "video_000/clip_042": {
+      "events": {
+        "bounce": 4,
+        "net": 1,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_042.json",
+      "reason": null,
+      "sha256": "c41ca69955583e78ed4d515bbd774f54089dc07116fb5f008d4a4782f52b612b",
+      "status": "ok",
+      "valid_ball_frames": 418
+    },
+    "video_000/clip_043": {
+      "events": {
+        "bounce": 7,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_043.json",
+      "reason": null,
+      "sha256": "9e0771cf1f6a4fbae9232ca2c60af288017a33b5ce9829ad83777e5769baf059",
+      "status": "ok",
+      "valid_ball_frames": 709
+    },
+    "video_000/clip_044": {
+      "events": {
+        "bounce": 5,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_044.json",
+      "reason": null,
+      "sha256": "978c36c9dae65e21c8e80b77cc0b7443707c9614bd915a9a13ceaaa447a35f02",
+      "status": "ok",
+      "valid_ball_frames": 616
+    },
+    "video_000/clip_045": {
+      "events": {
+        "bounce": 3,
+        "net": 0,
+        "shot": 1
+      },
+      "predictions": "predictions/refiner3/video_000/clip_045.json",
+      "reason": null,
+      "sha256": "0c5140065071d010bb874395cfa0e8b7e49128ae357ff67fe093d053aee18f19",
+      "status": "ok",
+      "valid_ball_frames": 343
+    },
+    "video_000/clip_046": {
+      "events": {
+        "bounce": 4,
+        "net": 0,
+        "shot": 2
+      },
+      "predictions": "predictions/refiner3/video_000/clip_046.json",
+      "reason": null,
+      "sha256": "fe3b22b4b4f41117c52f2f8b76b2f9c0bcac7c384df226464da727942ed3019c",
+      "status": "ok",
+      "valid_ball_frames": 425
+    },
+    "video_000/clip_047": {
+      "events": {
+        "bounce": 7,
+        "net": 0,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_047.json",
+      "reason": null,
+      "sha256": "80e79e57423b4a713c4652ae751846de4474e4427508c413cd13d128499dc859",
+      "status": "ok",
+      "valid_ball_frames": 845
+    },
+    "video_000/clip_048": {
+      "events": {
+        "bounce": 6,
+        "net": 0,
+        "shot": 5
+      },
+      "predictions": "predictions/refiner3/video_000/clip_048.json",
+      "reason": null,
+      "sha256": "8007e22cff8680274e8e1b2803c55996d4ce579f79b41c4096b85bdfff326b61",
+      "status": "ok",
+      "valid_ball_frames": 873
+    },
+    "video_000/clip_049": {
+      "events": {
+        "bounce": 6,
+        "net": 1,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_049.json",
+      "reason": null,
+      "sha256": "44790067c0894db80f90f960cd551365a839faa899e07051cda646c4411157e2",
+      "status": "ok",
+      "valid_ball_frames": 1120
+    },
+    "video_000/clip_050": {
+      "events": {
+        "bounce": 9,
+        "net": 0,
+        "shot": 6
+      },
+      "predictions": "predictions/refiner3/video_000/clip_050.json",
+      "reason": null,
+      "sha256": "9b614db8fe7217fc761451e3ed88e8d4f0a56997268f91bd60ebada19a13a1fd",
+      "status": "ok",
+      "valid_ball_frames": 833
+    },
+    "video_000/clip_051": {
+      "events": {
+        "bounce": 2,
+        "net": 0,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_051.json",
+      "reason": null,
+      "sha256": "7a6c13dfde7cf9eeb69d1d4b413870edbe0467d98d8e0d6e367adc6017375f8a",
+      "status": "ok",
+      "valid_ball_frames": 300
+    },
+    "video_000/clip_052": {
+      "events": {
+        "bounce": 4,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_052.json",
+      "reason": null,
+      "sha256": "47053fda1132b458f8d422ddc6649d0c7e0ac7c672da7cdf4bbee50d2b6d1d4a",
+      "status": "ok",
+      "valid_ball_frames": 425
+    },
+    "video_000/clip_053": {
+      "events": {
+        "bounce": 5,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_053.json",
+      "reason": null,
+      "sha256": "555ae305c53ece6055ff70a9d4df6af25de571ed76317931edda348ca6d5c29a",
+      "status": "ok",
+      "valid_ball_frames": 546
+    },
+    "video_000/clip_054": {
+      "events": {
+        "bounce": 8,
+        "net": 0,
+        "shot": 6
+      },
+      "predictions": "predictions/refiner3/video_000/clip_054.json",
+      "reason": null,
+      "sha256": "e78519bfcc41afa40a0d2b89f2bc5c8a752ff89050fc9b5e82a58d178b44503c",
+      "status": "ok",
+      "valid_ball_frames": 768
+    },
+    "video_000/clip_055": {
+      "events": {
+        "bounce": 6,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_055.json",
+      "reason": null,
+      "sha256": "8a1b22d85dec63753421bdceed4f6986c2d103846c0483ee0b01630059305aa5",
+      "status": "ok",
+      "valid_ball_frames": 691
+    },
+    "video_000/clip_056": {
+      "events": {
+        "bounce": 5,
+        "net": 0,
+        "shot": 5
+      },
+      "predictions": "predictions/refiner3/video_000/clip_056.json",
+      "reason": null,
+      "sha256": "f670bf25c9cdfa5fd854d361fc1d56613db46a575297e59fea8675329e302b00",
+      "status": "ok",
+      "valid_ball_frames": 763
+    },
+    "video_000/clip_057": {
+      "events": {
+        "bounce": 3,
+        "net": 1,
+        "shot": 1
+      },
+      "predictions": "predictions/refiner3/video_000/clip_057.json",
+      "reason": null,
+      "sha256": "8a0c72ef0480b94aaffd85a4d7325a829f1f6bc8f8e7d526a47c8dc35856fc74",
+      "status": "ok",
+      "valid_ball_frames": 285
+    },
+    "video_000/clip_058": {
+      "events": {
+        "bounce": 6,
+        "net": 2,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_058.json",
+      "reason": null,
+      "sha256": "8f8698243429a2b81398b6bd3093766371dea3bafe53b2c23442248e5a0ccca5",
+      "status": "ok",
+      "valid_ball_frames": 765
+    },
+    "video_000/clip_059": {
+      "events": {
+        "bounce": 3,
+        "net": 0,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_059.json",
+      "reason": null,
+      "sha256": "a34777ab261f0b08da80b7e3d8842976a4b4a2b0adb0ef43ae458b3e5fb11de6",
+      "status": "ok",
+      "valid_ball_frames": 475
+    },
+    "video_000/clip_060": {
+      "events": {
+        "bounce": 4,
+        "net": 1,
+        "shot": 3
+      },
+      "predictions": "predictions/refiner3/video_000/clip_060.json",
+      "reason": null,
+      "sha256": "37fe212f304ebacbf98fce7140ac8c16ec4b18a1414f1e6033f0d120232e054e",
+      "status": "ok",
+      "valid_ball_frames": 313
+    },
+    "video_000/clip_061": {
+      "events": {
+        "bounce": 4,
+        "net": 1,
+        "shot": 2
+      },
+      "predictions": "predictions/refiner3/video_000/clip_061.json",
+      "reason": null,
+      "sha256": "3dd952908c7d817fdd62d5a74ae8a760d71eaf92b62444e8b46f277aa18b2e2f",
+      "status": "ok",
+      "valid_ball_frames": 487
+    },
+    "video_000/clip_062": {
+      "events": {
+        "bounce": 4,
+        "net": 0,
+        "shot": 2
+      },
+      "predictions": "predictions/refiner3/video_000/clip_062.json",
+      "reason": null,
+      "sha256": "6e53229e4d356071581ffe5bd257fa0980a7f078e59b7385f329f2638ced95ea",
+      "status": "ok",
+      "valid_ball_frames": 430
+    },
+    "video_000/clip_063": {
+      "events": {
+        "bounce": 3,
+        "net": 1,
+        "shot": 1
+      },
+      "predictions": "predictions/refiner3/video_000/clip_063.json",
+      "reason": null,
+      "sha256": "11bc4ec49d1b5ead30e21a8ae7b1f67adfc51240717cfdb6c044e5c0bdef3196",
+      "status": "ok",
+      "valid_ball_frames": 341
+    },
+    "video_000/clip_064": {
+      "events": {
+        "bounce": 7,
+        "net": 1,
+        "shot": 7
+      },
+      "predictions": "predictions/refiner3/video_000/clip_064.json",
+      "reason": null,
+      "sha256": "c124cb5e676b2c49162d3595a070615730f3fba347ec96dc45f35cd07267db0c",
+      "status": "ok",
+      "valid_ball_frames": 982
+    },
+    "video_000/clip_065": {
+      "events": {
+        "bounce": 3,
+        "net": 0,
+        "shot": 1
+      },
+      "predictions": "predictions/refiner3/video_000/clip_065.json",
+      "reason": null,
+      "sha256": "58d282613cb2f3dae5ea7bbb4da2e270c9778e14e2dc6ffb429439cfb365aa06",
+      "status": "ok",
+      "valid_ball_frames": 355
+    },
+    "video_000/clip_066": {
+      "events": {
+        "bounce": 5,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_066.json",
+      "reason": null,
+      "sha256": "b71af52794f2425a3789148c5a1112693bd205177a2bff581ee499078a20fc92",
+      "status": "ok",
+      "valid_ball_frames": 613
+    },
+    "video_000/clip_067": {
+      "events": {
+        "bounce": 3,
+        "net": 0,
+        "shot": 4
+      },
+      "predictions": "predictions/refiner3/video_000/clip_067.json",
+      "reason": null,
+      "sha256": "8ffdcce83d0f6fd2e69226d3457997cf003fefa54aaf461ed9475ccd5501cad7",
+      "status": "ok",
+      "valid_ball_frames": 543
+    },
+    "video_000/clip_068": {
+      "events": {
+        "bounce": 3,
+        "net": 0,
+        "shot": 5
+      },
+      "predictions": "predictions/refiner3/video_000/clip_068.json",
+      "reason": null,
+      "sha256": "fde44c172739fb796909581ad7c99dba7d226fa8426a8487786f22a74400d540",
+      "status": "ok",
+      "valid_ball_frames": 462
+    }
+  },
+  "code_commit": "e4438667dd41162c6f4972a92146eb9b59bbba54",
+  "cpu_threads": 4,
+  "device": "cpu",
+  "failed": 0,
+  "fps_tolerance": 0.06,
+  "manifest_sha256": "0d11010fa2a10d73ba4b03ba01f107c90641868fbb8dd86978503cc761d4ac44",
+  "method": "refiner3",
+  "method_version": "b0d4399c23bf77bac115f46027cee545f99a41e9957c4e605f0eeb73ed16bde0",
+  "ok": 69,
+  "peak_min_separation_frames": 3,
+  "peak_threshold": 0.5,
+  "pending": 0,
+  "schema": "ball_event_prediction_progress.v1",
+  "seed": 42,
+  "selection_sha256": "f2528f0088f0592c9e924b9e5bddbc95aca1d94deeaa6347071f004ac6a70aea",
+  "state": "complete",
+  "torch_version": "2.13.0+cu130",
+  "total": 69
+}

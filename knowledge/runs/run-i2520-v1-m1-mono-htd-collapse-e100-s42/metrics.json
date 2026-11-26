@@ -1,0 +1,8 @@
+{
+  "position_error_m": 25.316055297851562,
+  "angular_error_deg": 9.25,
+  "position_accuracy_0.5m": 0.0,
+  "angle_accuracy_15deg": 0.8045136332511902,
+  "canonical_mpjpe_m": 0.3606428346515062,
+  "canonical_pck_0.1m": 0.018837096497722406
+}

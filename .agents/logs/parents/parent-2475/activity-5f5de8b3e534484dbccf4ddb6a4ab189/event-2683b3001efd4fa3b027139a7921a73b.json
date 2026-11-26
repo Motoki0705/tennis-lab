@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "63dba4862da44a248ea85f7414f61630",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.merge-confirm; artifact=command response; content_sha256=c7ecfb7fdc5e9e47a775d464bc09da814c18544bb79cd75cc50e25d91b263a96; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "success",
+      "summary": "parent.merge-confirm: success; {\n  \"prs\": [\n    2521,\n    2535\n  ]\n}",
+      "verifies": []
+    },
+    "id": "2683b3001efd4fa3b027139a7921a73b",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "5f5de8b3e534484dbccf4ddb6a4ab189",
+      "delegation": null,
+      "issue": null,
+      "parent": 2475,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-25T12:16:27.274004+00:00"
+      },
+      "recorded_at": "2026-11-25T12:16:27.274020+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

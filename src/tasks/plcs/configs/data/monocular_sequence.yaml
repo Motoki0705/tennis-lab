@@ -1,0 +1,15 @@
+defaults:
+  - _monocular_augmentation
+  - _monocular
+  - _self_
+
+backend: default
+scene_dir: plcs/single_object
+adapter_camera_index: 0
+num_court_kp: 14
+
+num_workers: 4
+pin_memory: true
+
+mode: monocular_sequence
+seq_len_range: [64, 256]

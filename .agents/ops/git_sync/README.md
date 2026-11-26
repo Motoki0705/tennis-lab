@@ -55,7 +55,7 @@ fetch・ref削除を含むGit hookとrecursive submodule更新は無効にする
 | `protected_path_change` | `.venv` または `.claude/worktrees/` を更新先が変更する |
 | `submodule_layout_change` | gitlinkの追加・削除・通常ファイルとの変換。checkout保護のため手動確認が必要 |
 | `head_changed_during_preflight` | fetchやservice操作の間にHEADが変わった |
-| `checkout_jobs_running` | 有限job、対話CLI、supervisorの処理周期、または別の更新が共通lockを保持している。`lock_holders` に入口・PID・modeを記録 |
+| `checkout_jobs_running` | 有限job、対話CLI、supervisorの処理周期、または別の更新が共通lockを保持している。`lock_holders` に入口・PID・modeを記録し、担当の親を判別できる場合は `parent_issue` も記録 |
 | `control_operation_running` | spinによるdispatcherのON/OFF、または別の更新が制御lockを保持している |
 | `finite_jobs_running` | 登録済み有限service（旧unitを含む）が稼働・起動・停止中 |
 | `unguarded_job_units` | managerが保持するserviceの起動入口が共通launcherを使っていない。全unitをinstallし直す |
@@ -73,9 +73,9 @@ gitlinkの前後の固定版は `submodule_changes` に記録する。依存同�
 [共通checkout lock](../lib/README.md#メインcheckoutと運用jobの排他) を、更新側は排他、
 有限jobは起動前から終了まで共有で保持する。更新が先なら新規jobは対象コードをimportする前に待つ。
 jobが先なら更新側は待ち続けず、次の30分周期へ延期する。新しい有限jobにも同じlauncherを使う。
-対話CLIは[入口側で自動保護](../lib/README.md#対話cliの保護)する。対象一覧・子プロセスのFD方針・
-対象外は同節を参照。何周期延期しても `spin ops status git-sync` の `last_run.lock_holders` と
-logsで現在の延期原因を確認できる。CLIの終了後は次の周期で再び更新を試みる。
+対話CLIは[入口側で自動保護](../lib/README.md#対話cliの保護)する。外部待機で共有lockを解放する入口と、
+子プロセスのFD方針は同節を参照する。`spin ops status git-sync` の `last_run.lock_holders` と
+logsで現在の延期原因を確認できる。
 managerの `ExecStart` も照合するため、古いunitが未更新のままでは更新しない。ファイルだけを
 差し替え、daemon-reloadが済んでいない場合も同様に延期する。
 
@@ -100,6 +100,8 @@ user busの不通・state破損・仕事の証拠不足・停止/再開失敗は
   `outcome`、`reason`、開始/終了時刻、更新前後と取得commit、依存/gitlink差分、拒否の詳細を含む。
   `resume_pending` は常駐serviceの復旧記録が残っているかを示す。
   `checkout_blocked` は更新中/復旧待ちマーカーの有無を示す。
+  `skip_streak` は同じcheckoutで連続する `skipped` の回数、最初の見送りからの経過秒、
+  直近に取得した `lock_holders` と通知の状態を示す。更新・変更なし・失敗の結果で連続回数をリセットする。
 - `runs.jsonl`: 取得、保守停止、更新、再開、終了のイベント。systemd journalにも同じ内容を出力する。
 - `resume.json`: 停止した常駐serviceの再開対象。再開の照合が終わるまで保持する。
   更新が強制終了された場合、次回はunitと内部enabledを再確認して復旧する。手動OFFを上書きしない。
@@ -119,6 +121,17 @@ serviceの最終結果とjobの理由は区別して確認する。再開が失�
 importを拒否する。マーカーを手動削除せず、checkoutを修復してgit-syncを再実行する。
 復旧先は記録した更新前または更新先commitとし、更新前へ戻した場合は更新先との未追跡衝突も再検査する。
 不明な版や壊れたマーカー、記録と異なるHEADは自動解除しない。
+
+### 連続見送りの通知
+
+連続3回の見送りで `consecutive_skips` をsystemd journalと `runs.jsonl` に記録し、
+[共通Windows通知](../d_capacity/README.md) でWindows Terminalの通知先へ送る。
+30分の定期周期だけなら、初回から約1時間で通知する。通知には回数・経過時間・直近の理由と
+最後に取得したlock保持者の入口・PID・判明した親issueを含める。
+送信前の状態は `pending` で保存し、しきい値到達をjournalへ記録してから、通知の呼出直前に `uncertain` を保存する。
+送信前に中断した場合や未送信を確認できた場合は、次の見送りで再試行する。
+送信済みまたは送信結果不明の場合は、その連続見送りの間は1回の送信試行で終える。
+送信結果はjournalと `skip_streak.notification` に残す。
 
 ## 検証
 

@@ -366,7 +366,7 @@ def test_resume_prompt_conflict_builds_resolution_prompt_and_rejects_unknown_sta
     [
         ([], "resuming", None),
         (["same"], "needs_parent", "event_already_consumed"),
-        (["a", "b", "c"], "needs_parent", "automatic_resume_limit"),
+        ([f"r{i}" for i in range(10)], "needs_parent", "automatic_resume_limit"),
     ],
 )
 def test_monitor_accept_resumes_on_conflict_respecting_dedup_and_limit(

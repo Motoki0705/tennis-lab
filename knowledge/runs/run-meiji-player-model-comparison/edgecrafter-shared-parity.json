@@ -1,0 +1,171 @@
+{
+  "benchmark_id": "meiji_4cam/multiview-player-evaluation-v1",
+  "manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+  "scope": "All saved person rows on the full accuracy cohort. The fixed-speed cohort is measured separately.",
+  "shared_parity_commit": "c7e43dd009993e6b53e8e6874c453d4ffb5bf642",
+  "shared_parity_source_sha256": "f3c7f1a68f6be94a7f9bf85d2065aaa74b89558c3de6bcf2b98cff0375e7f555",
+  "criteria": {
+    "matching": "maximum pairs then total IoU",
+    "matching_min_iou": 0.5,
+    "quantile_method": "linear",
+    "ratio_denominator": {
+      "extra_ratio": "candidate_boxes",
+      "missing_ratio": "reference_boxes"
+    },
+    "reference": "same model PT32",
+    "rules": {
+      "extra_ratio": {
+        "comparison": "<=",
+        "limit": 0.01,
+        "statistic": "ratio"
+      },
+      "iou_p05": {
+        "comparison": ">=",
+        "limit": 0.98,
+        "statistic": "p05"
+      },
+      "missing_ratio": {
+        "comparison": "<=",
+        "limit": 0.01,
+        "statistic": "ratio"
+      },
+      "score_abs_p95": {
+        "comparison": "<=",
+        "limit": 0.01,
+        "statistic": "p95"
+      },
+      "xyxy_abs_px_p95": {
+        "comparison": "<=",
+        "limit": null,
+        "statistic": "p95"
+      }
+    }
+  },
+  "conditions": [
+    {
+      "model_id": "ecdet-l-coco",
+      "backend": "pt16",
+      "report_path": "outputs/player-model-comparison/ecdet-l-coco/pt16/parity-vs-pt32-shared.json",
+      "report_sha256": "37e3c16315206e3d1cdd52e53402f2dc791ae41f8fd10aba0eb42efacbdf8e51",
+      "pt32_predictions_sha256": "88c9345eaf27a10fcc3e5ec744b6251936ea8282bb78392f745fb5db0c6d0dfe",
+      "candidate_predictions_sha256": "748017508555a99b194d61ce8539c20d393ab452cbb9db65862603f575316d14",
+      "status": "ok",
+      "failure_reason": null,
+      "metrics": {
+        "candidate_boxes": 432193,
+        "candidate_items": 6844,
+        "checked_ids": 6844,
+        "extra": 2334,
+        "extra_ratio": 0.005400365114659423,
+        "iou_p05": 0.9911261978847333,
+        "matched_boxes": 429859,
+        "missing": 1933,
+        "missing_ratio": 0.004476692481565198,
+        "reference_boxes": 431792,
+        "reference_items": 6844,
+        "score_abs_p95": 0.001183629035949707,
+        "xyxy_abs_px_p95": 0.083740234375
+      }
+    },
+    {
+      "model_id": "ecdet-x-coco",
+      "backend": "pt16",
+      "report_path": "outputs/player-model-comparison/ecdet-x-coco/pt16/parity-vs-pt32-shared.json",
+      "report_sha256": "cd9003478be3070c2bc7c485135d140463a17f5b0c79b16db8d6090b64ec10f1",
+      "pt32_predictions_sha256": "10270146748c4728305830aa100e50e5515bc4b5d2dd8c25bd1e32a0dd2b576c",
+      "candidate_predictions_sha256": "f762173cbf1c78cd084680718ae035490ac725b6cd2817c0721dac06b909f68d",
+      "status": "ok",
+      "failure_reason": null,
+      "metrics": {
+        "candidate_boxes": 478965,
+        "candidate_items": 6844,
+        "checked_ids": 6844,
+        "extra": 2637,
+        "extra_ratio": 0.005505621496351508,
+        "iou_p05": 0.9897191105531733,
+        "matched_boxes": 476328,
+        "missing": 2924,
+        "missing_ratio": 0.00610117432999758,
+        "reference_boxes": 479252,
+        "reference_items": 6844,
+        "score_abs_p95": 0.0009900968521833402,
+        "xyxy_abs_px_p95": 0.0992431640625
+      }
+    },
+    {
+      "model_id": "ecdet-l-o365",
+      "backend": "pt16",
+      "report_path": "outputs/player-model-comparison/ecdet-l-o365/pt16/parity-vs-pt32-shared.json",
+      "report_sha256": "5079283623ce4ea6a635f2e25f6252d80e88e4ac358bb154ae3c1ad8646a7a5e",
+      "pt32_predictions_sha256": "9f159d7bad3c83d7c24f59c0c346d9aa45cad62edc25ce70f62f2c3c2100d272",
+      "candidate_predictions_sha256": "4d85d131068cef31073f52cc7af3828ce120de4734f26da95f99b409f8e97661",
+      "status": "parity_failed",
+      "failure_reason": "missing_ratio=0.013905528 requires <= 0.01, extra_ratio=0.011399464 requires <= 0.01",
+      "metrics": {
+        "candidate_boxes": 366333,
+        "candidate_items": 6844,
+        "checked_ids": 6844,
+        "extra": 4176,
+        "extra_ratio": 0.01139946442171467,
+        "iou_p05": 0.9873740182209135,
+        "matched_boxes": 362157,
+        "missing": 5107,
+        "missing_ratio": 0.01390552844820075,
+        "reference_boxes": 367264,
+        "reference_items": 6844,
+        "score_abs_p95": 0.002743136882781984,
+        "xyxy_abs_px_p95": 0.10693359375
+      }
+    },
+    {
+      "model_id": "ecdet-x-o365",
+      "backend": "pt16",
+      "report_path": "outputs/player-model-comparison/ecdet-x-o365/pt16/parity-vs-pt32-shared.json",
+      "report_sha256": "f999d9db85434151125f4b0ee1e0b7d0f1f8e92625c5268a271de375509eccc9",
+      "pt32_predictions_sha256": "efa6b45d1175f8c2d1a84361928e5f03c84dfc1be3de975353edd6a023964362",
+      "candidate_predictions_sha256": "29783206ffaecdd12552bbfd7d86b0244bef11ce9c1be714637907cbb7cfde46",
+      "status": "parity_failed",
+      "failure_reason": "iou_p05=0.97666682 requires >= 0.98, missing_ratio=0.021314927 requires <= 0.01, extra_ratio=0.02705225 requires <= 0.01",
+      "metrics": {
+        "candidate_boxes": 331100,
+        "candidate_items": 6844,
+        "checked_ids": 6844,
+        "extra": 8957,
+        "extra_ratio": 0.02705225007550589,
+        "iou_p05": 0.976666815292239,
+        "matched_boxes": 322143,
+        "missing": 7016,
+        "missing_ratio": 0.021314926828675505,
+        "reference_boxes": 329159,
+        "reference_items": 6844,
+        "score_abs_p95": 0.005635877884924403,
+        "xyxy_abs_px_p95": 0.2032470703125
+      }
+    },
+    {
+      "model_id": "ecdet-l-coco",
+      "backend": "trt16",
+      "report_path": "outputs/player-model-comparison/ecdet-l-coco/trt16/parity-vs-pt32-shared.json",
+      "report_sha256": "37d0dab87578dba4f00069d026b3d122fc668b482b44d06d598fa709e5b5c075",
+      "pt32_predictions_sha256": "88c9345eaf27a10fcc3e5ec744b6251936ea8282bb78392f745fb5db0c6d0dfe",
+      "candidate_predictions_sha256": "53ce6fd1fbf1df98ee760fe9b4af2321fafc954a2de111bcc2a94936149045fe",
+      "status": "parity_failed",
+      "failure_reason": "iou_p05=0.67462523 requires >= 0.98, score_abs_p95=0.14480491 requires <= 0.01, missing_ratio=0.33247721 requires <= 0.01, extra_ratio=0.284586 requires <= 0.01",
+      "metrics": {
+        "candidate_boxes": 402887,
+        "candidate_items": 6844,
+        "checked_ids": 6844,
+        "extra": 114656,
+        "extra_ratio": 0.2845860005410947,
+        "iou_p05": 0.674625227778096,
+        "matched_boxes": 288231,
+        "missing": 143561,
+        "missing_ratio": 0.33247721124986107,
+        "reference_boxes": 431792,
+        "reference_items": 6844,
+        "score_abs_p95": 0.144804909825325,
+        "xyxy_abs_px_p95": 3.097590637207027
+      }
+    }
+  ]
+}
