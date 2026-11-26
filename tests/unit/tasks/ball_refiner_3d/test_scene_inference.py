@@ -14,8 +14,38 @@ from src.tasks.ball_refiner_3d.model_io.factory import build_refiner
 from src.tennis_scene.schema import SceneResult
 
 
+@pytest.fixture
+def predictor() -> RefinerPredictor:
+    model = build_refiner(
+        ModelConfig(3, "regression", 16, 1, 2, 0, 2, 64, 8, 10000, "swiglu", False)
+    )
+    return RefinerPredictor(model, {"fps": 60}, torch.device("cpu"))
+
+
+@pytest.mark.parametrize(
+    ("fps", "tolerance", "accepted"),
+    [
+        (59.94, None, False),
+        (59.94, 0.06, True),
+        (60000 / 1001, 0.06, True),
+        (59.939999, 0.06, False),
+    ],
+    ids=("strict-default", "rounded-ntsc-boundary", "exact-ntsc", "outside-tolerance"),
+)
+def test_predictor_fps_tolerance(predictor, fps, tolerance, accepted):
+    coordinates = torch.zeros((1, 3, 3))
+    missing = torch.zeros((1, 3), dtype=torch.bool)
+    overrides = {} if tolerance is None else {"fps_tolerance": tolerance}
+    if accepted:
+        result = predictor.predict(coordinates, missing, fps=fps, seed=0, **overrides)
+        assert result.event_probability.shape == (1, 3, 3)
+    else:
+        with pytest.raises(ValueError, match="does not match checkpoint FPS"):
+            predictor.predict(coordinates, missing, fps=fps, seed=0, **overrides)
+
+
 def test_scene_prediction_preserves_mask_frame_grid_and_actual_fps(
-    tmp_path, monkeypatch
+    tmp_path, monkeypatch, predictor
 ):
     scene = SceneResult(
         num_frames=3,
@@ -35,19 +65,12 @@ def test_scene_prediction_preserves_mask_frame_grid_and_actual_fps(
     monkeypatch.setattr(
         "src.tasks.ball_refiner_3d.inference.scene.load_scene_result", lambda _: scene
     )
-    model = build_refiner(
-        ModelConfig(3, "regression", 16, 1, 2, 0, 2, 64, 8, 10000, "swiglu", False)
-    )
-    predictor = RefinerPredictor(model, {"fps": 60}, torch.device("cpu"))
     coordinates, missing, fps = scene_input(scene)
     torch.testing.assert_close(
         coordinates[0],
         torch.tensor([[1, -2, 3], [0, 0, 0], [4, 5, 6]], dtype=torch.float32),
     )
     assert missing.tolist() == [[False, True, False]]
-    with pytest.raises(ValueError, match="does not match checkpoint FPS"):
-        predictor.predict(coordinates, missing, fps=fps, seed=0)
-
     probability = torch.tensor([[[0.1, 0.1, 0.1], [0.7, 0.2, 0.8], [0.1, 0.6, 0.1]]])
     monkeypatch.setattr(
         "src.tasks.ball_refiner_3d.inference.predictor.refine_coordinates",

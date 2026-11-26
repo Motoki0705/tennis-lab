@@ -68,7 +68,8 @@ manifestに物理イベント件数と接触の内訳を全体・split別で保�
 
 入力NPZは `coordinates`, `missing`, `fps` のみ。座標はm、欠損はbool。
 公開API `inference.RefinerPredictor` は同じ契約で入力し、CPU上の座標とイベント確率を返す。
-既定のFPS照合は絶対差1e-6 Hz以内。窓分割はせず、各クリップ全体（最大4096 frame）を1回のforwardで推論する。
+FPSは絶対差が `max(1e-6 Hz, fps_tolerance)` 以下の場合に受け付ける。閾値の境界では大きい方のFPSの1 ULPを丸め誤差として許す。
+各クリップ全体（最大4096 frame）を1回のforwardで推論する。
 物理headを持つcheckpointは、クラスごとに確率0.5以上かつ3 frame以上離れたピークを取り、
 frame 0と全クラスのピークの和集合で区間を作り、
 その区間で初期状態を出力して積分軌道を作る（積分定数はcheckpointの `flight_clock`）。
@@ -88,8 +89,8 @@ frame 0と全クラスのピークの和集合で区間を作り、
 （`evaluation/physics.py`）を計算する。GTの飛行区間ごとに共有の力モデルを当てはめた残差、
 区間内有限差分の速度・加速度誤差とjerk比、非物理加速度率、地面下率、イベントのピーク照合を、
 欠損・観測・イベント近傍・バウンド後・ショット後のframe群と、surface・ラリー長・バウンド数別に出す。
-`diagnostic_metrics.json` の `physics.events.by_kind` は、ラリー内・クラス内でピークを真値の±2 frameに
-近い順で1対1照合し、適合率・再現率・F1と照合時刻の平均絶対誤差・平均符号付き誤差をframe・秒で記録する。
+`diagnostic_metrics.json` の `physics.events.by_kind` は、ラリー内・クラス内でピークを真値の±2 frame以内に1対1照合する。
+一致数を最大化し、同数の割当の中で絶対フレーム誤差の合計を最小化する。適合率・再現率・F1と平均絶対誤差・平均符号付き誤差をframe・秒で記録する。
 `metrics.json` には `test_event_net_f1` などの代表値を保存する。
 当てはめは区間全体の残差を最小化するため、欠損区間の非物理性は同じ区間の観測frameの残差にも現れる。
 学習中のvalidationは物理評価を行わない。
