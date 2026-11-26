@@ -307,6 +307,10 @@ v2の`source_rows`は間引き前のclip/camera通番、`duplicate_merges`はfra
 `player_selection` は校正z=0の足元から選手候補を選ぶ。固定規則の正本は
 [`court_linking.py`](../../tasks/person_tracking/court_linking.py)のdocstringと`LinkingConfig`。
 連結後のdistinct core滞在で選別し、`person_observations.max_tracks_per_camera`は最後のgroup上限だけに使う。
+シングルスとダブルスのどちらもコアは `|x| ≤ 5.485 m`、`|y| ≤ 16.885 m`。必要滞在はクリップの25%。
+選別領域とチェーンごとの滞在フレーム数・選別理由は `diagnostics.linking` に保存する。
+対応付けで求める人数は `player_association.players_per_side=1`（シングルス）または
+`player_association.players_per_side=2`（ダブルス）で指定する。
 CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だけの成功に変えない。
 `selected_player_tracks` v3の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
 追跡特徴は選別側のencoder名とモデルidentityが一致するときだけ再利用する。不一致・identity不明なら
