@@ -109,7 +109,7 @@ BLCS生成の `single_object_net_v1` で、打球・バウンド・ネット接�
 
 ## 合成test
 
-128ラリー、50,055フレームを評価した。クラスごとに確率0.5以上のピークを3フレーム以上離して選び、真値との絶対差が2フレーム以内の組を近い順に1対1で照合した。時刻誤差の符号は予測時刻から真値時刻を引いた値。
+128ラリー、50,055フレームを評価した。クラスごとに確率0.5以上のピークを3フレーム以上離して選び、真値との絶対差が2フレーム以内の組を1対1で照合し、一致数を最大化した。一致数が同じ割当の中では絶対フレーム誤差の合計を最小化した。時刻誤差の符号は予測時刻から真値時刻を引いた値。
 
 | クラス | 真値 | 予測 | 一致 | 適合率 | 再現率 | F1 | 平均絶対誤差 (ms) | 符号付き平均 (ms) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -117,19 +117,19 @@ BLCS生成の `single_object_net_v1` で、打球・バウンド・ネット接�
 | バウンド | 497 | 509 | 496 | 0.974 | 0.998 | 0.986 | 3.73 | -1.31 |
 | ネット接触 | 64 | 62 | 54 | 0.871 | 0.844 | 0.857 | 11.73 | +2.47 |
 
-ネット接触は白帯を越えた32件中29件、打者側に落ちた32件中25件を照合できた。ネット接触のない64ラリーでは同じ閾値のネット候補は0件だった。物理記録のバウンド522件のうち25件はラリー末尾にあり、対応する最初の60 fpsフレームが出力の範囲外になるため、497件を採点した。保存した予測とdatasetのイベントbitから全クラスの結果を再集計し、診断JSONと一致したことを確認した。[評価の詳細](../../runs/run-i2567-net-contacts-s42/diagnostic_metrics.json)
+ネット接触は白帯を越えた32件中29件、打者側に落ちた32件中25件を照合できた。ネット接触のない64ラリーでは同じ閾値のネット候補は0件だった。物理記録のバウンド522件のうち25件はラリー末尾にあり、対応する最初の60 fpsフレームが出力の範囲外になるため、497件を採点した。レビュー後の手順で保存予測とdatasetのイベントbitから再集計した結果、全クラスのP/R/F1・時刻誤差が学習時の診断JSONと一致した。[最適照合での再集計](../../runs/run-i2567-net-contacts-s42/event_metrics_recomputed.json) [再集計スクリプト](../../runs/run-i2567-net-contacts-s42/recompute_event_metrics.py) [学習時の診断JSON](../../runs/run-i2567-net-contacts-s42/diagnostic_metrics.json)
 
 座標RMSEは全体0.1651 m、欠測区間0.4060 m。旧イベント付き回帰は別datasetで全体0.1576 m、欠測区間0.4279 mだった。生成データとイベント教師をともに変更したため、この差からどちらの変更が位置精度に効いたかは判定できない。
 
 ## multiview-v2の入出力確認
 
-固定manifestの `video_000/clip_000` にbestを適用した。SceneResult v2の `ball_3d` をコート座標mの `(1,356,3)`、`ball_3d_valid` の反転をtrue=欠測の `(1,356)` とした。欠測は0フレーム。実測59.94005994 fpsとcheckpointの60 fpsには0.06 Hzの許容幅を明示し、出力時刻は元フレームを実測fpsで割った値とした。
+固定manifestの `video_000/clip_000` にbestを適用した。SceneResult v2の `ball_3d` をコート座標mの `(1,356,3)`、`ball_3d_valid` の反転をtrue=欠測の `(1,356)` とした。欠測は0フレーム。実測59.94005994 fpsとcheckpointの60 fpsには0.06 Hzの許容幅を明示し、出力時刻は元フレームを実測fpsで割った値とした。FPS照合の境界は大きい方のFPSの1 ULPまで許容するため、丸め表記59.94 fpsも明示した0.06 Hzの境界で受け付ける。
 
 出力は `(1,356,3)` の確率。ショットはピーク2件・最大0.959（frame 198）、バウンドは3件・最大0.960（frame 274）、ネット接触は1件・最大0.729（frame 327）。結果は `ball_event_predictions.v1` のJSONと確率NPZに保存した。目視ラベルとの照合は [#2542](https://github.com/Motoki0705/tennis-lab/issues/2542) で行う。[再現スクリプト](../../runs/run-i2567-net-contacts-s42/verify_clip_000.py) [入出力と確率の集計](../../runs/run-i2567-net-contacts-s42/clip_000_summary.json)
 
 ## 実行版と成果物
 
-- 実行commit `e4438667dd41162c6f4972a92146eb9b59bbba54`。dataset manifest SHA-256 `b54876c074c22c055d65033a9387d2e167263fbf7e4971e2e5fe8b0009653ca0`。
+- 学習commit `e4438667dd41162c6f4972a92146eb9b59bbba54`。再集計とFPS修正後の実クリップ検証は `4afdccc7c348a946cc5bb86aac583ae220ce652f`。dataset manifest SHA-256 `b54876c074c22c055d65033a9387d2e167263fbf7e4971e2e5fe8b0009653ca0`。
 - best checkpoint SHA-256 `b0d4399c23bf77bac115f46027cee545f99a41e9957c4e605f0eeb73ed16bde0`。合成test NPZ SHA-256 `670029b88db868f3685d45bde24e59591c134c6798b076b19b05c16735a8ef8c`。
 - 元repoの `.worktree-outputs/parent-1722-issue-2567-primary/ball_refiner_3d/evaluate/multiview-v2/net-contacts-s42-v1-clip000/` にクリップ予測を保存した。`events.json` のSHA-256は `0b1a2c5dc4a5c3d2434329802993d2a9cc6c5f27dbdd6bd7e8db2bfc0063a928`。
 - 合成データでの3クラス性能と実データでの入出力を確認できたため、summaryの現状を更新した。標準パイプラインのcheckpoint採用は別の判断とする。
