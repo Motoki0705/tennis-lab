@@ -306,6 +306,7 @@ ball_reconstruction:
 event_detection:
   method: null  # Explicitly select rule, refiner, or annotation.
   annotation_directory: null  # DATA path for meiji_event_labels.v1
+  annotation_benchmark_manifest: null  # DATA path for the pinned Meiji multiview-v2 manifest.json
   checkpoint: null  # CHECKPOINT path for a three-class refiner
   checkpoint_sha256: null
   fps_tolerance: null  # Explicit FPS difference allowed for the refiner, in Hz

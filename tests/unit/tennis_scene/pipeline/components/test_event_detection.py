@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import json
+from dataclasses import replace
 from hashlib import sha256
 from pathlib import Path
 from typing import Any
@@ -12,6 +13,7 @@ import pytest
 import torch
 
 from src.tasks.ball_refiner_3d.model_io.contracts import RefinerPrediction
+from src.tennis_scene.ball_events import annotation as meiji_annotation
 from src.tennis_scene.ball_events import detect_scene_events
 from src.tennis_scene.ball_events.annotation import ANNOTATION_SCHEMA_FILENAME
 from src.tennis_scene.pipeline.components.event_detection import (
@@ -30,8 +32,8 @@ def assembly(v2_scene: SceneResult, tmp_path: Path) -> EventDetectionInput:
     clip = "video_000/clip_012"
     v2_scene.metadata["dataset_clip_id"] = clip
     source = ClipSource(clip, tuple(
-        SourceVideo(camera, tmp_path / f"{camera}.mp4", "b" * 64, 3, 30.0, 640, 360)
-        for camera in ("cam1", "cam0")
+        SourceVideo(camera, tmp_path / f"{camera}.mp4", digit * 64, 3, 30.0, 640, 360)
+        for camera, digit in (("cam1", "b"), ("cam0", "a"))
     ))
     return EventDetectionInput(source, v2_scene)
 
@@ -72,6 +74,22 @@ def annotation(tmp_path: Path, assembly: EventDetectionInput) -> tuple[Path, dic
     return path, document
 
 
+@pytest.fixture
+def annotation_config(
+    annotation: tuple[Path, dict[str, Any]], assembly: EventDetectionInput, monkeypatch: pytest.MonkeyPatch,
+) -> EventDetectionConfig:
+    directory = annotation[0].parent
+    manifest = directory / "manifest.json"
+    manifest.write_text(json.dumps({
+        "benchmark_id": "meiji_4cam/multiview-v2",
+        "clips": [{"clip_id": assembly.source.clip_id, "fps": 30.0, "frames": 3,
+                   "cameras": [{"camera_id": "cam0", "sha256": "a" * 64},
+                               {"camera_id": "cam1", "sha256": "b" * 64}]}],
+    }))
+    monkeypatch.setattr(meiji_annotation, "MEIJI_V2_MANIFEST_SHA256", sha256(manifest.read_bytes()).hexdigest())
+    return EventDetectionConfig("annotation", annotation_directory=directory, annotation_benchmark_manifest=manifest)
+
+
 def _camera_center(scene: SceneResult, y: float) -> None:
     scene.metadata["court_reference"] = {
         "reference_camera": "cam1",
@@ -86,13 +104,11 @@ def _camera_center(scene: SceneResult, y: float) -> None:
 @pytest.mark.parametrize(("center_y", "sides"), [(-18., [-1, 0, 1]), (18., [1, 0, -1])])
 def test_import_preserves_labels_evidence_and_coverage(
     assembly: EventDetectionInput, annotation: tuple[Path, dict[str, Any]],
-    center_y: float, sides: list[int],
+    annotation_config: EventDetectionConfig, center_y: float, sides: list[int],
 ) -> None:
     path, document = annotation
     _camera_center(assembly.scene, center_y)
-    module = EventDetectionModule(
-        EventDetectionConfig("annotation", annotation_directory=path.parent), assembly.source.clip_id, code_commit=COMMIT,
-    )
+    module = EventDetectionModule(annotation_config, assembly.source.clip_id, code_commit=COMMIT)
     result = module.process(assembly)
     assert result.schema_version == 3 and assembly.scene.schema_version == 2
     assert result.ball_3d is assembly.scene.ball_3d
@@ -108,21 +124,50 @@ def test_import_preserves_labels_evidence_and_coverage(
     assert result.metadata["ball_events"]["provenance"] == {
         "annotation_sha256": sha256(path.read_bytes()).hexdigest(),
         "annotation_schema_sha256": sha256((path.parent / ANNOTATION_SCHEMA_FILENAME).read_bytes()).hexdigest(),
+        "annotation_benchmark_sha256": sha256((path.parent / "manifest.json").read_bytes()).hexdigest(),
         "labeler": "chatgpt", "labeler_original": document["labeler"], "code_commit": COMMIT,
     }
 
 
 @pytest.mark.parametrize(("field", "value"), [("clip_id", "video_000/clip_002"), ("fps", 30.01), ("frames", 4)])
 def test_annotation_rejects_wrong_clip_or_timeline(
-    assembly: EventDetectionInput, annotation: tuple[Path, dict[str, Any]], field: str, value: object,
+    assembly: EventDetectionInput, annotation: tuple[Path, dict[str, Any]],
+    annotation_config: EventDetectionConfig, field: str, value: object,
 ) -> None:
     path, document = annotation
     path.write_text(json.dumps({**document, field: value}))
-    module = EventDetectionModule(
-        EventDetectionConfig("annotation", annotation_directory=path.parent), assembly.source.clip_id, code_commit=COMMIT,
-    )
+    module = EventDetectionModule(annotation_config, assembly.source.clip_id, code_commit=COMMIT)
     with pytest.raises(ValueError, match="clip_id/fps/frames"):
         module.process(assembly)
+
+
+@pytest.mark.parametrize("video_hashes", [
+    {"cam0": "a" * 64, "cam1": "c" * 64},
+    {"cam0": "b" * 64, "cam1": "a" * 64},
+    {"cam0": "a" * 64},
+], ids=["changed", "swapped", "missing-camera"])
+def test_annotation_rejects_different_media_without_digests_in_notes(
+    assembly: EventDetectionInput, annotation_config: EventDetectionConfig, video_hashes: dict[str, str],
+) -> None:
+    _camera_center(assembly.scene, -18.0)
+    module = EventDetectionModule(annotation_config, assembly.source.clip_id, code_commit=COMMIT)
+    videos = tuple(replace(video, sha256=video_hashes[video.camera_id]) for video in assembly.source.videos
+                   if video.camera_id in video_hashes)
+    source = replace(assembly.source, videos=videos)
+    with pytest.raises(ValueError, match="video SHA-256"):
+        module.process(EventDetectionInput(source, assembly.scene))
+
+
+def test_annotation_rejects_a_changed_benchmark_manifest(
+    assembly: EventDetectionInput, annotation_config: EventDetectionConfig,
+) -> None:
+    manifest = annotation_config.annotation_benchmark_manifest
+    assert manifest is not None
+    document = json.loads(manifest.read_text())
+    document["clips"][0]["cameras"][0]["sha256"] = "c" * 64
+    manifest.write_text(json.dumps(document))
+    with pytest.raises(ValueError, match="fixed Meiji multiview-v2 manifest SHA-256"):
+        EventDetectionModule(annotation_config, assembly.source.clip_id, code_commit=COMMIT)
 
 
 @pytest.mark.parametrize(("problem", "message"), [
@@ -136,7 +181,8 @@ def test_annotation_rejects_wrong_clip_or_timeline(
     ("changed_asset", "asset changed"),
 ])
 def test_annotation_rejects_invalid_labels_or_reference(
-    assembly: EventDetectionInput, annotation: tuple[Path, dict[str, Any]], problem: str, message: str,
+    assembly: EventDetectionInput, annotation: tuple[Path, dict[str, Any]],
+    annotation_config: EventDetectionConfig, problem: str, message: str,
 ) -> None:
     path, document = annotation
     _camera_center(assembly.scene, 0.0 if problem == "net_plane" else -18.0)
@@ -151,11 +197,9 @@ def test_annotation_rejects_invalid_labels_or_reference(
     elif problem == "wrong_view":
         document["notes"] = "player_hint uses cam1."
     elif problem == "wrong_media":
-        document["notes"] = f"Source SHA-256: clip_012_cam0.mp4={'a' * 64}"
+        document["notes"] = f"Source SHA-256: clip_012_cam0.mp4={'c' * 64}"
     path.write_text(json.dumps(document))
-    module = EventDetectionModule(
-        EventDetectionConfig("annotation", annotation_directory=path.parent), assembly.source.clip_id, code_commit=COMMIT,
-    )
+    module = EventDetectionModule(annotation_config, assembly.source.clip_id, code_commit=COMMIT)
     if problem == "changed_asset":
         path.write_text(json.dumps({**document, "labeler": "changed"}))
     with pytest.raises(ValueError, match=message):

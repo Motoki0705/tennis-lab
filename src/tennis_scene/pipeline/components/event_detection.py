@@ -22,6 +22,7 @@ from src.tennis_scene.ball_events import analyze_scene_events
 from src.tennis_scene.ball_events.annotation import (
     ANNOTATION_SCHEMA_FILENAME,
     annotation_path,
+    meiji_v2_manifest_asset,
     read_ball_annotations,
 )
 from src.tennis_scene.ball_events.rules import DEFAULT_THRESHOLDS, RuleThresholds
@@ -52,6 +53,7 @@ class EventDetectionConfig:
     fps_tolerance: float | None = None
     device: str = "cpu"
     thresholds: RuleThresholds = DEFAULT_THRESHOLDS
+    annotation_benchmark_manifest: Path | None = None
 
     def __post_init__(self) -> None:
         if self.method not in EVENT_SOURCES:
@@ -59,8 +61,10 @@ class EventDetectionConfig:
         if self.method == "annotation":
             if self.annotation_directory is None or not self.annotation_directory.is_absolute():
                 raise ValueError("annotation method requires a resolved annotation_directory")
-        elif self.annotation_directory is not None:
-            raise ValueError("annotation_directory requires event_detection.method=annotation")
+            if self.annotation_benchmark_manifest is None or not self.annotation_benchmark_manifest.is_absolute():
+                raise ValueError("annotation method requires a resolved annotation_benchmark_manifest")
+        elif self.annotation_directory is not None or self.annotation_benchmark_manifest is not None:
+            raise ValueError("Annotation inputs require event_detection.method=annotation")
         refiner_fields = (self.checkpoint, self.checkpoint_sha256, self.fps_tolerance)
         if self.method == "refiner":
             if self.checkpoint is None or not self.checkpoint.is_absolute():
@@ -108,10 +112,14 @@ class EventDetectionConfig:
         return settings
 
 
-def annotation_assets(directory: Path, clip_id: str) -> dict[str, dict[str, str]]:
+def annotation_assets(directory: Path, clip_id: str, *, benchmark_manifest: Path) -> dict[str, dict[str, str]]:
+    manifest = meiji_v2_manifest_asset(benchmark_manifest)
+    if file_identity(benchmark_manifest) != manifest:
+        raise ValueError(f"Event annotation requires the fixed Meiji multiview-v2 manifest SHA-256: {benchmark_manifest}")
     return {
         "annotation": file_identity(annotation_path(directory, clip_id)),
         "schema": file_identity(directory / ANNOTATION_SCHEMA_FILENAME),
+        "benchmark_manifest": manifest,
     }
 
 
@@ -119,6 +127,7 @@ def annotation_digests(assets: Mapping[str, Mapping[str, str]]) -> dict[str, str
     return {
         "annotation_sha256": assets["annotation"]["sha256"],
         "annotation_schema_sha256": assets["schema"]["sha256"],
+        "annotation_benchmark_sha256": assets["benchmark_manifest"]["sha256"],
     }
 
 
@@ -151,9 +160,12 @@ class EventDetectionModule(InferenceComponent[EventDetectionInput, EventDetectio
     def __init__(self, config: EventDetectionConfig, clip_id: str, *, code_commit: str) -> None:
         self.config, self.clip_id, self.code_commit = config, clip_id, code_commit
         self._specs = config.model_specs()
-        self._assets = (
-            {} if config.annotation_directory is None else annotation_assets(config.annotation_directory, clip_id)
-        )
+        self._assets: dict[str, dict[str, str]] = {}
+        if config.annotation_directory is not None:
+            assert config.annotation_benchmark_manifest is not None
+            self._assets = annotation_assets(
+                config.annotation_directory, clip_id, benchmark_manifest=config.annotation_benchmark_manifest,
+            )
 
     def model_specs(self) -> Mapping[str, ModelSpec[Any]]:
         return self._specs

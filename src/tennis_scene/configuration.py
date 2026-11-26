@@ -310,6 +310,7 @@ _BALL_RECONSTRUCTION_SCHEMA = StrictConfigSchema(name="tennis_scene.ball_reconst
 _EVENT_DETECTION_SCHEMA = StrictConfigSchema(name="tennis_scene.event_detection", fields={
     "method": ConfigField.of(str, type(None)),
     "annotation_directory": ConfigField.of(str, type(None), required=False),
+    "annotation_benchmark_manifest": ConfigField.of(str, type(None), required=False),
     "checkpoint": ConfigField.of(str, type(None), required=False),
     "checkpoint_sha256": ConfigField.of(str, type(None), required=False),
     "fps_tolerance": ConfigField.of(float, int, type(None), required=False),
@@ -730,11 +731,13 @@ class PipelineRuntimeConfig:
         if bind_event_detection:
             event = _mapping(value[EVENT_DETECTION], name=EVENT_DETECTION)
             annotation_directory = cast(str | None, event.get("annotation_directory"))
+            benchmark_manifest = cast(str | None, event.get("annotation_benchmark_manifest"))
             event_checkpoint = cast(str | None, event.get("checkpoint"))
             tolerance = cast(float | int | None, event.get("fps_tolerance"))
             event_detection = EventDetectionConfig(
                 cast(EventSource, event["method"]),
                 annotation_directory=None if annotation_directory is None else resolver.resolve(PathRole.DATA, annotation_directory),
+                annotation_benchmark_manifest=None if benchmark_manifest is None else resolver.resolve(PathRole.DATA, benchmark_manifest),
                 checkpoint=None if event_checkpoint is None else resolver.resolve(PathRole.CHECKPOINT, event_checkpoint),
                 checkpoint_sha256=cast(str | None, event.get("checkpoint_sha256")),
                 fps_tolerance=None if tolerance is None else float(tolerance),

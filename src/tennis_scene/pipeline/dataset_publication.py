@@ -176,7 +176,8 @@ def _required_publication_components(inputs: DatasetClipInputs, identity: Mappin
             raise ValueError("Publication requires an event_detection SceneResult v3 export")
         event = read_component_descriptor(root, event_ref, node=EVENT_DETECTION, source_sha256=document["source_sha256"])
         actual = event["identity"]["settings"]
-        expected = {key: value for key, value in event_settings.items() if key != "annotation_directory"}
+        expected = {key: value for key, value in event_settings.items()
+                    if key not in {"annotation_directory", "annotation_benchmark_manifest"}}
         if (event["dependencies"].get("scene") != reference
                 or {key: value for key, value in actual.items() if key != "models"} != expected):
             raise ValueError("Published scene differs from its declared event_detection inputs or settings")
@@ -237,7 +238,8 @@ def _required_scene_components(inputs: DatasetClipInputs, identity: Mapping[str,
 def _clip_publication_identity(inputs: DatasetClipInputs, identity: Mapping[str, object]) -> Mapping[str, object]:
     event = identity.get(EVENT_DETECTION)
     if isinstance(event, Mapping) and "annotation_directory" in event:
-        assets = annotation_assets(Path(event["annotation_directory"]), inputs.record.clip_id)
+        assets = annotation_assets(Path(event["annotation_directory"]), inputs.record.clip_id,
+                                   benchmark_manifest=Path(event["annotation_benchmark_manifest"]))
         identity = {**identity, EVENT_DETECTION: {**event, **annotation_digests(assets)}}
     if identity.get("bind_appearance_media") is True:
         return {**identity, APPEARANCE_MEDIA: appearance_media_identity(inputs.camera_ids, inputs.video_paths)}

@@ -126,6 +126,7 @@ class TennisSceneOrchestrator:
         event = event_config.settings(source_commit())
         if event_config.annotation_directory is not None:
             event["annotation_directory"] = str(event_config.annotation_directory)
+            event["annotation_benchmark_manifest"] = str(event_config.annotation_benchmark_manifest)
         identity = {"schema": "declared_component_pipeline_v1", "code_sha256": self.code_identity,
             "settings": settings, "execution": dict(cfg.component_sources),
             EVENT_DETECTION: event,
