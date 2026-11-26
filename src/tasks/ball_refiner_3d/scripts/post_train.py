@@ -117,9 +117,9 @@ def main(argv: list[str] | None = None) -> None:
         parser.error("All file and directory paths must be absolute")
     roots = RuntimePathRoots(
         project_root=PROJECT_ROOT,
-        data_root=args.dataset,
-        checkpoint_root=weights.parent,
-        output_root=args.output.parent,
+        data_root=args.dataset.resolve(),
+        checkpoint_root=weights.parent.resolve(),
+        output_root=args.output.parent.resolve(),
         artifact_root=PROJECT_ROOT,
         cache_root=PROJECT_ROOT,
         external_asset_root=PROJECT_ROOT,

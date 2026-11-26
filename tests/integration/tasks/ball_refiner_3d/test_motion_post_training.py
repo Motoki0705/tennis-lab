@@ -92,10 +92,14 @@ def _archive(path: Path) -> SceneResult:
     return load_scene_result(path)
 
 
-def test_motion_runner_fits_validates_and_scores_two_label_sources(
+def test_motion_runner_uses_worktree_links_and_scores_two_label_sources(
     tmp_path: Path,
 ) -> None:
-    prepared = tmp_path / "prepared"
+    shared = tmp_path / "shared"
+    shared.mkdir()
+    worktree_link = tmp_path / "worktree-shared"
+    worktree_link.symlink_to(shared, target_is_directory=True)
+    prepared = shared / "prepared"
     scene = _archive(tmp_path / "scene.npz")
     skeleton = BodySkeleton(
         np.zeros((22, 3), np.float32), np.arange(22, dtype=np.int32) - 1
@@ -123,7 +127,7 @@ def test_motion_runner_fits_validates_and_scores_two_label_sources(
     config = ModelConfig(
         3, "regression", 16, 1, 2, 0.05, 2, 32, 8, 10000, "swiglu", False
     )
-    checkpoint = tmp_path / "ball.pt"
+    checkpoint = shared / "ball.pt"
     torch.save(
         {
             "schema": CHECKPOINT_SCHEMA,
@@ -135,21 +139,21 @@ def test_motion_runner_fits_validates_and_scores_two_label_sources(
         },
         checkpoint,
     )
-    output = tmp_path / "fit"
+    output = shared / "fit"
     command = [
         "run",
         "--dataset",
-        str(prepared),
+        str(worktree_link / prepared.name),
         "--manifest-sha256",
         manifest_sha256,
         "--prepared-sha256",
         sha256_file(prepared / "inputs.json"),
         "--checkpoint",
-        str(checkpoint),
+        str(worktree_link / checkpoint.name),
         "--checkpoint-sha256",
         sha256_file(checkpoint),
         "--output",
-        str(output),
+        str(worktree_link / output.name),
         "--mode",
         "set-attention",
         "--seed",
