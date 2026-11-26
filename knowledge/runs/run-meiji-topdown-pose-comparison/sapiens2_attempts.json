@@ -1,0 +1,114 @@
+{
+  "observed_at": "2026-11-25T12:37:00+09:00",
+  "scope_decision": {
+    "date": "2026-11-25",
+    "source": "https://github.com/Motoki0705/tennis-lab/issues/2492",
+    "status": "excluded",
+    "reason": "GPU time",
+    "models": ["sapiens2-1b", "sapiens2-5b"],
+    "backends": ["PT32", "PT16", "TRT16"]
+  },
+  "attempts": {
+    "1b-pt32-accuracy": {
+      "job_id": "0-8204471621916598843_2026-11-24T13-52-58-083401156Z_2244865_i2490-sapiens2-1b-pt32-accuracy.job",
+      "queue_state": "cancelled",
+      "execution_commit": "4046e29167dedc5aaa4e3606efb717bc4bbebac4",
+      "exit_code": 143,
+      "captured_at": "2026-11-25T04:27:03+09:00",
+      "finished_at_ns": 1795577766922093003,
+      "published_accuracy_artifacts": [],
+      "log": {
+        "path": "repro/0-8204471621916598843_2026-11-24T13-52-58-083401156Z_2244865_i2490-sapiens2-1b-pt32-accuracy/comparison-evidence/queue.log",
+        "sha256": "9185842fb368f8c9d2498d3dec43b4ad14bf311da44e54caaf64fa18ccf51c04"
+      },
+      "completion_sha256": "4e0b01c14ba459f253dc22fe64fb7d37791e83bf702b29a4754790b9252387cf",
+      "queue_run_sha256": "f2a602ff3985f868350ba3f17e06a70a269a5bc9377907624f4dbd365c32275a",
+      "command_sha256": "a74600c9b3b8e04da4dd525d8162c03e8a7e3106b6f8fe3a55bd596a11e209bf",
+      "parent_reported_estimates": {
+        "fraction_processed_before_cancel": 0.34,
+        "seconds_per_person": 3.2,
+        "full_accuracy_hours": 23
+      }
+    },
+    "1b-pt16-accuracy": {
+      "job_id": "0-8204471621549248572_2026-11-24T13-52-58-450751427Z_2244938_i2490-sapiens2-1b-pt16-accuracy.job",
+      "queue_state": "cancelled"
+    },
+    "5b-pt16-accuracy": {
+      "job_id": "0-8204471620844531150_2026-11-24T13-52-59-155468849Z_2245094_i2490-sapiens2-5b-pt16-accuracy.job",
+      "queue_state": "cancelled"
+    },
+    "1b-trt16-accuracy": {
+      "job_id": "0-8204471621204743151_2026-11-24T13-52-58-795256848Z_2245021_i2490-sapiens2-1b-trt16-accuracy.job",
+      "queue_state": "cancelled"
+    },
+    "5b-trt16-accuracy": {
+      "job_id": "0-8204471620490639477_2026-11-24T13-52-59-509360522Z_2245173_i2490-sapiens2-5b-trt16-accuracy.job",
+      "queue_state": "cancelled"
+    },
+    "1b-trt16-build": {
+      "job_id": "0-8204471622635744867_2026-11-24T13-52-57-364255132Z_2244702_i2490-sapiens2-1b-trt16-build.job",
+      "queue_state": "failed",
+      "log": {
+        "path": "repro/0-8204471622635744867_2026-11-24T13-52-57-364255132Z_2244702_i2490-sapiens2-1b-trt16-build/comparison-evidence/queue.log",
+        "sha256": "23e6c65f886ef629c4e49e7ec569f6eb8f3300ebe540e60967217d8e01bf5fb4"
+      },
+      "execution_commit": "4046e29167dedc5aaa4e3606efb717bc4bbebac4",
+      "error_node": "node_mean",
+      "operator": "ReduceMean",
+      "error": "UNSUPPORTED_NODE: Assertion failed: inputAxes.is_weights(): Axis input must be an initializer!",
+      "exit_code": 1
+    },
+    "5b-trt16-build": {
+      "job_id": "0-8204471622271571929_2026-11-24T13-52-57-728428070Z_2244782_i2490-sapiens2-5b-trt16-build.job",
+      "queue_state": "failed",
+      "log": {
+        "path": "repro/0-8204471622271571929_2026-11-24T13-52-57-728428070Z_2244782_i2490-sapiens2-5b-trt16-build/comparison-evidence/queue.log",
+        "sha256": "9edb99a018a7e5ad4fe835eac02f8010337d1d320da15c634216154ee97c6e29"
+      },
+      "execution_commit": "4046e29167dedc5aaa4e3606efb717bc4bbebac4",
+      "error_node": "node_mean",
+      "operator": "ReduceMean",
+      "error": "UNSUPPORTED_NODE: Assertion failed: inputAxes.is_weights(): Axis input must be an initializer!",
+      "exit_code": 1
+    },
+    "5b-pt32-load": {
+      "job_id": "0-8204471623025302028_2026-11-24T13-52-56-974697971Z_2244618_i2490-sapiens2-5b-pt32-load.job",
+      "queue_state": "done",
+      "log": {
+        "path": "repro/0-8204471623025302028_2026-11-24T13-52-56-974697971Z_2244618_i2490-sapiens2-5b-pt32-load/comparison-evidence/queue.log",
+        "sha256": "af11730429313d644f0ad98bbd9134f761500e629dffb6750b922e59690c8b06"
+      },
+      "execution_commit": "4046e29167dedc5aaa4e3606efb717bc4bbebac4",
+      "load_receipt": {
+        "backend": "PT32",
+        "checkpoint_sha256": "b4848da8691c72e14d3ff71319f077363107129bf4128019eb39d072129b2a52",
+        "commit": "4046e29167dedc5aaa4e3606efb717bc4bbebac4",
+        "environment": {
+          "cuda": "13.0",
+          "cuda_device": "cuda:0",
+          "fp32_precision": {
+            "cudnn": "ieee",
+            "cudnn_conv": "ieee",
+            "matmul": "ieee"
+          },
+          "gpu": "NVIDIA GeForce RTX 5060 Ti",
+          "gpu_total_bytes": 17074749440,
+          "opencv": "5.0.0",
+          "torch": "2.13.0+cu130"
+        },
+        "free_bytes_before_load": 15894315008,
+        "load_wall_ms": 297367.27819,
+        "model": "sapiens2-5b",
+        "phase": "cuda_load",
+        "schema_version": 1,
+        "status": "loaded",
+        "tensorrt": "10.14.1.48.post1",
+        "torch_peak_allocated_bytes": 20540379648,
+        "torch_peak_reserved_bytes": 20948451328,
+        "total_cuda_bytes": 17074749440,
+        "weight_tensor_bytes": 20480794652
+      }
+    }
+  }
+}

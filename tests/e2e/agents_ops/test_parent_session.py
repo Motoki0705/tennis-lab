@@ -62,6 +62,10 @@ if args == ["--version"]:
     sys.exit(0)
 if args[:2] == ["run", "watch"]:
     assert "--repo" in args and args[args.index("--repo") + 1] == "o/r"
+    if os.environ.get("PARENT_EXPECT_UNLOCKED_WATCH"):
+        import fcntl
+        with open(".git/ops-code.lock", "a") as lock:
+            fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
     if state.get("watch_label"):
         state["issues"]["1"]["labels"].append({"name": state["watch_label"]})
         save()
@@ -173,7 +177,7 @@ if path == "repos/o/r/actions/variables/issue_supplement_enabled_since":
 if path == "repos/o/r/actions/workflows/issue-supplement.yml/runs":
     response({"workflow_runs": paged(state.get("supplement_runs", []))}, state.get("supplement_workflow_status", 200))
 if path == "repos/o/r":
-    response({"default_branch": state["default_branch"]})
+    response({"default_branch": state["default_branch"], "owner": {"login": "operator"}})
 if path == "repos/o/r/branches/main":
     import subprocess
     tip = subprocess.check_output(["git", "rev-parse", "main"], text=True).strip()
@@ -277,15 +281,28 @@ if pull:
     response(pr)
 comment_edit = re.fullmatch(r"repos/o/r/issues/comments/(\d+)", path)
 if comment_edit:
+    issue, comment = next((n, c) for n, rows in state["comments"].items() for c in rows if c["id"] == int(comment_edit[1]))
+    if method == "GET":
+        response({**comment, "html_url": f"https://github.com/o/r/issues/{issue}#issuecomment-{comment['id']}"})
     assert method == "PATCH"
-    comment = next(c for rows in state["comments"].values() for c in rows if c["id"] == int(comment_edit[1]))
     comment["body"] = payload["body"]
     save()
     response(comment)
 timeline = re.fullmatch(r"repos/o/r/issues/(\d+)/timeline", path)
 if timeline:
     rows = [{"event": "cross-referenced", "created_at": "2026-10-24T00:00:00Z", "source": {"issue": {"id": p["number"] + 10000, "number": p["number"], "body": p.get("body", ""), "repository_url": "https://api.github.com/repos/o/r", "pull_request": {"url": "pr"}}}} for p in state["prs"] if re.search(r"#" + timeline[1] + r"\b", p.get("body", ""))]
-    response(rows[(page-1)*100:page*100])
+    references_parent = re.compile(r"#" + timeline[1] + r"\b")
+    overrides = state.get("issue_listing_overrides", {})
+    for issue in state["issues"].values():
+        source = {**issue, **overrides.get(str(issue["number"]), {})}
+        body = source.get("body") or ""
+        if body.startswith("<!-- parent-evidence:") and references_parent.search(body):
+            source.setdefault("id", source["number"] + 10000)
+            rows.append({
+                "event": "cross-referenced", "created_at": source["created_at"],
+                "source": {"type": "issue", "issue": source},
+            })
+    response(paged(rows))
 if path == "repos/o/r/pulls":
     if os.environ.get("PARENT_CHANGE_CLOSING_ON_READ"):
         state["closing_reads"] = state.get("closing_reads", 0) + 1
@@ -310,7 +327,8 @@ if n is None:
             rows = [r for r in rows if labels <= {label["name"] for label in r["labels"]}]
             if "parent-evidence" in labels:
                 rows = [r for r in rows if r["number"] not in state.get("unlisted_evidence", [])]
-        response(paged(rows))
+        overrides = state.get("issue_listing_overrides", {})
+        response(paged([{**r, **overrides.get(str(r["number"]), {})} for r in rows]))
     assert method == "POST", method
     if payload["labels"] == ["parent-evidence"]:
         if os.environ.get("PARENT_REJECT_EVIDENCE_CREATE"):
@@ -509,7 +527,7 @@ class ParentEnv:
     def cli(
         self,
         *args: str,
-        parent: str = "1",
+        parent: str | None = "1",
         repo: str = "o/r",
         ok: bool | None = True,
         extra: dict[str, str] | None = None,
@@ -543,8 +561,7 @@ class ParentEnv:
                 "parent",
                 "--repo",
                 repo,
-                "--parent",
-                parent,
+                *(("--parent", parent) if parent is not None else ()),
                 *args,
             ],
             cwd=self.repo,
@@ -873,7 +890,14 @@ def test_wait_supplement_watches_latest_exact_title_and_refreshes_labels(
         watch_label=final,
     )
     p.save(state)
-    result = p.cli("wait-supplement", extra={"CLAUDE_CODE_SESSION_ID": ""})
+    env = {"CLAUDE_CODE_SESSION_ID": ""}
+    if final == "supplement:done":
+        ops = p.repo / ".agents/ops"
+        shutil.copytree(OPS, ops, ignore=shutil.ignore_patterns("__pycache__"))
+        run_git(p.repo, "add", ".agents/ops")
+        run_git(p.repo, "commit", "-m", "install native parent for supplement wait")
+        env.update(PYTHONPATH=str(ops), PARENT_EXPECT_UNLOCKED_WATCH="1")
+    result = p.cli("wait-supplement", extra=env)
     assert json.loads(result.stdout) == {
         "parent": 1,
         "supplement_state": final.removeprefix("supplement:"),

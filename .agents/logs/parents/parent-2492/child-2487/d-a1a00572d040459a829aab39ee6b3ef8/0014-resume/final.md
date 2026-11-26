@@ -1,0 +1,7 @@
+ECDet L/X の COCO・O365 計4重みを `trt16-fp32attn` として投入しました。ECDet-L COCO は診断済みの plan を再利用し、残る3重みは書き換え済み ONNX から plan を構築します。各 ONNX で、FP32 化したスコア計算と Softmax の4組、重み、入出力、その他のノードを照合しました。[適用結果とSHA-256](https://github.com/Motoki0705/tennis-lab/blob/3acc97cbb78e6018a424e426bc76451d74933967/knowledge/runs/run-meiji-player-model-comparison/edgecrafter-trt16-fp32attn-preflight.json)
+
+ECPose L/X は人物内と人物間で self-attention が分かれ、ECDet の4組に一対一で対応しないため適用不可としました。ECDet-L COCO の診断では batch 2 の画像順による差が残っています。投入した4ジョブは、6,844画像の精度を batch 1 で採点し、速度を共通設定で batch 1・2 とも測ります。
+
+`codex/parent-2492-issue-2487-edgecrafter` の `3acc97cbb78e6018a424e426bc76451d74933967` を push しました。pytest は追加4件を含む93件が成功し、pre-commit とナレッジ検証も通過しました。[#2487の記録](https://github.com/Motoki0705/tennis-lab/issues/2487#issuecomment-7165265245) · [起動したCI](https://github.com/Motoki0705/tennis-lab/actions/runs/45633954101)
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204383228858026608_2026-11-25T14-26-11-141973391Z_1285078_i2487-ecdet-l-coco-trt16-fp32attn.job","0-8204383228564005184_2026-11-25T14-26-11-435994815Z_1285215_i2487-ecdet-x-coco-trt16-fp32attn.job","0-8204383228271215821_2026-11-25T14-26-11-728784178Z_1285356_i2487-ecdet-l-o365-trt16-fp32attn.job","0-8204383227982667381_2026-11-25T14-26-12-017332618Z_1285434_i2487-ecdet-x-o365-trt16-fp32attn.job"]}}

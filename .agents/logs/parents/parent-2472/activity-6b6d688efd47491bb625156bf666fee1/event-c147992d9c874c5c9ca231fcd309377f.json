@@ -1,0 +1,45 @@
+{
+  "record": {
+    "data": {
+      "decision_id": null,
+      "decision_missing_reason": "parent decision not recorded for this operation",
+      "operation": "start_ai",
+      "plan_id": null,
+      "previous_action_id": "e6337976e7204becbd645918ddcaa003",
+      "result_ids": [
+        "ac8bbd284fd84350ad166daf4e720c12",
+        "c78fec4ecd414281b8f8c01d59e0d80d",
+        "ff1d23c3f7e04751be7db7e851c36407"
+      ],
+      "state": "ended",
+      "summary": "parent.run-worker: ended"
+    },
+    "id": "c147992d9c874c5c9ca231fcd309377f",
+    "kind": "action",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "6b6d688efd47491bb625156bf666fee1",
+      "delegation": null,
+      "issue": 2472,
+      "parent": 2472,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "status": "observed",
+        "value": "2026-11-24T07:14:48.411935+00:00"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-24T07:14:48.411993+00:00"
+      },
+      "recorded_at": "2026-11-24T07:14:48.411996+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

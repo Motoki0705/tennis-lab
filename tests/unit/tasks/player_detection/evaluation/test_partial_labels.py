@@ -6,10 +6,8 @@ import numpy as np
 import pytest
 
 from src.tasks.player_association.evaluation.labels import CameraLabels
-from src.tasks.player_detection.evaluation.partial_labels import (
-    PartialDetectionMetrics,
-    _unit_matches,
-)
+from src.tasks.player_detection.evaluation.partial_labels import PartialDetectionMetrics
+from src.utils.geometry.bbox import match_iou
 
 
 def test_duplicate_labels_are_one_person_and_unknown_detections_are_not_false_positives() -> None:
@@ -42,7 +40,7 @@ def test_one_prediction_cannot_recover_two_people() -> None:
 
 def test_assignment_maximizes_valid_matches_before_overlap() -> None:
     # Maximizing raw IoU chooses the off-diagonal (1 + .49) and loses a match.
-    detections, units = _unit_matches(np.asarray([[.51, 1.], [.49, .51]], np.float64), .5)
+    detections, units = match_iou(np.asarray([[.51, 1.], [.49, .51]], np.float64), .5)
     assert list(zip(detections.tolist(), units.tolist(), strict=True)) == [(0, 0), (1, 1)]
 
 

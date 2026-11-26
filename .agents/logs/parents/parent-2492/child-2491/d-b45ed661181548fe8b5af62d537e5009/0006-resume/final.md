@@ -1,0 +1,5 @@
+main `d08f191cc` と #2497 `14ca88f8a` を取り込みました。単眼PLCSの骨格専用配置と、選択したrecipeの身体復元結果を使う通常配置の両方を確認しました。47件が通過し（24.01秒）、Ruff・mypyも通過しました。`97cabfef23bdab3e1097af32a2cdd96cf754b9dd` をpushし、CIが起動しました。[実装PR #2501](https://github.com/Motoki0705/tennis-lab/pull/2501) · [CI](https://github.com/Motoki0705/tennis-lab/actions/runs/45543007687)
+
+代表6 clipすべてで保存済みGVHMR成果を照合し、FastHMR PT16の目視用ジョブを登録しました。同期比較動画は両ジョブの結果を受け取った後に作成します。8フレームの既存試行で得た関節差P95 45.12 mmは履歴に残しました。新規のPT32計測と対PT32 parity判定は対象外です。速度・VRAMは #2497 の修正版待ちで、PT16・TRT16の参考値として扱います。[既存試行の記録 #2534](https://github.com/Motoki0705/tennis-lab/pull/2534)
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204434740687790252_2026-11-25T00-07-39-312209747Z_2393387_i2491-fasthmr-trt16-export.job","0-8204421172867557512_2026-11-25T03-53-47-132442487Z_31336_i2491-fasthmr-pt16-visual-6clips.job"]}}

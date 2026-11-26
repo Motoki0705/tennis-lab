@@ -12,6 +12,7 @@ camera_ids:
 - cam1
 - cam2
 clip_id: null
+recipe: standard
 direct_annotation:
   request: null
   request_sha256: null

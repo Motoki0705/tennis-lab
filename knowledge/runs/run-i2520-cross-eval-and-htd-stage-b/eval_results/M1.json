@@ -1,0 +1,135 @@
+{
+  "checkpoint": "outputs/plcs/i2520_v2_m1_mono_gvhmr_htd_e100_s42/logs/version_0/checkpoints/plcs-epoch=59.ckpt",
+  "input_profile": "monocular",
+  "device": "cpu",
+  "synthetic": {
+    "single_object": {
+      "dataset": "single_object",
+      "split": "test",
+      "num_scenes": 100,
+      "total_frames": 66927,
+      "htd_refine": false,
+      "position_error_m": 1.5911060242134318,
+      "position_accuracy_0.5m": 0.16712465273583765,
+      "angular_error_deg": 27.304299778957933,
+      "angle_accuracy_15deg": 0.398946128759512,
+      "world_mpjpe_m": 1.5553622154402196,
+      "pa_mpjpe_m": 0.1219841058926549,
+      "mpjve_mps": 2.259405874971276,
+      "mpjae_mps2": 90.50381610250881,
+      "jerk_mps3": 14394.297261650034,
+      "bone_length_std_m": 0.017818034917975942,
+      "skeleton_valid_rate": 1.0,
+      "skeleton_valid_frames": 66232,
+      "skeleton_evaluated_frames": 66232,
+      "latency_ms_per_scene": 775.226497881813,
+      "latency_ms_per_frame": 1.1583165208089605,
+      "peak_vram_mb": 0.0
+    },
+    "single_object_broadcast_eval": {
+      "dataset": "single_object_broadcast_eval",
+      "split": "test",
+      "num_scenes": 100,
+      "total_frames": 70613,
+      "htd_refine": false,
+      "position_error_m": 2.0353392742845564,
+      "position_accuracy_0.5m": 0.15958580133804917,
+      "angular_error_deg": 14.85193261056172,
+      "angle_accuracy_15deg": 0.5970937912813739,
+      "world_mpjpe_m": 2.015544579062041,
+      "pa_mpjpe_m": 0.0961263193482529,
+      "mpjve_mps": 4.887292926349628,
+      "mpjae_mps2": 170.37962234124504,
+      "jerk_mps3": 27333.79811400043,
+      "bone_length_std_m": 0.01847001490154374,
+      "skeleton_valid_rate": 1.0,
+      "skeleton_valid_frames": 70401,
+      "skeleton_evaluated_frames": 70401,
+      "latency_ms_per_scene": 823.808113829582,
+      "latency_ms_per_frame": 1.1666521941138062,
+      "peak_vram_mb": 0.0
+    },
+    "single_object_mixed": {
+      "dataset": "single_object_mixed",
+      "split": "test",
+      "num_scenes": 100,
+      "total_frames": 65346,
+      "htd_refine": false,
+      "position_error_m": 0.9396955702248402,
+      "position_accuracy_0.5m": 0.35301226462854995,
+      "angular_error_deg": 17.820322223230033,
+      "angle_accuracy_15deg": 0.6072705893880751,
+      "world_mpjpe_m": 0.9201599080733366,
+      "pa_mpjpe_m": 0.09154548903205456,
+      "mpjve_mps": 2.523272628609307,
+      "mpjae_mps2": 118.12860280580811,
+      "jerk_mps3": 20471.844434335802,
+      "bone_length_std_m": 0.0184026201416782,
+      "skeleton_valid_rate": 1.0,
+      "skeleton_valid_frames": 61233,
+      "skeleton_evaluated_frames": 61233,
+      "latency_ms_per_scene": 727.1182008291362,
+      "latency_ms_per_frame": 1.112720290192416,
+      "peak_vram_mb": 0.0
+    }
+  },
+  "meiji": {
+    "benchmark_id": "meiji_4cam/multiview-player-evaluation-v1",
+    "manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+    "htd_refine_mode": "none",
+    "lovo_reproj_px": {
+      "mean": 612.569222050175,
+      "median": 109.13766479492188,
+      "p90": 544.0590209960938,
+      "count": 2528291
+    },
+    "same_view_reproj_px": {
+      "mean": 6.425976978794835,
+      "median": 4.796074867248535,
+      "p90": 12.325567245483395,
+      "count": 870380
+    },
+    "cross_camera_3d_consistency_m": {
+      "mean": 5.82569583957719,
+      "median": 5.395463943481445,
+      "p90": 10.244027328491212,
+      "count": 76025
+    },
+    "vs_dlt_mpjpe_m": {
+      "mean": 3.7177511205158336,
+      "median": 3.2776148319244385,
+      "p90": 7.166039466857911,
+      "count": 50297
+    },
+    "vs_dlt_pa_mpjpe_m": {
+      "mean": 0.12434939178992288,
+      "median": 0.12629324197769165,
+      "p90": 0.17272030115127562,
+      "count": 50297
+    },
+    "vs_gvhmr_mpjpe_m": {
+      "mean": 3.6835535327684017,
+      "median": 3.2308040857315063,
+      "p90": 7.106584215164187,
+      "count": 25842
+    },
+    "single_view_frames_total": 0,
+    "single_view_frames_reconstructed": 0,
+    "single_view_recovery_rate": 0.0,
+    "dlt_incomplete_frames_total": 392,
+    "dlt_incomplete_frames_reconstructed": 392,
+    "dlt_incomplete_recovery_rate": 1.0,
+    "single_view_reproj_px": {
+      "mean": NaN,
+      "median": NaN,
+      "p90": NaN,
+      "count": 0
+    },
+    "jerk_mps3": 163335.51890897477,
+    "bone_length_std_m": 0.02390436020040296,
+    "skeleton_valid_rate": 1.0,
+    "latency_ms_per_track": 535.473353881874,
+    "latency_ms_per_frame": 0.9933802653756648,
+    "peak_vram_mb": 0.0
+  }
+}

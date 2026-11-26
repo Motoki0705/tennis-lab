@@ -1,0 +1,77 @@
+{
+  "artifacts": {
+    "commits": [
+      "3dbdefdd5e656ffc915c30ac26d7ae06efd1e22f",
+      "f58984e7b41d4559d976b365a44559403d83e791"
+    ],
+    "prs": [
+      2449
+    ]
+  },
+  "captured_at": "2026-11-23T16:52:45.882572+00:00",
+  "decision": {
+    "action": "approve",
+    "source_sequence": 1
+  },
+  "delegation_key": "d-622069c025cc4e278ad2d7f54b3eeb3f",
+  "files": {
+    "final.md": "48c1ef173673a259931535e61989ecdc2aff92bcc0d1738ced282db7474d33c1",
+    "instruction.md": "48842c80d9032227b56794cf0ad4b0971e9d77163bc313b1f45a504564220f80"
+  },
+  "finished_at": "2026-11-23T17:23:45.059625+00:00",
+  "instruction": {
+    "additional_instructions": [
+      "保存した親の判断（approve）に従って、#2444 を本実装する。範囲・判断・終了条件は、その回答に書いてある。\n"
+    ],
+    "kind": "answer"
+  },
+  "issue": 2444,
+  "parent": 1739,
+  "repo": "Motoki0705/tennis-lab",
+  "runtime": {
+    "result": "completed",
+    "turn_end_reason": "completed"
+  },
+  "sanitization": {
+    "additional": 0,
+    "final": 0,
+    "instruction": 0,
+    "version": 1
+  },
+  "schema_version": 1,
+  "sources": {
+    "issue": {
+      "body_sha256": "0237d81f9df8ffcdf38d821dfa67fac28d6bd4aa5ed5be715b8ebf9429a0ffbd",
+      "url": "https://github.com/Motoki0705/tennis-lab/issues/2444"
+    },
+    "standard_instruction": {
+      "blob": "a7f59d8985c382471d15743d921b0b4dd30d192b",
+      "commit": "ce6f54435bbcb1f63f7de728d046b4d2f0a5b6d0",
+      "path": ".agents/ops/parent/worker_prompt.md"
+    }
+  },
+  "started_at": "2026-11-23T16:52:46.115701+00:00",
+  "turn": {
+    "kind": "resume",
+    "phase": "implementing",
+    "previous_sequence": 1,
+    "sequence": 2
+  },
+  "worker": {
+    "agent": "codex",
+    "effective": {
+      "effort": {
+        "status": "observed",
+        "value": "max"
+      },
+      "model": {
+        "status": "observed",
+        "value": "gpt-6.2-sol"
+      }
+    },
+    "selected": {
+      "effort": "max",
+      "model": "gpt-6.2-sol"
+    }
+  }
+}

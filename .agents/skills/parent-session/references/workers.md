@@ -76,13 +76,14 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 run-worker --chi
 
 ## CI・ローカルqueueの待機
 
-[共通のワーカー指示](../../../ops/parent/worker_prompt.md) が、最終メッセージ末尾の `PARENT_RESULT` の形式を定める。親が書く具体指示も、投入／pushまでの作業と、結果を受け取ってからの作業に区切る。
+[共通のワーカー指示](../../../ops/parent/worker_prompt.md) が、最終メッセージ末尾の `PARENT_RESULT` の形式を定める。親が書く具体指示も、投入／push／長時間ローカルコマンド起動までの作業と、結果を受け取ってからの作業に区切る。
 
 - 良い例「検証してcommit・pushし、PR番号と完全なHEADを宣言して終了。Python成功後にドラフトを解除するよう後続作業に指定する」
 - 悪い例「pushしたら、このターンでPython成功を確認してドラフトを解除する」
 - 計測の例「条件AとBを共有queueに投入し、両方のjob IDを宣言して終了。結果を受け取ったターンで集計して記録する」
+- 長時間ローカル検証の例「`parent.local_jobs start` で全体pytestとmypyを起動し、両方の `job_id` を `kind: "local"` で宣言して終了。結果を受け取ったターンで成否を確認し、問題なければcommit・pushする」
 
-手動委任では `run-worker` が宣言を検査する。監視はユーザーのsystemd transient serviceで実行する。GitHubとCodexのCLI認証は、そのユーザーの設定を使う。CIは宣言したPR・HEADのPythonを照合する。Pythonが未登録またはskipで、Git差分が記録専用と確定した場合は [Knowledge library の結果](../../../ops/lib/README.md#ナレッジ記録専用prのci) を照合する。失敗・コンフリクトでCI未起動のときと、成功後の後続作業があるときは同じsessionを再開する。queueは宣言した全jobの終端を待ち、終了状態・ログ・取得できた出力先をまとめて一度だけ渡す。再開が必要で枠が埋まっているときは、CLIが結果を保存し、空き枠を取得して再開する。再開は担当ごとに3回まで。上限や人間の判断が返ったら、理由と成果を照合する。
+手動委任では `run-worker` が宣言を検査する。監視はユーザーのsystemd transient serviceで実行する。GitHubとCodexのCLI認証は、そのユーザーの設定を使う。CIは宣言したPR・HEADのPythonを照合する。Pythonが未登録またはskipで、Git差分が記録専用と確定した場合は [Knowledge library の結果](../../../ops/lib/README.md#ナレッジ記録専用prのci) を照合する。失敗・コンフリクトでCI未起動のときと、成功後の後続作業があるときは同じsessionを再開する。queueは宣言した全jobの終端を待ち、終了状態・ログ・取得できた出力先をまとめて一度だけ渡す。`local` は [local_jobs.py](../../../ops/parent/local_jobs.py) がGPU queue枠を消費せず独立したsystemd user transient service（`tennis-lab-local-job-<job_id>`）として実行するため、worker終了や共通ランナーのプロセス回収後も継続し、監視が全jobの完了を待って `exit_code`・`log`・`log_excerpt` をまとめて一度だけ渡す（保存先は `PARENT_LOCAL_JOBS_DIR` または `<state_dir>/local-jobs`）。再開が必要で枠が埋まっているときは、CLIが結果を保存し、空き枠を取得して再開する。再開は担当ごとに10回まで。上限や人間の判断が返ったら、理由と成果を照合する。
 
 共有queueの `worker: RUNNING` は親側が委任前に確認する。停止中なら親側の独立したサービスで `training_queue.sh serve` を起動する。委任した子はworktreeから `add` を行い、queue workerを起動しない。子の共通ランナーは終了時に子孫を回収するため、子から起動したqueue workerと実行中jobも停止する。終了値143では、子の終了とqueue workerの停止が同時刻か確認する。専用のqueueを使うなら、親CLIの `TRAINING_QUEUE_DIR` を起動前に指定して子と共有する。
 

@@ -22,6 +22,8 @@ from lib.agy_session import (  # noqa: E402
     caller_tui,
 )
 
+from herdr_labels.client import HerdrError  # noqa: E402
+from herdr_labels.coordination import UnconfirmedDisplayDestination  # noqa: E402
 from herdr_labels.service import agy_session_changed  # noqa: E402
 
 
@@ -92,25 +94,28 @@ def main() -> int:
                             }
                         ]
                     }
+    except UnconfirmedDisplayDestination:
+        problem = "parent display destination is unconfirmed"
+        if mode == "status-line":
+            # Show the pending state and keep future status-line updates enabled.
+            print(f"agy parent: {problem}. Run parent register.")
+            return 0
     except AgyVerificationError as exc:
-        print(f"agy parent hook: {exc}", file=sys.stderr)
-        return 1
-    except (
-        BoardError,
-        ValueError,
-        OSError,
-        subprocess.SubprocessError,
-        TypeError,
-        KeyError,
-    ):
-        print(
-            "agy parent hook: lifecycle or board state could not be verified",
-            file=sys.stderr,
-        )
-        return 1
-    if mode == "pre-invocation":
-        print(json.dumps(reply, ensure_ascii=False))
-    return 0
+        problem = str(exc)  # TUI verification uses fixed diagnostics.
+    except HerdrError:
+        problem = "Herdr connection, command or response could not be verified"
+    except BoardError:
+        problem = "board state could not be verified"
+    except (OSError, subprocess.SubprocessError):
+        problem = "local I/O or subprocess failed"
+    except (ValueError, TypeError, KeyError):
+        problem = "invalid hook input or lifecycle state"
+    else:
+        if mode == "pre-invocation":
+            print(json.dumps(reply, ensure_ascii=False))
+        return 0
+    print(f"agy parent hook: {problem}", file=sys.stderr)
+    return 1
 
 
 if __name__ == "__main__":

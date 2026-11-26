@@ -17,6 +17,7 @@ from src.tasks.ball_refiner_3d.evaluation.physics import (
     parameter_report,
     physics_report,
 )
+from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
 from src.tasks.ball_refiner_3d.inference.clip import predict_normalized
 from src.tasks.ball_refiner_3d.model_io.adapters import normalization
 from src.tasks.ball_refiner_3d.model_io.factory import RefinerModel
@@ -34,7 +35,7 @@ def evaluate(
     batch_size: int,
     physics: bool,
 ) -> tuple[dict[str, Any], dict[str, np.ndarray]]:
-    """Full-rally predictions and metrics; ``physics`` adds ``physics_eval.v1``.
+    """Full-rally predictions and metrics; ``physics`` adds ``physics_eval.v2``.
 
     The physics protocol fits the force model to every rally, so it runs only
     for saved held-out evaluations, not for per-epoch validation.  Physics heads
@@ -96,8 +97,9 @@ def evaluate(
             event_neighborhood(rally.source.events), rally.missing.shape
         )
         shape = rally.missing.shape
-        event_probabilities.append(normalized.event_probability.cpu().numpy().ravel())
-        event_targets.append(rally.event_target.ravel())
+        probability = normalized.event_probability.cpu().numpy()
+        event_probabilities.append(probability.reshape(-1, len(EVENT_CLASSES)))
+        event_targets.append(rally.event_target.reshape(-1, len(EVENT_CLASSES)))
         predictions.append(prediction.reshape(-1, model.config.dimensions))
         targets.append(target.reshape(-1, model.config.dimensions))
         masks.append(rally.missing.ravel())
@@ -136,14 +138,13 @@ def evaluate(
         if physics:
             if shape[0] != 1:
                 raise ValueError("Physics evaluation requires single-view 3D rallies")
-            probability = normalized.event_probability.cpu().numpy()[0]
             physics_inputs.append(
                 (
                     RallyPrediction(
-                        rally.source, prediction[0], rally.missing[0], probability
+                        rally.source, prediction[0], rally.missing[0], probability[0]
                     ),
                     RallyPrediction(
-                        rally.source, baseline[0], rally.missing[0], probability
+                        rally.source, baseline[0], rally.missing[0], probability[0]
                     ),
                 )
             )
@@ -151,13 +152,16 @@ def evaluate(
                 integrated_inputs.append(
                     (
                         RallyPrediction(
-                            rally.source, integrated[-1], rally.missing[0], probability
+                            rally.source,
+                            integrated[-1],
+                            rally.missing[0],
+                            probability[0],
                         ),
                         RallyPrediction(
                             rally.source,
                             truth_integrated[-1],
                             rally.missing[0],
-                            probability,
+                            probability[0],
                         ),
                     )
                 )

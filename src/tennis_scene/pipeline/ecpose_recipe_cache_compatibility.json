@@ -1,0 +1,69 @@
+{
+  "baseline_commit": "824ec3151f0be969319a0a5c6035fcb3781934a4",
+  "files": {
+    "submodules/models/ecpose/__init__.py": {
+      "before": null,
+      "after": "2e22b13547f92efad33d32eb15be78a966a654af122f985223c7c224ea371ff5"
+    },
+    "submodules/models/ecpose/inference.py": {
+      "before": null,
+      "after": "97070f8b8088483f36170c10f98bbc378c3191957eedebffa86b2a2c96e30733"
+    },
+    "submodules/models/ecpose/releases.py": {
+      "before": null,
+      "after": "ee8022de1c9b8dc4f11d21faca4993bd39dbab6c0cc17093fd50be7089448c89"
+    },
+    "submodules/models/ecpose/runtime.py": {
+      "before": null,
+      "after": "6a108a5a8548bc427ae05e845164d4e54347ef28fb84dfcd001dde1f3e3c82d2"
+    },
+    "tennis_scene/configuration.py": {
+      "before": "b38cda56328d8430bf2ac19539f5b10ec0f18f144d224efa8e412449dcbf600b",
+      "after": "c420253ddc4eb6f5ae0b76de22000c2950790f8cdba8fef8226e5f3cab72093e"
+    },
+    "tennis_scene/pipeline/components/ecpose.py": {
+      "before": null,
+      "after": "65c97d52a6d7afa3c0639acfbe743cc18d0e30976a5890bf30625e8487ec41f1"
+    },
+    "tennis_scene/pipeline/components/person_features.py": {
+      "before": "73af0dcffbbe5c472815044aef7a70cc6f6930a4f1c35157a63923b28bf8cf53",
+      "after": "4cb29adcefbbbd3051ec30807e22c2439a93880b7ce704535b064d4fd43e105f"
+    },
+    "tennis_scene/pipeline/dataset_publication.py": {
+      "before": "73c9abe6d2c5ff420ddad72ffc63a1c686e21d3c152b869ec5d9de16d36574c9",
+      "after": "886093f9691f43b4d6aa3ac1237d78c052d83022d9a8e99052abfc7c70ed81db"
+    },
+    "tennis_scene/pipeline/definition.py": {
+      "before": "8ebc602ea634bae6f8fa0d52286284287d76e70589b411fc2e08426ab7737f9d",
+      "after": "a313c9a55ad0d9706b19e6945fc150b19c388b375023610309b4dacbe353b123"
+    },
+    "tennis_scene/pipeline/ecpose_artifacts.py": {
+      "before": null,
+      "after": "39f692060a144902a8eb5586a48e86d40c78846ec311a9222d73f108a93b9878"
+    },
+    "tennis_scene/pipeline/input_assembly/ecpose.py": {
+      "before": null,
+      "after": "02d71a2c17c6f7a5769b17df6853dc8e23850dc7dec841183b0c415c94acb910"
+    },
+    "tennis_scene/pipeline/orchestrator.py": {
+      "before": "1f276a82c213976340979416749df46aeac99bf7d5b7125b2dcb55e08d9db226",
+      "after": "edc5175dde262f954bacda7b8c7972e5df332471168109d5b7c9552902a0f89c"
+    },
+    "tennis_scene/pipeline/recipes.py": {
+      "before": "e0b11e47e079b5ea0a6eb7b5b8afbfbb5551de1e962823cdcb87bef3bbcc8bf2",
+      "after": "d444dab971a3955199afbc9a1bc474a364db1e67a9afed42be6cbfbfdb9fa8a2"
+    },
+    "tennis_scene/pipeline/source_identity.py": {
+      "before": "c62227a28d93ad1e5729d8e2397749aa00f202d35ec39ab686ead5a0d65b9cb7",
+      "after": "0bf226844f6ff7897731b380fa24679d1c8b166c35b02e1fe9c9d231018fdddb"
+    },
+    "tennis_scene/preflight.py": {
+      "before": "11a7d4e124a441579f375b7587cc895d78a56a88ec627b7d8ee5951da8e33663",
+      "after": "f9d1518035d6069daaaab34c73e49202e82b68a80481e72ca81d3a67dba934c1"
+    },
+    "tennis_scene/scripts/preflight.py": {
+      "before": "ac290579f428a6632262be100d402a10f4fe61c69f285cb09dd078e4d70f44a3",
+      "after": "b283a288ae871d481c91599ea230f7a065feca88550d6f24138db8c3d2d7dcc2"
+    }
+  }
+}

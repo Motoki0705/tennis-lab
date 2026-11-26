@@ -4,10 +4,8 @@
 `generators/flow.py` は同じ条件にstate・timeを加え、x0を予測する。
 共通trunkは `components/temporal_transformer.py`、座標・イベントheadは `components/heads.py`。
 `src/utils/models/components` のRoPE・RMSNorm・SwiGLUを使用する。
-学習済み重みとの互換性のためparameter名と計算順序を保持する。
-
-イベントheadは各frameの2logit（イベントなし／あり）を出力する。
-確率はクラス軸softmaxのイベント成分。時間軸では正規化せず、複数イベントを表現する。
+イベントheadは各frameにショット・バウンド・ネット接触の3logitを出力する。
+各logitにsigmoidを適用し、それぞれのイベント確率を得る。
 欠損座標はゼロ化し、欠損frameもattentionのqueryとして残す。
 
 trunkは任意長（最大4096 frame）を受け、`padding` のframeをattentionのkeyから除く。

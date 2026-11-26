@@ -1,0 +1,797 @@
+{
+  "benchmark_id": "meiji_4cam/multiview-player-evaluation-v1",
+  "conditions": {
+    "pt16": {
+      "accuracy_status": "ok",
+      "artifacts": {
+        "accuracy": {
+          "bytes": 233146,
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/pt16/accuracy.json",
+          "sha256": "c04bd4e25a3ab9d7bbe611e44f7a6b9f2d9e0df507e181695a586c364face830"
+        },
+        "predictions": {
+          "bytes": 5822583,
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/pt16/predictions.jsonl",
+          "sha256": "d9021ee4c51b4845d4c48701c791a93656fc8fa53e6f6ae90c02ecc2fe0dad43"
+        }
+      },
+      "bbox_margin_sensitivity": {
+        "0.05": {
+          "0.50": 0.9232379357588674,
+          "0.75": 0.13940478002740142
+        },
+        "0.15": {
+          "0.50": 0.9705054041711068,
+          "0.75": 0.5683894047800274
+        }
+      },
+      "environment": {
+        "cuda": "13.0",
+        "device": "cuda:0",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "opencv": "5.0.0",
+        "tensorrt": null,
+        "torch": "2.13.0+cu130",
+        "torchvision": "0.28.0"
+      },
+      "job": {
+        "command": "env OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 HF_HUB_OFFLINE=1 PYTHONPATH=outputs/player-model-comparison/tooling/python:. .venv/bin/python -B knowledge/runs/run-meiji-player-model-comparison/rfdetr.py --model rfdetr-l --weights outputs/player-model-comparison/tooling/rf-detr-large-2026.pth --output-root outputs/player-model-comparison evaluate --backend pt16 --source data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v1 --evaluation-bundle data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-player-evaluation-v1 --manifest-sha256 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+        "id": "0-8204479781165493285_2026-11-24T11-36-58-834506714Z_1136517_i2487-rfdetr-l-pt16-accuracy.job",
+        "log": {
+          "bytes": 1547,
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/queue-logs/0-8204479781165493285_2026-11-24T11-36-58-834506714Z_1136517_i2487-rfdetr-l-pt16-accuracy.log",
+          "sha256": "fe59a72aa5bad92c4014a57dfb4f4d5322ab26e32627305695a7b970d1d42b7a"
+        },
+        "repro": ".training_queue/repro/0-8204479781165493285_2026-11-24T11-36-58-834506714Z_1136517_i2487-rfdetr-l-pt16-accuracy",
+        "state": "done"
+      },
+      "parity_vs_pt32": {
+        "metrics": {
+          "abs_score_difference": {
+            "count": 50769,
+            "mean": 0.0006790502229705453,
+            "median": 0.0002854466438293457,
+            "p95": 0.0019562230445444584
+          },
+          "abs_xyxy_difference_px": {
+            "count": 203076,
+            "mean": 0.014218997210264206,
+            "median": 0.006317138671875,
+            "p95": 0.03857421875
+          },
+          "candidate_boxes": 50847,
+          "candidate_matched_fraction": 0.9984659861938757,
+          "images": 6844,
+          "matched": 50769,
+          "matched_iou_p05": 0.9962822976733907,
+          "pt32_boxes": 50854,
+          "pt32_retained_fraction": 0.9983285483934401
+        },
+        "passed": true,
+        "reason": null
+      },
+      "pseudo_gt_detection": {
+        "by_camera": {
+          "cam0": {
+            "0.50": 0.982701062215478,
+            "0.75": 0.5056145675265554
+          },
+          "cam1": {
+            "0.50": 0.974685463089283,
+            "0.75": 0.3522813400030317
+          },
+          "cam2": {
+            "0.50": 0.9579382074028755,
+            "0.75": 0.4424900581217498
+          },
+          "cam3": {
+            "0.50": 0.9572584338268967,
+            "0.75": 0.3808578842924744
+          }
+        },
+        "by_clip": {
+          "video_000/clip_003": {
+            "0.50": 0.9837837837837838,
+            "0.75": 0.43986486486486487
+          },
+          "video_000/clip_004": {
+            "0.50": 0.9574121480102397,
+            "0.75": 0.46730276937398185
+          },
+          "video_000/clip_013": {
+            "0.50": 0.9092336683417085,
+            "0.75": 0.3671482412060301
+          },
+          "video_000/clip_028": {
+            "0.50": 0.9798029076007415,
+            "0.75": 0.40277100204898036
+          },
+          "video_000/clip_040": {
+            "0.50": 0.974251497005988,
+            "0.75": 0.4182634730538922
+          },
+          "video_000/clip_057": {
+            "0.50": 0.9897595725734639,
+            "0.75": 0.4630454140694568
+          }
+        },
+        "by_size": {
+          "large": {
+            "0.50": 0.9935035842293907,
+            "0.75": 0.608646953405018
+          },
+          "medium": {
+            "0.50": 0.9788964866776704,
+            "0.75": 0.4205376090544683
+          },
+          "small": {
+            "0.50": 0.9528882220555139,
+            "0.75": 0.3570892723180795
+          }
+        },
+        "overall": {
+          "average_precision": null,
+          "matched_at_iou_0_50": 25440,
+          "matched_iou": {
+            "count": 25440,
+            "mean": 0.731687274407718,
+            "median": 0.7338503379890374,
+            "p95": 0.8851825388074983
+          },
+          "miss_rate_at_iou_0_50": 0.031816105952199726,
+          "precision": null,
+          "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+          "recall_by_iou": {
+            "0.50": 0.9681838940478003,
+            "0.75": 0.4203075049474806
+          },
+          "recall_by_min_score": {
+            "0.25": {
+              "0.50": 0.9681838940478003,
+              "0.75": 0.4203075049474806
+            },
+            "0.5": {
+              "0.50": 0.9593926016136398,
+              "0.75": 0.41829045516821434
+            },
+            "0.75": {
+              "0.50": 0.8461333536306896,
+              "0.75": 0.38670269447404476
+            }
+          },
+          "references": 26276,
+          "unmatched_predictions": 25407,
+          "xyxy_error_px": {
+            "x_max": {
+              "absolute": {
+                "count": 25440,
+                "mean": 5.743668500488449,
+                "median": 4.490413128116188,
+                "p95": 16.179230742704842
+              },
+              "signed": {
+                "count": 25440,
+                "mean": 4.954114882078614,
+                "median": 4.238285169769426,
+                "p95": 15.908203145373545
+              }
+            },
+            "x_min": {
+              "absolute": {
+                "count": 25440,
+                "mean": 5.11908221117658,
+                "median": 3.751770330459223,
+                "p95": 15.352508707645324
+              },
+              "signed": {
+                "count": 25440,
+                "mean": -3.6316164257479224,
+                "median": -3.022778232991925,
+                "p95": 4.671882235860773
+              }
+            },
+            "y_max": {
+              "absolute": {
+                "count": 25440,
+                "mean": 4.358269479706572,
+                "median": 3.1531386461574016,
+                "p95": 12.539248879549666
+              },
+              "signed": {
+                "count": 25440,
+                "mean": 2.2196173910400177,
+                "median": 2.1557816601477953,
+                "p95": 11.56663072228133
+              }
+            },
+            "y_min": {
+              "absolute": {
+                "count": 25440,
+                "mean": 2.9782074452273317,
+                "median": 2.22731889206986,
+                "p95": 8.04315141039295
+              },
+              "signed": {
+                "count": 25440,
+                "mean": -0.5738976571846227,
+                "median": -0.7893254299861212,
+                "p95": 5.67145445327408
+              }
+            }
+          }
+        }
+      },
+      "settings": {
+        "coco_person_label": 1,
+        "forward": "PyTorch eager, CUDA FP16 autocast",
+        "global_top_k_query_class_pairs": 300,
+        "license": "Apache-2.0",
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "min_person_score_inclusive": 0.25,
+        "nms": false,
+        "queries": 300,
+        "resize": "RGB, float32 bilinear, antialias=False, stretch to square",
+        "resolution": [
+          704,
+          704
+        ],
+        "rfdetr_commit": "f29e2a8bbb7cdcb8920bf74a335062f88a35046d",
+        "rfdetr_plus_commit": null,
+        "rfdetr_plus_version": null,
+        "rfdetr_version": "1.12.1",
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "tf32": false
+      },
+      "speed_status": "pending_common_inputs"
+    },
+    "pt32": {
+      "accuracy_status": "ok",
+      "artifacts": {
+        "accuracy": {
+          "bytes": 232652,
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/pt32/accuracy.json",
+          "sha256": "e23a8aea0942ff4afaaea8ef02b568069667b2954aed65346e08cbb5b496914f"
+        },
+        "predictions": {
+          "bytes": 5823031,
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/pt32/predictions.jsonl",
+          "sha256": "b8762e75d80e33ad32fc574687062a70998c753dcb29b10327622723d87cdbed"
+        }
+      },
+      "bbox_margin_sensitivity": {
+        "0.05": {
+          "0.50": 0.9231237631298523,
+          "0.75": 0.13940478002740142
+        },
+        "0.15": {
+          "0.50": 0.9703912315420916,
+          "0.75": 0.5686558075810626
+        }
+      },
+      "environment": {
+        "cuda": "13.0",
+        "device": "cuda:0",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "opencv": "5.0.0",
+        "tensorrt": null,
+        "torch": "2.13.0+cu130",
+        "torchvision": "0.28.0"
+      },
+      "job": {
+        "command": "env OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 HF_HUB_OFFLINE=1 PYTHONPATH=outputs/player-model-comparison/tooling/python:. .venv/bin/python -B knowledge/runs/run-meiji-player-model-comparison/rfdetr.py --model rfdetr-l --weights outputs/player-model-comparison/tooling/rf-detr-large-2026.pth --output-root outputs/player-model-comparison evaluate --backend pt32 --source data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v1 --evaluation-bundle data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-player-evaluation-v1 --manifest-sha256 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+        "id": "0-8204479781438562013_2026-11-24T11-36-58-561437986Z_1136476_i2487-rfdetr-l-pt32-accuracy.job",
+        "log": {
+          "bytes": 1547,
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/queue-logs/0-8204479781438562013_2026-11-24T11-36-58-561437986Z_1136476_i2487-rfdetr-l-pt32-accuracy.log",
+          "sha256": "aa64179c17e88f7e3f257d39f0c0611018226d3df9b08d71587d39400e9b3964"
+        },
+        "repro": ".training_queue/repro/0-8204479781438562013_2026-11-24T11-36-58-561437986Z_1136476_i2487-rfdetr-l-pt32-accuracy",
+        "state": "done"
+      },
+      "parity_vs_pt32": null,
+      "pseudo_gt_detection": {
+        "by_camera": {
+          "cam0": {
+            "0.50": 0.9828528072837632,
+            "0.75": 0.5059180576631259
+          },
+          "cam1": {
+            "0.50": 0.974685463089283,
+            "0.75": 0.35243292405638926
+          },
+          "cam2": {
+            "0.50": 0.9579382074028755,
+            "0.75": 0.44279596206791066
+          },
+          "cam3": {
+            "0.50": 0.9566478400244237,
+            "0.75": 0.3813158296443291
+          }
+        },
+        "by_clip": {
+          "video_000/clip_003": {
+            "0.50": 0.9831081081081081,
+            "0.75": 0.4402027027027027
+          },
+          "video_000/clip_004": {
+            "0.50": 0.957644868512916,
+            "0.75": 0.466604607865953
+          },
+          "video_000/clip_013": {
+            "0.50": 0.9089195979899497,
+            "0.75": 0.36746231155778897
+          },
+          "video_000/clip_028": {
+            "0.50": 0.9798029076007415,
+            "0.75": 0.4028685725436628
+          },
+          "video_000/clip_040": {
+            "0.50": 0.974251497005988,
+            "0.75": 0.42005988023952096
+          },
+          "video_000/clip_057": {
+            "0.50": 0.9893143365983972,
+            "0.75": 0.4639358860195904
+          }
+        },
+        "by_size": {
+          "large": {
+            "0.50": 0.9935035842293907,
+            "0.75": 0.608646953405018
+          },
+          "medium": {
+            "0.50": 0.9788964866776704,
+            "0.75": 0.4208912992218816
+          },
+          "small": {
+            "0.50": 0.9526631657914478,
+            "0.75": 0.3574643660915229
+          }
+        },
+        "overall": {
+          "average_precision": null,
+          "matched_at_iou_0_50": 25437,
+          "matched_iou": {
+            "count": 25437,
+            "mean": 0.7317142545180467,
+            "median": 0.7338985227141024,
+            "p95": 0.8851370926647312
+          },
+          "miss_rate_at_iou_0_50": 0.0319302785812148,
+          "precision": null,
+          "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+          "recall_by_iou": {
+            "0.50": 0.9680697214187852,
+            "0.75": 0.4206119652915208
+          },
+          "recall_by_min_score": {
+            "0.25": {
+              "0.50": 0.9680697214187852,
+              "0.75": 0.4206119652915208
+            },
+            "0.5": {
+              "0.50": 0.9593545440706348,
+              "0.75": 0.4187090881412696
+            },
+            "0.75": {
+              "0.50": 0.8460191810016745,
+              "0.75": 0.38723550007611507
+            }
+          },
+          "references": 26276,
+          "unmatched_predictions": 25417,
+          "xyxy_error_px": {
+            "x_max": {
+              "absolute": {
+                "count": 25437,
+                "mean": 5.743119303417972,
+                "median": 4.4899253964222225,
+                "p95": 16.184070780774572
+              },
+              "signed": {
+                "count": 25437,
+                "mean": 4.951113223469014,
+                "median": 4.2375402266175115,
+                "p95": 15.907559931533305
+              }
+            },
+            "x_min": {
+              "absolute": {
+                "count": 25437,
+                "mean": 5.119377708211848,
+                "median": 3.751697961058653,
+                "p95": 15.345704361763486
+              },
+              "signed": {
+                "count": 25437,
+                "mean": -3.6322286369353374,
+                "median": -3.019771337593511,
+                "p95": 4.670959915016442
+              }
+            },
+            "y_max": {
+              "absolute": {
+                "count": 25437,
+                "mean": 4.354819024700753,
+                "median": 3.1486669590353813,
+                "p95": 12.538300917466744
+              },
+              "signed": {
+                "count": 25437,
+                "mean": 2.2167985966261954,
+                "median": 2.1517930392762423,
+                "p95": 11.567754855767083
+              }
+            },
+            "y_min": {
+              "absolute": {
+                "count": 25437,
+                "mean": 2.97758524200039,
+                "median": 2.226017792454172,
+                "p95": 8.045810163132133
+              },
+              "signed": {
+                "count": 25437,
+                "mean": -0.5756694120899148,
+                "median": -0.7911895981873158,
+                "p95": 5.668426005799642
+              }
+            }
+          }
+        }
+      },
+      "settings": {
+        "coco_person_label": 1,
+        "forward": "PyTorch eager FP32",
+        "global_top_k_query_class_pairs": 300,
+        "license": "Apache-2.0",
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "min_person_score_inclusive": 0.25,
+        "nms": false,
+        "queries": 300,
+        "resize": "RGB, float32 bilinear, antialias=False, stretch to square",
+        "resolution": [
+          704,
+          704
+        ],
+        "rfdetr_commit": "f29e2a8bbb7cdcb8920bf74a335062f88a35046d",
+        "rfdetr_plus_commit": null,
+        "rfdetr_plus_version": null,
+        "rfdetr_version": "1.12.1",
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "tf32": false
+      },
+      "speed_status": "pending_common_inputs"
+    },
+    "trt16": {
+      "accuracy_status": "ok",
+      "artifacts": {
+        "accuracy": {
+          "bytes": 233319,
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/accuracy.json",
+          "sha256": "5a925a72abf45ab068e8ec4f2ff601a04ef7f52ac8a16a2d5dd83203661ddbae"
+        },
+        "predictions": {
+          "bytes": 5351502,
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/predictions.jsonl",
+          "sha256": "fc94b4ab47216d9799242bb3d82f44d97bf35bc248a89ea627bedad9dec1b11a"
+        }
+      },
+      "bbox_margin_sensitivity": {
+        "0.05": {
+          "0.50": 0.9239229715329579,
+          "0.75": 0.1406606789465672
+        },
+        "0.15": {
+          "0.50": 0.9702770589130766,
+          "0.75": 0.5686558075810626
+        }
+      },
+      "environment": {
+        "cuda": "13.0",
+        "device": "cuda:0",
+        "gpu": "NVIDIA GeForce RTX 5060 Ti",
+        "opencv": "5.0.0",
+        "tensorrt": "10.14.1.48.post1",
+        "torch": "2.13.0+cu130",
+        "torchvision": "0.28.0"
+      },
+      "job": {
+        "command": "env OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 HF_HUB_OFFLINE=1 PYTHONPATH=outputs/player-model-comparison/tooling/python:. .venv/bin/python -B knowledge/runs/run-meiji-player-model-comparison/rfdetr.py --model rfdetr-l --weights outputs/player-model-comparison/tooling/rf-detr-large-2026.pth --output-root outputs/player-model-comparison build && env OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 HF_HUB_OFFLINE=1 PYTHONPATH=outputs/player-model-comparison/tooling/python:. .venv/bin/python -B knowledge/runs/run-meiji-player-model-comparison/rfdetr.py --model rfdetr-l --weights outputs/player-model-comparison/tooling/rf-detr-large-2026.pth --output-root outputs/player-model-comparison evaluate --backend trt16 --source data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v1 --evaluation-bundle data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-player-evaluation-v1 --manifest-sha256 3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+        "id": "0-8204479780885618164_2026-11-24T11-36-59-114381835Z_1136558_i2487-rfdetr-l-trt16-accuracy.job",
+        "log": {
+          "bytes": 1304,
+          "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/queue-logs/0-8204479780885618164_2026-11-24T11-36-59-114381835Z_1136558_i2487-rfdetr-l-trt16-accuracy.log",
+          "sha256": "5fe9b57f052aaa18e31ef8c58b84180ac2fb3ce1276c986e8fe46db3c299250d"
+        },
+        "repro": ".training_queue/repro/0-8204479780885618164_2026-11-24T11-36-59-114381835Z_1136558_i2487-rfdetr-l-trt16-accuracy",
+        "state": "done"
+      },
+      "parity_vs_pt32": {
+        "metrics": {
+          "abs_score_difference": {
+            "count": 50670,
+            "mean": 0.0016751446528360248,
+            "median": 0.000835418701171875,
+            "p95": 0.00501193618401885
+          },
+          "abs_xyxy_difference_px": {
+            "count": 202680,
+            "mean": 0.13476359844207764,
+            "median": 0.09405517578125,
+            "p95": 0.4041748046875
+          },
+          "candidate_boxes": 50862,
+          "candidate_matched_fraction": 0.9962250796272266,
+          "images": 6844,
+          "matched": 50670,
+          "matched_iou_p05": 0.9620084530480935,
+          "pt32_boxes": 50854,
+          "pt32_retained_fraction": 0.9963817988752114
+        },
+        "passed": true,
+        "reason": null
+      },
+      "pseudo_gt_detection": {
+        "by_camera": {
+          "cam0": {
+            "0.50": 0.982701062215478,
+            "0.75": 0.507587253414264
+          },
+          "cam1": {
+            "0.50": 0.9743822949825678,
+            "0.75": 0.3521297559496741
+          },
+          "cam2": {
+            "0.50": 0.9585500152951973,
+            "0.75": 0.44126644233710616
+          },
+          "cam3": {
+            "0.50": 0.956800488475042,
+            "0.75": 0.3825370172492749
+          }
+        },
+        "by_clip": {
+          "video_000/clip_003": {
+            "0.50": 0.9844594594594595,
+            "0.75": 0.439527027027027
+          },
+          "video_000/clip_004": {
+            "0.50": 0.9578775890155923,
+            "0.75": 0.4677682103793344
+          },
+          "video_000/clip_013": {
+            "0.50": 0.9092336683417085,
+            "0.75": 0.3687185929648241
+          },
+          "video_000/clip_028": {
+            "0.50": 0.9798029076007415,
+            "0.75": 0.4032588545223924
+          },
+          "video_000/clip_040": {
+            "0.50": 0.9736526946107784,
+            "0.75": 0.42035928143712575
+          },
+          "video_000/clip_057": {
+            "0.50": 0.9884238646482636,
+            "0.75": 0.46170970614425644
+          }
+        },
+        "by_size": {
+          "large": {
+            "0.50": 0.9935035842293907,
+            "0.75": 0.6088709677419355
+          },
+          "medium": {
+            "0.50": 0.9784248997877859,
+            "0.75": 0.4224239566140061
+          },
+          "small": {
+            "0.50": 0.9531132783195799,
+            "0.75": 0.35693923480870215
+          }
+        },
+        "overall": {
+          "average_precision": null,
+          "matched_at_iou_0_50": 25439,
+          "matched_iou": {
+            "count": 25439,
+            "mean": 0.7315793282560573,
+            "median": 0.7338565473464002,
+            "p95": 0.8851073788041897
+          },
+          "miss_rate_at_iou_0_50": 0.03185416349520475,
+          "precision": null,
+          "precision_ap_unavailable_reason": "Only selected players are labelled. Unmatched predictions have unknown status.",
+          "recall_by_iou": {
+            "0.50": 0.9681458365047952,
+            "0.75": 0.42087836809255597
+          },
+          "recall_by_min_score": {
+            "0.25": {
+              "0.50": 0.9681458365047952,
+              "0.75": 0.42087836809255597
+            },
+            "0.5": {
+              "0.50": 0.9592023138986147,
+              "0.75": 0.41893743339929973
+            },
+            "0.75": {
+              "0.50": 0.8458288932866495,
+              "0.75": 0.38723550007611507
+            }
+          },
+          "references": 26276,
+          "unmatched_predictions": 25423,
+          "xyxy_error_px": {
+            "x_max": {
+              "absolute": {
+                "count": 25439,
+                "mean": 5.741693503780741,
+                "median": 4.493954055001495,
+                "p95": 16.14831502338056
+              },
+              "signed": {
+                "count": 25439,
+                "mean": 4.948100203356984,
+                "median": 4.224953408436932,
+                "p95": 15.945816827351422
+              }
+            },
+            "x_min": {
+              "absolute": {
+                "count": 25439,
+                "mean": 5.1211429949064,
+                "median": 3.7473902763217666,
+                "p95": 15.327314207901312
+              },
+              "signed": {
+                "count": 25439,
+                "mean": -3.6260032441891643,
+                "median": -3.0205686657718616,
+                "p95": 4.659355235325936
+              }
+            },
+            "y_max": {
+              "absolute": {
+                "count": 25439,
+                "mean": 4.355134641595292,
+                "median": 3.141677425170599,
+                "p95": 12.56635904914104
+              },
+              "signed": {
+                "count": 25439,
+                "mean": 2.2065009572271514,
+                "median": 2.141500812511765,
+                "p95": 11.538279461689461
+              }
+            },
+            "y_min": {
+              "absolute": {
+                "count": 25439,
+                "mean": 2.9782487914529603,
+                "median": 2.2261832160769472,
+                "p95": 8.037685348598586
+              },
+              "signed": {
+                "count": 25439,
+                "mean": -0.5745462088561013,
+                "median": -0.7902955624996366,
+                "p95": 5.685703693520924
+              }
+            }
+          }
+        }
+      },
+      "settings": {
+        "coco_person_label": 1,
+        "forward": "Strongly typed TensorRT, upstream FP16 ONNX cast, FP32 bindings",
+        "global_top_k_query_class_pairs": 300,
+        "license": "Apache-2.0",
+        "mean": [
+          0.485,
+          0.456,
+          0.406
+        ],
+        "min_person_score_inclusive": 0.25,
+        "nms": false,
+        "queries": 300,
+        "resize": "RGB, float32 bilinear, antialias=False, stretch to square",
+        "resolution": [
+          704,
+          704
+        ],
+        "rfdetr_commit": "f29e2a8bbb7cdcb8920bf74a335062f88a35046d",
+        "rfdetr_plus_commit": null,
+        "rfdetr_plus_version": null,
+        "rfdetr_version": "1.12.1",
+        "std": [
+          0.229,
+          0.224,
+          0.225
+        ],
+        "tf32": false
+      },
+      "speed_status": "pending_common_inputs"
+    }
+  },
+  "conversion": {
+    "engine_build": {
+      "failure": null,
+      "phase": "engine_build",
+      "receipt": {
+        "bytes": 67,
+        "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/batch-1/engine_build.json",
+        "sha256": "5cebf36740ed03f5a86705d6cce0c09c597e63c7ee9a93b2b822551991eeb817"
+      },
+      "wall_ms": 96430.636659
+    },
+    "onnx_export": {
+      "failure": null,
+      "phase": "onnx_export",
+      "receipt": {
+        "bytes": 66,
+        "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/batch-1/onnx_export.json",
+        "sha256": "48177dbd1c4276fa195e110cafbc0894130dca411e60db9d0c9bc711eec712c8"
+      },
+      "wall_ms": 13679.644171
+    },
+    "tensorrt_bundle": [
+      {
+        "bytes": 427,
+        "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/batch-1/engine/engine.json",
+        "sha256": "01c13be32f903fd540b61c95a77614a7aa206d79439703674bb87f8032cfd2b8"
+      },
+      {
+        "bytes": 1036,
+        "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/batch-1/engine/export.json",
+        "sha256": "f3e6eca601f102448ed7fab33775655562ffb8341f73b40a97f4151413e7247d"
+      },
+      {
+        "bytes": 68466812,
+        "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/batch-1/engine/engine.plan",
+        "sha256": "4e3ae2a8206caa607565a8fe5726509201a11c9f11b3134b13c7aa2ae3c40e35"
+      },
+      {
+        "bytes": 61233732,
+        "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/batch-1/engine/model.onnx",
+        "sha256": "9cbf28254313462f421cfd7050bec08c18ca903029013a55d33102e2f5fdd21e"
+      }
+    ]
+  },
+  "issues": {
+    "comparison": 2487,
+    "reference": 2495,
+    "speed_inputs": 2496
+  },
+  "manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+  "measured_commit": "64fde00dca465a7c2bb27881805f971d0bbaaee4",
+  "model_id": "rfdetr-l",
+  "prediction_reader_verified_at": "bdbbb2127f8a842ae007ae42b0518e00f77d9de2",
+  "schema_version": 1,
+  "source_benchmark": {
+    "benchmark_id": "meiji_4cam/multiview-v1",
+    "manifest_sha256": "b9a33f87ac980c55ebc285c9a5a6f5edd657687be920aea2e14857c1ee845a45"
+  },
+  "weights": {
+    "bytes": 135954129,
+    "path": ".worktree-outputs/parent-2492-issue-2487-rfdetr/player-model-comparison/tooling/rf-detr-large-2026.pth",
+    "sha256": "0f4e20e19a99c0f8a62b5685f57f6c8b5c371c59081feda6752a0561a79ccf38"
+  }
+}
