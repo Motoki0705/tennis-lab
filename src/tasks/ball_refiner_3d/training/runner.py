@@ -66,7 +66,9 @@ class RefinerTrainingRunner(BaseTrainingRunner):
                 )
             checkpoint = torch.load(resume, map_location="cpu", weights_only=True)
             RefinerLightningModule.validate_resume_checkpoint(settings, checkpoint)
-            manifest_hash = hashlib.sha256((settings.dataset / "manifest.json").read_bytes()).hexdigest()
+            manifest_hash = hashlib.sha256(
+                (settings.dataset / "manifest.json").read_bytes()
+            ).hexdigest()
             if checkpoint["manifest_sha256"] != manifest_hash:
                 raise ValueError("Cannot resume against a different dataset manifest")
             if checkpoint["step"] >= settings.updates.steps:
@@ -112,7 +114,7 @@ class RefinerTrainingRunner(BaseTrainingRunner):
         *,
         train_loader: Any | None,
     ) -> int:
-        return self.settings.updates.evaluate_every
+        return int(self.settings.updates.evaluate_every)
 
     def build_lightning_module(
         self,
@@ -173,13 +175,7 @@ class RefinerTrainingRunner(BaseTrainingRunner):
         path = super().resolve_resume(config, output_dir)
         if path is not None:
             checkpoint = torch.load(path, map_location="cpu", weights_only=True)
-            if (
-                checkpoint.get("schema") != "ball_refiner_3d.events.v2"
-                or "loops" not in checkpoint
-            ):
-                raise ValueError(
-                    "Full-state resume requires a Lightning events.v2 checkpoint; use init_weights for legacy weights"
-                )
+            RefinerLightningModule.validate_resume_checkpoint(self.settings, checkpoint)
         return cast(str | None, path)
 
     def test_after_fit(

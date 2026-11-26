@@ -33,7 +33,7 @@ metrics:
   batch1_model_gpu_p50_ms: 665.5379061698914
   batch1_wall_person_frames_per_second: 14.42127577029961
   sampled_device_peak_bytes: 5173776384
-summary_impact: none
+summary_impact: updated
 repro:
   commit: 8a25fe12b543656cb1e883e7251bd1a3fd299fd0
   branch: codex/parent-2492-issue-2491-primary
@@ -69,10 +69,12 @@ GPUは各反復のモデルforwardのCUDA event時間の合計。wallはデコ�
 | HMR2特徴＋GVHMR PT16 | 4 | 4 | 514.03 / 519.55 | 1,924.92 / 1,983.49 | 33.16 |
 | FastHMR CameraHMR PT16 | 4 | 2 | 1,947.84 / 2,459.11 | 3,230.67 / 3,993.48 | 19.20 |
 
-FastHMRのwall P50は各batchで現行経路の2.22、2.57、1.68倍だった。B=1のwall P50はFastHMR 68.18 ms/人・フレーム、現行経路30.77 ms/人・フレーム。系列batchは1反復に投入した系列数。FastHMRは系列を1本ずつ処理し、特徴抽出を4 cropずつ実行した。現行経路はHMR2特徴を16 cropずつ抽出し、GVHMRで表の系列batchをまとめて推論した。PyTorchのCPUスレッド数と内部batchが異なるため、この実行条件での参考値とする。計時範囲外の動画decode、配置以降と全pipelineの所要時間は未計測。比較図の対象外。 [現行PT16・TRT16の全batch](../../runs/run-person-model-speed-low-precision/cases.csv)
+FastHMRのwall P50は系列batch 1・2・4で現行PT16の2.22、2.57、1.68倍だった。B=1（16フレーム）のwall P50はFastHMR CameraHMR PT16が68.18 ms/人・フレーム、現行HMR2特徴＋GVHMRのPT16が30.77 ms/人・フレーム、TRT16が25.54 ms/人・フレーム。現行TRT16は保存CSVの408.717942 ms/系列から換算した。系列batchは1反復に投入した系列数。FastHMRは系列を1本ずつ処理し、特徴抽出を4 cropずつ実行した。現行経路はHMR2特徴を16 cropずつ抽出し、GVHMRで表の系列batchをまとめて推論した。PyTorchのCPUスレッド数と内部batchが異なるため、この実行条件での参考値とする。計時範囲外の動画decode、配置以降と全pipelineの所要時間は未計測。比較図の対象外。 [現行PT16・TRT16の全batch](../../runs/run-person-model-speed-low-precision/cases.csv)
 
 FastHMRの3条件でPyTorch allocated peak 4,299.8 MiB、reserved peak 4,466.0 MiB、NVMLデバイス使用量のサンプル最大値4,934.1 MiBだった。B=1の現行PT16のNVMLは4,926.1 MiB。FastHMRの追跡対象資産は合計4,695,003,483 bytes。ロードと初回推論はそれぞれ別に保存した。B=1の最初の呼び出しにYOLOのNMS時間上限警告が1件あり、ウォームアップ後の反復は全条件で完了した。 [環境・メモリ・資産のハッシュ](../../runs/run-fasthmr-camerahmr-pt16-speed/speed-summary.json)
 
-PT16のparityは2026-11-25のユーザー判断により明示的に未判定。CameraHMRのTRT16は書き出し停止、HMR 2.0ベースは公開版のMask-ToMe非対応。PT32の8フレーム試行は既存記録に保持する。今回の参考速度で置換による短縮は確認できなかった。現在の標準pipelineの判断は維持し、定性品質と採否は人間の目視確認を待つ。 [保存済み初回試行](000092-run-fasthmr-camerahmr-smoke.md) [TRT16の試行](000093-run-fasthmr-camerahmr-trt-export-probe.md) [代表6 clipの目視資料](000094-run-fasthmr-camerahmr-pt16-review.md)
+PT16のparityは2026-11-25のユーザー判断により明示的に未判定。CameraHMRのTRT16は書き出しで停止し、今回の試行では実行不能だった。HMR 2.0ベースは公開版のMask-ToMe非対応。PT32の8フレーム試行は既存記録に保持する。 [保存済み初回試行](000092-run-fasthmr-camerahmr-smoke.md) [TRT16の試行](000093-run-fasthmr-camerahmr-trt-export-probe.md) [代表6 clipの目視資料](000094-run-fasthmr-camerahmr-pt16-review.md)
+
+2026-11-26、利用者は「FastHMRの速度優位性がないなら置き換えは見送りです。」と判断した。実測した系列batchのすべてでFastHMR PT16は現行PT16より時間を要したため、置き換えを見送った。目視評価は未実施（速度条件で見送りが決定）。標準recipeはGVHMRを使い、`recipe=fasthmr` は明示選択の経路としてmainに残す。 [ユーザー判断の記録](https://github.com/Motoki0705/tennis-lab/issues/2494#issuecomment-7178978237)
 
 `repro.sh` は `TENNIS_REPO` に実行HEADのworktree、`PERSON_SPEED_INPUT_DIR` に固定入力を渡し、共有GPUキュー経由で実行する。元ジョブの生JSONは `.training_queue/repro/<job>/predictions/` に保持した。`verify_speed.py` はその3レポートの順序と統計を再計算し、`speed-summary.json` と照合できる。 [元の投入コマンド](../../runs/run-fasthmr-camerahmr-pt16-speed/run.json)
