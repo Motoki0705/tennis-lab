@@ -155,26 +155,37 @@ def test_only_the_exact_standard_recipe_patch_preserves_previous_source_identity
     records = json.loads(manifest.read_text())["files"]
     people = json.loads(manifest.with_name("ecpose_recipe_cache_compatibility.json").read_text())["files"]
     plcs_path = "tennis_scene/pipeline/components/monocular_plcs.py"
-    actual = {
-        path: dual_sha256(PROJECT_ROOT / "src" / path)
-        for path in records.keys() | people.keys() | {plcs_path}
+    unrelated = {plcs_path: dual_sha256(PROJECT_ROOT / "src" / plcs_path)}
+    fast_after = {path: entry["after"] for path, entry in records.items()}
+    # The positive case uses the reviewed patch versions, which the checkout can outgrow.
+    ecpose_sources = {
+        **unrelated,
+        **fast_after,
+        **{path: entry["after"] for path, entry in people.items()},
     }
-    assert {path: actual[path] for path in people} == {path: entry["after"] for path, entry in people.items()}
-    outside_fast = {path: entry["before"] for path, entry in people.items()
-                    if path not in records and entry["before"] is not None}
-    outside_fast[plcs_path] = actual[plcs_path]
-    fast_sources = compatible_source_digests(actual, standard_people=True, tensorrt=True)
-    assert fast_sources == {**outside_fast, **{path: entry["after"] for path, entry in records.items()}}
+    outside_fast = {
+        **unrelated,
+        **{path: entry["before"] for path, entry in people.items()
+           if path not in records and entry["before"] is not None},
+    }
+    fast_sources = compatible_source_digests(ecpose_sources, standard_people=True, tensorrt=True)
+    assert fast_sources == {**outside_fast, **fast_after}
     baseline = {
         **outside_fast,
         **{path: entry["before"] for path, entry in records.items() if entry["before"] is not None},
     }
-    assert compatible_source_digests(actual, standard_recipe=True, tensorrt=True) == baseline
-    assert compatible_source_digests(actual, tensorrt=True) == actual
+    assert compatible_source_digests(ecpose_sources, standard_recipe=True, tensorrt=True) == baseline
+    assert compatible_source_digests(ecpose_sources, tensorrt=True) == ecpose_sources
     local_edit = {**fast_sources, "tennis_scene/pipeline/definition.py": "a" * 64}
     assert compatible_source_digests(local_edit, standard_recipe=True, tensorrt=True) == local_edit
-    people_edit = {**actual, "submodules/models/ecpose/runtime.py": "b" * 64}
+    people_edit = {**ecpose_sources, "submodules/models/ecpose/runtime.py": "b" * 64}
     assert compatible_source_digests(people_edit, standard_recipe=True, tensorrt=True) == people_edit
+    publication_path = "tennis_scene/pipeline/dataset_publication.py"
+    publication_edit = {
+        **ecpose_sources,
+        publication_path: dual_sha256(PROJECT_ROOT / "src" / publication_path),
+    }
+    assert compatible_source_digests(publication_edit, standard_recipe=True, tensorrt=True) == publication_edit
 
 
 @pytest.mark.parametrize("override,message", [
