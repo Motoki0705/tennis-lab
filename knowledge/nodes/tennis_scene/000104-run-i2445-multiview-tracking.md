@@ -2,7 +2,7 @@
 id: run-i2445-multiview-tracking
 type: run
 task: tennis_scene
-sequence: 101
+sequence: 104
 recorded_at: '2026-11-24'
 title: Meijiの時間窓による3D人物追跡と選手選別
 issue: 2445

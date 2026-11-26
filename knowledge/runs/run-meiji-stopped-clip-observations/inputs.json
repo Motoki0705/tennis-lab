@@ -1,0 +1,1831 @@
+{
+  "source": {
+    "i2363_commit": "fef1d626dd0c40ea8ce69705eda777fec4801021",
+    "width_study_commit": "63e9730fa23a57d46e7df4d9d4fed9e9204e9f94",
+    "upstream_reference_commit": "61fef16091952b5c0df06f89b32603656a29a745",
+    "progress.json": "4686dc79649d7b16b9cc33fd13c6a9ad36776adf515796153886ddcecc95f426",
+    "outcome.json": "4d9ef0af9d03f25219b54db5d3b6c089fcdb49c29f07f05a80b136577b739f44",
+    "dataset.json": "968da7df0a235c4213af549ea661fa1b66c8e8c57c94b2c66d07775b23f50099"
+  },
+  "clips": [
+    {
+      "clip": "clip_002",
+      "source_frames": 1516,
+      "decision": {
+        "stage": "player_association",
+        "side": 1,
+        "runner_up": {
+          "candidates": [
+            1
+          ],
+          "identity": 1,
+          "presence_frames": 830,
+          "seen_frames": 1299,
+          "side": 1
+        },
+        "boundary": {
+          "candidates": [
+            4,
+            8,
+            9,
+            10,
+            11,
+            17,
+            19
+          ],
+          "identity": 4,
+          "presence_frames": 1514,
+          "seen_frames": 1514,
+          "side": 1
+        },
+        "longest_internal_gap": {
+          "camera": "cam0",
+          "id": 1,
+          "before": 1005,
+          "after": 1034
+        },
+        "reason": "player_association_ambiguous_players",
+        "error": "ReconstructionUnavailable: Identity 1 (830 frames) is too close to player identity 4 (1514 frames)",
+        "eligible_frames": 1299
+      },
+      "focus": [
+        {
+          "camera": "cam0",
+          "kind": "group",
+          "identity": 1,
+          "start": 0,
+          "end": 1516
+        }
+      ],
+      "anchors": [
+        420,
+        810,
+        1246
+      ],
+      "frames": [
+        414,
+        420,
+        426,
+        804,
+        810,
+        816,
+        1005,
+        1019,
+        1034,
+        1240,
+        1246,
+        1252
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "467f44f38104b4134b9c1425f0022515c9f2b2fa3b8309116ebd1bee35585113",
+          "person_detection": {
+            "artifact_id": "80a47debf1982835b95e9e871651053c4d529d8bac147773fba5a3cf2b6f7d2d",
+            "sha256": "0fb17207092fa8344ec783d614f90c3aef742dde4e46ea1c49babb51ba6dda6d"
+          },
+          "person_tracking": {
+            "artifact_id": "57b364d6974edb05f969f7fed569f26dea9aa21c71ceb363360855470420b7bf",
+            "sha256": "7d44dbfb2c3015b1fe7c1640c9340459b5bd03939bfeffed6d0fd44f63ee69cb"
+          },
+          "player_selection": {
+            "artifact_id": "275be610e01913d0316edb91535d3df1cffb65e16d3e27f3944c22cdbe0e2d6a",
+            "sha256": "96136e29608d7d6bcef24a0165081b3e3390fd7e4b137af3127db0708d10c061"
+          }
+        },
+        "cam1": {
+          "media_sha256": "bcb1df13e99605297a427e77db5e59bd53744b87146d31156e17b7a727787fc7",
+          "person_detection": {
+            "artifact_id": "d328abf670fda3d427acf2d2571df362b7c77a15f8a4d3329f1c42e8b48f5c5a",
+            "sha256": "65d6f44b89179d69d425849e5f2dab3a62db173a1537a156f3088974a048be59"
+          },
+          "person_tracking": {
+            "artifact_id": "aaecb62e1a6fe456c2d51a8905374d1993c78478ebd5f6e9e84db75b3b68b9fe",
+            "sha256": "38e70be593c70c8f10f39c65483a73dd83a0d3e45b47f0c5f355c40466028e99"
+          },
+          "player_selection": {
+            "artifact_id": "965d3f40bed1f7a5ff3025ff9e0da180c817bc39e16aca2a333c4a1f7ff203aa",
+            "sha256": "fc36486a09ca4d9bf869f520761bdab0ab0f1554c5f93efa59e557e6d890e26c"
+          }
+        },
+        "cam2": {
+          "media_sha256": "f4a216010f607157ea14d3ab62f617460452c175c5ffcc697a79f63a19114a5d",
+          "person_detection": {
+            "artifact_id": "291a4ab3061114c8d513eb9c0cedceb82daad5d0beadb381b902c484bdca44eb",
+            "sha256": "34c5ed088710b02ffdf4daae4bae7998c51e14584fe1ed05dba1507688a62615"
+          },
+          "person_tracking": {
+            "artifact_id": "332c1b21198d158615f737266c0e50f1d517028e459d78ffda050380c62b1c1b",
+            "sha256": "b359a347cf4bbe4515812e81178c71ade3ea7a16221ec76c9eec6b557c0f8ea6"
+          },
+          "player_selection": {
+            "artifact_id": "06b3638b1d777f89bbbd579ac24bbac356e066633d8566e13e2017b2f622eb21",
+            "sha256": "3e988c89177eafea51c9a64e1ec4f629b9dd246a959ce88d6ac251d2474357fb"
+          }
+        },
+        "cam3": {
+          "media_sha256": "2de4983837d196d0aa8bc2d92f86b9f4642db36fa020d7eada34a318691ca274",
+          "person_detection": {
+            "artifact_id": "6755d6d7d74c262d80df4de33914c52542075cef4b2f1b63b7c9f0657357d797",
+            "sha256": "00d0e4cf0ff8c8838c561f34cfb28ee8fe4a4cf21e1c42b7ede3640190fd1ba6"
+          },
+          "person_tracking": {
+            "artifact_id": "c25946c65beb52b9844895eda53cf7654e9b4fca13fcb38ffd7502edbcad77a2",
+            "sha256": "4f00e56601a3ababd52d74be4f3284516164da8c12a7dd64dc2dd6b2cab5b1e6"
+          },
+          "player_selection": {
+            "artifact_id": "dee4d720902e43ead720a4f9b966df740d3b55520d0c7dbc20c75d6b4fe7d683",
+            "sha256": "53bcf8a0ae80731ff468f082a78a2a25110c947c8377af6c9c143c84dc38de51"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_004",
+      "source_frames": 586,
+      "decision": {
+        "stage": "player_association",
+        "side": 1,
+        "runner_up": {
+          "candidates": [
+            17
+          ],
+          "identity": 4,
+          "presence_frames": 452,
+          "seen_frames": 452,
+          "side": 1
+        },
+        "boundary": {
+          "candidates": [
+            3,
+            7,
+            8,
+            16
+          ],
+          "identity": 3,
+          "presence_frames": 584,
+          "seen_frames": 584,
+          "side": 1
+        },
+        "longest_internal_gap": {
+          "camera": "cam3",
+          "id": 4,
+          "before": 275,
+          "after": 290
+        },
+        "reason": "player_association_ambiguous_players",
+        "error": "ReconstructionUnavailable: Identity 4 (452 frames) is too close to player identity 3 (584 frames)",
+        "eligible_frames": 452
+      },
+      "focus": [
+        {
+          "camera": "cam3",
+          "kind": "group",
+          "identity": 4,
+          "start": 0,
+          "end": 586
+        }
+      ],
+      "anchors": [
+        203,
+        359,
+        494
+      ],
+      "frames": [
+        197,
+        203,
+        209,
+        275,
+        282,
+        290,
+        353,
+        359,
+        365,
+        488,
+        494,
+        500
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "7c44f56b1588f973a8ae76bbc583631fab3c33fd3085d0cc09bfe680ae9e90e7",
+          "person_detection": {
+            "artifact_id": "7105e6f4587b0282237c8ef637db27db86a7356789d4fc2c0d6d1af4f105644b",
+            "sha256": "300cb6c300173a5d386c78b31afcaefb06882766ded8135fe392ff5a3ab5a1fb"
+          },
+          "person_tracking": {
+            "artifact_id": "1d86ac1180266406b9e47cca877a052bee0d1bfbac37ebbcebee5291cf7b16e9",
+            "sha256": "bd0f5c5d9e5f6ec828a7ce94a863ecaea7af7508c0053ccda5e2480d25fce7dd"
+          },
+          "player_selection": {
+            "artifact_id": "0deb3c9644befea70115e2009cd44933f82cdf5a8bd322cb70e168761af4d181",
+            "sha256": "9ebd35468f2efa49964ffd6c68d53c4bf3d3cc5e92d15b1dead2d808a42d41aa"
+          }
+        },
+        "cam1": {
+          "media_sha256": "8475e43b7b2459ca663ed2931a8084da3a3f4986e185fa3b07f96fef701f9162",
+          "person_detection": {
+            "artifact_id": "8007c1247acfadc773a97a41c44031d64fc94d330cec975eb3eedc164c60c3a5",
+            "sha256": "da968936217c0e0146f6494846060d5be4f878009a3f9548130f91b95f109915"
+          },
+          "person_tracking": {
+            "artifact_id": "fb194454e3ccb5afd4c99360f9573758149e1bd4f6d81d0588d6c485e8e41fe4",
+            "sha256": "e85ac01a3f5edcf17e08fb42f5ac3fad4f119bfc65c946c9b50f21e1f162ecec"
+          },
+          "player_selection": {
+            "artifact_id": "3b4aafd1f0932ee713dbe3dfe610a0851853189fccab643222496c1854b7d6e8",
+            "sha256": "1ac9d9ed667d7605d5e06c079d37269f013c2f7a220889a5f9780a92da7cf2bc"
+          }
+        },
+        "cam2": {
+          "media_sha256": "1b7c0357bafadbd0f4c78436c596c042dfebba5dc612ec0819e005f7aea3ee30",
+          "person_detection": {
+            "artifact_id": "2bf7506e2fc0f0d05fceb8cb0284a769664b2200bcbcca6dc790db04925783d6",
+            "sha256": "7212a68dd74b85de7878bbc403bc09c5e702eea6d4749af0d9c96c7e0be58630"
+          },
+          "person_tracking": {
+            "artifact_id": "6f00414a45ea84b2dddd874f3b32eec619ba89e8202948e87cbd245a118c33f4",
+            "sha256": "d23e1f280f6307cc3e66ca78135953d75ffa7aca806e4434ecc0d42bfae9b1cf"
+          },
+          "player_selection": {
+            "artifact_id": "67aaee9cbbdd0e17a24c6e7b1c3450ae8c9508dddb04d751d1cfc42621336ae0",
+            "sha256": "a2a8f82cfc059f4dbf3caba41d13c3ff16fad1aa3f28accc55ead37db114f0c5"
+          }
+        },
+        "cam3": {
+          "media_sha256": "2c0ca07ec45c641a055aabaffbb0753dfc4e82559443d19c3486269d8c9b25c6",
+          "person_detection": {
+            "artifact_id": "2c1196fefa2b923c6822c5c24b3eeef2276f06f7344a0c4360cfbd6afa0a8e24",
+            "sha256": "646d6b111e49759cf0f6d18963ef8774fb49ae46cb30d2a40c19f57dfe3f4395"
+          },
+          "person_tracking": {
+            "artifact_id": "e8be2a648699490ffbac110bb7d5e769a3d7b1ff916dd7ea40750fa8e85f6cbe",
+            "sha256": "e58dc4663430f5e5921782e637d910711882f4c782f659ce65c96208169da81b"
+          },
+          "player_selection": {
+            "artifact_id": "c4342db9f18e5b7168dc5a7dea0ebe3151211bfc564d1107589416265b5bff55",
+            "sha256": "97cc2410bbd295e6e62c1aa8d110831132ad502479d0aa0c88da5bde5b2b2885"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_012",
+      "source_frames": 1017,
+      "decision": {
+        "stage": "court_side",
+        "evidence": "player",
+        "frames": 470,
+        "hypotheses": [
+          {
+            "cost": 0.21112635331165558,
+            "frames": 470,
+            "support": 0.19574468085106383,
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ]
+          },
+          {
+            "cost": 0.406223246790366,
+            "frames": 470,
+            "support": 0.027659574468085105,
+            "view_half_turns": [
+              false,
+              false,
+              false,
+              true
+            ]
+          },
+          {
+            "cost": 0.43250656756283895,
+            "frames": 470,
+            "support": 0.00425531914893617,
+            "view_half_turns": [
+              false,
+              true,
+              false,
+              false
+            ]
+          },
+          {
+            "cost": 0.43604975648504385,
+            "frames": 470,
+            "support": 0.002127659574468085,
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "cost": 0.4558425413384096,
+            "frames": 470,
+            "support": 0.0,
+            "view_half_turns": [
+              false,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "cost": 0.4777422767468663,
+            "frames": 470,
+            "support": 0.00425531914893617,
+            "view_half_turns": [
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "cost": 0.5162970918661411,
+            "frames": 470,
+            "support": 0.002127659574468085,
+            "view_half_turns": [
+              false,
+              true,
+              true,
+              false
+            ]
+          },
+          {
+            "cost": 0.5254563902519949,
+            "frames": 470,
+            "support": 0.0,
+            "view_half_turns": [
+              false,
+              true,
+              false,
+              true
+            ]
+          }
+        ],
+        "margin": 0.1950968934787104,
+        "pair_frames": {
+          "cam0-cam1": 470,
+          "cam0-cam2": 470,
+          "cam0-cam3": 470,
+          "cam1-cam2": 470,
+          "cam1-cam3": 470,
+          "cam2-cam3": 470
+        },
+        "sampled_frames": 509,
+        "reason": "court_side_no_consistent_hypothesis",
+        "error": "ReconstructionUnavailable: no_consistent_hypothesis: The best hypothesis lacks absolute geometric support [[False, False, True, True] cost=0.211 support=0.196; [False, False, False, True] cost=0.406 support=0.028; [False, True, False, False] cost=0.433 support=0.004; [False, False, True, False] cost=0.436 support=0.002; [False, True, True, True] cost=0.456 support=0.000; [False, False, False, False] cost=0.478 support=0.004; [False, True, True, False] cost=0.516 support=0.002; [False, True, False, True] cost=0.525 support=0.000]",
+        "eligible_frames": 509
+      },
+      "focus": [],
+      "anchors": [
+        202,
+        507,
+        811
+      ],
+      "frames": [
+        196,
+        202,
+        208,
+        501,
+        507,
+        513,
+        805,
+        811,
+        817
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "b4b83f758fdec2dbab217044aca164e7a7978b11f809d4fb182954aa2367176f",
+          "person_detection": {
+            "artifact_id": "b79d7012e50e09cdabc6117d03cfa8051754972a08b98085f13dec5dc60b1122",
+            "sha256": "3ee3796ba6d84d032a140d9896d62932cbf11de675467bf4b1e37fe34704396a"
+          },
+          "person_tracking": {
+            "artifact_id": "22aff9023055b5c73f00b0e67c491dc64618e7ff71a3d0371ce18fdbfb7dc071",
+            "sha256": "c9502a32bf863aa0ab9216c499136cba32ae3404c9776065f98f36ec370b6872"
+          },
+          "player_selection": {
+            "artifact_id": "8e23b8c09b18e40406062da8d4d6081b9b17cb38db99b04bd11a3e31d9c19376",
+            "sha256": "8d3387c6afa948f80d0644cc0d6bc7d54699800ca33bb6ed38180c35d059f77e"
+          }
+        },
+        "cam1": {
+          "media_sha256": "dca2c1c04e340b86f24a61ba19a7593614b296204e4b47457edbada79af8aa51",
+          "person_detection": {
+            "artifact_id": "f6d31a02d47093917fb7b59211201919ba96fbc9f9f1e15a14f121007456c7f3",
+            "sha256": "356910eb180d14082f8b30299afffa3a7020725ca7f768e5888c6298f9d0ae73"
+          },
+          "person_tracking": {
+            "artifact_id": "d540eb51894a8a99e79d5badb392c1f4d95bfc1266d053e4ed282f3e1db27333",
+            "sha256": "d6c29615b11bb6bcf778108f83ea13cdeaf047c531ffe3830f6288a6c9689283"
+          },
+          "player_selection": {
+            "artifact_id": "ef3c520438316f1fb6954c66e6d50c93c92e7454de668617748b475faf9d0f5b",
+            "sha256": "027c6645953b5597fab9dd975325d5fe5bcd1b149bf9d86dc9b95afcaa97b8e6"
+          }
+        },
+        "cam2": {
+          "media_sha256": "0de314dcaf6d8208ae3d6c6c88d317587a104d296be8bda66a3d5a702834323a",
+          "person_detection": {
+            "artifact_id": "633507e350e4a307de4ea535a9134227591be298dda8346dc87788d06e7d44f7",
+            "sha256": "f7e481811cd6c131063226a2873b8b6f098586dadf7c9ba8cf4fd2fd27ab4afe"
+          },
+          "person_tracking": {
+            "artifact_id": "b5554607ad41936a93b9119154fdb9d9108a785fe615f6392043c46c9d4a2a14",
+            "sha256": "b4bf8f0fd91a48145de73778e68b8646e6e05a9b952915f7e6d2c43418f9f6cf"
+          },
+          "player_selection": {
+            "artifact_id": "8d3dbc7ff7ac62403113c5beb7c403660414e73366ebacdf90fc320711fc70aa",
+            "sha256": "f984c39312f675f1b6c6fac624b5a2e91da704316cd138e54523ca5e50aa4a2e"
+          }
+        },
+        "cam3": {
+          "media_sha256": "4792393a78685f9536c67cb9f2e8154c8976959dbdabf5d9814b4ae300262e46",
+          "person_detection": {
+            "artifact_id": "90b1db2186dbe5a8251eab14a7f961c999621e7c3cfa9517a28ecee6779b586c",
+            "sha256": "2b58eef278796319d74c707bedd78f462286ba24ac16b8d57738ba29ef021efe"
+          },
+          "person_tracking": {
+            "artifact_id": "0b7b484ad927779225f8b68eed57b454b6d8e0f4426b5462d1060a127563d8b5",
+            "sha256": "31fa93505d27c7f182e9f7856b299ab2c429eb8e167bb09819b09d9293febaf7"
+          },
+          "player_selection": {
+            "artifact_id": "a1b28b8abf5cf6acc68f7e10e73e4b26a246c55d3c551c2ce0b550cb24fb4fb6",
+            "sha256": "3b6678c734a9d15261f87d08987ab96b15e9a2daa1af41777e4de0235e46e42c"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_014",
+      "source_frames": 463,
+      "decision": {
+        "stage": "player_association",
+        "side": -1,
+        "runner_up": {
+          "candidates": [
+            10
+          ],
+          "identity": 4,
+          "presence_frames": 377,
+          "seen_frames": 415,
+          "side": -1
+        },
+        "boundary": {
+          "candidates": [
+            1,
+            5,
+            8,
+            13
+          ],
+          "identity": 1,
+          "presence_frames": 461,
+          "seen_frames": 461,
+          "side": -1
+        },
+        "longest_internal_gap": {
+          "camera": "cam2",
+          "id": 2,
+          "before": 209,
+          "after": 236
+        },
+        "reason": "player_association_ambiguous_players",
+        "error": "ReconstructionUnavailable: Identity 4 (377 frames) is too close to player identity 1 (461 frames)",
+        "eligible_frames": 415
+      },
+      "focus": [
+        {
+          "camera": "cam2",
+          "kind": "group",
+          "identity": 2,
+          "start": 0,
+          "end": 463
+        }
+      ],
+      "anchors": [
+        84,
+        209,
+        359
+      ],
+      "frames": [
+        78,
+        84,
+        90,
+        203,
+        209,
+        215,
+        222,
+        236,
+        353,
+        359,
+        365
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "fb21028f63c3600672aaabd5c64cbbb76454abf6455c5d95a1a01a16c0547464",
+          "person_detection": {
+            "artifact_id": "7100ba0029efd671486fbc35c6dd7c2e09c9161cfa514fe56ccef6b307a5fad2",
+            "sha256": "575208524ee938e6756f587e45bc631dda477e260682f44afae620f2ffec36be"
+          },
+          "person_tracking": {
+            "artifact_id": "3a643be9d1ef89bf44ceb97ccbfae09fe442656088c6757ce31736603f4bd415",
+            "sha256": "30e882b295aee1d0b820e8e22f1df8b0ea35dc1f53aa0d42ef03bcc7f9681e2d"
+          },
+          "player_selection": {
+            "artifact_id": "f615764a892f5712c0229d65183825cd6b377b8da59ebdd4e9b2a96633cd88c5",
+            "sha256": "a0054c57fdde4e3c8b1edfbdb4752714d95f9cee4410e93e55af1c0702d0c570"
+          }
+        },
+        "cam1": {
+          "media_sha256": "04753c90b43f8485d26dff56034d370846cd5fe75bdae65710cdeddd749125f4",
+          "person_detection": {
+            "artifact_id": "9c7c191daa2f1b28d82a56126025fefc77e3bdd04695be96ec5ace128f064186",
+            "sha256": "f25a4f49f7e3777cabaa4a1ce9d52199853c512052d1d9e0c381b570c5d03449"
+          },
+          "person_tracking": {
+            "artifact_id": "848cebfa3bda5b0eafea087ea318b3813563ca33d35f848c2266bf20b1169307",
+            "sha256": "eaf156e8af90560e5dde049c57ebfd1da802708f8d2898d8d892edd2840759fa"
+          },
+          "player_selection": {
+            "artifact_id": "7b822eb196ba53a08064cc5af786772d75b200e568c4ccb4f4fe885926f3d9be",
+            "sha256": "25292c0ffa45ff942906fa117ab3896df0a08b91b530faa6825ed3e549a6672a"
+          }
+        },
+        "cam2": {
+          "media_sha256": "82bb8c3b24cbb966b9627f144fb4f89d990c367d9daf2cec67ab1755d0b1f170",
+          "person_detection": {
+            "artifact_id": "3e9bc9be9aade924e3a14e49ce1af051a8e945068c5f9a45ed40c816636ac590",
+            "sha256": "5d7149549c58d9d7dd07a0d995cc49a5e34a43d0f29405ae41e32cd3268ba4aa"
+          },
+          "person_tracking": {
+            "artifact_id": "51763e3de7ec321743f5ce53dc04bba424ca02d278a7725ce2dee4f4e6c01820",
+            "sha256": "e71924bd026616c796a94f9727e7f3414a4487809046ed562f7d13fa6294a884"
+          },
+          "player_selection": {
+            "artifact_id": "4b2b909608b14676b05a7733bbee785af290e5db655d368a9679dcecf4c9eeb5",
+            "sha256": "7433675779143b49269dd05473452790a9cd865885d7703bbf30b0cdbfaf22d8"
+          }
+        },
+        "cam3": {
+          "media_sha256": "00436ef798c93ce4c56625724fd0070f67c9cef04251ae6c91f795c1c2917fa4",
+          "person_detection": {
+            "artifact_id": "78fa62e014ba37bbad186b86f77724203f340592d3dbdc56a6fb3d2de72ef947",
+            "sha256": "61a150a656d5893724aacd134bd60515da08ee717478deb39ad0b193fb926409"
+          },
+          "person_tracking": {
+            "artifact_id": "550a48e9ab393dea5163903a5972c6c4e3b824d2153c357d205f165617fa66d5",
+            "sha256": "99af5400a5f5337bc52e842a33cdbbc10c87fb9e45aca901782b11642190fb69"
+          },
+          "player_selection": {
+            "artifact_id": "d0ce570a5200b2fdc60b67514149a3f5acc3996d7881b03bcc273ffdff426a37",
+            "sha256": "49c256249f080433178b0345fe074b4c2960d984c1db8018772bc870f2a77968"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_018",
+      "source_frames": 386,
+      "decision": {
+        "stage": "player_association",
+        "side": -1,
+        "runner_up": {
+          "candidates": [
+            8
+          ],
+          "identity": 3,
+          "presence_frames": 312,
+          "seen_frames": 330,
+          "side": -1
+        },
+        "boundary": {
+          "candidates": [
+            1,
+            4,
+            7,
+            10
+          ],
+          "identity": 1,
+          "presence_frames": 384,
+          "seen_frames": 384,
+          "side": -1
+        },
+        "longest_internal_gap": {
+          "camera": "cam2",
+          "id": 2,
+          "before": 360,
+          "after": 376
+        },
+        "reason": "player_association_ambiguous_players",
+        "error": "ReconstructionUnavailable: Identity 3 (312 frames) is too close to player identity 1 (384 frames)",
+        "eligible_frames": 330
+      },
+      "focus": [
+        {
+          "camera": "cam2",
+          "kind": "group",
+          "identity": 2,
+          "start": 0,
+          "end": 386
+        }
+      ],
+      "anchors": [
+        67,
+        179,
+        278
+      ],
+      "frames": [
+        61,
+        67,
+        73,
+        173,
+        179,
+        185,
+        272,
+        278,
+        284,
+        360,
+        368,
+        376
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "9ff94b61e3b258c1915c680cdbe161f753e01af890379a66d119a96314b984d0",
+          "person_detection": {
+            "artifact_id": "0024e95bbb2aa440dfa43f14ff01dcbe2a35cafa380104eef68aede3173470a9",
+            "sha256": "1c5c315cd7974067942e8a910aed5d8f68ddfd22873e3904c28a61f089eb5300"
+          },
+          "person_tracking": {
+            "artifact_id": "b816fa6c235306ea02b302a3ca65adfffcb2488c46cce41b22e22b4114e522ff",
+            "sha256": "6e432bc33f6474a7a108f0b46debafade8aa7a41e2ea64479e97530f255d2640"
+          },
+          "player_selection": {
+            "artifact_id": "586e1b7c0847647937e8d772adbfb2ddd043110479aef68d5b9b485b48da004d",
+            "sha256": "3f36375cc22ee49f2bcecd40399a47a54a0e708343391430c9383e059ef33a88"
+          }
+        },
+        "cam1": {
+          "media_sha256": "d90f83bff1d94a49980a46e6e769b30cd5d0de7d6cd6239e0e8079b248e83198",
+          "person_detection": {
+            "artifact_id": "3b7740089e53581d5365c6cb5239433a03776599280d2804b5171b7e7d2322ac",
+            "sha256": "600683b35f9846fb55a23d7fdc6b16f2b165c7bf148ff3d11e39c8958ac06473"
+          },
+          "person_tracking": {
+            "artifact_id": "f2b27529399b2248ebc9b0f4d50c653da960123db66d87a5009ce134bdb0679e",
+            "sha256": "673924aed03cecb374ecc2812fdfb20a30af6348eb94f25e003e55e85670b7ca"
+          },
+          "player_selection": {
+            "artifact_id": "87d763359c36d4232537f89c83077d1049ff75ed7a4ff52e8883ee6b939e67ae",
+            "sha256": "37c734db4f1e173126115fad7a05f2721b6c9c0b672910480bcf92c935c7e920"
+          }
+        },
+        "cam2": {
+          "media_sha256": "089c80192d087a0d04ddefbb61e8856e2e3e27460cbd6d5b2dd023c35d7d7e5b",
+          "person_detection": {
+            "artifact_id": "d52ca70a68ab235d503cfe133870302bd1ae3a28d627dbc406202ba694f6bfeb",
+            "sha256": "46d6807848f1dc155d4bb7b268e8d36a19ecefa5aa884efc7f2393770cf5fd47"
+          },
+          "person_tracking": {
+            "artifact_id": "37b78359943bd24060a4ec7b50b83f686664f4c594ab8a9cd6055f33d9b3e5fd",
+            "sha256": "805863b4d81fb95a0d95835dbddcc96f754e461ed26f6ddc791804ff04c78f03"
+          },
+          "player_selection": {
+            "artifact_id": "f7c45d2a224cd1de095119858a4051d368ab9c64ff896183dad30cda274dc9f4",
+            "sha256": "6afd5dbaafe181727169e511f573f416396c13898d5ebac6c7db81ca40f68a1f"
+          }
+        },
+        "cam3": {
+          "media_sha256": "6ee05bfb5c70758c0251d6b6deca66fab8f6dccc69edccc22187d58e05425f7a",
+          "person_detection": {
+            "artifact_id": "680a65c9a1116a3d907c3faaa4fad48d12c045baff5ba59696bf2adbe9bea271",
+            "sha256": "f8fddcddeaa508faffd94fe22c0f64f7a68c773c0a576da9096ae0f16aeb7f96"
+          },
+          "person_tracking": {
+            "artifact_id": "c239ca82cbf88173fa1f1b4fe5970169f10fa01f810947ee508ec18921513246",
+            "sha256": "8fc347659ff5a71d67dd9a811b46e5e462c12f1269b7112cc4aa8990b37958d1"
+          },
+          "player_selection": {
+            "artifact_id": "58470e374c13548503144eaecb7906be4a631f823e795058d1386a22f7f56852",
+            "sha256": "0684f7a33640758c0e057abafff874e8b0d815d43475695acf49f0357d597fb2"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_020",
+      "source_frames": 651,
+      "decision": {
+        "stage": "player_association",
+        "side": 1,
+        "selected": [
+          2
+        ],
+        "reason": "player_association_player_not_found",
+        "error": "ReconstructionUnavailable: Side y>0 lacks 2 identities present for 163 frames",
+        "eligible_frames": 649
+      },
+      "focus": [
+        {
+          "camera": "cam0",
+          "kind": "track",
+          "identity": 8,
+          "start": 0,
+          "end": 651
+        },
+        {
+          "camera": "cam1",
+          "kind": "track",
+          "identity": 4,
+          "start": 0,
+          "end": 651
+        },
+        {
+          "camera": "cam2",
+          "kind": "track",
+          "identity": 2,
+          "start": 0,
+          "end": 651
+        },
+        {
+          "camera": "cam3",
+          "kind": "track",
+          "identity": 1,
+          "start": 0,
+          "end": 651
+        }
+      ],
+      "anchors": [
+        131,
+        326,
+        520
+      ],
+      "frames": [
+        125,
+        131,
+        137,
+        320,
+        326,
+        332,
+        514,
+        520,
+        526
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "003ca047f66aa8728edc34c2bb5b8fc24a9a008379a5785cefd0b16a68333aa7",
+          "person_detection": {
+            "artifact_id": "b1f4024644a43f15a1f5c73db297192d7ab6f51bb89cb9e36dbc3cad81f87aa9",
+            "sha256": "50164886daec836e15761144c89c9b578fb26ac7c964470ddd8b21cb6a5cd57d"
+          },
+          "person_tracking": {
+            "artifact_id": "2ae4a6625af15c9ed971f4d362f0372abc0041d0066c5a13bc26b6626338cb8e",
+            "sha256": "40de04b7a1b715fde404655354191100e6ed9e4e70bccd20071d7f4746b3f206"
+          },
+          "player_selection": {
+            "artifact_id": "47168e15570befb2264dff0ea3bf0e8b7ea71e23e6ab1ae9b97a3b30e3f170de",
+            "sha256": "e7dc462b071d299455217b641a5799fc7c3bda23a77e7d6e01f1588315f49796"
+          }
+        },
+        "cam1": {
+          "media_sha256": "3d7c8770c2f5118d4c48e35e2327fc242d85ad965e3fd883fe398bb3fe45779a",
+          "person_detection": {
+            "artifact_id": "ab03392d8cebbc05156af67b0e87af667fd6fd5933da511ebef4fea2e4026d2b",
+            "sha256": "55f68fae05d46ca1d09bf204bac248230e6261c386fe34bae255970860398b57"
+          },
+          "person_tracking": {
+            "artifact_id": "a24452e3b4898834f88cd46e2f82b5dd18aa369b5d588b27774db485e66bc472",
+            "sha256": "a22002562c5ca462f15fc10a636fa09b53e870959b4094599ee803986f581b18"
+          },
+          "player_selection": {
+            "artifact_id": "15bfb15dd0fcf7cc8893124ce0b8219458d79eec2e1cc50e2fb1453721ef0348",
+            "sha256": "d0ac1b89f1667dce935c96dca03de5d18b3ecad015beec18514f535f9abb9acb"
+          }
+        },
+        "cam2": {
+          "media_sha256": "56ddb1d7550ec7a5ff2ba45167930253e27000cfb39153b896fa86a3c0b8d4a4",
+          "person_detection": {
+            "artifact_id": "5db403b3f1a85de7f5349fd269c5ddc22ab9d0363502156988fb4ea839915de9",
+            "sha256": "124e58b47fff56ebf1b5eee17c81bb7b37975f51e05d8b0fd0b0001c5618ac9c"
+          },
+          "person_tracking": {
+            "artifact_id": "516d66207c3d79414a106841840b0161c890b3b5a811ce40873f6219b51ac997",
+            "sha256": "cd2cb874fefa118bcef78b72f9f781c7cc97551646ee48fccea1678f6964d0ee"
+          },
+          "player_selection": {
+            "artifact_id": "fb679934c74d8cf504c8f44eea555a9ae34b11dbcaf6b3f56c130a22800185dc",
+            "sha256": "09f2122176589a378403288baf7df84c42efadd9fc0c7fb3eccdc18c0aecc050"
+          }
+        },
+        "cam3": {
+          "media_sha256": "0c850bcd7db6c0ef3740ac78b3dfb7fd57f1d9145443723e5f9a13eaf5dece08",
+          "person_detection": {
+            "artifact_id": "5c93fc1e8f99f08fb33c65ee2a4a9f067b2a829eb2f196c18e6ebd7108d66246",
+            "sha256": "520fcba889c6aa67690244159a61610c7d73574bdaabe9ea9443037f924a9ac4"
+          },
+          "person_tracking": {
+            "artifact_id": "5c12a2ccb8078f92448c2332263132723b4edeee33e5d616c20688f908bf1cc2",
+            "sha256": "0335bcae212352ce28cb51cc26295a1a3dbf738a6c5564b9fead26b332bb46be"
+          },
+          "player_selection": {
+            "artifact_id": "1f36bb4e895c277b14e5e44e496363829be382b989fd65caaa43f6ee7ec9a6bd",
+            "sha256": "dce8b044c5b1ff6698f5382c0e958a7d486cb8dade028b1520e0245b58594a3a"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_023",
+      "source_frames": 1736,
+      "decision": {
+        "stage": "player_association",
+        "side": -1,
+        "runner_up": {
+          "candidates": [
+            0
+          ],
+          "identity": 0,
+          "presence_frames": 1045,
+          "seen_frames": 1102,
+          "side": -1
+        },
+        "boundary": {
+          "candidates": [
+            4,
+            5,
+            10,
+            15
+          ],
+          "identity": 4,
+          "presence_frames": 1734,
+          "seen_frames": 1734,
+          "side": -1
+        },
+        "longest_internal_gap": {
+          "camera": "cam0",
+          "id": 0,
+          "before": 1046,
+          "after": 1071
+        },
+        "reason": "player_association_ambiguous_players",
+        "error": "ReconstructionUnavailable: Identity 0 (1045 frames) is too close to player identity 4 (1734 frames)",
+        "eligible_frames": 1102
+      },
+      "focus": [
+        {
+          "camera": "cam0",
+          "kind": "group",
+          "identity": 0,
+          "start": 0,
+          "end": 1736
+        }
+      ],
+      "anchors": [
+        222,
+        552,
+        882
+      ],
+      "frames": [
+        216,
+        222,
+        228,
+        546,
+        552,
+        558,
+        876,
+        882,
+        888,
+        1046,
+        1058,
+        1071
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "a171cc01ba975235689ee9e142830e139154723169599caab83e53096438f259",
+          "person_detection": {
+            "artifact_id": "8eb42c25c3a3c2344f242f825a2b40b52e9b05aeda5fe500952ac8ab15e5da1c",
+            "sha256": "551363964ea8dfdaf72e51bbc6ab905849d3a08835c4e09f74737a97ccfdc177"
+          },
+          "person_tracking": {
+            "artifact_id": "56aadffcfab54a882e04a975f7a6f77ee66a55910850a42c6c6b2e91488d104c",
+            "sha256": "eb59c18c5575e4f3f336acedcfec5ce78244211d2ccd35ac01bc016aa773ae5c"
+          },
+          "player_selection": {
+            "artifact_id": "10f97d5d649247a8695adeb8d8f6ba9d22ee2777216adca83a97de66ee5a8e2d",
+            "sha256": "9be8a5b3941143e676a4288c76465a4caaf7ddb75a339e69eddbd18d34b4be5f"
+          }
+        },
+        "cam1": {
+          "media_sha256": "7b95d134decd32593143566e630996599bc0030ba1abda58ee99bdf9ee3325ec",
+          "person_detection": {
+            "artifact_id": "6014b58770437c7539caa0e7ae7a0856843de481d3c53e927cc4acdc5b4f2e14",
+            "sha256": "32c19596f6fea12e2162a2655df8b2e3989e3bd1f839c454b8fe96aa13abb900"
+          },
+          "person_tracking": {
+            "artifact_id": "3262299ace0ae2923e37e9315b778f0cc8228fe0826d72a98eb89e7ac644df58",
+            "sha256": "48d01058869304b21c8f303b07efcad62b5f3bae678afa2242cfa275d1b2079c"
+          },
+          "player_selection": {
+            "artifact_id": "89b836644bf8e15237de18ffeb69edc7f899ee1e3262b97fc9ed96ba5f16542c",
+            "sha256": "a4f30bfce121d2bad03c1d2844bce72201697d10c32df4927ea9c8fccbd4e481"
+          }
+        },
+        "cam2": {
+          "media_sha256": "65074af03a897b3717d922f2f850d8a7c3c51ff8ff2a98a0b719f72f3019841a",
+          "person_detection": {
+            "artifact_id": "8564cb6df395c3de8a553b11d44efa630cdc5700babc4b7e47f7844c71be470a",
+            "sha256": "c58c90bfcb1a5a9eb7b5bbe9ce55f95458ff59a10787d0b09973de1a4097a2e6"
+          },
+          "person_tracking": {
+            "artifact_id": "55c8568d4a35c59a701e18c16990d8bd64d599f168ebfc83a63a8ae761033bf6",
+            "sha256": "c8f7b36aedc34c8d875e399c434487f2e8eaa17c34eff9d8804d9d33ea76023f"
+          },
+          "player_selection": {
+            "artifact_id": "b61c7224be68d5fa79105f0705b16425a21c8f4570f489f205d5949ff4cfd465",
+            "sha256": "0b7a2cfd078b8065bd2877bb03a998f20355b500846a3241849aa93b7e44156d"
+          }
+        },
+        "cam3": {
+          "media_sha256": "4b7238a4c4e61d4d038437dc1ca597a093800952e8fec86af47190e3e500d3cd",
+          "person_detection": {
+            "artifact_id": "fd65e29846981bd1d5930bf6554a469b9c1fddd96ac3e3fca0a4db6ad575ed6d",
+            "sha256": "b947567d29fe8eefcda17bca5b810e49529e5251862508c7cbbc507733ac4c6b"
+          },
+          "person_tracking": {
+            "artifact_id": "ec79029d3d075e29819de4a0f42ef671a97dee0a2370e867da2fb7b10f43f2be",
+            "sha256": "248ccc08590879d4929bec808b1b7a74f15542cd38fc41fb97d86b101c76f7b8"
+          },
+          "player_selection": {
+            "artifact_id": "b9b23fa20ae41b02d741e8995ac19cf2c819fb2f044acb009265ea42cc27737d",
+            "sha256": "12d1529b4cf76ca6e02cedf2fd4c668c3a2f55992bec6a0737fcaa6dd51ed511"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_028",
+      "source_frames": 1288,
+      "decision": {
+        "stage": "player_association",
+        "side": -1,
+        "runner_up": {
+          "candidates": [
+            16
+          ],
+          "identity": 4,
+          "presence_frames": 1254,
+          "seen_frames": 1254,
+          "side": -1
+        },
+        "boundary": {
+          "candidates": [
+            3,
+            8,
+            10,
+            15
+          ],
+          "identity": 3,
+          "presence_frames": 1286,
+          "seen_frames": 1286,
+          "side": -1
+        },
+        "longest_internal_gap": {
+          "camera": "cam3",
+          "id": 2,
+          "before": 634,
+          "after": 648
+        },
+        "reason": "player_association_ambiguous_players",
+        "error": "ReconstructionUnavailable: Identity 4 (1254 frames) is too close to player identity 3 (1286 frames)",
+        "eligible_frames": 1254
+      },
+      "focus": [
+        {
+          "camera": "cam3",
+          "kind": "group",
+          "identity": 2,
+          "start": 0,
+          "end": 1288
+        }
+      ],
+      "anchors": [
+        252,
+        628,
+        1036
+      ],
+      "frames": [
+        246,
+        252,
+        258,
+        622,
+        628,
+        634,
+        641,
+        648,
+        1030,
+        1036,
+        1042
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "b97d8a24f2a9eca7a73f6c3645ebcb8ee4fe952dcd7efb05a1050e393d916977",
+          "person_detection": {
+            "artifact_id": "212a02a5bf9426db77eccf5457c2dba744b31285ddf8d1e178236437d68d63d9",
+            "sha256": "2397cba1249d2d12e0321ae375493b6a812a2eccf2e9a3c93a26ce5a8dbac554"
+          },
+          "person_tracking": {
+            "artifact_id": "cf2b7c7620c5dcf92999ef54aa4f88c48d2fb9137f654106617d551db4a1c45e",
+            "sha256": "2911e6a534dd6d74f950c807fdf5fc2441d570e3e7e2773f2a0e16f303ad6ac5"
+          },
+          "player_selection": {
+            "artifact_id": "09992be00bf9f2a81a09a4789fb2faaa846e4c9870161a4b0782747ba1cb989c",
+            "sha256": "6ce7ece5650d93f7d157d3266e03af9ca0122952f13411cfbb3068fd90b91f7d"
+          }
+        },
+        "cam1": {
+          "media_sha256": "d94de264f678f0a604452939dc74bfe6ecc4b2c2e2271e665552db23ca738900",
+          "person_detection": {
+            "artifact_id": "1952d4545156ae2487f08cfea7bd6d079ce561be1ffcc23d00e4f9e6c69b0dd0",
+            "sha256": "57c84083106e561a08b26ab0d8b93a4c07950792fc4fede7f8c903277d42a4d0"
+          },
+          "person_tracking": {
+            "artifact_id": "6d27aabc5fec96b4d07af78f81295257a65dcbab7470fae6b466f71a27da1ddd",
+            "sha256": "e1c9fe4a113dd142351c90f84ff5915f753c13e897b8c191971a47b75e0818ad"
+          },
+          "player_selection": {
+            "artifact_id": "5b82999718c9f049d883ceb5bd808156eafe987dc02d22f36f13f72fe97698f3",
+            "sha256": "50e0b028221097a47d5304ecf9bfc4eac0a3e9237a1d2bb8ea9856a2a2f7c6ce"
+          }
+        },
+        "cam2": {
+          "media_sha256": "62e9f9273cfd631bd223474458a361306af659089fa2c4d48bccb43850f04ee4",
+          "person_detection": {
+            "artifact_id": "6bf6448290319bc08bd67545c688439eef43655c44c966d56a462360df3f7943",
+            "sha256": "2951e8f93e1781efb05b9b1f6c455f365fed01ae14348d69d212a66ab2e2ded2"
+          },
+          "person_tracking": {
+            "artifact_id": "b5fc48c872a078b514aeb4326e9c074d80fd2694ca2a36e0625821b866e52ff5",
+            "sha256": "4346c747bd2c68e40b3ae79d2ee9b8ec552fa22dd3eb1ef286ac7d1e53350bb9"
+          },
+          "player_selection": {
+            "artifact_id": "ae3a1828495dfc87f95dcd15ae6448dbf57ada24686413190062278d900ab413",
+            "sha256": "07e1e7b0f5a18cb3c914f1bed698212f8ed0d1a61741f2769ae0f3b891920138"
+          }
+        },
+        "cam3": {
+          "media_sha256": "bd38c66dc3947cf6ae849b7a419190d11ab94ff98f77786ef54a46017cb4058e",
+          "person_detection": {
+            "artifact_id": "b7c615af34cf6c0afbf5517c25349c2dd5007e5734617a465ecaabc18b145bfb",
+            "sha256": "ad8ab0b57fd042adbecc9aa7beb3572c9dc9b60377d19a428037f57079550d1b"
+          },
+          "person_tracking": {
+            "artifact_id": "5573f1044baea1215bb8decaccae6490a4261b90706a2451ac6b5fcafb5b205b",
+            "sha256": "1896799b1b4fe524f3e3d545670e2429de5ffc555ce6fe6bcae22e862ab5c43a"
+          },
+          "player_selection": {
+            "artifact_id": "8e518bf51c9f32c0cf007cd64d7dd59cbfca5d35fd938ec942cc0a931739c8c7",
+            "sha256": "0561a0f11da9515a554412366c0c8b34e5e818f9fa182cebdf02cd7ddc12c7fb"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_036",
+      "source_frames": 405,
+      "decision": {
+        "stage": "player_association",
+        "side": -1,
+        "runner_up": {
+          "candidates": [
+            9
+          ],
+          "identity": 4,
+          "presence_frames": 241,
+          "seen_frames": 241,
+          "side": -1
+        },
+        "boundary": {
+          "candidates": [
+            2,
+            5,
+            10,
+            13
+          ],
+          "identity": 2,
+          "presence_frames": 403,
+          "seen_frames": 403,
+          "side": -1
+        },
+        "longest_internal_gap": {
+          "camera": "cam2",
+          "id": 3,
+          "before": 241,
+          "after": 283
+        },
+        "reason": "player_association_ambiguous_players",
+        "error": "ReconstructionUnavailable: Identity 4 (241 frames) is too close to player identity 2 (403 frames)",
+        "eligible_frames": 241
+      },
+      "focus": [
+        {
+          "camera": "cam2",
+          "kind": "group",
+          "identity": 3,
+          "start": 0,
+          "end": 405
+        }
+      ],
+      "anchors": [
+        50,
+        122,
+        194
+      ],
+      "frames": [
+        44,
+        50,
+        56,
+        116,
+        122,
+        128,
+        188,
+        194,
+        200,
+        241,
+        262,
+        283
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "63a416731f65b5c8bbdd228184e657238a912fcdf3b026de1b9461ccbc2cb4d1",
+          "person_detection": {
+            "artifact_id": "c98b64217bcebb2d6e96261904f5fcc6989951b68273bed36ba4cd95f691ebf4",
+            "sha256": "2bccf927f848843f19d76d86507e29d2a02fe45d151465bb9a6b7f24c995377a"
+          },
+          "person_tracking": {
+            "artifact_id": "53ccb3590b382bcb143f751c61881d12cc51ec2c2aafc6309d4f7b26ff86dfd4",
+            "sha256": "771741cfb5fabbf6ad6892ec680d1d35a8cf8e4f8cf8d82912457d9357ca4475"
+          },
+          "player_selection": {
+            "artifact_id": "a8cb4ba144d2d9a3c2d5d3d1505a3453707bb6351b804bdde4d4ef7796bc7367",
+            "sha256": "3411fdaef85f6cf9de48153514410a2c27fce1b840e8cadd3a0df8a72d05f2c5"
+          }
+        },
+        "cam1": {
+          "media_sha256": "603875ed995457a8d3115fdde95b85067b0de8028409cdb8376a5c4305b8bec6",
+          "person_detection": {
+            "artifact_id": "664424db167cf26beb546fae5f0cbd9e790fb6e0a5dc83ab727d3111a804b850",
+            "sha256": "c9074d95e2e5ee3a4ca893caf01fee19358b281378c496e703a9413ded0ea260"
+          },
+          "person_tracking": {
+            "artifact_id": "4ca8039c2a9ac524d3dce072cf5ef25f6c75730170b4ba56ffec7a9ec27a1ab0",
+            "sha256": "2d105b952755aeaaaa789d6225c92d5799dc6600b3cf7b00d43603d99e251b63"
+          },
+          "player_selection": {
+            "artifact_id": "e30c3d664b7796aaf6543d8ae1ded1ffc941bfef0e77a26b15bb436ef17b4a59",
+            "sha256": "0d88aae31db75d8757a42a70288ed375c86ab090d5bf3e43131d0dc609ac7961"
+          }
+        },
+        "cam2": {
+          "media_sha256": "961db0e106a83791a11b2fc1aa5b8c99c1cc8c72405cb50fbdf99ed5544da68c",
+          "person_detection": {
+            "artifact_id": "d7d12f55919eb0d005d31db78432f121ff33110277c2a0ae889b2dffc62cb34d",
+            "sha256": "7295729868c132d3549f49607de898c49bab7eeaeb2ec1d87cb30d371217d72a"
+          },
+          "person_tracking": {
+            "artifact_id": "94ad1581a8e585f670a93dfb3ea97728bf7b7bd67c0afc4244e66c2511ecd74d",
+            "sha256": "56649cae4856360142235d167b3aca17855802f6b7c4b4233402da5115f01f4c"
+          },
+          "player_selection": {
+            "artifact_id": "4b42169f088d5bde4ad33c7d27d1da25b367810dc48539e938d8f388d2e3d57d",
+            "sha256": "a205c71d44d398340518cd1c0f956fe323487e174760a51b77488f89c81fcfbd"
+          }
+        },
+        "cam3": {
+          "media_sha256": "5cabde4a18eb404983d6c26bc40641f566192f4098800ddc38537429ce10d337",
+          "person_detection": {
+            "artifact_id": "80aee99fb0fe51e60f274e1973fc951b6947fc044677660256d1ce5b47a36b84",
+            "sha256": "babe3de65bb273c61bcd9b507020156b9d88e2b323f5665dba11ecd117b4626a"
+          },
+          "person_tracking": {
+            "artifact_id": "eeae42b310935747cc7c3f0537379d0d89aa2b1ea2ca2122be9ce356942431fb",
+            "sha256": "ac9c6b8b4ada38f64240eb77b807b3c28c1adcc9172097d298860e8bf7a7f21e"
+          },
+          "player_selection": {
+            "artifact_id": "cda7194f40f21dabe3efae812dca7078b9f877c2cd784b89fb587bf2c1c4ef49",
+            "sha256": "c5e6001f6db2341a7cc8e6d624efcf68716555e04a55f4ce62f7bec8ed500185"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_038",
+      "source_frames": 337,
+      "decision": {
+        "stage": "player_association",
+        "side": -1,
+        "runner_up": {
+          "candidates": [
+            11
+          ],
+          "identity": 4,
+          "presence_frames": 187,
+          "seen_frames": 188,
+          "side": -1
+        },
+        "boundary": {
+          "candidates": [
+            2,
+            5,
+            12,
+            15,
+            16
+          ],
+          "identity": 2,
+          "presence_frames": 335,
+          "seen_frames": 335,
+          "side": -1
+        },
+        "longest_internal_gap": {
+          "camera": "cam2",
+          "id": 3,
+          "before": 182,
+          "after": 190
+        },
+        "reason": "player_association_ambiguous_players",
+        "error": "ReconstructionUnavailable: Identity 4 (187 frames) is too close to player identity 2 (335 frames)",
+        "eligible_frames": 188
+      },
+      "focus": [
+        {
+          "camera": "cam2",
+          "kind": "group",
+          "identity": 3,
+          "start": 0,
+          "end": 337
+        }
+      ],
+      "anchors": [
+        39,
+        95,
+        151
+      ],
+      "frames": [
+        33,
+        39,
+        45,
+        89,
+        95,
+        101,
+        145,
+        151,
+        157,
+        182,
+        186,
+        190
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "a6b1311969fd133cfb482a600ac465666ae631649d19dbbe353b475b7d53a641",
+          "person_detection": {
+            "artifact_id": "71cdef63858b538e7f9e39b84b7db98ce9190f497e3e2d10fe0ef2c434571e45",
+            "sha256": "89fddb32a82e501e3fa1f6dc2bc96001cc40f31b61c34bf533944bb1326ae5b4"
+          },
+          "person_tracking": {
+            "artifact_id": "3bede7b0987bf3d8afcc3896a810712372228a58ab3d4bfbaee3db428dc0311c",
+            "sha256": "1179717ff3bc5a46c05f883d513502087aa3928ebc1ad27a3b11efe385fac8f1"
+          },
+          "player_selection": {
+            "artifact_id": "5e12e199869ce37474c3b1f977d80808d0763b129d85ae0c12fa8a759de74cd4",
+            "sha256": "e676f7c3976422e1fe529a357e21d503242c2f2b834c9a294fb40b2c164a8ece"
+          }
+        },
+        "cam1": {
+          "media_sha256": "a16e6dd14eef74a4410835c9cd4d6b9772912386d9994825874a5b5052e3eb99",
+          "person_detection": {
+            "artifact_id": "952b29f6ff1f87198bad00d05f5a710fac41bd7c6baed7eb8f9e8107e7ec452c",
+            "sha256": "0a7208200c662521c11c91dfe09d3ec4ec63b586cd6b84a41392ea213aecb561"
+          },
+          "person_tracking": {
+            "artifact_id": "d7baab15075dba14ab770e6e2e8c085b37d439e51c1f289b0e174db9eaea5f28",
+            "sha256": "b75811db7a99cb328312af11a5b4f72488034628d803d017afc043c09875b2fb"
+          },
+          "player_selection": {
+            "artifact_id": "e9af81b16156de4706d1958ed75fb780e6feeca1661ad8e3ff9f633e351abbcc",
+            "sha256": "3c75a02a5eef36f020f26118d1b1678ac4a7c64c9d46f081ea4396e73b409e2e"
+          }
+        },
+        "cam2": {
+          "media_sha256": "006fcbc6526fc2e77bf2a487d117a1f1f143546e53b26ba06fecbbea024e37de",
+          "person_detection": {
+            "artifact_id": "b94658c2dbbcad05a11298c088726762630a6f1c33867ae6c25e6633cd31b080",
+            "sha256": "e782232d310be7ed04c360b87ab41b9df14dcdd0077dd0c5630d56b2ba9f2bac"
+          },
+          "person_tracking": {
+            "artifact_id": "231b01fcc350019de1cd0c49033a36b13f9cbd9551fc06dcfc75e06c34d9afca",
+            "sha256": "697601a9d669f92a2c8550604eee1b67f8f0f2f53f9ab55cddfcc7caf3b683a6"
+          },
+          "player_selection": {
+            "artifact_id": "19095f0e1f7f5bd6d35dc3a09833b9412bf6a3147f976446eb259dca2600f81f",
+            "sha256": "36331265ca53f561a8e1bd07b80641b221389f40bdec7dd102f17fc3f3e658ec"
+          }
+        },
+        "cam3": {
+          "media_sha256": "2254176d6384ebc72c92234393ee87738f43716df99150f2c8b7f27eb86153ca",
+          "person_detection": {
+            "artifact_id": "a818ae6e2499ab78747ec7e21cc82c15d9cb60fbc2c7bc2f19675a9e63d60360",
+            "sha256": "bc4454e62f3410a44f8a0f7951c9e80a98f719f7928d84c8d7c7e3fb1c3c774a"
+          },
+          "person_tracking": {
+            "artifact_id": "d73d6e48149d49f1601ba1e0d690477dfa99e551b9470492dd8f19e2a309bc27",
+            "sha256": "18bf4c398215944e202465ea41b63cb468fbf2d6a5632a50bda0e993fbfd47dc"
+          },
+          "player_selection": {
+            "artifact_id": "cc9fcde87f97d233154ba842a891cc46a45d5986e9000cb44b83f11717c6a3d3",
+            "sha256": "d1d2defb0a6dbcadcc8283c58b2a9035969b754eed0089cad0074c5bd80427fa"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_039",
+      "source_frames": 873,
+      "decision": {
+        "stage": "player_association",
+        "side": -1,
+        "runner_up": {
+          "candidates": [
+            11
+          ],
+          "identity": 4,
+          "presence_frames": 831,
+          "seen_frames": 831,
+          "side": -1
+        },
+        "boundary": {
+          "candidates": [
+            1,
+            4,
+            14
+          ],
+          "identity": 1,
+          "presence_frames": 871,
+          "seen_frames": 871,
+          "side": -1
+        },
+        "reason": "player_association_ambiguous_players",
+        "error": "ReconstructionUnavailable: Identity 4 (831 frames) is too close to player identity 1 (871 frames)",
+        "eligible_frames": 831
+      },
+      "focus": [
+        {
+          "camera": "cam2",
+          "kind": "group",
+          "identity": 2,
+          "start": 0,
+          "end": 873
+        }
+      ],
+      "anchors": [
+        184,
+        433,
+        682
+      ],
+      "frames": [
+        178,
+        184,
+        190,
+        427,
+        433,
+        439,
+        676,
+        682,
+        688
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "fe4743d96e1455f8bd348a779ff0f92dbf1c02102ee61c9fdd4a37a0b411f039",
+          "person_detection": {
+            "artifact_id": "671c28e18793cbe611fc343b1a8ff80d9271ff207797357b216bdead6cabab6c",
+            "sha256": "26e190e227b439ef8dac5995089c99b40fd7985349d4f605469dbb61385d2de1"
+          },
+          "person_tracking": {
+            "artifact_id": "5406a6741998a53fc470e0693baef4ff202c60a3dc022c69d840025247865d6b",
+            "sha256": "d51c1486c781bfda84a862a35233d8b47545572786502c346c8df042fb7e4b6b"
+          },
+          "player_selection": {
+            "artifact_id": "6113546fbaa5b3fed7ec5e16a0c1dddcfb6fa30250c904beb712ae0941b7af42",
+            "sha256": "fa8b6e937806d7344b3443632c804e7d240d07721e2f1d82a3dbd3e491bea597"
+          }
+        },
+        "cam1": {
+          "media_sha256": "9970705a424c5035c15fb137d33d07f3216778f69f490a193df63f939e80f7d5",
+          "person_detection": {
+            "artifact_id": "a4dba52e41093a02e5f9516fe4a407917df4a342dc0f2976efe68cffe8da3304",
+            "sha256": "282f59c8c585efc286ba1fb87c6a7cef35fafe105f0057c1582114bd751add89"
+          },
+          "person_tracking": {
+            "artifact_id": "4036cc2ba5a8ad9a9b038b68b469f569d1cf7c3b570d78b47c70d83a110813bd",
+            "sha256": "8abe06beaf24b70938106a7e74e6906dc5516041eb60ed77aad83152bfe1a580"
+          },
+          "player_selection": {
+            "artifact_id": "688a2b62e676a1df5f0edb351c24c486c2aa7b8217cfadea542f647b139782bd",
+            "sha256": "dc9fa8089d26e3453aeecee196c199da1c2bcd7f5bb3eefb964a23689d1fcd23"
+          }
+        },
+        "cam2": {
+          "media_sha256": "d1d58e5684d9700fcd27d25cfb10d94f8847bced8ae0d3e1ff5eb9fdfe96e644",
+          "person_detection": {
+            "artifact_id": "86186d8f1ea51e59280ef0dfa84dde9779fe24bc550c0cdc7f9afb87c6344bae",
+            "sha256": "83ee29a14732d34d19b95d5cc1ec459ee31602c74afc8b63c56793135a540307"
+          },
+          "person_tracking": {
+            "artifact_id": "14b2064ee72ea4288a2fc7d28887f311951d3b63717183e0475f43c32b3e9ef8",
+            "sha256": "99daffc692328428f39d15a8954ac5efc70472093cd88e752c0b3e0c1d578de6"
+          },
+          "player_selection": {
+            "artifact_id": "204ca2d0f0b88ae0601ad381adb08aafc24d558934ff0c6738d905cb197d9fd4",
+            "sha256": "3cc791cc153ad8239493cd465690c69bd898dce0532593d046a8ad7ec7d15761"
+          }
+        },
+        "cam3": {
+          "media_sha256": "ad684fd5359b3c50f1d33898ca3dbf3e03f047803e65dc1a5f8b6264d1f10385",
+          "person_detection": {
+            "artifact_id": "8185bf9ddc8f3bbef45bbd3d515bec1c24a477e0ab1b68ef29533bf0fc54d4ea",
+            "sha256": "30a0df2b3859afd2d929585ef36204704757f1e82994cee5c0189acc577135b1"
+          },
+          "person_tracking": {
+            "artifact_id": "6181e114b7701e23e76e24db3554c2d5b1474628b9657cec30c8f9355fd038d0",
+            "sha256": "57e2ad0446757b455a0d1cfe2e5684f1e4259e9433039cd8ba6ff2354e73e0c9"
+          },
+          "player_selection": {
+            "artifact_id": "f32f2384d562052a21ea4924b5fb45b611c5b7cd2a4ef628b714a05846cc8d75",
+            "sha256": "7a2ad400dda1fabf3222ca5beef3523ca8e3e8e473f3a5fb8deda8e743bed34e"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_049",
+      "source_frames": 1120,
+      "decision": {
+        "stage": "player_association",
+        "pair": {
+          "a": 0,
+          "b": 6,
+          "linked": false,
+          "margin": 0.31413775204310923
+        },
+        "ambiguous_pairs": 6,
+        "longest_internal_gap": {
+          "camera": "cam1",
+          "id": 2,
+          "before": 292,
+          "after": 312
+        },
+        "reason": "player_association_ambiguous_association",
+        "error": "ReconstructionUnavailable: 6 player decisions between long segments have margins below 1.0; the smallest is 0.314 for candidates 0 and 6",
+        "eligible_frames": 292
+      },
+      "focus": [
+        {
+          "camera": "cam0",
+          "kind": "group",
+          "identity": 0,
+          "start": 0,
+          "end": 1120
+        },
+        {
+          "camera": "cam1",
+          "kind": "group",
+          "identity": 2,
+          "start": 0,
+          "end": 1120
+        }
+      ],
+      "anchors": [
+        60,
+        147,
+        234
+      ],
+      "frames": [
+        54,
+        60,
+        66,
+        141,
+        147,
+        153,
+        228,
+        234,
+        240,
+        292,
+        302,
+        312
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "83a033178683e78c0088cfe93405b089488665a00a734875e2ab5c444de1ef45",
+          "person_detection": {
+            "artifact_id": "d8862d399fb6de027f207b4dc8b59e6e21b90406cdc7c46d67c62c7452bd34d2",
+            "sha256": "383edbaaef731a2a0adb4d51c9ed55ec921b5487d51a69d498bea62bc3f45401"
+          },
+          "person_tracking": {
+            "artifact_id": "92decf6166da027bafb060dac20884770cb80ab3050627592e4b6a407a2de03f",
+            "sha256": "c241bc08767bc05e0f79b3646afe3476ca97e58c501133dd9d365c8f7efd1dbf"
+          },
+          "player_selection": {
+            "artifact_id": "39bced794f7f399fcd40f68d85cf9136c7460e7322de428ac5920178dc71b7d0",
+            "sha256": "77d945b9d62c427ba047399b96d84860ce4a37ada6168b6afdb73b3c6eb176dd"
+          }
+        },
+        "cam1": {
+          "media_sha256": "80ffa6027d1030d1caa6c4f04f232c78fbf3d238f8333462f30005e34127b80e",
+          "person_detection": {
+            "artifact_id": "7976d349909fec8dfddda28666114fbe305f180151e394954df9d8415cb94322",
+            "sha256": "8625e0478873a09a15e8cc39321a8fb8adc4b744d9fd045db470194b004774be"
+          },
+          "person_tracking": {
+            "artifact_id": "d40c629c3852d7ebce5abacd9ae7bf64bc7b0d3634ce882702ab1455014ba62a",
+            "sha256": "63c18beb11ae3735b0985d6f273863ffa463cf00e035ec833a2c4e705891c517"
+          },
+          "player_selection": {
+            "artifact_id": "7a26cedd04e07a9c159247e5c758ab7a64cdef45de6ec4e68ddb57caf45e98c8",
+            "sha256": "18d85db4fed21d9ccba05e9f1d42632d5586591b01433e5b012e7c35217dbe9e"
+          }
+        },
+        "cam2": {
+          "media_sha256": "86aa313bb4af79537681f8bddada9aa58aa0fb92222f7e1ac6792b4ebdaa4341",
+          "person_detection": {
+            "artifact_id": "8d864d21c1448741b43b8bb413e11c666c6d0653b1394dcef3a514c112d3cf80",
+            "sha256": "a1159ec7f60ffa27ef164429d530d6947e26971e172030ceab82ba577c9d97a3"
+          },
+          "person_tracking": {
+            "artifact_id": "a6540d42567b01264d64b08d058b07a9dca259a9d52bc36e017d53fc0b4a73f7",
+            "sha256": "6d45f8fe6cb47e78eb7aa6de842ab262911a83ab00e99574f8ac485401df82b9"
+          },
+          "player_selection": {
+            "artifact_id": "59d10164e2aa724a7fa7c361a0584254ba105523bd8e455542a384a40250c888",
+            "sha256": "e069e01aca129c31a4164668f7b23893603c0e779ec1ae66b3fc50ee6b72adda"
+          }
+        },
+        "cam3": {
+          "media_sha256": "967c9ff308d74e38871b10b69d536bc2707409bff79ddb96b0c99d3f8f7eed43",
+          "person_detection": {
+            "artifact_id": "a89cd83ff064196ba03d62b1953407bbecef3b9d19275032d2a83b7d2e68eda7",
+            "sha256": "2e835808edcfcd4ecebced71a156c2efe17d2e8ba5b79b5481136b549dcb7f31"
+          },
+          "person_tracking": {
+            "artifact_id": "a1f587b4360b00cb45972fa362b55eb23a23f5d63c399bd5f6d3a6dd9ccf3977",
+            "sha256": "a694cd6a82142725e228869afdfb8986c0a932bd393d4490092c6b8281ba2c3a"
+          },
+          "player_selection": {
+            "artifact_id": "75f0a75f6c6226d10a8123d4bcf9b045e1d095cf23451d2b5ddd29c2bc3e39d6",
+            "sha256": "f55d56dec376571332569bdca29e0cd7fd2aa6f6fd599970a0d97d942a3293da"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_058",
+      "source_frames": 765,
+      "decision": {
+        "stage": "player_association",
+        "side": 1,
+        "selected": [
+          1
+        ],
+        "longest_internal_gap": {
+          "camera": "cam0",
+          "id": 7,
+          "before": 442,
+          "after": 459
+        },
+        "reason": "player_association_player_not_found",
+        "error": "ReconstructionUnavailable: Side y>0 lacks 2 identities present for 191 frames",
+        "eligible_frames": 763
+      },
+      "focus": [
+        {
+          "camera": "cam0",
+          "kind": "track",
+          "identity": 7,
+          "start": 0,
+          "end": 765
+        },
+        {
+          "camera": "cam1",
+          "kind": "track",
+          "identity": 3,
+          "start": 0,
+          "end": 765
+        },
+        {
+          "camera": "cam2",
+          "kind": "track",
+          "identity": 1,
+          "start": 0,
+          "end": 765
+        },
+        {
+          "camera": "cam3",
+          "kind": "track",
+          "identity": 2,
+          "start": 0,
+          "end": 765
+        }
+      ],
+      "anchors": [
+        154,
+        383,
+        611
+      ],
+      "frames": [
+        148,
+        154,
+        160,
+        377,
+        383,
+        389,
+        442,
+        450,
+        459,
+        605,
+        611,
+        617
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "99fc3b7d30a282c81e6701a322fcc22705a2e657698335e7de3dfd386beeea09",
+          "person_detection": {
+            "artifact_id": "071f5ede099848cd14affe662b4ab55e9b41d4e71dede250bded714341325657",
+            "sha256": "a3b1404fa219cd6dd533acbb3a7d1c779a1acb206ab8f940cef759bcc8a8e2ac"
+          },
+          "person_tracking": {
+            "artifact_id": "22e574ca1593168aa519774900ba037f2428b88408a09fe69b7f228ce63c8f81",
+            "sha256": "25d8e38108eb76213b5f0ce0bbfb10c99971cd3652ecd6e334be483dc1a0c561"
+          },
+          "player_selection": {
+            "artifact_id": "1bcdfce175aca39650fb7ea1744b4770751cf9ed8a852793adbdb383b39fde13",
+            "sha256": "65dae555d275c2cb98a7e553eaed6ee13813f3c7e78ec895dabf311e80ec1266"
+          }
+        },
+        "cam1": {
+          "media_sha256": "63d331516a8cb9ff139797821a1df6a38a571fb7e2f9d2c0e1dcbb2fd4bff15f",
+          "person_detection": {
+            "artifact_id": "efb90af845c9f10e3dfb5c7faa78106ec0564d868c6719904ddcf150151be16e",
+            "sha256": "66bf975abee4c5c4ec3d238620583d07744b5250cc66a876a4101935c4b2cc30"
+          },
+          "person_tracking": {
+            "artifact_id": "5134c37a2af206395278205b9a61052615b4379cce4fd8661f3d909c0a35b181",
+            "sha256": "2dd407e5b3c7264929cfc969e594693bc04c4d7889653ca86cd4eb1f860a7d4e"
+          },
+          "player_selection": {
+            "artifact_id": "e1584b2d0970640ab514becb5b347c885e8283bc2c2736164dc3801ca733f6b2",
+            "sha256": "532fac38c2a6f6cd3e67011f959e7a49c5bfecd36fb6bd6ac70f1e83227660b9"
+          }
+        },
+        "cam2": {
+          "media_sha256": "6b55b8260bfdb7922e6d648ae639fdf9df4e294fe61b3b81e516a0535cc55cdf",
+          "person_detection": {
+            "artifact_id": "4f2e190b2c417759ca8c83c7b4af858fc9d78ce1895ef1e79bbbfa4ea17d198a",
+            "sha256": "ff937db7d0bdd1d055b0c1b6d071947243d119defc052c26f0d90b0a90020544"
+          },
+          "person_tracking": {
+            "artifact_id": "434ca2e2419a18a770883f7cb1134ab4994f142fa38839927970d70f4900e031",
+            "sha256": "e5e9f9a3bb36a4104b7b41d7c4c66a6d4d6105c2d0f8b692f6e3fd029436b69a"
+          },
+          "player_selection": {
+            "artifact_id": "9b86ee82659a16db4714f1252812dbdae48e9cd410455adb399d1ec5b0b69dbb",
+            "sha256": "56ae3e534f7a0a1badaa9e8c378b7457de1da55149f392f9a614df78be4d93fa"
+          }
+        },
+        "cam3": {
+          "media_sha256": "63cf10b0a21b96bd845b1c822c8c123b73f63355949e856ef40ca045f9a8eda3",
+          "person_detection": {
+            "artifact_id": "0c5ac076292f0bebc9f61dd9a300ec334a1bac6801913f7bdc4318100aa9ca76",
+            "sha256": "cc5f569b4b3bdf490bdc05685c844393d7c263a903f66ec412b19971ba0bd9b4"
+          },
+          "person_tracking": {
+            "artifact_id": "8fa82f3227a7c7d9e8d2d9dd0b6f7b58aff02f88d1f95b4dc3e1d34e27996f19",
+            "sha256": "4d49ac219be92760818eef08f7cb66e0781a115571b4c28f56292e9194ff63ae"
+          },
+          "player_selection": {
+            "artifact_id": "1bc07052a9dc403e3cbd4f761a9e031e55553733355f0f05853a79b79a55011a",
+            "sha256": "776cb648575cd81c36402a03330f7812b8f049dec73f4054205f1dbfed112a49"
+          }
+        }
+      }
+    },
+    {
+      "clip": "clip_060",
+      "source_frames": 313,
+      "decision": {
+        "stage": "player_association",
+        "pair": {
+          "a": 0,
+          "b": 11,
+          "linked": false,
+          "margin": 0.6488260184555088
+        },
+        "ambiguous_pairs": 4,
+        "reason": "player_association_ambiguous_association",
+        "error": "ReconstructionUnavailable: 4 player decisions between long segments have margins below 1.0; the smallest is 0.649 for candidates 0 and 11",
+        "eligible_frames": 146
+      },
+      "focus": [
+        {
+          "camera": "cam0",
+          "kind": "group",
+          "identity": 0,
+          "start": 0,
+          "end": 313
+        },
+        {
+          "camera": "cam2",
+          "kind": "group",
+          "identity": 2,
+          "start": 167,
+          "end": 313
+        }
+      ],
+      "anchors": [
+        196,
+        239,
+        283
+      ],
+      "frames": [
+        190,
+        196,
+        202,
+        233,
+        239,
+        245,
+        277,
+        283,
+        289
+      ],
+      "artifacts": {
+        "cam0": {
+          "media_sha256": "a4434b2e26982d1a372920ccd15f5c9f9cbb972bf11a0dc250104b7715679b30",
+          "person_detection": {
+            "artifact_id": "e484bd8701433baceb07bf401757617e988d0157a4bda23e2a339489aaa1ce7c",
+            "sha256": "f63c92c3e29be817a15c82a4acb515e6d49cc966756c34019651b8c1db935aa0"
+          },
+          "person_tracking": {
+            "artifact_id": "8f2439cdd245ec387fc94d4dc025aef31d7b8101970be9acf1b007e9bba9235c",
+            "sha256": "94a6455d31ffa2994b76fe9afaa9fa38c458b8e749286a9f671dac167f43a315"
+          },
+          "player_selection": {
+            "artifact_id": "0ad4e72ae7e82c5717cc42e90558ce1e25b3e8aa10d6649b94b795be704bfe03",
+            "sha256": "2b242194b7ef7c8ef9ae2de8223486185380ab19605493d544b91de892a42d78"
+          }
+        },
+        "cam1": {
+          "media_sha256": "0972bf65941fa5616da773a4638a7575012cf92ac950ba85a9fc87e00070b6eb",
+          "person_detection": {
+            "artifact_id": "7d832397bcee0079c79f0c82c17257e48b50290552f9fa4e98a188db29837dcd",
+            "sha256": "38b59a5879c3d33aa8f835ff66e4406397b55531f101e2088af791d62a763597"
+          },
+          "person_tracking": {
+            "artifact_id": "0ddd5c5ad5b1b98bd3a7854436e5a792e9095e47c65c4ebb84f3fb61a7013092",
+            "sha256": "e7d0dc603766dd0191c91e24eacfc1053ab94dbf286a46f035a277e354398810"
+          },
+          "player_selection": {
+            "artifact_id": "9b73ba093217c94b569e1dba18b4827996f6cb3e81ba39790ed81d77575fc3f9",
+            "sha256": "6fe88d84e664ae9aa9bb79d7714ea00142802c23bbfe58c1d87e0033a2cd5446"
+          }
+        },
+        "cam2": {
+          "media_sha256": "33aa4d9faf3b0539703ab8ff888f64bebc3d815404577c97d19ba25890a512dd",
+          "person_detection": {
+            "artifact_id": "89ac80cf67e37ae41c4d72d81e1d89a4c06c9559e83a276a3346708ad7e744fd",
+            "sha256": "53f8b463543538b3b5f11b763d0ff485ae66fd7fe0ddca2db3bb73e995858d05"
+          },
+          "person_tracking": {
+            "artifact_id": "32557a377710130326d102b2979ee25d9e0e632c0444a4d24c31171f35b3dc74",
+            "sha256": "1fbde20b62503827b08f0fede19ed1d6e1426765f5a63b29d772fc230478822f"
+          },
+          "player_selection": {
+            "artifact_id": "5b856af1cc80eed1c6f42aabeac044cfb211d55928a0bff761ca2284667d5a88",
+            "sha256": "90da72d1714631290c9518d3d55b817cf685e3020af46642bc2a94205ab6b39d"
+          }
+        },
+        "cam3": {
+          "media_sha256": "2c1d96a25c74658de420a64282eed213c7790b6c7b62696e6dd60cd7c59e3340",
+          "person_detection": {
+            "artifact_id": "f9222aa2aa19d216e3e9bf6da34a44c9084b3fe3eff01db6f3f857a609ea8063",
+            "sha256": "472c0028c2886b73b17bfd6449d2f1362854e1fc220b89c10945a9dbb4f8351e"
+          },
+          "person_tracking": {
+            "artifact_id": "6e5c488a324b733c985dd3db7c5a3e2d7c0d5e41e18deea95956200ca64d3e80",
+            "sha256": "b97f761d2de68542b8f176dbbb4c6b559e3a94c45bc693298f46a779f6c7a215"
+          },
+          "player_selection": {
+            "artifact_id": "46dfba72bae5520659e080efc62e379577ff740e1d703114c2db620572a78f56",
+            "sha256": "11a69623e88cfb26a678cb39ad17deec8a2253e0a6d57b08dcc9ccec714b0bbd"
+          }
+        }
+      }
+    }
+  ]
+}
