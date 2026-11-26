@@ -15,7 +15,7 @@
     },
     "tennis_scene/multiview_tracking/fragments.py": {
       "before": null,
-      "after": "7aefbcb817fcd4040e4c1d98d397fb475e09f0926fd9d424942fe93590ee4901"
+      "after": "923315f27729174e892b9a6e88dd75d0d9952cdd2b4708f58efc54e0be2f6adc"
     },
     "tennis_scene/multiview_tracking/schema.py": {
       "before": null,
@@ -27,7 +27,7 @@
     },
     "tennis_scene/multiview_tracking/slot_assignment.py": {
       "before": null,
-      "after": "04fa2b43b7cbe037e27c3e9ffe5505a5b11bef9b1e1316191a3548478d1e5b6b"
+      "after": "d6e3d50cb221ec6353e99ad74736e2666c26f7349173274231dd7e08cb18381d"
     },
     "tennis_scene/multiview_tracking/storage.py": {
       "before": null,
