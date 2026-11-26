@@ -8,6 +8,7 @@ from typing import Any
 
 from src.tennis_scene.pipeline.storage.codec import unpack_value
 from src.tennis_scene.pipeline.storage.scene_index import read_component_descriptor
+from src.tennis_scene.pipeline.storage.scene_pointers import stable_scene_pointers
 
 
 class StoreReader:
@@ -17,13 +18,15 @@ class StoreReader:
     from the returned descriptor; this reader never converts historical artifacts.
     """
 
-    def __init__(self, index: Path) -> None:
+    def __init__(self, index: Path, *, document: dict[str, Any] | None = None) -> None:
         self.index_path = index.resolve()
-        document = json.loads(self.index_path.read_text())
+        self.root = self.index_path.parent
+        self._live = document is None
+        if document is None:
+            document = self._read_live_index()
         self.document = document
         if document.get("schema") != "tennis_scene_index_v1":
             raise ValueError("Expected tennis_scene_index_v1 scene.json")
-        self.root = self.index_path.parent
         self.source = document["source"]
         self.source_sha256 = str(document["source_sha256"])
         self.camera_ids = tuple(video["camera_id"] for video in self.source["videos"])
@@ -33,6 +36,16 @@ class StoreReader:
         self.references: dict[str, dict[str, Any]] = document["artifacts"]
         self._active_by_artifact = {reference["artifact_id"]: node for node, reference in self.references.items()}
         self._staleness: dict[str, tuple[str, ...]] = {}
+
+    def _read_live_index(self) -> dict[str, Any]:
+        with stable_scene_pointers(self.root):
+            document: dict[str, Any] = json.loads(self.index_path.read_text(encoding="utf-8"))
+        return document
+
+    def assert_unchanged(self) -> None:
+        """Verify that a live index was not replaced while reading its artifacts."""
+        if self._live and self._read_live_index() != self.document:
+            raise ValueError(f"Scene index changed during loading: {self.index_path}")
 
     def descriptor(self, node: str) -> dict[str, Any]:
         """Return the descriptor after verifying its path, checksum and index entry."""

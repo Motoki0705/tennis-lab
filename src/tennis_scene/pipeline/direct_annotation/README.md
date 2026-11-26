@@ -111,6 +111,18 @@ the publisher without building scene stages or admitting a worker. Interruption
 after publisher commit but before the workflow receipt resolves to the original
 snapshot. A new output request never overwrites saved annotations.
 
+Publication recovery checks the adopted `event_detection` artifact against the
+current normalized source identity. When inputs, settings and source identity
+match across commits, recovery preserves the original computation commit in the
+event metadata. A source identity mismatch stops before publication.
+
+If the `event_detection` settings in an older `scene-completion.json` contain
+`code_commit`, rerun the same scene command and store with
+`direct_annotation.resume=workflow cache.source=execute execution.event_detection=execute`.
+This reuses the completed annotations and writes a new scene completion
+receipt. Use `direct_annotation.resume=publication` for subsequent
+publication-only recovery.
+
 ## Exploration trials and measurements
 
 Use `blank-register --operation PATH --sha256 VALUE` with a

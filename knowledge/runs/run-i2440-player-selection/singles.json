@@ -1,0 +1,289 @@
+{
+  "clips": {
+    "video_000/clip_000": {
+      "labels_sha256": "80aee90d551a6618e5514d161aecdc5d3265093deb652970da563ec001f8f5f9",
+      "scene_index_sha256": "52b51867b05c5b64b73dc4dcd6763bacb39028c6600166bec86ad56106289269",
+      "scores": {
+        "all": {
+          "baseline": {
+            "fn": 1,
+            "fp": 0,
+            "frames": 1010,
+            "non_player_boxes": 179,
+            "player_boxes": 5967,
+            "selected_ambiguous": 0,
+            "selected_unmatched": 0,
+            "tp": 5966,
+            "tracked_non_player": 179,
+            "tracked_player": 5967
+          },
+          "short": {
+            "fn": 1,
+            "fp": 0,
+            "frames": 1010,
+            "non_player_boxes": 179,
+            "player_boxes": 5967,
+            "selected_ambiguous": 0,
+            "selected_unmatched": 0,
+            "tp": 5966,
+            "tracked_non_player": 179,
+            "tracked_player": 5967
+          },
+          "wide": {
+            "fn": 1,
+            "fp": 0,
+            "frames": 1010,
+            "non_player_boxes": 179,
+            "player_boxes": 5967,
+            "selected_ambiguous": 0,
+            "selected_unmatched": 0,
+            "tp": 5966,
+            "tracked_non_player": 179,
+            "tracked_player": 5967
+          },
+          "wide_short": {
+            "fn": 1,
+            "fp": 0,
+            "frames": 1010,
+            "non_player_boxes": 179,
+            "player_boxes": 5967,
+            "selected_ambiguous": 0,
+            "selected_unmatched": 0,
+            "tp": 5966,
+            "tracked_non_player": 179,
+            "tracked_player": 5967
+          }
+        }
+      }
+    },
+    "video_000/clip_007": {
+      "labels_sha256": "18350c373d84f34a60efe5487c2811b8dfc3e1b1b15922fdcea8c6150cd4cea1",
+      "scene_index_sha256": "95c9f82d4dab818cf56767281d2758bb56a489d8ac2bc5ae7d295b00d6c0bd00",
+      "scores": {
+        "all": {
+          "baseline": {
+            "fn": 195,
+            "fp": 0,
+            "frames": 652,
+            "non_player_boxes": 547,
+            "player_boxes": 3792,
+            "selected_ambiguous": 0,
+            "selected_unmatched": 0,
+            "tp": 3597,
+            "tracked_non_player": 547,
+            "tracked_player": 3792
+          },
+          "short": {
+            "fn": 32,
+            "fp": 212,
+            "frames": 652,
+            "non_player_boxes": 547,
+            "player_boxes": 3792,
+            "selected_ambiguous": 0,
+            "selected_unmatched": 0,
+            "tp": 3760,
+            "tracked_non_player": 547,
+            "tracked_player": 3792
+          },
+          "wide": {
+            "fn": 195,
+            "fp": 0,
+            "frames": 652,
+            "non_player_boxes": 547,
+            "player_boxes": 3792,
+            "selected_ambiguous": 0,
+            "selected_unmatched": 0,
+            "tp": 3597,
+            "tracked_non_player": 547,
+            "tracked_player": 3792
+          },
+          "wide_short": {
+            "fn": 32,
+            "fp": 212,
+            "frames": 652,
+            "non_player_boxes": 547,
+            "player_boxes": 3792,
+            "selected_ambiguous": 0,
+            "selected_unmatched": 0,
+            "tp": 3760,
+            "tracked_non_player": 547,
+            "tracked_player": 3792
+          }
+        }
+      }
+    },
+    "video_001/clip_001": {
+      "labels_sha256": "d780dc83051119f7028345e03ff89d2d6599dd9c847ece10e2b599ac2fcf7ffb",
+      "scene_index_sha256": "eb68c09071e5a39eb9f946071d924b23182d37f1ceecfb1c8470f8af536b5f8e",
+      "scores": {
+        "all": {
+          "baseline": {
+            "fn": 345,
+            "fp": 0,
+            "frames": 1300,
+            "non_player_boxes": 3542,
+            "player_boxes": 7661,
+            "selected_ambiguous": 3,
+            "selected_unmatched": 0,
+            "tp": 7316,
+            "tracked_non_player": 3542,
+            "tracked_player": 7661
+          },
+          "short": {
+            "fn": 160,
+            "fp": 0,
+            "frames": 1300,
+            "non_player_boxes": 3542,
+            "player_boxes": 7661,
+            "selected_ambiguous": 3,
+            "selected_unmatched": 0,
+            "tp": 7501,
+            "tracked_non_player": 3542,
+            "tracked_player": 7661
+          },
+          "wide": {
+            "fn": 345,
+            "fp": 0,
+            "frames": 1300,
+            "non_player_boxes": 3542,
+            "player_boxes": 7661,
+            "selected_ambiguous": 3,
+            "selected_unmatched": 0,
+            "tp": 7316,
+            "tracked_non_player": 3542,
+            "tracked_player": 7661
+          },
+          "wide_short": {
+            "fn": 160,
+            "fp": 0,
+            "frames": 1300,
+            "non_player_boxes": 3542,
+            "player_boxes": 7661,
+            "selected_ambiguous": 3,
+            "selected_unmatched": 0,
+            "tp": 7501,
+            "tracked_non_player": 3542,
+            "tracked_player": 7661
+          }
+        }
+      }
+    },
+    "video_002/clip_013": {
+      "labels_sha256": "b1b69981509b2d22703b6bdd281c71596dc09f15716f6ad25ba8c833a0708428",
+      "scene_index_sha256": "debdde869ca906ae64262cdfbf532c8fc1143c49c90d7e8d861c5ee4d28f4d05",
+      "scores": {
+        "all": {
+          "baseline": {
+            "fn": 41,
+            "fp": 0,
+            "frames": 535,
+            "non_player_boxes": 186,
+            "player_boxes": 3200,
+            "selected_ambiguous": 0,
+            "selected_unmatched": 0,
+            "tp": 3159,
+            "tracked_non_player": 186,
+            "tracked_player": 3200
+          },
+          "short": {
+            "fn": 41,
+            "fp": 0,
+            "frames": 535,
+            "non_player_boxes": 186,
+            "player_boxes": 3200,
+            "selected_ambiguous": 0,
+            "selected_unmatched": 0,
+            "tp": 3159,
+            "tracked_non_player": 186,
+            "tracked_player": 3200
+          },
+          "wide": {
+            "fn": 41,
+            "fp": 0,
+            "frames": 535,
+            "non_player_boxes": 186,
+            "player_boxes": 3200,
+            "selected_ambiguous": 0,
+            "selected_unmatched": 0,
+            "tp": 3159,
+            "tracked_non_player": 186,
+            "tracked_player": 3200
+          },
+          "wide_short": {
+            "fn": 41,
+            "fp": 0,
+            "frames": 535,
+            "non_player_boxes": 186,
+            "player_boxes": 3200,
+            "selected_ambiguous": 0,
+            "selected_unmatched": 0,
+            "tp": 3159,
+            "tracked_non_player": 186,
+            "tracked_player": 3200
+          }
+        }
+      }
+    }
+  },
+  "dataset": "meiji_3cam",
+  "summary": {
+    "all": {
+      "baseline": {
+        "fn": 582,
+        "fp": 0,
+        "frames": 3497,
+        "non_player_boxes": 4454,
+        "player_boxes": 20620,
+        "precision": 1.0,
+        "recall": 0.9717749757516974,
+        "selected_ambiguous": 3,
+        "selected_unmatched": 0,
+        "tp": 20038,
+        "tracked_non_player": 4454,
+        "tracked_player": 20620
+      },
+      "short": {
+        "fn": 234,
+        "fp": 212,
+        "frames": 3497,
+        "non_player_boxes": 4454,
+        "player_boxes": 20620,
+        "precision": 0.9897077386153995,
+        "recall": 0.9886517943743938,
+        "selected_ambiguous": 3,
+        "selected_unmatched": 0,
+        "tp": 20386,
+        "tracked_non_player": 4454,
+        "tracked_player": 20620
+      },
+      "wide": {
+        "fn": 582,
+        "fp": 0,
+        "frames": 3497,
+        "non_player_boxes": 4454,
+        "player_boxes": 20620,
+        "precision": 1.0,
+        "recall": 0.9717749757516974,
+        "selected_ambiguous": 3,
+        "selected_unmatched": 0,
+        "tp": 20038,
+        "tracked_non_player": 4454,
+        "tracked_player": 20620
+      },
+      "wide_short": {
+        "fn": 234,
+        "fp": 212,
+        "frames": 3497,
+        "non_player_boxes": 4454,
+        "player_boxes": 20620,
+        "precision": 0.9897077386153995,
+        "recall": 0.9886517943743938,
+        "selected_ambiguous": 3,
+        "selected_unmatched": 0,
+        "tp": 20386,
+        "tracked_non_player": 4454,
+        "tracked_player": 20620
+      }
+    }
+  }
+}

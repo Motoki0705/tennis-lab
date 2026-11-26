@@ -1,0 +1,792 @@
+{
+  "clip_002": {
+    "frames": [
+      414,
+      420,
+      426,
+      804,
+      810,
+      816,
+      1005,
+      1019,
+      1034,
+      1240,
+      1246,
+      1252
+    ],
+    "anchors": [
+      420,
+      810,
+      1246
+    ],
+    "reason": "player_association_ambiguous_players",
+    "anchor_counts": {
+      "detected": 47,
+      "tracked": 47,
+      "selected": 46,
+      "carrier": 46,
+      "chair_box": 12,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 1,
+      "outside": 1
+    },
+    "events": {
+      "off_target_box": 4,
+      "merged_box": 0,
+      "split_box": 0,
+      "detection_gap": 0,
+      "id_switch": 1,
+      "fragment": 1,
+      "selection_gap": 0
+    },
+    "focus_carrier_matches_by_role": {
+      "C": 2
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "2": 11
+      },
+      "W": {
+        "3": 12
+      },
+      "C": {
+        "1": 2,
+        "4": 9
+      },
+      "D": {
+        "0": 12
+      }
+    }
+  },
+  "clip_004": {
+    "frames": [
+      197,
+      203,
+      209,
+      275,
+      282,
+      290,
+      353,
+      359,
+      365,
+      488,
+      494,
+      500
+    ],
+    "anchors": [
+      203,
+      359,
+      494
+    ],
+    "reason": "player_association_ambiguous_players",
+    "anchor_counts": {
+      "detected": 48,
+      "tracked": 48,
+      "selected": 44,
+      "carrier": 44,
+      "chair_box": 12,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0
+    },
+    "events": {
+      "off_target_box": 0,
+      "merged_box": 2,
+      "split_box": 1,
+      "detection_gap": 1,
+      "id_switch": 2,
+      "fragment": 0,
+      "selection_gap": 0
+    },
+    "focus_carrier_matches_by_role": {
+      "D": 1,
+      "C": 2
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "2": 10
+      },
+      "W": {
+        "3": 11
+      },
+      "C": {
+        "1": 9,
+        "4": 2
+      },
+      "D": {
+        "0": 11,
+        "4": 1
+      }
+    }
+  },
+  "clip_012": {
+    "frames": [
+      196,
+      202,
+      208,
+      501,
+      507,
+      513,
+      805,
+      811,
+      817
+    ],
+    "anchors": [
+      202,
+      507,
+      811
+    ],
+    "reason": "court_side_no_consistent_hypothesis",
+    "anchor_counts": {
+      "detected": 47,
+      "tracked": 47,
+      "selected": 42,
+      "carrier": 42,
+      "chair_box": 12,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0,
+      "outside": 1
+    },
+    "events": {
+      "off_target_box": 0,
+      "merged_box": 0,
+      "split_box": 0,
+      "detection_gap": 0,
+      "id_switch": 0,
+      "fragment": 0,
+      "selection_gap": 0
+    },
+    "focus_carrier_matches_by_role": {},
+    "original_cluster_rows_by_role": {
+      "T": {},
+      "W": {},
+      "C": {},
+      "D": {}
+    }
+  },
+  "clip_014": {
+    "frames": [
+      78,
+      84,
+      90,
+      203,
+      209,
+      215,
+      222,
+      236,
+      353,
+      359,
+      365
+    ],
+    "anchors": [
+      84,
+      209,
+      359
+    ],
+    "reason": "player_association_ambiguous_players",
+    "anchor_counts": {
+      "detected": 48,
+      "tracked": 48,
+      "selected": 45,
+      "carrier": 45,
+      "chair_box": 12,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0
+    },
+    "events": {
+      "off_target_box": 0,
+      "merged_box": 0,
+      "split_box": 0,
+      "detection_gap": 0,
+      "id_switch": 0,
+      "fragment": 0,
+      "selection_gap": 1
+    },
+    "focus_carrier_matches_by_role": {
+      "W": 3
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "3": 12
+      },
+      "W": {
+        "0": 6,
+        "4": 3
+      },
+      "C": {
+        "1": 12
+      },
+      "D": {
+        "2": 12
+      }
+    }
+  },
+  "clip_018": {
+    "frames": [
+      61,
+      67,
+      73,
+      173,
+      179,
+      185,
+      272,
+      278,
+      284,
+      360,
+      368,
+      376
+    ],
+    "anchors": [
+      67,
+      179,
+      278
+    ],
+    "reason": "player_association_ambiguous_players",
+    "anchor_counts": {
+      "detected": 48,
+      "tracked": 48,
+      "selected": 33,
+      "carrier": 33,
+      "chair_box": 12,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0
+    },
+    "events": {
+      "off_target_box": 0,
+      "merged_box": 0,
+      "split_box": 0,
+      "detection_gap": 0,
+      "id_switch": 0,
+      "fragment": 1,
+      "selection_gap": 0
+    },
+    "focus_carrier_matches_by_role": {
+      "W": 3
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "2": 12
+      },
+      "W": {
+        "0": 6,
+        "3": 3
+      },
+      "C": {
+        "1": 12
+      },
+      "D": {}
+    }
+  },
+  "clip_020": {
+    "frames": [
+      125,
+      131,
+      137,
+      320,
+      326,
+      332,
+      514,
+      520,
+      526
+    ],
+    "anchors": [
+      131,
+      326,
+      520
+    ],
+    "reason": "player_association_player_not_found",
+    "anchor_counts": {
+      "detected": 45,
+      "tracked": 45,
+      "selected": 34,
+      "carrier": 34,
+      "chair_box": 12,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0,
+      "clipped": 1,
+      "outside": 2
+    },
+    "events": {
+      "off_target_box": 0,
+      "merged_box": 0,
+      "split_box": 0,
+      "detection_gap": 0,
+      "id_switch": 0,
+      "fragment": 0,
+      "selection_gap": 0
+    },
+    "focus_carrier_matches_by_role": {
+      "C": 11
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "0": 12
+      },
+      "W": {
+        "2": 10
+      },
+      "C": {},
+      "D": {
+        "1": 12
+      }
+    }
+  },
+  "clip_023": {
+    "frames": [
+      216,
+      222,
+      228,
+      546,
+      552,
+      558,
+      876,
+      882,
+      888,
+      1046,
+      1058,
+      1071
+    ],
+    "anchors": [
+      222,
+      552,
+      882
+    ],
+    "reason": "player_association_ambiguous_players",
+    "anchor_counts": {
+      "detected": 48,
+      "tracked": 48,
+      "selected": 43,
+      "carrier": 43,
+      "chair_box": 12,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0
+    },
+    "events": {
+      "off_target_box": 1,
+      "merged_box": 1,
+      "split_box": 0,
+      "detection_gap": 0,
+      "id_switch": 1,
+      "fragment": 1,
+      "selection_gap": 0
+    },
+    "focus_carrier_matches_by_role": {
+      "D": 3
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "1": 7
+      },
+      "W": {
+        "2": 12
+      },
+      "C": {
+        "3": 12
+      },
+      "D": {
+        "0": 3,
+        "4": 9
+      }
+    }
+  },
+  "clip_028": {
+    "frames": [
+      246,
+      252,
+      258,
+      622,
+      628,
+      634,
+      641,
+      648,
+      1030,
+      1036,
+      1042
+    ],
+    "anchors": [
+      252,
+      628,
+      1036
+    ],
+    "reason": "player_association_ambiguous_players",
+    "anchor_counts": {
+      "detected": 48,
+      "tracked": 48,
+      "selected": 42,
+      "carrier": 42,
+      "chair_box": 9,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0
+    },
+    "events": {
+      "off_target_box": 0,
+      "merged_box": 1,
+      "split_box": 1,
+      "detection_gap": 1,
+      "id_switch": 2,
+      "fragment": 0,
+      "selection_gap": 0
+    },
+    "focus_carrier_matches_by_role": {
+      "T": 2,
+      "D": 1
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "1": 10,
+        "4": 2
+      },
+      "W": {
+        "0": 9
+      },
+      "C": {
+        "2": 9,
+        "3": 1
+      },
+      "D": {
+        "3": 10,
+        "4": 1
+      }
+    }
+  },
+  "clip_036": {
+    "frames": [
+      44,
+      50,
+      56,
+      116,
+      122,
+      128,
+      188,
+      194,
+      200,
+      241,
+      262,
+      283
+    ],
+    "anchors": [
+      50,
+      122,
+      194
+    ],
+    "reason": "player_association_ambiguous_players",
+    "anchor_counts": {
+      "detected": 48,
+      "tracked": 48,
+      "selected": 36,
+      "carrier": 36,
+      "chair_box": 9,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0
+    },
+    "events": {
+      "off_target_box": 0,
+      "merged_box": 0,
+      "split_box": 1,
+      "detection_gap": 0,
+      "id_switch": 0,
+      "fragment": 0,
+      "selection_gap": 1
+    },
+    "focus_carrier_matches_by_role": {
+      "D": 3
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "0": 12
+      },
+      "W": {
+        "3": 3
+      },
+      "C": {
+        "1": 12
+      },
+      "D": {
+        "2": 6,
+        "4": 3
+      }
+    }
+  },
+  "clip_038": {
+    "frames": [
+      33,
+      39,
+      45,
+      89,
+      95,
+      101,
+      145,
+      151,
+      157,
+      182,
+      186,
+      190
+    ],
+    "anchors": [
+      39,
+      95,
+      151
+    ],
+    "reason": "player_association_ambiguous_players",
+    "anchor_counts": {
+      "detected": 48,
+      "tracked": 48,
+      "selected": 48,
+      "carrier": 48,
+      "chair_box": 11,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0
+    },
+    "events": {
+      "off_target_box": 0,
+      "merged_box": 0,
+      "split_box": 1,
+      "detection_gap": 0,
+      "id_switch": 0,
+      "fragment": 1,
+      "selection_gap": 0
+    },
+    "focus_carrier_matches_by_role": {
+      "D": 3
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "0": 12
+      },
+      "W": {
+        "1": 12
+      },
+      "C": {
+        "3": 12
+      },
+      "D": {
+        "2": 9,
+        "4": 3
+      }
+    }
+  },
+  "clip_039": {
+    "frames": [
+      178,
+      184,
+      190,
+      427,
+      433,
+      439,
+      676,
+      682,
+      688
+    ],
+    "anchors": [
+      184,
+      433,
+      682
+    ],
+    "reason": "player_association_ambiguous_players",
+    "anchor_counts": {
+      "detected": 48,
+      "tracked": 48,
+      "selected": 48,
+      "carrier": 48,
+      "chair_box": 12,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0
+    },
+    "events": {
+      "off_target_box": 0,
+      "merged_box": 0,
+      "split_box": 0,
+      "detection_gap": 0,
+      "id_switch": 0,
+      "fragment": 0,
+      "selection_gap": 0
+    },
+    "focus_carrier_matches_by_role": {
+      "C": 3
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "3": 12
+      },
+      "W": {
+        "0": 12
+      },
+      "C": {
+        "1": 9,
+        "4": 3
+      },
+      "D": {
+        "2": 12
+      }
+    }
+  },
+  "clip_049": {
+    "frames": [
+      54,
+      60,
+      66,
+      141,
+      147,
+      153,
+      228,
+      234,
+      240,
+      292,
+      302,
+      312
+    ],
+    "anchors": [
+      60,
+      147,
+      234
+    ],
+    "reason": "player_association_ambiguous_association",
+    "anchor_counts": {
+      "detected": 47,
+      "tracked": 47,
+      "selected": 42,
+      "carrier": 42,
+      "chair_box": 11,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0,
+      "occluded": 1
+    },
+    "events": {
+      "off_target_box": 0,
+      "merged_box": 1,
+      "split_box": 2,
+      "detection_gap": 0,
+      "id_switch": 0,
+      "fragment": 1,
+      "selection_gap": 0
+    },
+    "focus_carrier_matches_by_role": {
+      "D": 6
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "3": 12
+      },
+      "W": {
+        "1": 9
+      },
+      "C": {
+        "2": 12
+      },
+      "D": {
+        "0": 6,
+        "4": 3
+      }
+    }
+  },
+  "clip_058": {
+    "frames": [
+      148,
+      154,
+      160,
+      377,
+      383,
+      389,
+      442,
+      450,
+      459,
+      605,
+      611,
+      617
+    ],
+    "anchors": [
+      154,
+      383,
+      611
+    ],
+    "reason": "player_association_player_not_found",
+    "anchor_counts": {
+      "detected": 48,
+      "tracked": 48,
+      "selected": 33,
+      "carrier": 33,
+      "chair_box": 10,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0
+    },
+    "events": {
+      "off_target_box": 0,
+      "merged_box": 0,
+      "split_box": 2,
+      "detection_gap": 0,
+      "id_switch": 0,
+      "fragment": 1,
+      "selection_gap": 0
+    },
+    "focus_carrier_matches_by_role": {
+      "W": 12
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "0": 11
+      },
+      "W": {},
+      "C": {
+        "1": 12
+      },
+      "D": {
+        "2": 10
+      }
+    }
+  },
+  "clip_060": {
+    "frames": [
+      190,
+      196,
+      202,
+      233,
+      239,
+      245,
+      277,
+      283,
+      289
+    ],
+    "anchors": [
+      196,
+      239,
+      283
+    ],
+    "reason": "player_association_ambiguous_association",
+    "anchor_counts": {
+      "detected": 47,
+      "tracked": 47,
+      "selected": 45,
+      "carrier": 45,
+      "chair_box": 9,
+      "chair_box_selected": 0,
+      "unlabelled_selected_rows": 0,
+      "occluded": 1
+    },
+    "events": {
+      "off_target_box": 0,
+      "merged_box": 0,
+      "split_box": 0,
+      "detection_gap": 0,
+      "id_switch": 0,
+      "fragment": 1,
+      "selection_gap": 0
+    },
+    "focus_carrier_matches_by_role": {
+      "W": 6
+    },
+    "original_cluster_rows_by_role": {
+      "T": {
+        "3": 12
+      },
+      "W": {
+        "0": 9,
+        "4": 3
+      },
+      "C": {
+        "2": 10
+      },
+      "D": {
+        "1": 11
+      }
+    }
+  }
+}

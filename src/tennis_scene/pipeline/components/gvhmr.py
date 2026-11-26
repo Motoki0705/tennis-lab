@@ -25,7 +25,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelBorrower,
     ModelSpec,
 )
-from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.model_assets import BodyModelConfig, PeopleModelConfig
 from src.tennis_scene.pipeline.model_resources import gvhmr_tensorrt
 from src.tennis_scene.pipeline.tensorrt_assets import tensorrt_identity
 from src.utils.models.tensorrt_artifacts import EXPORT_MANIFEST, ExportManifest
@@ -76,7 +76,7 @@ class GVHMRModule(InferenceComponent[GVHMRInput, GVHMROutput]):
         {"selection": InputPort("body_view_selection"), "features": InputPort("hmr2_features")}, "body_parameters", version=2,
         after_all_inputs=("features",))
 
-    def __init__(self, config: PeopleModelConfig, *, enabled: bool = True) -> None:
+    def __init__(self, config: BodyModelConfig | PeopleModelConfig, *, enabled: bool = True) -> None:
         self.config, self.enabled = config, enabled
 
     def model_specs(self) -> dict[str, ModelSpec[Any]]:

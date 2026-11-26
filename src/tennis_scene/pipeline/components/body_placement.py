@@ -31,7 +31,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelBorrower,
     ModelSpec,
 )
-from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.model_assets import BodyModelConfig, PeopleModelConfig
 from src.tennis_scene.pipeline.observation_types import (
     GroupedObservations,
     ObjectObservations,
@@ -42,7 +42,7 @@ from src.utils.inference_recording import model_event
 class SmplGeometry:
     """Deterministic body-model conversion, independent of HMR/GVHMR inference."""
 
-    def __init__(self, config: PeopleModelConfig) -> None:
+    def __init__(self, config: BodyModelConfig | PeopleModelConfig) -> None:
         self.config = config
         self.vertices = SmplVertexReconstructor(config.body_models_dir, device=config.runtime.device, smpl_assets=config.smpl_assets)
         self.coco = SmplCoco17Reconstructor(config.body_models_dir, device=config.runtime.device, smpl_assets=config.smpl_assets)
@@ -92,7 +92,7 @@ class BodyPlacementOutput:
 
 
 class BodyPlacementModule(InferenceComponent[BodyPlacementInput, BodyPlacementOutput]):
-    def __init__(self, camera_ids: tuple[str, ...], models: PeopleModelConfig, config: TemporalPlacementConfig,
+    def __init__(self, camera_ids: tuple[str, ...], models: BodyModelConfig | PeopleModelConfig, config: TemporalPlacementConfig,
                  *, reprojection_px: float, enabled: bool = True, fasthmr: FastHMRConfig | None = None) -> None:
         self.models, self.config, self.reprojection_px, self.enabled = models, config, reprojection_px, enabled
         self.fasthmr = fasthmr

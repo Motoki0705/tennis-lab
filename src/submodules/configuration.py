@@ -332,6 +332,58 @@ class BatchedRuntimeConfig:
 Hmr2RuntimeConfig = BatchedRuntimeConfig
 
 
+_BODY_RUNTIME_SCHEMA = StrictConfigSchema(
+    name="submodules.runtime.body",
+    fields={key: SUBMODULE_RUNTIME_SCHEMA.fields[key] for key in ("device", "hmr2", "gvhmr", "static_cam")},
+)
+
+
+def _batched_runtime(
+    value: Mapping[str, object], *, model: str, device: str, resolver: PathResolver | None,
+) -> BatchedRuntimeConfig:
+    options = _nested_mapping(value[model], name=f"runtime.{model}")
+    return BatchedRuntimeConfig(
+        batch_size=cast(int, options["batch_size"]),
+        backend=_backend_config(options, model=model, device=device, resolver=resolver),
+    )
+
+
+def _device_type(device: str) -> str:
+    if not device.strip():
+        raise SemanticConfigurationError("submodules.runtime.device must be a non-empty device specification.")
+    if device == "auto":
+        return device
+    import torch
+
+    try:
+        device_type: str = torch.device(device).type
+        return device_type
+    except (RuntimeError, ValueError) as error:
+        raise SemanticConfigurationError(f"submodules.runtime.device is invalid: {device!r}.") from error
+
+
+@dataclass(frozen=True, slots=True)
+class BodyRuntimeConfig:
+    """HMR2 and GVHMR settings for reconstructing saved crop observations."""
+
+    device: str
+    hmr2: Hmr2RuntimeConfig
+    static_cam: bool
+    gvhmr: BatchedRuntimeConfig
+
+    @classmethod
+    def from_mapping(cls, value: Mapping[str, object], *, resolver: PathResolver) -> BodyRuntimeConfig:
+        validated = _BODY_RUNTIME_SCHEMA.validate(value)
+        device = cast(str, validated["device"])
+        _device_type(device)
+        return cls(
+            device=device,
+            hmr2=_batched_runtime(validated, model="hmr2", device=device, resolver=resolver),
+            static_cam=cast(bool, validated["static_cam"]),
+            gvhmr=_batched_runtime(validated, model="gvhmr", device=device, resolver=resolver),
+        )
+
+
 @dataclass(frozen=True, slots=True)
 class SubmoduleRuntimeConfig:
     """Single typed runtime contract shared by submodule entrypoints."""
@@ -363,33 +415,14 @@ class SubmoduleRuntimeConfig:
         vitpose = _nested_mapping(validated["vitpose"], name="runtime.vitpose")
         vitpose_head = _nested_mapping(vitpose["head"], name="runtime.vitpose.head")
         device = cast(str, validated["device"])
-        if not device.strip():
-            raise SemanticConfigurationError(
-                "submodules.runtime.device must be a non-empty device specification."
-            )
-        if device != "auto":
-            import torch
-
-            try:
-                device_type = torch.device(device).type
-            except (RuntimeError, ValueError) as error:
-                raise SemanticConfigurationError(
-                    f"submodules.runtime.device is invalid: {device!r}."
-                ) from error
-            if device_type != "cuda":
-                if dino["precision"] != "fp32":
-                    raise SemanticConfigurationError("Mixed precision DINO requires a CUDA device.")
-                if vitpose["precision"] != "fp32" and (device_type, vitpose["precision"]) != ("cpu", "bf16"):
-                    raise SemanticConfigurationError("Mixed precision ViTPose requires CUDA or bf16 on CPU.")
+        device_type = _device_type(device)
+        if device_type not in {"auto", "cuda"}:
+            if dino["precision"] != "fp32":
+                raise SemanticConfigurationError("Mixed precision DINO requires a CUDA device.")
+            if vitpose["precision"] != "fp32" and (device_type, vitpose["precision"]) != ("cpu", "bf16"):
+                raise SemanticConfigurationError("Mixed precision ViTPose requires CUDA or bf16 on CPU.")
         dino_backend = _backend_config(dino, model="dino_detector", device=device, resolver=resolver)
         pose_backend = _backend_config(vitpose, model="vitpose", device=device, resolver=resolver)
-
-        def batched_runtime(section: str) -> BatchedRuntimeConfig:
-            options = _nested_mapping(validated[section], name=f"runtime.{section}")
-            return BatchedRuntimeConfig(
-                batch_size=cast(int, options["batch_size"]),
-                backend=_backend_config(options, model=section, device=device, resolver=resolver),
-            )
 
         return cls(
             device=device,
@@ -426,10 +459,10 @@ class SubmoduleRuntimeConfig:
                     ),
                 ),
             ),
-            hmr2=batched_runtime("hmr2"),
+            hmr2=_batched_runtime(validated, model="hmr2", device=device, resolver=resolver),
             static_cam=cast(bool, validated["static_cam"]),
-            clip_reid=batched_runtime("clip_reid"),
-            gvhmr=batched_runtime("gvhmr"),
+            clip_reid=_batched_runtime(validated, model="clip_reid", device=device, resolver=resolver),
+            gvhmr=_batched_runtime(validated, model="gvhmr", device=device, resolver=resolver),
         )
 
 

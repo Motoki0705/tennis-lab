@@ -39,6 +39,10 @@ from src.tennis_scene.pipeline.storage.scene_index import (
     indexed_scene_path,
     read_component_descriptor,
 )
+from src.tennis_scene.pipeline.storage.scene_pointers import (
+    require_stable_scene_pointers,
+    stable_scene_pointers,
+)
 from src.tennis_scene.schema import (
     SCENE_MASK_FIELDS,
     SCENE_REASON_FIELDS,
@@ -175,6 +179,8 @@ def _required_publication_components(inputs: DatasetClipInputs, identity: Mappin
         if not isinstance(event_ref, dict) or (event_ref["schema"], event_ref["version"]) != ("scene_result", 3):
             raise ValueError("Publication requires an event_detection SceneResult v3 export")
         event = read_component_descriptor(root, event_ref, node=EVENT_DETECTION, source_sha256=document["source_sha256"])
+        if event["identity"].get("implementation") != identity["code_sha256"]:
+            raise ValueError("Published event_detection implementation differs from its declared source identity")
         actual = event["identity"]["settings"]
         expected = {key: value for key, value in event_settings.items()
                     if key not in {"annotation_directory", "annotation_benchmark_manifest"}}
@@ -249,11 +255,13 @@ def _clip_publication_identity(inputs: DatasetClipInputs, identity: Mapping[str,
 def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mapping[str, object], *, overwrite: bool = False) -> Path | None:
     """Return a reusable marker, rejecting stale inputs/settings as before."""
     destination = annotation_root(inputs.clip_dir, publication_identity) / "annotation.json"
-    if not destination.exists() or overwrite:
-        return None
+    with stable_scene_pointers(destination.parent):
+        if not destination.exists() or overwrite:
+            return None
     from src.tennis_scene.archive import load_scene_result
 
     with clip_store_lock(destination.parent):
+        require_stable_scene_pointers(destination.parent)
         if not destination.exists():
             return None
         publication_identity = _clip_publication_identity(inputs, publication_identity)
@@ -276,6 +284,7 @@ def publish_annotation(inputs: DatasetClipInputs, result: SceneResult, *, pipeli
     """Validate a complete clip and atomically publish its dataset marker."""
     destination = annotation_root(inputs.clip_dir, publication_identity)
     with span("publication"), clip_store_lock(destination):
+        require_stable_scene_pointers(destination)
         publication_identity = _clip_publication_identity(inputs, publication_identity)
         validate_dataset_result(result, inputs.record)
         inputs.snapshot.assert_unchanged()

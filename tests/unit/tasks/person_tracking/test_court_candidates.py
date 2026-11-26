@@ -107,7 +107,8 @@ def test_adjacent_only_track_cannot_qualify_or_borrow_dwell_across_jump() -> Non
     tracks = replace(tracks, boxes_xyxy=boxes)
     selected, _ = select_linked_candidates(tracks, 30., LinkingConfig(), FootpointConfig())
     assert selected[0, :40].all() and not selected[0, 40:].any()
-    assert not selected[1:].any()  # 5.1 is in outer corridor, outside dwell core
+    assert selected[1].all()  # 5.1 m is inside the doubles alley.
+    assert not selected[2].any()
 
 
 def test_appearance_vetoes_geometrically_close_fragments() -> None:
@@ -141,7 +142,7 @@ def test_short_ambiguous_fragments_are_not_forced_and_handoff_counts_once() -> N
 
 
 def test_selected_player_keeps_wide_and_invalid_observations_without_lending_dwell() -> None:
-    tracks = camera_tracks([(0., 5.), (6., 5.), (0., -30.), (5.1, 5.)], np.ones((4, 120), bool))
+    tracks = camera_tracks([(0., 5.), (6., 5.), (0., -30.), (5.7, 5.)], np.ones((4, 120), bool))
     boxes = tracks.boxes_xyxy.copy()
     # A continuous run from centre to beyond doubles width, then border loss.
     for frame in range(30, 90):
@@ -151,7 +152,7 @@ def test_selected_player_keeps_wide_and_invalid_observations_without_lending_dwe
     boxes[0, 115:] = boxes[2, 115:]
     selected, diag = select_linked_candidates(replace(tracks, boxes_xyxy=boxes), 30., LinkingConfig(), FootpointConfig())
     assert selected[0].all()  # region and projection validity never trim a player
-    assert not selected[1:].any()  # no core dwell, including doubles-border person
+    assert not selected[1:].any()  # No core dwell.
     assert diag['selected_outside_corridor'] > 25
     assert diag['selected_invalid_footpoints'] == 5
 
