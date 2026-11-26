@@ -22,7 +22,10 @@ from src.tasks.ball_refiner_3d.evaluation.evaluator import (
     evaluate,
     summarize_predictions,
 )
-from src.tasks.ball_refiner_3d.model_io.checkpoint import checkpoint_metadata
+from src.tasks.ball_refiner_3d.model_io.checkpoint import (
+    checkpoint_metadata,
+    checkpoint_model_config,
+)
 from src.tasks.ball_refiner_3d.model_io.factory import bind_refiner, build_refiner
 from src.tasks.ball_refiner_3d.models.discriminators import build_refiner_discriminator
 from src.tasks.ball_refiner_3d.models.generators.flow import FlowRefiner
@@ -396,7 +399,6 @@ class RefinerLightningModule(BaseLightningModule):
             )
         )
         checkpoint.update(
-            schema="ball_refiner_3d.events.v2",
             step=self.generator_updates,
             seed=self.settings.runtime.run.seed,
             fps=self.data_module.dataset.fps,
@@ -424,12 +426,10 @@ class RefinerLightningModule(BaseLightningModule):
     def validate_resume_checkpoint(
         settings: RefinerTrainingSettings, checkpoint: dict[str, Any]
     ) -> None:
-        if (
-            checkpoint.get("schema") != "ball_refiner_3d.events.v2"
-            or "loops" not in checkpoint
-        ):
+        checkpoint_model_config(checkpoint)
+        if "loops" not in checkpoint:
             raise ValueError(
-                "Legacy event-head weights support inference/init_weights, not Lightning resume"
+                "Full-state resume requires a three-class Lightning checkpoint"
             )
         if (checkpoint["cuda_rng"] is not None) != (settings.runtime.run.gpus > 0):
             raise ValueError("Resume requires the same CPU/CUDA device family")

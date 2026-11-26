@@ -1,4 +1,4 @@
-"""Physical-consistency evaluation of predicted rallies (protocol ``physics_eval.v1``).
+"""Physical-consistency evaluation of predicted rallies (protocol ``physics_eval.v2``).
 
 The protocol is fixed in code so every run and baseline is measured identically:
 
@@ -21,6 +21,11 @@ import torch
 from numpy.typing import NDArray
 
 from src.tasks.ball_refiner_3d.data.schema import PreparedRally, Rally
+from src.tasks.ball_refiner_3d.evaluation.events import event_report
+from src.tasks.ball_refiner_3d.inference.segmentation import (
+    DEFAULT_PICKING,
+    EventPicking,
+)
 from src.tasks.ball_refiner_3d.physics.units import (
     SURFACES,
     State,
@@ -28,7 +33,6 @@ from src.tasks.ball_refiner_3d.physics.units import (
     decode_state,
 )
 from src.tasks.ball_refiner_3d.training.metrics import event_neighborhood
-from src.utils.physics.ball.events import event_detection_report, pick_event_frames
 from src.utils.physics.ball.fitting import FitSettings, fit_flight_physics
 from src.utils.physics.ball.kinematics import KinematicThresholds, kinematic_report
 from src.utils.physics.ball.parameters import (
@@ -37,7 +41,7 @@ from src.utils.physics.ball.parameters import (
 )
 from src.utils.physics.ball.record import EVENT_BITS, EVENT_KINDS
 
-PROTOCOL = "physics_eval.v1"
+PROTOCOL = "physics_eval.v2"
 
 
 @dataclass(frozen=True)
@@ -55,8 +59,8 @@ class PhysicsProtocol:
         for wind_x, wind_y in ((0, 0), (2, 0), (-2, 0), (0, 2), (0, -2))
     )
     minimum_segment_frames: int = 3
-    event_threshold: float = 0.5
-    event_min_separation: int = 3
+    event_threshold: float = DEFAULT_PICKING.threshold
+    event_min_separation: int = DEFAULT_PICKING.min_separation
     event_tolerance: int = 2
     length_bins: tuple[int, ...] = (256, 512)
     bounce_bins: tuple[int, ...] = (3, 4, 5)
@@ -72,7 +76,7 @@ class RallyPrediction:
     rally: Rally
     coordinates: NDArray[np.floating]  # (T,3) m
     missing: NDArray[np.bool_]  # (T,)
-    event_probability: NDArray[np.floating]  # (T,)
+    event_probability: NDArray[np.floating]  # (T,3), ordered shot, bounce, net
 
 
 def _rmse(values: NDArray[np.floating]) -> float | None:
@@ -165,17 +169,14 @@ def physics_report(
         },
     }
     if events:
-        report["events"] = event_detection_report(
-            [
-                pick_event_frames(
-                    p.event_probability,
-                    protocol.event_threshold,
-                    protocol.event_min_separation,
-                )
-                for p in predictions
-            ],
-            [np.flatnonzero(p.rally.events) for p in predictions],
-            protocol.event_tolerance,
+        report["events"] = event_report(
+            [p.event_probability for p in predictions],
+            [p.rally.events for p in predictions],
+            fps,
+            picking=EventPicking(
+                protocol.event_threshold, protocol.event_min_separation
+            ),
+            tolerance=protocol.event_tolerance,
         )
     return report
 

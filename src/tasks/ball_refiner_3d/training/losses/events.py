@@ -1,13 +1,20 @@
-"""Soft two-class cross entropy for event probabilities."""
+"""Independent binary cross entropy with soft event targets."""
 
 from __future__ import annotations
 
-import torch
 from torch import Tensor
+from torch.nn import functional as F
+
+from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
 
 
 def event_loss(logits: Tensor, target: Tensor, valid: Tensor) -> Tensor:
-    """Soft CE with class targets [1-p, p] over ``valid`` frames; no temporal
-    softmax or label threshold."""
-    labels = torch.stack((1 - target, target), dim=-1)
-    return -(labels * logits.log_softmax(dim=-1)).sum(dim=-1)[valid].mean()
+    """Mean over event classes and unpadded frames, including missing observations."""
+    if logits.shape != target.shape or target.shape != (
+        *valid.shape,
+        len(EVENT_CLASSES),
+    ):
+        raise ValueError(
+            "Require aligned B,T,3 event logits/targets and B,T frame mask"
+        )
+    return F.binary_cross_entropy_with_logits(logits[valid], target[valid])

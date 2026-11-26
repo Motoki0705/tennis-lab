@@ -59,6 +59,7 @@ class GenerationConfig:
     workers: int
     min_frames: int
     maximum_attempts: int
+    net_contact_fraction: float = 0.0
 
     def __post_init__(self) -> None:
         if (
@@ -74,6 +75,8 @@ class GenerationConfig:
             or self.seed < 0
         ):
             raise ValueError("Require positive generation counts and nonnegative seed")
+        if not 0 <= self.net_contact_fraction <= 1:
+            raise ValueError("net_contact_fraction must be in [0, 1]")
 
 
 def generation_config(
@@ -103,6 +106,8 @@ def generation_config(
         raise ValueError("BLCS simulation FPS must be divisible by output FPS")
     if not np.isclose(physics.physics.dt, 1 / physics.rally.sim_fps):
         raise ValueError("Physics dt must match simulation FPS")
+    if generation.net_contact_fraction > 0 and physics.rally.max_rallies < 2:
+        raise ValueError("Net contact generation needs at least two shots per rally")
     raw["paths"] = {name: str(value) for name, value in asdict(resolver.roots).items()}
     return (
         raw,

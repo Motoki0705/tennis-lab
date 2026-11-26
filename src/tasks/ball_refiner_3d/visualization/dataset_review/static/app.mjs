@@ -204,7 +204,7 @@ function draw() {
   world.setFrame(state.frame);
   drawTimeline($("timeline"), scene, state.frame);
   drawEvents($("event-graph"), scene, state.frame);
-  $("event-target-info").textContent = `GT: Gaussian σ=${scene.event_sigma_frames} frame · 推論: softmax`;
+  $("event-target-info").textContent = `Gaussian σ=${scene.event_sigma_frames} frame`;
   const { clipped } = drawGraph($("graph-3d"), scene, state.frame, mode, flags);
   const unit = { speed: "m/s", acceleration: "m/s²" }[mode] ?? "m";
   $("graph-3d-title").textContent = `3D · ${unit}${["speed", "acceleration"].includes(mode) ? " · GT飛行区間内の差分" : ""}${clipped ? " · 縦軸はP99で打ち切り" : ""}`;
@@ -331,7 +331,7 @@ function exportImage() {
   ctx.drawImage($("timeline"), 0, y, views.width, 78); y += 94;
   ctx.fillText(`Time series: ${$("plot-mode").selectedOptions[0].textContent} · 3D`, 12, y); y += 7;
   ctx.drawImage($("graph-3d"), 0, y, views.width, 165); y += 184;
-  ctx.fillText(`Event probability: GT Gaussian sigma=${state.result.scene.event_sigma_frames} / softmax prediction`, 12, y); y += 8;
+  ctx.fillText(`Event probability: GT Gaussian sigma=${state.result.scene.event_sigma_frames} / sigmoid prediction`, 12, y); y += 8;
   ctx.drawImage($("event-graph"), 0, y, views.width, 170); y += 190;
   ctx.fillText(`dataset ${state.result.request.manifest_sha256.slice(0, 12)} / input ${state.result.input_sha256.slice(0, 12)}`, 12, y);
   canvas.toBlob((blob) => { if (blob) download(blob, `${state.result.scene.rally}-comparison.png`); });

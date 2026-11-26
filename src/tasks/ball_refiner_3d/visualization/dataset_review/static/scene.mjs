@@ -1,7 +1,7 @@
 import { PRESETS, Scene3D, frustumFromParams } from "/shared/scene3d.mjs";
 
 export const COLORS = { gt: "#48d597", input: "#a5b3c8", prediction: "#ff9a75", integrated: "#4fb3ff",
-  integrated_truth: "#ff6fb5", linear: "#c08457", shot: "#bb9cf5", bounce: "#eec365" };
+  integrated_truth: "#ff6fb5", linear: "#c08457", shot: "#bb9cf5", bounce: "#eec365", net: "#70d8d1" };
 export const LABELS = { gt: "GT", input: "拡張後入力", prediction: "推論（直接）", integrated: "積分（予測区間）",
   integrated_truth: "積分（GT区間）", linear: "線形補間" };
 // Trajectory series in drawing order; a scene carries each as `${kind}_3d` or null.

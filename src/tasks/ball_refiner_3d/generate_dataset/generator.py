@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import time
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
@@ -22,8 +23,9 @@ from src.tasks.base.generate_dataset.parallel_runner import (
     run_parallel_scene_generation,
 )
 from src.tasks.blcs.generate_dataset.scene_generator import GeneratorConfig
+from src.tasks.blcs.generate_dataset.simulation.net_contact import NetContact
 from src.utils.io import write_json_atomic
-from src.utils.physics.ball.record import EVENT_BITS, RECORD_SCHEMA
+from src.utils.physics.ball.record import EVENT_BITS, EVENT_KINDS, RECORD_SCHEMA
 
 
 def _generate_rally(
@@ -33,9 +35,11 @@ def _generate_rally(
     camera: CameraSampling,
     physics: GeneratorConfig,
     split: tuple[str, ...],
+    net_contacts: dict[int, NetContact],
 ) -> dict[str, Any]:
+    net_contact = net_contacts.get(index)
     result, record, xyz, cameras, attempts = simulate_rally(
-        index, generation, camera, physics
+        index, generation, camera, physics, net_contact
     )
     return write_rally(
         root,
@@ -48,7 +52,42 @@ def _generate_rally(
         xyz,
         cameras,
         attempts,
+        net_contact,
     )
+
+
+def assign_net_contacts(
+    splits: np.ndarray, fraction: float, seed: int
+) -> dict[int, NetContact]:
+    """Reserve an exact, balanced quota within each rally-disjoint split."""
+    rng = np.random.default_rng(seed)
+    requests: dict[int, NetContact] = {}
+    for split in ("train", "val", "test"):
+        rows = np.flatnonzero(splits == split)
+        count = int(len(rows) * fraction + 0.5)
+        for index, row in enumerate(rng.permutation(rows)[:count]):
+            requests[int(row)] = (
+                NetContact.CROSSED if index % 2 == 0 else NetContact.DROPPED
+            )
+    return requests
+
+
+def _event_summary(records: list[dict[str, Any]]) -> dict[str, Any]:
+    events: Counter[str] = Counter()
+    contacts: Counter[str] = Counter()
+    for record in records:
+        events.update(record["event_counts"])
+        if record["net_contact"] is not None:
+            contacts.update([record["net_contact"]])
+    return {
+        "rallies": len(records),
+        "event_counts": {kind: events[kind] for kind in EVENT_KINDS},
+        "net_contact_counts": {kind.value: contacts[kind.value] for kind in NetContact},
+        "net_contact_fraction": sum(
+            record["event_counts"]["net"] > 0 for record in records
+        )
+        / len(records),
+    }
 
 
 def generate_dataset(config: DictConfig) -> Path:
@@ -64,9 +103,19 @@ def generate_dataset(config: DictConfig) -> Path:
         + ["test"] * generation.test_rallies
     )
     np.random.default_rng(generation.seed).shuffle(splits)
+    net_contacts = assign_net_contacts(
+        splits, generation.net_contact_fraction, generation.seed
+    )
     start = time.monotonic()
     records = []
-    args = (root, generation, camera, physics, tuple(str(s) for s in splits))
+    args = (
+        root,
+        generation,
+        camera,
+        physics,
+        tuple(str(s) for s in splits),
+        net_contacts,
+    )
     indices = list(range(len(splits)))
     iterator = (
         map(lambda i: _generate_rally(i, *args), indices)
@@ -95,10 +144,21 @@ def generate_dataset(config: DictConfig) -> Path:
         "views": camera.views,
         "event_bits": EVENT_BITS,
         "physics_record": RECORD_SCHEMA,
+        "physics_verification": "float32 bit equality"
+        if generation.net_contact_fraction > 0
+        else "max error <= 1e-6 m",
+        "requested_net_contact_fraction": generation.net_contact_fraction,
+        **_event_summary(records),
+        "events_by_split": {
+            split: _event_summary(
+                [record for record in records if record["split"] == split]
+            )
+            for split in ("train", "val", "test")
+        },
         "records": records,
         "split_policy": "seeded rally-disjoint; every view and temporal window follows its parent rally",
         "selection_policy": "truncate at first fence exit; bounded resampling of short/no-full-rally-visible-camera/full-physics-rejected rallies; attempts in each record",
-        "event_policy": "events of the physics record at their first output frame at or after the simulation step; toss excluded; post-return bounces never simulated into the trajectory",
+        "event_policy": "counts include all recorded physical events; output labels use the first frame at or after the simulation step, excluding toss",
         "surface_policy": "one court surface per rally, drawn uniformly from physics.surface_choices",
         "camera_policy": "fixed within rally; continuous X/Z on both baseline-rear fence planes; clean trajectory fully in frame before occlusion/noise",
         "generation_seconds": time.monotonic() - start,
