@@ -37,7 +37,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelBorrower,
     ModelSpec,
 )
-from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.model_assets import BodyModelConfig, PeopleModelConfig
 from src.tennis_scene.pipeline.model_resources import hmr2_tensorrt
 from src.tennis_scene.pipeline.tensorrt_assets import tensorrt_identity
 from src.utils.video import OpenCVVideoFrameReader
@@ -118,7 +118,7 @@ class HMR2FeaturesModule(InferenceComponent[HMR2FeaturesInput, HMR2FeaturesOutpu
     io = ComponentIO("hmr2_features", HMR2FeaturesInput, HMR2FeaturesOutput,
         {"selection": InputPort("body_view_selection")}, "hmr2_features")
 
-    def __init__(self, config: PeopleModelConfig, *, enabled: bool = True) -> None:
+    def __init__(self, config: BodyModelConfig | PeopleModelConfig, *, enabled: bool = True) -> None:
         self.config, self.enabled = config, enabled
 
     def model_specs(self) -> dict[str, ModelSpec[Hmr2FeatureExtractor]]:

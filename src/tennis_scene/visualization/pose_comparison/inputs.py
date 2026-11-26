@@ -13,11 +13,14 @@ from numpy.typing import NDArray
 
 from src.tennis_scene.multiview_pose.schema import NODE, FramePoseCandidates
 from src.tennis_scene.multiview_pose.storage import read_candidates
+from src.tennis_scene.multiview_tracking.schema import NODE as TRACKING_NODE
+from src.tennis_scene.multiview_tracking.schema import PoseTracks
+from src.tennis_scene.multiview_tracking.storage import read_tracks
 from src.tennis_scene.pipeline.artifacts import document_digest
 from src.tennis_scene.pipeline.components.event_detection import EVENT_DETECTION
 from src.tennis_scene.pipeline.contracts import ClipSource
 from src.tennis_scene.pipeline.storage.codec import restore_type, unpack_value
-from src.tennis_scene.pipeline.storage.scene_index import indexed_scene_path
+from src.tennis_scene.pipeline.storage.scene_index import resolve_indexed_scene
 from src.tennis_scene.visualization.review.store import StoreReader
 from src.utils.checksum import dual_sha256
 from src.utils.geometry.triangulation import PinholeCamera
@@ -369,8 +372,8 @@ def _read_scene(store: StoreReader, source: ClipSource) -> AdoptedScene | None:
     else:
         alignment = ball_ref = tracked
         alignment_node = _component_node(store, tracked, "multiview_scene_inputs", 1)
-    archive = indexed_scene_path(
-        store.index_path,
+    archive = resolve_indexed_scene(
+        store.document, store.root,
         required_components={"scene_assembly": assembly, alignment_node: alignment},
     )
     skeleton = None
@@ -476,8 +479,7 @@ def load_comparison(
     tracks = _tracks(old) if scene is None or not scene.valid.any() else ()
     check_media(source)
     for store in (old, new):
-        if json.loads(store.index_path.read_text(encoding="utf-8")) != store.document:
-            raise ValueError(f"Scene index changed during loading: {store.index_path}")
+        store.assert_unchanged()
     return ComparisonInputs(
         source,
         scene,
@@ -511,3 +513,37 @@ def load_comparison(
             "videos": {v.camera_id: v.sha256 for v in source.videos},
         },
     )
+
+
+def load_tracking(
+    store: StoreReader, data: ComparisonInputs, record: dict[str, Any]
+) -> tuple[PoseTracks, dict[str, Any]]:
+    clip_id = data.source.clip_id
+    expected = record["clips"][clip_id]
+    reference = store.references[TRACKING_NODE]
+    candidate = data.provenance["candidate_artifact"]
+    if (
+        store.source_sha256 != data.provenance["source_sha256"]
+        or expected["source_frames"] != data.source.num_frames
+        or reference["artifact_id"] != expected["tracking_artifact_id"]
+        or reference["sha256"] != expected["tracking_descriptor_sha256"]
+        or candidate["artifact_id"] != expected["candidate_artifact_id"]
+        or candidate["sha256"] != expected["candidate_descriptor_sha256"]
+    ):
+        raise ValueError(
+            f"Tracking store disagrees with the pinned run record: {clip_id}"
+        )
+    descriptor = store.descriptor(TRACKING_NODE)
+    if (
+        descriptor["provenance"]["frame_pose_candidates"] != candidate
+        or descriptor["provenance"]["config"] != record["config"]
+    ):
+        raise ValueError(f"Tracking inputs or settings disagree for {clip_id}")
+    tracks = read_tracks(store.root, expected_artifact_id=reference["artifact_id"])
+    store.assert_unchanged()
+    return tracks, {
+        **data.provenance,
+        "tracking_artifact": reference,
+        "tracking_implementation": descriptor["identity"]["implementation"],
+        "tracking_config": descriptor["provenance"]["config"],
+    }

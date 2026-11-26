@@ -29,6 +29,9 @@ from src.tennis_scene.pipeline.storage.scene_index import (
     assert_current_component_lineage,
     read_component_descriptor,
 )
+from src.tennis_scene.pipeline.storage.scene_pointers import (
+    require_stable_scene_pointers,
+)
 from src.utils.checksum import FileIntegrityError, dual_sha256
 from src.utils.inference_recording import measured, span, temporary_directory
 
@@ -177,7 +180,7 @@ class ClipStore:
         return result
 
     def descriptor(self, reference: ArtifactRef) -> dict[str, Any]:
-        return cast(dict[str, Any], read_component_descriptor(self.root, json_value(reference), node=None, source_sha256=self.source_key))
+        return read_component_descriptor(self.root, json_value(reference), node=None, source_sha256=self.source_key)
 
     @measured("artifact_load")
     def load(self, reference: ArtifactRef, codec: ArtifactReader[OutputT], *,
@@ -230,7 +233,8 @@ class ClipStore:
     @measured("publication")
     def publish(self, node: str, value: OutputT, codec: ArtifactCodec[OutputT], *, schema: str,
                 version: int, identity: Mapping[str, Any], dependencies: Mapping[str, ArtifactRef],
-                provenance: Mapping[str, Any]) -> ArtifactRef:
+                provenance: Mapping[str, Any], adopt: bool = True) -> ArtifactRef:
+        """Write an immutable artifact. A staged publication can adopt it later."""
         component = _component_name(node)
         execution_key = document_digest(identity)
         parent = self.root / "components" / component
@@ -250,6 +254,8 @@ class ClipStore:
                 write_json_atomic(temporary / filename, document)
             destination = parent / artifact_id
             with self._lock():
+                if adopt:
+                    require_stable_scene_pointers(self.root)
                 if destination.exists():
                     if (destination / filename).read_bytes() != (temporary / filename).read_bytes():
                         raise ValueError("Artifact identity collision")
@@ -259,16 +265,17 @@ class ClipStore:
                 descriptor_path = destination / filename
                 reference = ArtifactRef(artifact_id, str(descriptor_path.relative_to(self.root)),
                     dual_sha256(descriptor_path), schema, version, execution_key)
-                index = self._index()
-                encoded = json_value(reference)
-                if index["artifacts"].get(node) != encoded:
-                    # The published scene is a snapshot of one complete input
-                    # lineage. Keep old export bytes immutable, but withdraw its
-                    # active pointer as soon as any adopted component changes.
-                    index["exports"].clear()
-                index["artifacts"][node] = encoded
-                index["revision"] += 1
-                write_json_atomic(self.index_path, index)
+                if adopt:
+                    index = self._index()
+                    encoded = json_value(reference)
+                    if index["artifacts"].get(node) != encoded:
+                        # The published scene is a snapshot of one complete input
+                        # lineage. Keep old export bytes immutable, but withdraw its
+                        # active pointer as soon as any adopted component changes.
+                        index["exports"].clear()
+                    index["artifacts"][node] = encoded
+                    index["revision"] += 1
+                    write_json_atomic(self.index_path, index)
             # The first consumer uses the same decoded representation as a restarted run.
             self._memory.pop(artifact_id, None)
             return reference
@@ -281,6 +288,7 @@ class ClipStore:
                       prepare: Callable[[], None] | None = None) -> None:
         """Prepare/validate files and adopt their checksums under one clip lock."""
         with self._lock():
+            require_stable_scene_pointers(self.root)
             index = self._index()
             for node, reference in inputs.items():
                 if index["artifacts"].get(node) != json_value(reference):

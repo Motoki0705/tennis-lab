@@ -1,0 +1,75 @@
+{
+  "identity": {
+    "head": "3d8cec367e8a9fb2cb44788bdae3eb494e0aeb3f",
+    "manifest_sha256": "790f05016e31ff4eb3fa8fc7d681d1a22ff0540928672e2a274a64543cd2a28a",
+    "prepared_sha256": "e0c54222f9cfbfde278956e4438d158fe9fa4a17e92ec791b607bac396c24677",
+    "checkpoint_sha256": "b0d4399c23bf77bac115f46027cee545f99a41e9957c4e605f0eeb73ed16bde0",
+    "benchmark_pr": 2610,
+    "benchmark_pr_head": "2999c0e743805fb2145ae6e03121f81b8c98df0c",
+    "benchmark_evidence_head": "2999c0e743805fb2145ae6e03121f81b8c98df0c",
+    "precompute_job": "20261126T115528Z_4b14423a0aa5_meiji-v3-motion-final-coverage",
+    "queue_resource": "all"
+  },
+  "jobs": {
+    "ball-only-s42": {
+      "mode": "ball-only",
+      "seed": 42,
+      "job_id": "0-8204305173350700399_2026-11-26T12-07-06-649299600Z_434422_i2600-motion-ball-only-s42-r2.job",
+      "queue_log_sha256": "bb47e128b5c77675b7f969ddf4cc6984d5a33cfd6c6deee8263586d990db739e"
+    },
+    "shared-s42": {
+      "mode": "shared",
+      "seed": 42,
+      "job_id": "0-8204305172937211719_2026-11-26T12-07-07-062788280Z_434547_i2600-motion-shared-s42-r2.job",
+      "queue_log_sha256": "0a699e851ebc72753d6d883edc0f28f269ab014463ec8cabf03f92327e062f11"
+    },
+    "per-player-s42": {
+      "mode": "per-player",
+      "seed": 42,
+      "job_id": "0-8204305172528344645_2026-11-26T12-07-07-471655354Z_434650_i2600-motion-per-player-s42-r2.job",
+      "queue_log_sha256": "d020c0890d8300ae6f76f6348e8c7079e496e1fcef327421544c7ec1b7757eb8"
+    },
+    "set-attention-s42": {
+      "mode": "set-attention",
+      "seed": 42,
+      "job_id": "0-8204305172093225079_2026-11-26T12-07-07-906774920Z_434755_i2600-motion-set-attention-s42-r2.job",
+      "queue_log_sha256": "0d960114183ba5542bd7a4a3ddc02fe859fab4558b99dc84104e4b29e32b64f9"
+    },
+    "shared-s43": {
+      "mode": "shared",
+      "seed": 43,
+      "job_id": "0-8204305171654912506_2026-11-26T12-07-08-345087493Z_434871_i2600-motion-shared-s43-r2.job",
+      "queue_log_sha256": "b0dadf1ebeca2cbfb8ed1ffd2229caa048e2b1ba942cda8d3bff19c9bb877298"
+    },
+    "per-player-s43": {
+      "mode": "per-player",
+      "seed": 43,
+      "job_id": "0-8204305171225511626_2026-11-26T12-07-08-774488373Z_434990_i2600-motion-per-player-s43-r2.job",
+      "queue_log_sha256": "b9ba19fea39483d24d59fcfe8bbffe29c269f1db9d79bbebe1e7b96ac5f85be4"
+    },
+    "set-attention-s43": {
+      "mode": "set-attention",
+      "seed": 43,
+      "job_id": "0-8204305170772348783_2026-11-26T12-07-09-227651216Z_435125_i2600-motion-set-attention-s43-r2.job",
+      "queue_log_sha256": "7a8e7ed835a53efd53977b21e4df9fb3cf158e7894f600516658d9824f6df28d"
+    },
+    "shared-s44": {
+      "mode": "shared",
+      "seed": 44,
+      "job_id": "0-8204305170375966574_2026-11-26T12-07-09-624033425Z_435242_i2600-motion-shared-s44-r2.job",
+      "queue_log_sha256": "667783f2c8156ce1c98b3cd13e96c94e4d26314adb667dfc9ced1b6cd3a04ffd"
+    },
+    "per-player-s44": {
+      "mode": "per-player",
+      "seed": 44,
+      "job_id": "0-8204305169955810979_2026-11-26T12-07-10-044189020Z_435341_i2600-motion-per-player-s44-r2.job",
+      "queue_log_sha256": "8c29aab1ab8d381a2325f65807222b507b756c65a14e1ce482fca0ff19eab366"
+    },
+    "set-attention-s44": {
+      "mode": "set-attention",
+      "seed": 44,
+      "job_id": "0-8204305169538048816_2026-11-26T12-07-10-461951183Z_435450_i2600-motion-set-attention-s44-r2.job",
+      "queue_log_sha256": "1b10a84c170871b5ad6616f8e635cdeb12efefe8587b2d625ceeb84454a341bb"
+    }
+  }
+}

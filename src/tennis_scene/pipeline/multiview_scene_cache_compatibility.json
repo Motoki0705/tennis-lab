@@ -1,0 +1,85 @@
+{
+  "baseline_commit": "497195ff38ac8bbe49baefac64cffddd64515ba7",
+  "files": {
+    "submodules/configuration.py": {
+      "before": "e3dda479d67402a1e6135f00d2dc85e78f2b98c915e34b9bfdbd0d23ca7504fb",
+      "after": "a56d5481f0100531bbf7744bdefed6959f5414bd3e289bf64a5436a54b22b859"
+    },
+    "tennis_scene/multiview_scene/__init__.py": {
+      "before": null,
+      "after": "9d498a5882ff0e98bf56f5fcd519f43c81695794707ee2cda373773f53d404eb"
+    },
+    "tennis_scene/multiview_scene/__main__.py": {
+      "before": null,
+      "after": "00ae2b507b340cebfdfb478e53983e509308f168e51b28bfbfa1e440b14c3932"
+    },
+    "tennis_scene/multiview_scene/configuration.py": {
+      "before": null,
+      "after": "804e742ad5c6e5bc49ec04dc3deee9473aadf8e0effe4a515b62110038396764"
+    },
+    "tennis_scene/multiview_scene/inputs.py": {
+      "before": null,
+      "after": "879ccb36989c6559e69c19c47013855da3bc9a11ae1902989dd8e5abaf712433"
+    },
+    "tennis_scene/multiview_scene/publication.py": {
+      "before": null,
+      "after": "68e7ad93788240a58ba7b3f4f52c0cb8840dfd12cb5c48aee54e652f8a9b71df"
+    },
+    "tennis_scene/multiview_scene/recipe.py": {
+      "before": null,
+      "after": "e9e9239bed06cffcc05d96dc8aae9c771ce84151dbd67d32887946da5376d269"
+    },
+    "tennis_scene/multiview_scene/report.py": {
+      "before": null,
+      "after": "e39de2a7c636d1dfa48789b1f765c549db64fa42e6d1e799c58b9c65988d14ec"
+    },
+    "tennis_scene/pipeline/components/body_placement.py": {
+      "before": "c6a4be4f823a58912a26b182984ca916a962d96a7ef2c0cf03f71493a3f10b26",
+      "after": "64976ef796754d05b56f4725f789121c6f72bb90274f467d6a0acc269f911a46"
+    },
+    "tennis_scene/pipeline/components/gvhmr.py": {
+      "before": "ac26710baf72b267f81e61dfbf1237f8013aad0e8a4590e570bcfb590a05b01f",
+      "after": "a7b5d3e85e129e39422e2799ea898338dbad0a28301bb6b20150c60503c1acdf"
+    },
+    "tennis_scene/pipeline/components/hmr2_features.py": {
+      "before": "5828baa2b605421582f42a027aaf21c3fdf6f7037b6e5dc8c65adadcb9ac85ab",
+      "after": "fb0e83b71292d397c3f6468e8c80c3552e2e9460ab0ab80c090cfcc239dc094a"
+    },
+    "tennis_scene/pipeline/model_assets.py": {
+      "before": "d45b33c087ff0abf059de95e66f4a4c5badf86dd455604e03d1b6c9f61ce0615",
+      "after": "d864d54eaa61483e98263ae790b299e21334ae7dd6c3b824ce0c6d8c3ae7fa61"
+    },
+    "tennis_scene/pipeline/model_resources.py": {
+      "before": "024d92addcdbad69f3b0c121c13c6d6d16c546e497c7235fb8ca7ad8fe2bf5af",
+      "after": "3be5cdaeeb41d17d07509969f26ee0ac7e36466528c1589192cb9cd9cd8c8249"
+    },
+    "tennis_scene/pipeline/source_identity.py": {
+      "before": "1c4b2e280a2bd2946e1a25b9454d0cf91194ffdb502b8ee476516ad3608c689e",
+      "after": "cea24607d54b6d8e876539e5098be261e4b93765002c47d18858d2608bb40585"
+    },
+    "tennis_scene/visualization/pose_comparison/__main__.py": {
+      "before": "9cb8de9ed79a44acadbe551594b6c7dc0d2faea0f0d360a77067e6accb872a63",
+      "after": "90b864a5afc94e745857385073e869c40fe7a2275f042c11a8ac1e9f7b868732"
+    },
+    "tennis_scene/visualization/pose_comparison/inputs.py": {
+      "before": "bb6062bb38b6f208dfb313a65a82a383f8db751c788a982a670d26cdf207760a",
+      "after": "12373ae0af9f3aedeafeb775308f6d5388e4c1d023276efd6181f3663ef221b9"
+    },
+    "tennis_scene/visualization/pose_comparison/rendering.py": {
+      "before": "69e97d47566af5761053d0a92e761eecc3a6169a4cf73235a6ba84adb993fb78",
+      "after": "d58ac5fd760f42e76a2a2fd09a41ff37e0677c76c8aede26ae59f78cdda832e2"
+    },
+    "tennis_scene/visualization/pose_comparison/report.py": {
+      "before": "a811488f998c3b46de57268787fe64a7d70ada34ebd6aafffdf3420e446436f5",
+      "after": "e293fbf7de1eb9ff253f4f08ae527afa6e3f3ef3b9652e5db7478426bf619dbf"
+    },
+    "tennis_scene/visualization/review/store.py": {
+      "before": "03d8d2aff84ae46b29ba001f5dbea7a8927cfab5ab31ec105e63728606e6ff87",
+      "after": "3b0202ee56fb0d5a101bbf3d3df3ad7cb51b3b70792bae7d79937c63d11a5ce5"
+    },
+    "utils/configuration/inventory.py": {
+      "before": "aa81f9f01b4254e26706f367b69e0e9c7c88cd5c7b216cb411a0c854608c3933",
+      "after": "95b4cd05267ed635be8af4d581eb9d38cf7efc69a0cbb300fce72fccca8ba0e4"
+    }
+  }
+}

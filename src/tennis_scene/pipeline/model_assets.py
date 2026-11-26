@@ -8,7 +8,11 @@ from functools import lru_cache
 from pathlib import Path
 from typing import Any
 
-from src.submodules.configuration import SmplAssetPaths, SubmoduleRuntimeConfig
+from src.submodules.configuration import (
+    BodyRuntimeConfig,
+    SmplAssetPaths,
+    SubmoduleRuntimeConfig,
+)
 from src.utils.checksum import dual_sha256
 
 
@@ -91,10 +95,32 @@ class PeopleModelConfig:
             raise ValueError("Automatic reconstruction currently requires static cameras")
 
     def body_assets(self) -> dict[str, Path]:
-        """Every file the GVHMR body recovery and SMPL placement read."""
-        return {
-            "hmr2": self.hmr2_checkpoint,
-            "gvhmr": self.gvhmr_checkpoint,
-            "body_model": self.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz",
-            **{f"smpl_{field.name}": getattr(self.smpl_assets, field.name) for field in fields(self.smpl_assets)},
-        }
+        return _body_assets(self)
+
+
+@dataclass(frozen=True)
+class BodyModelConfig:
+    """Asset and runtime inputs for the HMR2, GVHMR, and placement stages."""
+
+    hmr2_checkpoint: Path
+    gvhmr_checkpoint: Path
+    body_models_dir: Path
+    smpl_assets: SmplAssetPaths
+    runtime: BodyRuntimeConfig
+
+    def __post_init__(self) -> None:
+        if not self.runtime.static_cam:
+            raise ValueError("Automatic reconstruction currently requires static cameras")
+
+    def body_assets(self) -> dict[str, Path]:
+        return _body_assets(self)
+
+
+def _body_assets(config: BodyModelConfig | PeopleModelConfig) -> dict[str, Path]:
+    """Every file the GVHMR body recovery and SMPL placement read."""
+    return {
+        "hmr2": config.hmr2_checkpoint,
+        "gvhmr": config.gvhmr_checkpoint,
+        "body_model": config.body_models_dir / "smplx" / "SMPLX_NEUTRAL.npz",
+        **{f"smpl_{field.name}": getattr(config.smpl_assets, field.name) for field in fields(config.smpl_assets)},
+    }

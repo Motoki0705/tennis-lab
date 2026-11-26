@@ -94,7 +94,13 @@ def test_saved_features_exactly_match_pre_split_tracking_selection_and_gsi(tmp_p
                 'origin_rows': selected.origin_rows, 'group_detection_rows': selected.tracks.evidence.detection_rows}.items():
             np.testing.assert_array_equal(values, expected[name], err_msg=name)
     frozen = json.loads((FIXTURES / 'person-selection-before-split.json').read_text())
-    assert selected.diagnostics == frozen['diagnostics']
+    expected_diagnostics = frozen['diagnostics']
+    # Both fixture tracks are inside the old core. Widening only adds the recorded geometry here.
+    expected_diagnostics['rule']['core_half_width_m'] = 5.485
+    expected_diagnostics['linking']['region'] = {
+        'core_half_width_m': 5.485, 'corridor_half_width_m': 5.485, 'baseline_limit_m': 16.885,
+    }
+    assert selected.diagnostics == expected_diagnostics
     # Running another camera/clip cannot inherit tracker state from this call.
     np.testing.assert_equal(asdict(component.process(inputs)), asdict(actual))
 

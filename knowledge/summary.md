@@ -1,6 +1,6 @@
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-11-25
+更新日: 2026-11-26
 
 研究トピックごとの**現在の判断**（採用中の構成とその根拠、未解決の課題、次の実験）をまとめた入口です。数値・条件・考察の正本は各[ノード](nodes/)、再現手順は[runs](runs/)にあります。2026-11-05までの日付順の記録は、[凍結アーカイブ](history/summary-2026-11-05.md)に原文のまま残しています。
 
@@ -56,15 +56,17 @@
 - **方針**（2026-10-06）: 2Dで補完した点の誤差を三角測量に伝えず、観測の不足を3Dの欠損として保持して3D側で補完します。2D Refinerは同日に廃止しました。標準pipelineにはまだ入っていません。
 - **位置補完の基準**: [イベントヘッド付き回帰](nodes/ball_refiner_3d/000011-run-i1014-3d-eventhead-regression-eventonly-s42-20261006-v1.md)はtest RMSEが全体0.158 m・欠損0.428 mで、欠損の誤差は同じ入力の線形補間より約52%低くなりました。一方で正確な観測にも約6.8 cmの誤差を生み、欠損付近の速度振動が残ります。合成データ・単一seedの結果です。
 - **物理head**（#1032）: [比較](nodes/ball_refiner_3d/000015-group-i1032-physics-heads-s42.md)では座標だけを出すモデルが最良で、場・区間初期状態のheadと教師を足すと、座標・イベントF1・物理指標がいずれも悪化しました。物理headは既定にしません。
-- **3クラスイベント**: [ネット接触を含む合成学習](nodes/ball_refiner_3d/000016-run-i2567-net-contacts-s42.md)では、固定testのF1がショット0.932、バウンド0.986、ネット接触0.857でした。明治4カメラのmultiview-v2では、1クリップで元フレームを保った推論を確認しました。実映像の精度は#2542の独立ラベルで評価します。
+- **3クラスイベント**　[ネット接触を含む合成学習](nodes/ball_refiner_3d/000016-run-i2567-net-contacts-s42.md)の固定test F1は打球0.932・バウンド0.986・ネット0.857。明治4カメラの固定testではSet Attentionの全イベントmacro-F1は0.679、球のみは0.669。独立6本はShared 0.570、球のみ0.501、Set Attention 0.487。追加学習の全9 runでv3打球F1が上がった。Set Attentionを追加検証候補とし、置換は保留。 [明治4カメラの固定test](nodes/ball_refiner_3d/000027-group-i2600-motion-fusion.md)
 - **次の実験**: loss係数、観測へのアンカー、区間分割の改善のどれを試すかはユーザーの判断待ちです。同じ入力・L1・GANなしで、イベント教師の有無も比べます。
 
 ## 人物（player_detection・person_tracking・player_association）
 
 - **現行**: 2D検出はCOCO事前学習のDINO（personクラス、全画面、閾値.30）で全人物の候補を出し、選手かどうかはコート座標での滞在で判定します（#964のユーザー判断）。追跡はStrongSORT++＋pose/CLIPで、重複boxの統合は既定でoffです（[run 11](nodes/person_tracking/000013-run-i964-default-merge-r11-20260930.md)）。camera間の対応は、box下端の足元距離とCLIP-ReIDの外観をMILPで統合し、無ラベルclipで再較正した候補Aを既定にしました（[run 14](nodes/player_association/000005-run-i964-recalibration-fit-r14-20261001.md)、[run 16](nodes/player_association/000006-run-i964-unseen-r16-20261001.md)）。
+- **選手選別**　全試合形式でダブルス幅・滞在25%を既定にしました。meiji_4cam全69件の保存観測を使った再生で、3D選手フレームは13,218件増え、停止は14件から11件に減りました。Meiji 3cam開発用4件の選別数は同じでした。4カメラの誤選別率は未測定です。[選別の比較](nodes/person_tracking/000014-run-i2440-player-selection.md)
 - **根拠と限界**: 追跡方式は指標ごとに優位が入れ替わり、一律の勝者はありません（[run 10](nodes/person_tracking/000012-run-i964-tracker-hybrids-r10-20260930.md)）。予約した未見3clipの一回採点はpair F1 .720（3clip中2clipで決定）で、side欠測のclipも母数に残しています。旧追跡でのMeiji 4clip評価（[pair F1 0.997](nodes/player_association/000002-run-i933-association-meiji.md)）は、旧検出・旧追跡に限った結果です。AFLinkの重みは、利用条件が一次資料で未確認のまま使っています（[LICENSES.md](../LICENSES.md)）。
 - **検出・統合姿勢の置換候補**　固定Meiji 4camの6 clipでRF-DETR-L TRT16はRecall@0.50が96.81%、計時P50が26.43 ms/画像でした。DINO TRT16は96.67%、94.79 ms/画像です。ECDet-X O365 PT16はRecall@0.50/0.75が97.97%/46.62%、計時P50は50.75 ms/画像でした。検出候補の実BBoxを使ったViTPose-Hと下流品質の確認が残ります。ECPoseは高速で、欠測込み平均OKSは大きく低下しました。 [比較と採用時の制約](nodes/player_detection/000011-run-meiji-player-model-comparison.md)
 - **次の実験**: clip_000の全pipelineでの品質確認と、ダブルスの実データでの検証。#937で学習した選手検出器は、明示的なcheckpoint指定のときだけ使います。
+- **後続の方針**　既存経路での再構成は #2460 のパイロットまでとし、#2445 の3D軌跡による選手選別は新経路の #2470 に統合します。[担当親の方針](https://github.com/Motoki0705/tennis-lab/issues/1739#issuecomment-7184189944)
 
 ## コートside（court_side）
 

@@ -100,7 +100,7 @@
           <tbody id="metrics"></tbody>
         </table>
       </div>
-      <p class="note muted">分母は間引き前の元フレームです。3D被覆は有効な3D関節のある骨格が1体以上ある割合です。人数とコア内人数はフレーム数で集計します。新経路にはコート外の人物も含まれます。</p>
+      <p id="coverage-note" class="note muted"></p>
       <p class="note muted">旧経路の時間は初回の実行済みノードの合計（並行区間を含む）、新経路は保存済み2D観測からの骨格復元と割当です。未使用視点への再投影は、対応する2D関節があり、その3D関節の復元でinlierに入らなかった視点で集計します。点数は集計に使った関節と視点の組数です。</p>
     </section>
     <section class="card block" aria-labelledby="details-title">
@@ -122,6 +122,7 @@
   const stageSelect = get('stage');
   const number = new Intl.NumberFormat('ja-JP');
   const count = value => number.format(value);
+  let seekTime = 0;
 
   function legendMark(text, color, label) {
     const item = document.createElement('span');
@@ -133,14 +134,32 @@
     return item;
   }
 
-  const core = document.createElement('span');
-  const swatch = document.createElement('i');
-  swatch.className = 'swatch';
-  core.append(swatch, 'コア領域 |x| ≤ 5.485 m・|y| ≤ 16.885 m');
-  get('legend').append(core, legendMark('?', manifest.legend.ambiguous, '割当の接戦'),
-    legendMark('●', manifest.legend.ball, '両側で共有するボール3D'));
-  for (const row of manifest.legend.unassigned) {
-    get('legend').append(legendMark(row.letter, row.color, `未割当・${row.label}`));
+  function showLegend(tracked) {
+    const legend = get('legend');
+    const core = document.createElement('span');
+    const swatch = document.createElement('i');
+    swatch.className = 'swatch';
+    core.append(swatch, 'コア領域 |x| ≤ 5.485 m・|y| ≤ 16.885 m');
+    legend.replaceChildren(core, legendMark('●', manifest.legend.ball, '両側で共有するボール3D'));
+    const {ambiguous, track} = manifest.legend;
+    if (tracked) {
+      legend.append(
+        legendMark('P', track.selected, '選別された選手'),
+        legendMark('T', track.unselected, '選外の人物'),
+        legendMark('━', track.selected, '観測による3D'),
+        legendMark('~', track.selected, '遮蔽中の補間（破線・中空の点）'),
+        legendMark('+', track.selected, 'ID生成'),
+        legendMark('R', track.selected, '再出現'),
+        legendMark('X', track.selected, '消失（上面図の最後の位置）'),
+        legendMark('A?', ambiguous, '同フレームの観測割当の接戦'),
+        legendMark('ID?', ambiguous, '時間IDの接戦'),
+      );
+    } else {
+      legend.append(legendMark('?', ambiguous, '割当の接戦'));
+    }
+    for (const row of manifest.legend.unassigned) {
+      legend.append(legendMark(row.letter, row.color, `未割当・${row.label}`));
+    }
   }
 
   function metric(label, left, right) {
@@ -182,12 +201,14 @@
     get('details').append(title, value);
   }
 
-  function showClip() {
+  function showClip(startAt = 0) {
     const stage = manifest.stages[stageSelect.selectedIndex];
     const clip = stage.clips[clipSelect.selectedIndex];
+    const tracked = stage.id === 'stage2';
     const {legacy, new: current, source_frames: frames, ball_valid_frames: ball} = clip.metrics;
     get('video-error').hidden = true;
     video.pause();
+    seekTime = startAt;
     video.poster = clip.poster;
     video.src = clip.video;
     get('open-video').href = clip.video;
@@ -210,33 +231,61 @@
       return `中央値 ${stats.median_px.toFixed(1)} px${p95}（${count(stats.points)}点）`;
     };
     const oldStatus = legacy.status === 'stopped' ? `停止 · ${legacy.baseline_stop_label}` : '生成済み';
-    get('metrics').replaceChildren(
-      metric('人物再構成', oldStatus, current.status === 'complete' ? '出力あり' : '停止'),
+    const newStatus = tracked
+      ? (current.status === 'complete' ? '選別済み' : `選別人数不足（−Y ${current.missing_per_side[0]}人・+Y ${current.missing_per_side[1]}人）`)
+      : '出力あり';
+    const newTime = tracked
+      ? `復元と割当 ${current.reconstruction_seconds.toFixed(2)}秒、追跡と保存 ${current.tracking_seconds.toFixed(2)}秒`
+      : `${current.reconstruction_seconds.toFixed(2)}秒`;
+    const rows = [
+      metric('人物再構成', oldStatus, newStatus),
       metric('3D被覆', coverage(legacy.populated_frames), coverage(current.populated_frames)),
       metric('骨格数の分布', distribution(legacy.count_histogram), distribution(current.count_histogram)),
       metric('コア内骨格数の分布', distribution(legacy.core_count_histogram), distribution(current.core_count_histogram)),
       metric('未使用視点への再投影', projection(legacy.unused_view_reprojection), projection(current.unused_view_reprojection)),
-      metric('処理時間', `${legacy.node_seconds.toFixed(2)}秒`, `${current.reconstruction_seconds.toFixed(2)}秒`),
-      metric('接戦のあるフレーム', '—', coverage(current.ambiguous_frames)),
-    );
+      metric('処理時間', `${legacy.node_seconds.toFixed(2)}秒`, newTime),
+      metric('観測割当の接戦', '—', coverage(current.ambiguous_frames)),
+    ];
+    if (tracked) {
+      const people = (histogram, n) => coverage(histogram[n] ?? 0);
+      rows.push(
+        metric(`${current.lineup_size}人分の観測による3D`, people(legacy.count_histogram, current.lineup_size), coverage(current.lineup_measured_frames)),
+        metric(`${current.lineup_size}人分の3D（補間込み）`, '—', coverage(current.lineup_available_frames)),
+        metric('補間した選手がいるフレーム', '—', coverage(current.interpolated_frames)),
+        metric('時間IDの接戦', '—', coverage(current.temporal_ambiguous_frames)),
+      );
+    }
+    get('metrics').replaceChildren(...rows);
+    get('coverage-note').textContent = tracked
+      ? '3D被覆と人数分布は、観測による有効な3D関節を持つ選手を元フレームごとに数えます。接戦は全人物の元フレームで集計します。'
+      : '3D被覆は有効な3D関節のある骨格が1体以上ある割合です。新経路はコート内外の全人物候補を数えます。分母は元フレームです。';
 
     get('details').replaceChildren();
     const provenance = clip.provenance;
     const version = provenance.legacy_scene_schema_version;
     detail(`旧経路の scene_assembly ID${version ? `（出力v${version}）` : ''}`, provenance.legacy_scene_assembly?.artifact_id ?? '採用シーンなし', true);
     detail('新経路の frame_pose_candidates ID', provenance.candidate_artifact.artifact_id, true);
+    if (tracked) {
+      detail('新経路の multiview_pose_tracks ID', provenance.tracking_artifact.artifact_id, true);
+      const namePlayers = ids => ids.map(id => `P${id}`).join('、') || 'なし';
+      const [negative, positive] = current.selected_by_side;
+      detail('選別ID', `−Y ${namePlayers(negative)} ／ +Y ${namePlayers(positive)}`);
+      const {events, endings} = current;
+      detail('追跡イベント（全ID）', `生成 ${count(events.BORN)}、再出現 ${count(events.REAPPEARED)}、消失 ${count(endings.DISAPPEARED)}、clip末端 ${count(endings.CLIP_BOUNDARY)}`);
+    }
     detail('ボール3D', ball > 0 ? `採用シーンから両側に表示 · ${coverage(ball)}` : '採用シーンに有効な3D球なし');
     detail('動画', `${count(clip.video_frames)} f · ${clip.video_fps.toFixed(2)} fps · ${(clip.video_bytes / 1e6).toFixed(2)} MB`);
     get('stop-details').hidden = legacy.baseline_stop_code === null;
     get('stop').textContent = [legacy.baseline_stop_code, legacy.baseline_error].filter(Boolean).join(' · ');
   }
 
-  function showStage() {
+  function showStage(startAt = 0) {
     const selected = clipSelect.value;
     const stage = manifest.stages[stageSelect.selectedIndex];
     const {selection} = manifest;
     get('stage-name').textContent = stage.label;
     get('intro').textContent = `${stage.clips.length} clipの4視点とコート上面図を同期再生します。${stage.description}`;
+    showLegend(stage.id === 'stage2');
     clipSelect.replaceChildren(...stage.clips.map(clip => new Option(
       `${clip.id.split('/').at(-1)} · ${clip.metrics.legacy.baseline_stop_code ? '初回停止' : '無作為抽出'}`, clip.id)));
     if (stage.clips.some(clip => clip.id === selected)) clipSelect.value = selected;
@@ -244,16 +293,18 @@
     const {encoding} = stage;
     video.style.aspectRatio = `${encoding.width} / ${encoding.height}`;
     get('selection').textContent = `初回に停止した${selection.stopped.length}本と、成功${selection.success_population}本を名前順に並べてseed ${selection.seed}で抽出した${successes}。H.264 ${encoding.width}×${encoding.height}、元の${encoding.frame_step}フレームごと、CRF ${encoding.crf}。`;
-    showClip();
+    showClip(startAt);
   }
 
   stageSelect.replaceChildren(...manifest.stages.map(stage => new Option(stage.label, stage.id)));
+  stageSelect.selectedIndex = manifest.stages.length - 1;
   get('stage-field').hidden = manifest.stages.length < 2;
   get('stage-name').hidden = manifest.stages.length > 1;
-  stageSelect.addEventListener('change', showStage);
-  clipSelect.addEventListener('change', showClip);
+  stageSelect.addEventListener('change', () => showStage(video.readyState ? video.currentTime : seekTime));
+  clipSelect.addEventListener('change', () => showClip());
   get('previous').addEventListener('click', () => { clipSelect.selectedIndex -= 1; showClip(); });
   get('next').addEventListener('click', () => { clipSelect.selectedIndex += 1; showClip(); });
+  video.addEventListener('loadedmetadata', () => { video.currentTime = Math.min(seekTime, video.duration); });
   video.addEventListener('error', () => {
     const message = get('video-error');
     message.textContent = '動画を読み込めません。同じフォルダの動画ファイルとH.264の再生環境を確認してください。';
