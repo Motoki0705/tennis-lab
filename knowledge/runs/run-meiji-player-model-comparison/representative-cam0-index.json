@@ -1,0 +1,123 @@
+{
+  "display_score_inclusive": 0.3,
+  "evaluation": {
+    "eligible_boxes": 26276,
+    "id": "meiji_4cam/multiview-player-evaluation-v1",
+    "images": 6844,
+    "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364",
+    "sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580"
+  },
+  "images": [
+    {
+      "boxes_displayed": {
+        "dino-swin-l-vitpose-h/trt16": 11,
+        "ecdet-l-o365/pt32": 10,
+        "reference": 4,
+        "rfdetr-l/trt16": 10
+      },
+      "camera_id": "cam0",
+      "clip_id": "video_000/clip_003",
+      "height": 1148,
+      "path": "clip_003-cam0.png",
+      "sha256": "a40bec9cebaea0b01cd8e7e661a0cd7ebab2e6dcca4648b51c89988838faff4a",
+      "source_frame": 120,
+      "source_video_sha256": "a91275dfed5bcc79a9bc32fce558c7b349210dce2f45d0bd97a6af95ba666d82",
+      "width": 1920
+    },
+    {
+      "boxes_displayed": {
+        "dino-swin-l-vitpose-h/trt16": 10,
+        "ecdet-l-o365/pt32": 10,
+        "reference": 4,
+        "rfdetr-l/trt16": 11
+      },
+      "camera_id": "cam0",
+      "clip_id": "video_000/clip_057",
+      "height": 1148,
+      "path": "clip_057-cam0.png",
+      "sha256": "255578cf34dabee55c3dabab4a370f78cf812cede60f55df05b6bcba251ddb08",
+      "source_frame": 142,
+      "source_video_sha256": "51f44cb2ec1081e0cfb3b32579425eec44d82ffa7386962bfbd80f03c2daff85",
+      "width": 1920
+    },
+    {
+      "boxes_displayed": {
+        "dino-swin-l-vitpose-h/trt16": 11,
+        "ecdet-l-o365/pt32": 10,
+        "reference": 4,
+        "rfdetr-l/trt16": 10
+      },
+      "camera_id": "cam0",
+      "clip_id": "video_000/clip_004",
+      "height": 1148,
+      "path": "clip_004-cam0.png",
+      "sha256": "044da8e4aae137c03e7e20dcbe3ed6062955bf2ef7a54cd3d0b1742d81f473ac",
+      "source_frame": 294,
+      "source_video_sha256": "7c44f56b1588f973a8ae76bbc583631fab3c33fd3085d0cc09bfe680ae9e90e7",
+      "width": 1920
+    },
+    {
+      "boxes_displayed": {
+        "dino-swin-l-vitpose-h/trt16": 11,
+        "ecdet-l-o365/pt32": 11,
+        "reference": 4,
+        "rfdetr-l/trt16": 10
+      },
+      "camera_id": "cam0",
+      "clip_id": "video_000/clip_013",
+      "height": 1148,
+      "path": "clip_013-cam0.png",
+      "sha256": "f61c8e2a74d519eb75eba81fa24e654e0bfceb1235533c1b88e7f09ff85cb0e7",
+      "source_frame": 234,
+      "source_video_sha256": "a4b9856df4f864df8165f963a3437b60c18864705f982dea350cb6b726e2fdd0",
+      "width": 1920
+    },
+    {
+      "boxes_displayed": {
+        "dino-swin-l-vitpose-h/trt16": 9,
+        "ecdet-l-o365/pt32": 10,
+        "reference": 4,
+        "rfdetr-l/trt16": 10
+      },
+      "camera_id": "cam0",
+      "clip_id": "video_000/clip_040",
+      "height": 1148,
+      "path": "clip_040-cam0.png",
+      "sha256": "0a95a8f9871e5991aa6d638a9f882ad4a067673e6729d38bb46920428ade2165",
+      "source_frame": 208,
+      "source_video_sha256": "c2a60bb60eb783233bac26200b38647578057fc38fdcf2c6404c3152f67ff6c2",
+      "width": 1920
+    },
+    {
+      "boxes_displayed": {
+        "dino-swin-l-vitpose-h/trt16": 11,
+        "ecdet-l-o365/pt32": 7,
+        "reference": 4,
+        "rfdetr-l/trt16": 8
+      },
+      "camera_id": "cam0",
+      "clip_id": "video_000/clip_028",
+      "height": 1148,
+      "path": "clip_028-cam0.png",
+      "sha256": "85d345f59c866f6093498818c2da1a81274098b00b49b1871c9dcce6b2b59a57",
+      "source_frame": 643,
+      "source_video_sha256": "b97d8a24f2a9eca7a73f6c3645ebcb8ee4fe952dcd7efb05a1050e393d916977",
+      "width": 1920
+    }
+  ],
+  "predictions": {
+    "dino-swin-l-vitpose-h/trt16": {
+      "path": "parent-2492-issue-2487-primary/player-model-comparison/dino-swin-l-vitpose-h/trt16/predictions.jsonl",
+      "sha256": "3b8f03e27c7a9f2f15327ec4788841b65d4eb977a58cdb4a12ab3f0034cb4dae"
+    },
+    "ecdet-l-o365/pt32": {
+      "path": "parent-2492-issue-2487-edgecrafter/player-model-comparison/ecdet-l-o365/pt32/predictions.jsonl",
+      "sha256": "9f159d7bad3c83d7c24f59c0c346d9aa45cad62edc25ce70f62f2c3c2100d272"
+    },
+    "rfdetr-l/trt16": {
+      "path": "parent-2492-issue-2487-rfdetr/player-model-comparison/rfdetr-l/trt16/predictions.jsonl",
+      "sha256": "fc94b4ab47216d9799242bb3d82f44d97bf35bc248a89ea627bedad9dec1b11a"
+    }
+  },
+  "directory": "outputs/player-model-comparison/representative-cam0"
+}

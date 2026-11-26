@@ -11,16 +11,27 @@ import torch
 
 from src.tasks.ball_refiner_3d.configuration.core import parse_section
 from src.tasks.ball_refiner_3d.configuration.model import ModelConfig
+from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
 from src.tasks.ball_refiner_3d.model_io.factory import RefinerModel, build_refiner
 from src.tasks.ball_refiner_3d.physics.targets import FlightClock
 
-CHECKPOINT_SCHEMA = "ball_refiner_3d.events.v1"
+CHECKPOINT_SCHEMA = "ball_refiner_3d.events.v3"
+LEGACY_EVENT_SCHEMAS = {"ball_refiner_3d.events.v1", "ball_refiner_3d.events.v2"}
 
 
 def checkpoint_model_config(payload: dict[str, Any]) -> ModelConfig:
-    if payload.get("schema") not in {CHECKPOINT_SCHEMA, "ball_refiner_3d.events.v2"}:
+    schema = payload.get("schema")
+    if schema in LEGACY_EVENT_SCHEMAS:
         raise ValueError(
-            "Require a 3D event-head checkpoint; older coordinate/GMM checkpoints are incompatible"
+            f"{schema} has one event channel; require a three-class {CHECKPOINT_SCHEMA} checkpoint"
+        )
+    if schema != CHECKPOINT_SCHEMA:
+        raise ValueError(
+            f"Require a 3D event-head checkpoint with schema {CHECKPOINT_SCHEMA}"
+        )
+    if payload.get("event_classes") != list(EVENT_CLASSES):
+        raise ValueError(
+            f"Checkpoint event_classes must be {list(EVENT_CLASSES)} in order"
         )
     sigma = payload.get("event_sigma_frames")
     if (
@@ -30,25 +41,7 @@ def checkpoint_model_config(payload: dict[str, Any]) -> ModelConfig:
         or sigma <= 0
     ):
         raise ValueError("Checkpoint requires positive finite event_sigma_frames")
-    config: ModelConfig = parse_section(
-        ModelConfig, upgrade_model_config(payload["model_config"])
-    )
-    return config
-
-
-def upgrade_model_config(raw: dict[str, Any]) -> dict[str, Any]:
-    """Read model configs saved before physics heads (#1032) explicitly.
-
-    They carry ``window_length``, which became a data setting when inference
-    moved to whole clips, and have no physics heads.
-    """
-    if "physics_heads" in raw:
-        return raw
-    if "window_length" not in raw:
-        raise ValueError("Unrecognized refiner model configuration")
-    upgraded = {key: value for key, value in raw.items() if key != "window_length"}
-    upgraded["physics_heads"] = False
-    return upgraded
+    return parse_section(ModelConfig, payload["model_config"])
 
 
 def load_checkpoint(
@@ -57,7 +50,11 @@ def load_checkpoint(
     payload = torch.load(path, map_location="cpu", weights_only=True)
     config = checkpoint_model_config(payload)
     model: RefinerModel = build_refiner(config)
-    if payload["schema"] == CHECKPOINT_SCHEMA:
+    if ("model" in payload) == ("state_dict" in payload):
+        raise ValueError(
+            "Checkpoint must contain either model or Lightning state_dict weights"
+        )
+    if "model" in payload:
         state = payload["model"]
     else:
         state = {
@@ -85,9 +82,10 @@ def checkpoint_metadata(
         "schema": CHECKPOINT_SCHEMA,
         "flight_clock": asdict(clock),
         "model_config": asdict(model.config),
+        "event_classes": list(EVENT_CLASSES),
         "event_sigma_frames": event_sigma_frames,
         "input_contract": "3D coordinates + missing boolean only; true=missing",
-        "output_contract": "one all-frame 3D trajectory + per-frame softmax(no-event,event) probability"
+        "output_contract": "one all-frame 3D trajectory + independent per-frame (shot,bounce,net) probabilities"
         + (
             " + rally field/surface and flight-segment initial states"
             if model.config.physics_heads

@@ -74,11 +74,25 @@ def build_coco17_world_targets(scene: dict[str, Any]) -> np.ndarray:
         kp = np.asarray(scene["human_kp_3d"], dtype=np.float32)
         if kp.ndim == 2:
             kp = kp[None, ...]
+        if kp.ndim != 3 or kp.shape[1:] != (17, 3):
+            raise ValueError(
+                f"PLCS scene human_kp_3d must have shape (T, 17, 3), got {kp.shape}."
+            )
+        if not np.isfinite(kp).all():
+            raise ValueError("PLCS scene human_kp_3d contains NaN or infinity.")
         return cast(np.ndarray, kp)
 
     canonical = np.asarray(scene["canonical_pose_3d"], dtype=np.float32)
     if canonical.ndim == 2:
         canonical = canonical[None, ...]
+    if canonical.ndim != 3 or canonical.shape[2] != 3 or canonical.shape[1] < 22:
+        raise ValueError(
+            "build_coco17_world_targets requires explicit 'human_kp_3d' (T, 17, 3) "
+            "or SMPL-H 'canonical_pose_3d' with >=22 joints; got canonical_pose_3d "
+            f"shape {canonical.shape}."
+        )
+    if not np.isfinite(canonical).all():
+        raise ValueError("PLCS scene canonical_pose_3d contains NaN or infinity.")
 
     position_norm = np.asarray(scene["position"], dtype=np.float32)
     if position_norm.ndim == 1:

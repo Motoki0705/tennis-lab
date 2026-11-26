@@ -285,6 +285,9 @@ def controller_seed(tmp_path_factory: pytest.TempPathFactory) -> DirectorySeed:
     (repo / ".gitignore").write_text("*.ignored\n")
     (repo / "history.txt").write_text("previous commit\n")
     git(repo, "init", "-q", "-b", "main")
+    # Seed capture can start as soon as Git returns from the last commit.
+    git(repo, "config", "maintenance.autoDetach", "false")
+    git(repo, "config", "gc.autoDetach", "false")
     git(repo, "config", "user.name", "test")
     git(repo, "config", "user.email", "test@example.org")
     git(repo, "remote", "add", "origin", "https://github.com/o/r.git")

@@ -1,0 +1,77 @@
+{
+  "scorer_commit": "0d4bf0990f82ae0b8ebf2afe08d3209e583d2364",
+  "benchmark_id": "meiji_4cam/multiview-player-evaluation-v1",
+  "manifest_sha256": "3dc496513380a39d4511ff7f8711f4192eababa5109f6a0506f88a60baa70580",
+  "conditions": [
+    {
+      "accuracy_path": "outputs/player-model-comparison/rescored-0d4bf0990/dino-swin-l/trt16/accuracy.json",
+      "accuracy_sha256": "618778689cd87d0b07b61fd57551ce93a7a4b73487dde4f987717785bef8333b",
+      "all_numeric_aggregates_match_previous_report": true,
+      "backend": "trt16",
+      "images": 6844,
+      "mean_oks_with_detection_coverage": null,
+      "model_id": "dino-swin-l",
+      "predictions_sha256": "71b43453c7c49d1372197369c7274aa94da13c82a8344e5e74fb0f387cff992d",
+      "recall_by_iou": {
+        "0.50": 0.9666996498706043,
+        "0.75": 0.4706576343431268
+      }
+    },
+    {
+      "accuracy_path": "outputs/player-model-comparison/rescored-0d4bf0990/dino-swin-l-vitpose-h/trt16/accuracy.json",
+      "accuracy_sha256": "ddc220c8e4c3e0710b345ec80d5748404504c3c7fbeb499d236c33d59a9407ff",
+      "all_numeric_aggregates_match_previous_report": true,
+      "backend": "trt16",
+      "images": 6844,
+      "mean_oks_with_detection_coverage": 0.7631165005027198,
+      "model_id": "dino-swin-l-vitpose-h",
+      "predictions_sha256": "3b8f03e27c7a9f2f15327ec4788841b65d4eb977a58cdb4a12ab3f0034cb4dae",
+      "recall_by_iou": {
+        "0.50": 0.9666996498706043,
+        "0.75": 0.4706576343431268
+      }
+    },
+    {
+      "accuracy_path": "outputs/player-model-comparison/rescored-0d4bf0990/rfdetr-l/pt16/accuracy.json",
+      "accuracy_sha256": "26339a5488589d429e13afef6952d96b87b9b0a83d2bf10d5f828574f9b07f84",
+      "all_numeric_aggregates_match_previous_report": true,
+      "backend": "pt16",
+      "images": 6844,
+      "mean_oks_with_detection_coverage": null,
+      "model_id": "rfdetr-l",
+      "predictions_sha256": "d9021ee4c51b4845d4c48701c791a93656fc8fa53e6f6ae90c02ecc2fe0dad43",
+      "recall_by_iou": {
+        "0.50": 0.9681838940478003,
+        "0.75": 0.4203075049474806
+      }
+    },
+    {
+      "accuracy_path": "outputs/player-model-comparison/rescored-0d4bf0990/rfdetr-l/pt32/accuracy.json",
+      "accuracy_sha256": "ed529082551deeaf049622a259998a7612e918d3d52c0e50922f7871c112682c",
+      "all_numeric_aggregates_match_previous_report": true,
+      "backend": "pt32",
+      "images": 6844,
+      "mean_oks_with_detection_coverage": null,
+      "model_id": "rfdetr-l",
+      "predictions_sha256": "b8762e75d80e33ad32fc574687062a70998c753dcb29b10327622723d87cdbed",
+      "recall_by_iou": {
+        "0.50": 0.9680697214187852,
+        "0.75": 0.4206119652915208
+      }
+    },
+    {
+      "accuracy_path": "outputs/player-model-comparison/rescored-0d4bf0990/rfdetr-l/trt16/accuracy.json",
+      "accuracy_sha256": "09323e538c5938994d3bac8fb4221d34e83914cf788e7b04e69a607608eee4aa",
+      "all_numeric_aggregates_match_previous_report": true,
+      "backend": "trt16",
+      "images": 6844,
+      "mean_oks_with_detection_coverage": null,
+      "model_id": "rfdetr-l",
+      "predictions_sha256": "fc94b4ab47216d9799242bb3d82f44d97bf35bc248a89ea627bedad9dec1b11a",
+      "recall_by_iou": {
+        "0.50": 0.9681458365047952,
+        "0.75": 0.42087836809255597
+      }
+    }
+  ]
+}

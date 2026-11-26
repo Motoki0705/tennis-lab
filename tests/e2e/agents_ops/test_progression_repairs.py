@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import fcntl
 import importlib
 import json
+import sys
 from pathlib import Path
 
 import pytest
@@ -15,7 +17,7 @@ from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
 from tests.e2e.agents_ops.test_repair_workers import creating_worker
 
 
-@pytest.mark.parametrize("outcome", ["repaired", "needs_parent"])
+@pytest.mark.parametrize("outcome", ["repaired", "needs_parent", "launcher_timeout"])
 def test_live_adapter_resumes_creating_session_and_consumes_strict_report(
     reserved: ParentEnv, monkeypatch: pytest.MonkeyPatch, outcome: str
 ) -> None:
@@ -88,6 +90,47 @@ def test_live_adapter_resumes_creating_session_and_consumes_strict_report(
         "details": {"reason": "ci_failure", "job": "tests", "log": "import failed"},
     }
     before_reads = len(p.calls())
+    if outcome == "launcher_timeout":
+        runtime = importlib.import_module("parent.improvement_runtime")
+        monkeypatch.setattr(api, "MANUAL_REPAIR_TIMEOUT", 0.6)
+        monkeypatch.setattr(runtime, "REPAIR_LAUNCHER_OVERHEAD", 0.4)
+        monkeypatch.setattr(runtime, "REPAIR_TERMINATE_GRACE", 0.2)
+        lock = p.repo / ".git/ops-code.lock"
+        ready = p.root / "held-repair-lock"
+        original = api.RUNNER.with_name("ordinary-runner")
+        api.RUNNER.rename(original)
+        api.RUNNER.write_text(
+            f"#!{sys.executable}\n"
+            "import fcntl, os, pathlib, signal, sys\n"
+            "if '--repair-id' not in sys.argv:\n"
+            f"    os.execv({str(original)!r}, [{str(original)!r}, *sys.argv[1:]])\n"
+            "signal.signal(signal.SIGTERM, signal.SIG_IGN)\n"
+            f"with open({str(lock)!r}, 'a') as handle:\n"
+            "    fcntl.flock(handle, fcntl.LOCK_SH | fcntl.LOCK_NB)\n"
+            f"    pathlib.Path({str(ready)!r}).touch()\n"
+            "    signal.pause()\n"
+        )
+        api.RUNNER.chmod(0o700)
+        with pytest.raises(ValueError, match="manual repair launcher exceeded 1.0s"):
+            backend.repair(state, state["targets"]["42"], attempt)
+        assert ready.is_file()
+        with lock.open("a") as updater:
+            fcntl.flock(updater, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        current = task(p)
+        assert current["repair_attempts"]["repair-1"]["launch_state"] == "starting"
+        assert "worker_ended" not in current
+        runtime_api = importlib.import_module("dispatcher.runtime")
+        monkeypatch.setattr(
+            runtime_api.Runtime,
+            "inspect",
+            lambda *_, **__: {
+                "record": {"result": "running"},
+                "summary": {"runner_alive": False},
+            },
+        )
+        assert backend.recover_repair(state, state["targets"]["42"], attempt) is None
+        return
+
     returned = backend.repair(state, state["targets"]["42"], attempt)
     assert returned == report
     assert backend.recover_repair(state, state["targets"]["42"], attempt) == report
@@ -98,7 +141,12 @@ def test_live_adapter_resumes_creating_session_and_consumes_strict_report(
         == before["contract"]["settings"]["selected"]["model"]
     )
     assert after["contract"]["settings"]["selected"]["effort"] == "high"
-    assert len((p.root / "runner-calls.jsonl").read_text().splitlines()) == 2
+    first_call, repair_call = [
+        json.loads(line)
+        for line in (p.root / "runner-calls.jsonl").read_text().splitlines()
+    ]
+    assert "--timeout" not in first_call
+    assert repair_call[repair_call.index("--timeout") + 1] == "1800"
     assert not any(
         arg.partition("?")[0] in {"repos/o/r/issues", "repos/o/r/pulls"}
         for call in p.calls()[before_reads:]

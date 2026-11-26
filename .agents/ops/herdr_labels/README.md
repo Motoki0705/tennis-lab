@@ -97,6 +97,12 @@ agyではキャッシュされたnative参照より実際の会話ロックで�
 表示先は起動した会話のHerdr環境から確認する。表示先の初回登録や修復では、
 上のランチャーで担当会話を開き、`parent register` を実行する。
 
+担当が保存済みで表示先の確定を待っている間は、確認済みの会話の `statusLine` に
+`parent display destination is unconfirmed` と `parent register` の案内を出す。
+終了値0で次の更新を受け付け、表示先の確定は担当会話からの登録で行う。
+Herdr接続やboard状態の確認に失敗した場合は、終了値1と原因区分をstderrに返す。
+診断にはローカルの会話ID、pane ID、ソケットパスを含めない。
+
 ## Codexのclear通知
 
 Codex 0.163.0の標準`SessionStart` hookは、実機では`/clear`直後ではなく次の入力時に実行される。

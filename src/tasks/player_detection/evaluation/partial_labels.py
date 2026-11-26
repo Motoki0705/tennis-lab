@@ -22,9 +22,9 @@ from dataclasses import dataclass, field
 
 import numpy as np
 from numpy.typing import NDArray
-from scipy.optimize import linear_sum_assignment
 
 from src.tasks.player_association.evaluation.labels import AMBIGUOUS, CameraLabels
+from src.utils.geometry.bbox import match_iou as _unit_matches
 from src.utils.geometry.bbox import pairwise_iou
 
 _COUNTS = (
@@ -32,15 +32,6 @@ _COUNTS = (
     "matched_player_units", "matched_non_player_units", "duplicate_player_detections",
     "duplicate_non_player_detections", "ambiguous_detections", "unlabelled_detections",
 )
-
-
-def _unit_matches(iou: NDArray[np.float64], min_iou: float) -> tuple[NDArray[np.int64], NDArray[np.int64]]:
-    # More weight than the sum of all IoUs makes cardinality the first objective.
-    valid = iou >= min_iou
-    cost = valid * (min(iou.shape) + 1.0) + np.where(valid, iou, 0.0)
-    detections, units = linear_sum_assignment(-cost)
-    keep = valid[detections, units]
-    return detections[keep].astype(np.int64), units[keep].astype(np.int64)
 
 
 @dataclass

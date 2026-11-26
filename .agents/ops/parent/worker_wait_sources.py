@@ -1,4 +1,4 @@
-"""Read CI and training-queue results for a manual follow-up."""
+"""Read CI, training-queue, and local job results for a manual follow-up."""
 
 from __future__ import annotations
 
@@ -6,12 +6,23 @@ import re
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from dispatcher.runtime import alive
+
+from .local_jobs import (
+    log_excerpt,
+    read_completion,
+    read_log_tail,
+    read_meta,
+    read_running,
+    validate_job_id,
+)
 from .policy import object_value
 
 if TYPE_CHECKING:
     from lib.ops_review.progression_backend import LiveBackend
 
 QUEUE_COMPLETION_GRACE = 60.0
+LOCAL_COMPLETION_GRACE = 10.0
 
 
 def require_ci_target(
@@ -29,6 +40,27 @@ def require_ci_target(
         raise ValueError("CI target differs from the open PR on the reserved HEAD")
 
 
+def _conflict_result(
+    pr: int, head: str, ci: dict[str, Any], latest: dict[str, Any]
+) -> dict[str, Any]:
+    result: dict[str, Any] = {
+        "kind": "ci",
+        "pr": pr,
+        "head": head,
+        "status": "conflict",
+        "reasons": ["pr_conflict", *ci["reasons"]],
+    }
+    base = latest.get("base")
+    if base is not None:
+        base_ref = object_value(base).get("ref")
+        if isinstance(base_ref, str) and base_ref.strip():
+            result["base_ref"] = base_ref
+    mergeable_state = latest.get("mergeable_state")
+    if isinstance(mergeable_state, str) and mergeable_state.strip():
+        result["mergeable_state"] = mergeable_state
+    return result
+
+
 def ci_result(
     backend: LiveBackend, request: dict[str, Any], branch: str, *, root: Path
 ) -> dict[str, Any] | None:
@@ -38,6 +70,7 @@ def ci_result(
     ci = backend.ci(pr, head)
     if "ci_python_head_mismatch" in ci["reasons"]:
         raise ValueError("CI check was returned for a different HEAD")
+    python_missing = "ci_python_missing" in ci["reasons"]
     if ci["reasons"] and set(ci["reasons"]) <= {
         "ci_python_missing",
         "ci_python_skipped",
@@ -48,6 +81,11 @@ def ci_result(
         if comparison is not None:
             ci = knowledge_records.observe_ci(backend, current, comparison)
     if ci["status"] == "pending":
+        if python_missing and current.get("mergeable") is False:
+            latest = backend.pr(pr)
+            require_ci_target(latest, backend.repo, branch, request)
+            if latest.get("mergeable") is False:
+                return _conflict_result(pr, head, ci, latest)
         return None
     result = {
         "kind": "ci",
@@ -87,11 +125,50 @@ def ci_result(
 
 
 def _log_excerpt(log: str | None) -> str | None:
-    if not log:
+    excerpt = log_excerpt(log)
+    return None if excerpt is None else str(excerpt)
+
+
+def _format_local_completion(
+    job_dir: Path, job: str, meta: dict[str, Any], completion: dict[str, Any]
+) -> dict[str, Any]:
+    log_path = job_dir / "output.log"
+    tail = read_log_tail(log_path)
+    return {
+        "job_id": job,
+        "name": completion.get("name") or meta["name"],
+        "state": completion["state"],
+        "exit_code": completion["exit_code"],
+        "duration_seconds": completion.get("duration_seconds"),
+        "log": str(log_path) if tail is not None else None,
+        "log_excerpt": _log_excerpt(tail),
+    }
+
+
+def local_result(
+    root: Path, job: str, *, now: float, missing_completion_since: dict[str, float]
+) -> dict[str, Any] | None:
+    job = validate_job_id(job)
+    meta = read_meta(root, job)
+    job_dir = root / job
+    completion = read_completion(root, job)
+    if completion is not None:
+        missing_completion_since.pop(job, None)
+        return _format_local_completion(job_dir, job, meta, completion)
+    proc = read_running(root, job)
+    if proc is not None and alive(proc):
+        missing_completion_since.pop(job, None)
         return None
-    lines = log.splitlines()
-    errors = [line for line in lines if re.search(r"error|fail|traceback", line, re.I)]
-    return "\n".join(line[-400:] for line in (errors or lines)[-12:])
+    # The wrapper writes completion.json right before exiting; re-check once
+    # after a negative liveness probe before counting the grace window.
+    completion = read_completion(root, job)
+    if completion is not None:
+        missing_completion_since.pop(job, None)
+        return _format_local_completion(job_dir, job, meta, completion)
+    since = missing_completion_since.setdefault(job, now)
+    if now - since >= LOCAL_COMPLETION_GRACE:
+        raise ValueError(f"local job terminated without completion record: {job}")
+    return None
 
 
 def queue_result(

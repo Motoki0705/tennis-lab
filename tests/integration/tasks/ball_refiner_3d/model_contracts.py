@@ -180,11 +180,14 @@ def _assert_batch(batch: Any) -> None:
         batch["padding"].dtype == torch.bool
         and batch["missing"][batch["padding"]].all()
     )
-    assert batch["event_target"].shape == batch["padding"].shape
+    assert batch["event_target"].shape == (*batch["padding"].shape, 3)
 
 
 def _assert_prediction(output: Any) -> None:
-    assert output.coordinates.shape[-1] == 3 and output.event_logits.shape[-1] == 2
+    assert (
+        output.coordinates.shape[-1] == 3
+        and output.event_logits.shape == output.coordinates.shape
+    )
     for value in (output.coordinates, output.event_logits):
         assert value.dtype == torch.float32 and torch.isfinite(value).all()
     if output.physics is not None:

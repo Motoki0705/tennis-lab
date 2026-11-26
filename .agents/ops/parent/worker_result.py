@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Callable
 from typing import Any
 
 from lib.agent_events import parse_json
@@ -10,6 +11,17 @@ from lib.agent_events import parse_json
 PREFIX = "PARENT_RESULT"
 HEAD = re.compile(r"[0-9a-f]{40}")
 JOB = re.compile(r"(?:0-[0-9]{19}_[0-9TZ-]+_[0-9]+|[0-9]+_[0-9]+)_[A-Za-z0-9._-]+\.job")
+LOCAL_JOB = re.compile(r"[0-9]{8}T[0-9]{6}Z_[0-9a-f]{12}_[A-Za-z0-9._-]+")
+MAX_LOCAL_JOB_LEN = 200
+
+
+def is_valid_local_job_id(job: Any) -> bool:
+    return (
+        isinstance(job, str)
+        and len(job) <= MAX_LOCAL_JOB_LEN
+        and ".." not in job
+        and bool(LOCAL_JOB.fullmatch(job))
+    )
 
 
 def parse_report(text: str) -> dict[str, Any]:
@@ -38,18 +50,34 @@ def parse_report(text: str) -> dict[str, Any]:
     if wait.get("kind") == "ci":
         _validate_ci(wait)
     elif wait.get("kind") == "queue":
-        jobs = wait.get("job_ids")
-        if (
-            set(wait) != {"kind", "job_ids"}
-            or not isinstance(jobs, list)
-            or not jobs
-            or any(not isinstance(job, str) or not JOB.fullmatch(job) for job in jobs)
-            or len(set(jobs)) != len(jobs)
-        ):
-            raise ValueError(f"{PREFIX}: queue requires unique training-queue job_ids")
+        _validate_job_ids(
+            wait,
+            lambda job: isinstance(job, str) and bool(JOB.fullmatch(job)),
+            "queue requires unique training-queue job_ids",
+        )
+    elif wait.get("kind") == "local":
+        _validate_job_ids(
+            wait,
+            is_valid_local_job_id,
+            "local requires unique local job_ids",
+        )
     else:
         raise ValueError(f"{PREFIX}: unknown wait kind")
     return report
+
+
+def _validate_job_ids(
+    wait: dict[str, Any], valid_id: Callable[[Any], bool], message: str
+) -> None:
+    jobs = wait.get("job_ids")
+    if (
+        set(wait) != {"kind", "job_ids"}
+        or not isinstance(jobs, list)
+        or not jobs
+        or any(not valid_id(job) for job in jobs)
+        or len(set(jobs)) != len(jobs)
+    ):
+        raise ValueError(f"{PREFIX}: {message}")
 
 
 def _validate_ci(wait: dict[str, Any]) -> None:

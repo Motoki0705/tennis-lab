@@ -36,6 +36,7 @@ from src.utils.paths import PROJECT_ROOT
 
 _BASELINE = "dcd6534594f73cca12a45c2d9afaa8ac09d48bc7"
 _PHASE2_BASE = "603823383cd941941556cafdcbc98ff67a19f51f"
+_PHASE2_BATCHED_TRT = "a42c9f6e75ea982af391010280161ef353cd9dd5"
 # Computed through the archived main source identity contract at _PHASE2_BASE.
 _PHASE2_MAIN_FP32_CODE_SHA256 = "6022ecaab6f2e390e842acf55b258521ee372cf097a6046bcbca77e56c7e7539"
 _BASELINE_STORE = Path(__file__).with_name("fixtures") / "main_fp32_cache.tar.gz"
@@ -202,15 +203,13 @@ def _precision(precision: str) -> tuple[str, ...]:
 
 @pytest.fixture(scope="module")
 def phase2_sources() -> dict[str, str]:
-    from src.tennis_scene.pipeline import source_identity
-
     with gzip.open(_PHASE2_SOURCE_BASELINE, "rt", encoding="utf-8") as stream:
         baseline = json.load(stream)
     assert baseline["commit"] == _PHASE2_BASE
-    actual = source_identity.compatible_source_digests(source_identity.source_digests(PROJECT_ROOT / "src"), tensorrt=True)
-    # Verify the changed files from this checkout against the fixed main tree.
-    # Later, unrelated files are allowed to change the real runtime identity.
-    return {**baseline["sources"], **{path: actual[path] for path in baseline["revised_paths"]}}
+    assert baseline["patch_commit"] == _PHASE2_BATCHED_TRT
+    assert set(baseline["revised_paths"]) == set(baseline["patch_sources"])
+    # The live ECPose and FastHMR source digests are covered by the recipe tests.
+    return {**baseline["sources"], **baseline["patch_sources"]}
 
 
 def test_current_fp32_cache_is_adopted_in_execute_and_load_modes(
@@ -223,13 +222,19 @@ def test_current_fp32_cache_is_adopted_in_execute_and_load_modes(
 def test_batched_tensorrt_fp32_compatibility_requires_the_exact_sources(phase2_sources: dict[str, str]) -> None:
     from src.tennis_scene.pipeline import source_identity
 
-    compatible = source_identity.compatible_source_digests(phase2_sources)
+    compatible = source_identity.compatible_source_digests(phase2_sources, standard_recipe=True)
     assert document_digest(compatible) == _PHASE2_MAIN_FP32_CODE_SHA256
     assert source_identity.compatible_source_digests(phase2_sources, tensorrt=True) == phase2_sources
-    changed = {**phase2_sources, "utils/video/prefetch.py": "0" * 64}
-    assert source_identity.compatible_source_digests(changed) == changed
+    standard_trt = source_identity.compatible_source_digests(phase2_sources, tensorrt=True, standard_recipe=True)
+    for path in ("utils/video/prefetch.py", "utils/configuration/inventory.py"):
+        edit = {path: "0" * 64}
+        assert source_identity.compatible_source_digests(
+            {**phase2_sources, **edit}, standard_recipe=True,
+        ) == {**standard_trt, **edit}
     unrelated = {"tennis_scene/schema.py": "a" * 64}
-    assert source_identity.compatible_source_digests({**phase2_sources, **unrelated}) == {**compatible, **unrelated}
+    assert source_identity.compatible_source_digests(
+        {**phase2_sources, **unrelated}, standard_recipe=True,
+    ) == {**compatible, **unrelated}
 
 
 def test_exact_precision_patch_compatibility_does_not_hide_later_changes(tmp_path: Path) -> None:
@@ -256,12 +261,13 @@ def test_exact_multiview_pose_patch_preserves_the_standard_recipe_identity() -> 
 
     manifest = Path(source_identity.__file__).with_name("multiview_pose_cache_compatibility.json")
     files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
-    unrelated = {"tennis_scene/schema.py": "a" * 64}
-    current = {**unrelated, **{path: pair["after"] for path, pair in files.items()}}
-    baseline = {**unrelated, **{path: pair["before"] for path, pair in files.items() if pair["before"] is not None}}
+    current = source_identity.source_digests(PROJECT_ROOT / "src")
+    baseline = {path: digest for path, digest in current.items() if path not in files}
+    baseline.update({path: pair["before"] for path, pair in files.items() if pair["before"] is not None})
     assert source_identity.compatible_source_digests(current, tensorrt=True) == baseline
-    changed = {**current, "tennis_scene/pipeline/video_court_side/artifact.py": "0" * 64}
-    assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
+    for path in ("utils/configuration/inventory.py", "tennis_scene/pipeline/video_court_side/artifact.py"):
+        changed = {**current, path: "0" * 64}
+        assert source_identity.compatible_source_digests(changed, tensorrt=True) == changed
 
 
 def test_exact_tensorrt_patch_preserves_the_previous_fp32_source_identity() -> None:

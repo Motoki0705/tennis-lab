@@ -157,7 +157,7 @@ def test_masked_values_cannot_leak_and_observed_frames_are_predicted(
         first.coordinates.shape == coordinates.shape
         and torch.isfinite(first.coordinates).all()
     )
-    assert first.event_probability.shape == missing.shape
+    assert first.event_probability.shape == (*missing.shape, 3)
     assert not torch.allclose(first.coordinates[~missing], coordinates[~missing])
     # All missing windows are valid inputs and still return one complete trajectory.
     prediction = refine_coordinates(

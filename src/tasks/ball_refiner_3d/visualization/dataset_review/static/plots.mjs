@@ -34,6 +34,7 @@ export function drawTimeline(canvas, scene, frame) {
   for (let i = 0; i < scene.frames; i++) {
     if (scene.events[i] & 1) { ctx.fillStyle = COLORS.shot; ctx.fillRect(x(i), 4, 2, 12); }
     if (scene.events[i] & 2) { ctx.fillStyle = COLORS.bounce; ctx.fillRect(x(i), 4, 2, 12); }
+    if (scene.events[i] & 4) { ctx.fillStyle = COLORS.net; ctx.fillRect(x(i), 4, 2, 12); }
     if (scene.missing_3d[i]) {
       ctx.fillStyle = scene.event_missing[i] ? "#5484d4" : "#a3bdce";
       ctx.fillRect(x(i), 29, dx, 10);
@@ -128,10 +129,14 @@ export function drawEvents(canvas, scene, frame) {
     ctx.fillStyle = "#9aaec4"; ctx.fillText(String(p), 15, y(p) + 3);
     ctx.strokeStyle = "#2a3a4d"; ctx.beginPath(); ctx.moveTo(left, y(p)); ctx.lineTo(right, y(p)); ctx.stroke();
   }
-  for (const [values, color] of [[scene.event_target, COLORS.gt], [scene.event_probability, COLORS.prediction]]) {
-    if (!values) continue;
-    ctx.strokeStyle = color; ctx.lineWidth = 1.8; line(ctx, values, (p, i) => [x(i), y(p)]);
-  }
+  scene.event_classes.forEach((kind, channel) => {
+    ctx.strokeStyle = COLORS[kind]; ctx.fillStyle = COLORS[kind];
+    ctx.fillText(kind, left + channel * 57, 10);
+    ctx.lineWidth = 1.5; ctx.setLineDash([3, 3]);
+    line(ctx, scene.event_target, (p, i) => [x(i), y(p[channel])]);
+    ctx.setLineDash([]);
+    if (scene.event_probability) line(ctx, scene.event_probability, (p, i) => [x(i), y(p[channel])]);
+  });
   ctx.strokeStyle = "#e0eaf5"; ctx.lineWidth = 1; ctx.beginPath(); ctx.moveTo(x(frame), top); ctx.lineTo(x(frame), bottom); ctx.stroke();
   ctx.fillStyle = "#9aaec4"; ctx.fillText("0 s", left, h - 5); ctx.fillText(`${((scene.frames - 1) / scene.fps).toFixed(2)} s`, right - 42, h - 5);
 }

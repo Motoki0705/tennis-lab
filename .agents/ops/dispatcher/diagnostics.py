@@ -37,6 +37,7 @@ _STATE_REASONS = {
     "not_directory": "is not a directory",
     "wrong_owner": "is owned by a different user",
     "hardlink": "has multiple hard links",
+    "file_unlinked": "was unlinked during state access",
     "shared_write": "is writable by other users",
     "directory_changed": "was replaced during state access",
     "lock_changed": "was replaced while acquiring or holding the lock",

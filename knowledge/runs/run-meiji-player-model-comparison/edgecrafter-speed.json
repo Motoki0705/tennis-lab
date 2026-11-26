@@ -1,0 +1,3566 @@
+{
+  "harness_commit": "13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+  "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+  "models": {
+    "ecdet-l-coco": {
+      "cases": [
+        {
+          "backend": "pt16",
+          "batch_size": 1,
+          "conversion": [],
+          "disposition": "measured",
+          "engine": null,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10775,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 759271424,
+          "nvml_peak_minus_before_load_bytes": 339738624,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-l-coco/speed-13e508cb7/pt16/speed-b1.json",
+            "sha256": "83f85230a119f83b85aab936c3692eb6d44beef02155238a4e759978a6f6d96d"
+          },
+          "setup_wall_ms": {
+            "cold_start": 3004.022451,
+            "load": 1641.977702
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3711.1685589007966,
+              "p50_ms": 0.2569105,
+              "p50_ms_per_item": 0.2569105,
+              "p95_ms": 0.3832041,
+              "p95_ms_per_item": 0.3832041,
+              "samples": 300,
+              "total_ms": 80.83707200000002
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 34.53064732191879,
+              "p50_ms": 27.247076,
+              "p50_ms_per_item": 27.247076,
+              "p95_ms": 41.685256700000004,
+              "p95_ms_per_item": 41.685256700000004,
+              "samples": 300,
+              "total_ms": 8687.934436999996
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1313.0438011935262,
+              "p50_ms": 0.7479095,
+              "p50_ms_per_item": 0.7479095,
+              "p95_ms": 0.9419354,
+              "p95_ms_per_item": 0.9419354,
+              "samples": 300,
+              "total_ms": 228.476765
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 34.59155770665813,
+              "p50_ms": 27.209247589111328,
+              "p50_ms_per_item": 27.209247589111328,
+              "p95_ms": 41.598299217224124,
+              "p95_ms_per_item": 41.598299217224124,
+              "samples": 300,
+              "total_ms": 8672.63632774353
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 541.2633182192103,
+              "p50_ms": 1.744374,
+              "p50_ms_per_item": 1.744374,
+              "p95_ms": 2.5859921000000003,
+              "p95_ms_per_item": 2.5859921000000003,
+              "samples": 300,
+              "total_ms": 554.2588790000004
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 44.20985907918941,
+              "p50_ms": 22.116127,
+              "p50_ms_per_item": 22.116127,
+              "p95_ms": 24.82116935,
+              "p95_ms_per_item": 24.82116935,
+              "samples": 300,
+              "total_ms": 6785.8166989999945
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 18.303042341654884,
+              "p50_ms": 52.5158005,
+              "p50_ms_per_item": 52.5158005,
+              "p95_ms": 69.56803335,
+              "p95_ms_per_item": 69.56803335,
+              "samples": 300,
+              "total_ms": 16390.717696
+            }
+          },
+          "torch_peak_allocated_bytes": 276785152,
+          "torch_peak_reserved_bytes": 297795584,
+          "weight": {
+            "bytes": 132351848,
+            "path": "outputs/player-model-comparison/assets/ecdet_l.pth",
+            "sha256": "60e48c51b33d70acf8e3a3faddbdb70b0876c64509b74cb623106cc7c31e85a1"
+          }
+        },
+        {
+          "backend": "pt16",
+          "batch_size": 2,
+          "conversion": [],
+          "disposition": "measured",
+          "engine": null,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11004,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 809603072,
+          "nvml_peak_minus_before_load_bytes": 390070272,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-l-coco/speed-13e508cb7/pt16/speed-b2.json",
+            "sha256": "93be8b45ac8758ee22225d0961d21c2b8c04289e9cb8cbf3878f663cc6cc5c8f"
+          },
+          "setup_wall_ms": {
+            "cold_start": 3528.194568,
+            "load": 1348.99377
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4172.708429724346,
+              "p50_ms": 0.4465795,
+              "p50_ms_per_item": 0.22328975,
+              "p95_ms": 0.7957238500000001,
+              "p95_ms_per_item": 0.39786192500000006,
+              "samples": 300,
+              "total_ms": 143.79149900000002
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 43.86527365773908,
+              "p50_ms": 36.448876,
+              "p50_ms_per_item": 18.224438,
+              "p95_ms": 110.51768750000002,
+              "p95_ms_per_item": 55.25884375000001,
+              "samples": 300,
+              "total_ms": 13678.245909999992
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1490.7000960204657,
+              "p50_ms": 1.260604,
+              "p50_ms_per_item": 0.630302,
+              "p95_ms": 1.86138,
+              "p95_ms_per_item": 0.93069,
+              "samples": 300,
+              "total_ms": 402.4954459999999
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 43.92349498065283,
+              "p50_ms": 36.38350486755371,
+              "p50_ms_per_item": 18.191752433776855,
+              "p95_ms": 110.32926368713382,
+              "p95_ms_per_item": 55.16463184356691,
+              "samples": 300,
+              "total_ms": 13660.115167617798
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 502.7350504422148,
+              "p50_ms": 3.2369209999999997,
+              "p50_ms_per_item": 1.6184604999999999,
+              "p95_ms": 11.586607850000002,
+              "p95_ms_per_item": 5.793303925000001,
+              "samples": 300,
+              "total_ms": 1193.4715899999994
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 42.08239488756933,
+              "p50_ms": 46.853258,
+              "p50_ms_per_item": 23.426629,
+              "p95_ms": 52.06081565,
+              "p95_ms_per_item": 26.030407825,
+              "samples": 300,
+              "total_ms": 14257.743685999993
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 20.172826514039084,
+              "p50_ms": 89.255477,
+              "p50_ms_per_item": 44.6277385,
+              "p95_ms": 168.52422275,
+              "p95_ms_per_item": 84.262111375,
+              "samples": 300,
+              "total_ms": 29742.981212000006
+            }
+          },
+          "torch_peak_allocated_bytes": 325589504,
+          "torch_peak_reserved_bytes": 348127232,
+          "weight": {
+            "bytes": 132351848,
+            "path": "outputs/player-model-comparison/assets/ecdet_l.pth",
+            "sha256": "60e48c51b33d70acf8e3a3faddbdb70b0876c64509b74cb623106cc7c31e85a1"
+          }
+        },
+        {
+          "backend": "trt16",
+          "batch_size": 1,
+          "conversion": [
+            {
+              "failure": null,
+              "phase": "onnx_export",
+              "wall_ms": 10015.197096
+            },
+            {
+              "failure": null,
+              "phase": "engine_build",
+              "wall_ms": 121627.660291
+            }
+          ],
+          "disposition": "original_plan_pending_trt_diagnosis",
+          "engine": {
+            "bytes": 75542868,
+            "path": "outputs/player-model-comparison/ecdet-l-coco/trt16-trace2/engine/engine.plan",
+            "sha256": "22ef7679387090d5bec8346f2b070ce389062f0a22d9c63e3fbf2d3ce8e6de21"
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11165,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 597790720,
+          "nvml_peak_minus_before_load_bytes": 178257920,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-l-coco/speed-13e508cb7/trt16/speed-b1.json",
+            "sha256": "06e55fd5fae5d5f69ad03c3087448f2e78e0b594d5cb154232ae78b31146bee2"
+          },
+          "setup_wall_ms": {
+            "cold_start": 1113.253765,
+            "load": 2911.260316
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3412.854706095133,
+              "p50_ms": 0.273327,
+              "p50_ms_per_item": 0.273327,
+              "p95_ms": 0.41367855,
+              "p95_ms_per_item": 0.41367855,
+              "samples": 300,
+              "total_ms": 87.90295100000003
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 143.17440800485602,
+              "p50_ms": 6.781786,
+              "p50_ms_per_item": 6.781786,
+              "p95_ms": 8.172026350000001,
+              "p95_ms_per_item": 8.172026350000001,
+              "samples": 300,
+              "total_ms": 2095.346536999999
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1293.2123178007723,
+              "p50_ms": 0.7568915,
+              "p50_ms_per_item": 0.7568915,
+              "p95_ms": 0.99056665,
+              "p95_ms_per_item": 0.99056665,
+              "samples": 300,
+              "total_ms": 231.98046899999983
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 144.13791355344114,
+              "p50_ms": 6.732223987579346,
+              "p50_ms_per_item": 6.732223987579346,
+              "p95_ms": 8.128012371063233,
+              "p95_ms_per_item": 8.128012371063233,
+              "samples": 300,
+              "total_ms": 2081.3399653434753
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 408.0345390138739,
+              "p50_ms": 2.262584,
+              "p50_ms_per_item": 2.262584,
+              "p95_ms": 3.5490977999999997,
+              "p95_ms_per_item": 3.5490977999999997,
+              "samples": 300,
+              "total_ms": 735.2318769999995
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 43.068957565543506,
+              "p50_ms": 22.748466,
+              "p50_ms_per_item": 22.748466,
+              "p95_ms": 26.2029377,
+              "p95_ms_per_item": 26.2029377,
+              "samples": 300,
+              "total_ms": 6965.573744
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 29.497390332053644,
+              "p50_ms": 33.156841,
+              "p50_ms_per_item": 33.156841,
+              "p95_ms": 38.80832955,
+              "p95_ms_per_item": 38.80832955,
+              "samples": 300,
+              "total_ms": 10170.391232000002
+            }
+          },
+          "torch_peak_allocated_bytes": 5161472,
+          "torch_peak_reserved_bytes": 23068672,
+          "weight": {
+            "bytes": 132351848,
+            "path": "outputs/player-model-comparison/assets/ecdet_l.pth",
+            "sha256": "60e48c51b33d70acf8e3a3faddbdb70b0876c64509b74cb623106cc7c31e85a1"
+          }
+        },
+        {
+          "backend": "trt16",
+          "batch_size": 2,
+          "conversion": [
+            {
+              "failure": null,
+              "phase": "onnx_export",
+              "wall_ms": 10015.197096
+            },
+            {
+              "failure": null,
+              "phase": "engine_build",
+              "wall_ms": 121627.660291
+            }
+          ],
+          "disposition": "original_plan_pending_trt_diagnosis",
+          "engine": {
+            "bytes": 75542868,
+            "path": "outputs/player-model-comparison/ecdet-l-coco/trt16-trace2/engine/engine.plan",
+            "sha256": "22ef7679387090d5bec8346f2b070ce389062f0a22d9c63e3fbf2d3ce8e6de21"
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11189,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 597790720,
+          "nvml_peak_minus_before_load_bytes": 178257920,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-l-coco/speed-13e508cb7/trt16/speed-b2.json",
+            "sha256": "1db3e58eaecbfceae881a2875f055f317ffb3249e360b85fd16bf0777dc89f27"
+          },
+          "setup_wall_ms": {
+            "cold_start": 1301.078499,
+            "load": 2257.681528
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4144.006691299976,
+              "p50_ms": 0.4634205,
+              "p50_ms_per_item": 0.23171025,
+              "p95_ms": 0.6934234499999999,
+              "p95_ms_per_item": 0.34671172499999997,
+              "samples": 300,
+              "total_ms": 144.78741100000005
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 193.55093341539242,
+              "p50_ms": 10.1172215,
+              "p50_ms_per_item": 5.05861075,
+              "p95_ms": 10.979113400000003,
+              "p95_ms_per_item": 5.489556700000001,
+              "samples": 300,
+              "total_ms": 3099.959217000005
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1564.8486095558562,
+              "p50_ms": 1.2379165,
+              "p50_ms_per_item": 0.61895825,
+              "p95_ms": 1.5679372,
+              "p95_ms_per_item": 0.7839686,
+              "samples": 300,
+              "total_ms": 383.42367199999956
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 194.58249949143993,
+              "p50_ms": 10.06446361541748,
+              "p50_ms_per_item": 5.03223180770874,
+              "p95_ms": 10.922067546844485,
+              "p95_ms_per_item": 5.461033773422242,
+              "samples": 300,
+              "total_ms": 3083.5249910354614
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 497.7231166600653,
+              "p50_ms": 3.6968579999999998,
+              "p50_ms_per_item": 1.8484289999999999,
+              "p95_ms": 5.820652600000001,
+              "p95_ms_per_item": 2.9103263000000004,
+              "samples": 300,
+              "total_ms": 1205.4895180000003
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 41.555574254040266,
+              "p50_ms": 47.548409500000005,
+              "p50_ms_per_item": 23.774204750000003,
+              "p95_ms": 52.94812795,
+              "p95_ms_per_item": 26.474063975,
+              "samples": 300,
+              "total_ms": 14438.496176999999
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 31.031953749091105,
+              "p50_ms": 63.502652,
+              "p50_ms_per_item": 31.751326,
+              "p95_ms": 71.6368876,
+              "p95_ms_per_item": 35.8184438,
+              "samples": 300,
+              "total_ms": 19334.908940999998
+            }
+          },
+          "torch_peak_allocated_bytes": 10320896,
+          "torch_peak_reserved_bytes": 23068672,
+          "weight": {
+            "bytes": 132351848,
+            "path": "outputs/player-model-comparison/assets/ecdet_l.pth",
+            "sha256": "60e48c51b33d70acf8e3a3faddbdb70b0876c64509b74cb623106cc7c31e85a1"
+          }
+        }
+      ],
+      "checkout_commit": "3bb026d5de12dbe980bc17e3d0a97c751b58fd4b",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-l-coco /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+      "job_id": "0-8204406600618625364_2026-11-25T07-56-39-381374635Z_1736593_i2487-ecdet-l-coco-fixed-speed-13e508cb7.job",
+      "queue_log": {
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204406600618625364_2026-11-25T07-56-39-381374635Z_1736593_i2487-ecdet-l-coco-fixed-speed-13e508cb7.log",
+        "sha256": "cd995c5b5355a8ec042909514244c6d02152e4f52d1202a1e6dac7dfdf0ac7b8"
+      }
+    },
+    "ecdet-l-o365": {
+      "cases": [
+        {
+          "backend": "pt16",
+          "batch_size": 1,
+          "conversion": [],
+          "disposition": "measured",
+          "engine": null,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11404,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 759271424,
+          "nvml_peak_minus_before_load_bytes": 339738624,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-l-o365/speed-13e508cb7/pt16/speed-b1.json",
+            "sha256": "1317315ece33c766dfaae40db06de94786ee23adb69ecbbd2e26889275dac586"
+          },
+          "setup_wall_ms": {
+            "cold_start": 3419.323519,
+            "load": 1411.660425
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3171.794508610846,
+              "p50_ms": 0.2830045,
+              "p50_ms_per_item": 0.2830045,
+              "p95_ms": 0.5142708,
+              "p95_ms_per_item": 0.5142708,
+              "samples": 300,
+              "total_ms": 94.583681
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 22.25354109769431,
+              "p50_ms": 33.658781000000005,
+              "p50_ms_per_item": 33.658781000000005,
+              "p95_ms": 114.44984695000004,
+              "p95_ms_per_item": 114.44984695000004,
+              "samples": 300,
+              "total_ms": 13481.00056
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1187.9804886084546,
+              "p50_ms": 0.7853129999999999,
+              "p50_ms_per_item": 0.7853129999999999,
+              "p95_ms": 1.2116831,
+              "p95_ms_per_item": 1.2116831,
+              "samples": 300,
+              "total_ms": 252.52940000000012
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 22.287627063959473,
+              "p50_ms": 33.62331199645996,
+              "p50_ms_per_item": 33.62331199645996,
+              "p95_ms": 114.30459785461429,
+              "p95_ms_per_item": 114.30459785461429,
+              "samples": 300,
+              "total_ms": 13460.383159637451
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 391.84043289987693,
+              "p50_ms": 1.9480395000000001,
+              "p50_ms_per_item": 1.9480395000000001,
+              "p95_ms": 6.6720108,
+              "p95_ms_per_item": 6.6720108,
+              "samples": 300,
+              "total_ms": 765.6177739999996
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 41.67908515269458,
+              "p50_ms": 23.1047965,
+              "p50_ms_per_item": 23.1047965,
+              "p95_ms": 28.963759200000002,
+              "p95_ms_per_item": 28.963759200000002,
+              "samples": 300,
+              "total_ms": 7197.854724999999
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 13.729204149316084,
+              "p50_ms": 61.4567095,
+              "p50_ms_per_item": 61.4567095,
+              "p95_ms": 145.3440515,
+              "p95_ms_per_item": 145.3440515,
+              "samples": 300,
+              "total_ms": 21851.230175999997
+            }
+          },
+          "torch_peak_allocated_bytes": 276785152,
+          "torch_peak_reserved_bytes": 297795584,
+          "weight": {
+            "bytes": 132405122,
+            "path": "outputs/player-model-comparison/assets/ecdet_l_o3652coco.pth",
+            "sha256": "6259432a6184029e17cb008dcd3fa6ebf036c3e10cd56aa552a0d848ddcef19e"
+          }
+        },
+        {
+          "backend": "pt16",
+          "batch_size": 2,
+          "conversion": [],
+          "disposition": "measured",
+          "engine": null,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11332,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 809603072,
+          "nvml_peak_minus_before_load_bytes": 390070272,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-l-o365/speed-13e508cb7/pt16/speed-b2.json",
+            "sha256": "c18e0ec24df7cdb25539951239e72ad32619f0a7f2b1e46f4433c57f01a6af6f"
+          },
+          "setup_wall_ms": {
+            "cold_start": 3020.928644,
+            "load": 1415.885342
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4594.12769256943,
+              "p50_ms": 0.41307499999999997,
+              "p50_ms_per_item": 0.20653749999999998,
+              "p95_ms": 0.6265475,
+              "p95_ms_per_item": 0.31327375,
+              "samples": 300,
+              "total_ms": 130.60150699999994
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 55.17984684574713,
+              "p50_ms": 32.840071,
+              "p50_ms_per_item": 16.4200355,
+              "p95_ms": 54.706002250000004,
+              "p95_ms_per_item": 27.353001125000002,
+              "samples": 300,
+              "total_ms": 10873.535073000003
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1582.4892792681294,
+              "p50_ms": 1.2393715,
+              "p50_ms_per_item": 0.61968575,
+              "p95_ms": 1.5468146500000002,
+              "p95_ms_per_item": 0.7734073250000001,
+              "samples": 300,
+              "total_ms": 379.14948799999985
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 55.26507210268602,
+              "p50_ms": 32.78024101257324,
+              "p50_ms_per_item": 16.39012050628662,
+              "p95_ms": 54.66330375671387,
+              "p95_ms_per_item": 27.331651878356936,
+              "samples": 300,
+              "total_ms": 10856.766799926758
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 601.0637512066744,
+              "p50_ms": 2.959281,
+              "p50_ms_per_item": 1.4796405,
+              "p95_ms": 5.138148050000001,
+              "p95_ms_per_item": 2.5690740250000004,
+              "samples": 300,
+              "total_ms": 998.2302189999999
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 42.12375051228904,
+              "p50_ms": 46.161648,
+              "p50_ms_per_item": 23.080824,
+              "p95_ms": 56.916334750000004,
+              "p95_ms_per_item": 28.458167375000002,
+              "samples": 300,
+              "total_ms": 14243.745932
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 22.484591338504636,
+              "p50_ms": 84.346528,
+              "p50_ms_per_item": 42.173264,
+              "p95_ms": 117.12552245,
+              "p95_ms_per_item": 58.562761225,
+              "samples": 300,
+              "total_ms": 26684.941299
+            }
+          },
+          "torch_peak_allocated_bytes": 325589504,
+          "torch_peak_reserved_bytes": 348127232,
+          "weight": {
+            "bytes": 132405122,
+            "path": "outputs/player-model-comparison/assets/ecdet_l_o3652coco.pth",
+            "sha256": "6259432a6184029e17cb008dcd3fa6ebf036c3e10cd56aa552a0d848ddcef19e"
+          }
+        },
+        {
+          "backend": "trt16",
+          "batch_size": 1,
+          "conversion": [
+            {
+              "failure": null,
+              "phase": "onnx_export",
+              "wall_ms": 9722.339126
+            },
+            {
+              "failure": null,
+              "phase": "engine_build",
+              "wall_ms": 109549.165503
+            }
+          ],
+          "disposition": "original_plan_pending_trt_diagnosis",
+          "engine": {
+            "bytes": 75573676,
+            "path": "outputs/player-model-comparison/ecdet-l-o365/trt16-trace2/engine/engine.plan",
+            "sha256": "3079363e81757e38f527c6152c2fbe54c666759301c992a94f923a82ea0e72e1"
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11667,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 597790720,
+          "nvml_peak_minus_before_load_bytes": 178257920,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-l-o365/speed-13e508cb7/trt16/speed-b1.json",
+            "sha256": "874323bf090d9ad909036638630287f95c1f00a94a72013857d633654929c09a"
+          },
+          "setup_wall_ms": {
+            "cold_start": 1222.999819,
+            "load": 2649.256925
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3569.8394828816195,
+              "p50_ms": 0.26861749999999995,
+              "p50_ms_per_item": 0.26861749999999995,
+              "p95_ms": 0.37787245,
+              "p95_ms_per_item": 0.37787245,
+              "samples": 300,
+              "total_ms": 84.03739200000001
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 139.5989221617475,
+              "p50_ms": 6.731399,
+              "p50_ms_per_item": 6.731399,
+              "p95_ms": 9.50577355,
+              "p95_ms_per_item": 9.50577355,
+              "samples": 300,
+              "total_ms": 2149.0137270000005
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1275.670487305446,
+              "p50_ms": 0.761553,
+              "p50_ms_per_item": 0.761553,
+              "p95_ms": 1.0055816,
+              "p95_ms_per_item": 1.0055816,
+              "samples": 300,
+              "total_ms": 235.170448
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 140.54894077154236,
+              "p50_ms": 6.68993616104126,
+              "p50_ms_per_item": 6.68993616104126,
+              "p95_ms": 9.41975383758545,
+              "p95_ms_per_item": 9.41975383758545,
+              "samples": 300,
+              "total_ms": 2134.487804412842
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 416.0343516568717,
+              "p50_ms": 2.2149289999999997,
+              "p50_ms_per_item": 2.2149289999999997,
+              "p95_ms": 3.3040560500000002,
+              "p95_ms_per_item": 3.3040560500000002,
+              "samples": 300,
+              "total_ms": 721.0943009999997
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 43.47465429415372,
+              "p50_ms": 22.434082500000002,
+              "p50_ms_per_item": 22.434082500000002,
+              "p95_ms": 26.575721800000004,
+              "p95_ms_per_item": 26.575721800000004,
+              "samples": 300,
+              "total_ms": 6900.572411000003
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 29.57304855417355,
+              "p50_ms": 32.788886,
+              "p50_ms_per_item": 32.788886,
+              "p95_ms": 39.8530046,
+              "p95_ms_per_item": 39.8530046,
+              "samples": 300,
+              "total_ms": 10144.37180699999
+            }
+          },
+          "torch_peak_allocated_bytes": 5161472,
+          "torch_peak_reserved_bytes": 23068672,
+          "weight": {
+            "bytes": 132405122,
+            "path": "outputs/player-model-comparison/assets/ecdet_l_o3652coco.pth",
+            "sha256": "6259432a6184029e17cb008dcd3fa6ebf036c3e10cd56aa552a0d848ddcef19e"
+          }
+        },
+        {
+          "backend": "trt16",
+          "batch_size": 2,
+          "conversion": [
+            {
+              "failure": null,
+              "phase": "onnx_export",
+              "wall_ms": 9722.339126
+            },
+            {
+              "failure": null,
+              "phase": "engine_build",
+              "wall_ms": 109549.165503
+            }
+          ],
+          "disposition": "original_plan_pending_trt_diagnosis",
+          "engine": {
+            "bytes": 75573676,
+            "path": "outputs/player-model-comparison/ecdet-l-o365/trt16-trace2/engine/engine.plan",
+            "sha256": "3079363e81757e38f527c6152c2fbe54c666759301c992a94f923a82ea0e72e1"
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11174,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 597790720,
+          "nvml_peak_minus_before_load_bytes": 178257920,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-l-o365/speed-13e508cb7/trt16/speed-b2.json",
+            "sha256": "cbac49dff5320c3cd733efc32f528e3593c5b3541be8d99c54dc6ba01a4a24c1"
+          },
+          "setup_wall_ms": {
+            "cold_start": 1143.641044,
+            "load": 2014.367987
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4673.39459977103,
+              "p50_ms": 0.414127,
+              "p50_ms_per_item": 0.2070635,
+              "p95_ms": 0.5829161,
+              "p95_ms_per_item": 0.29145805,
+              "samples": 300,
+              "total_ms": 128.38633400000006
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 198.45311623798997,
+              "p50_ms": 9.999145,
+              "p50_ms_per_item": 4.9995725,
+              "p95_ms": 10.62115775,
+              "p95_ms_per_item": 5.310578875,
+              "samples": 300,
+              "total_ms": 3023.3841190000003
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1665.187018486195,
+              "p50_ms": 1.1715740000000001,
+              "p50_ms_per_item": 0.5857870000000001,
+              "p95_ms": 1.4676871,
+              "p95_ms_per_item": 0.73384355,
+              "samples": 300,
+              "total_ms": 360.31988800000016
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 199.473876401872,
+              "p50_ms": 9.95032024383545,
+              "p50_ms_per_item": 4.975160121917725,
+              "p95_ms": 10.58105320930481,
+              "p95_ms_per_item": 5.290526604652405,
+              "samples": 300,
+              "total_ms": 3007.9126691818237
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 570.3372961937101,
+              "p50_ms": 3.323784,
+              "p50_ms_per_item": 1.661892,
+              "p95_ms": 4.67076865,
+              "p95_ms_per_item": 2.335384325,
+              "samples": 300,
+              "total_ms": 1052.0090549999998
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 43.50053374491522,
+              "p50_ms": 45.260450500000005,
+              "p50_ms_per_item": 22.630225250000002,
+              "p95_ms": 50.073992950000004,
+              "p95_ms_per_item": 25.036996475000002,
+              "samples": 300,
+              "total_ms": 13792.934209000001
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 32.57952293630918,
+              "p50_ms": 60.527178,
+              "p50_ms_per_item": 30.263589,
+              "p95_ms": 67.50903225,
+              "p95_ms_per_item": 33.754516125,
+              "samples": 300,
+              "total_ms": 18416.475930999986
+            }
+          },
+          "torch_peak_allocated_bytes": 10320896,
+          "torch_peak_reserved_bytes": 23068672,
+          "weight": {
+            "bytes": 132405122,
+            "path": "outputs/player-model-comparison/assets/ecdet_l_o3652coco.pth",
+            "sha256": "6259432a6184029e17cb008dcd3fa6ebf036c3e10cd56aa552a0d848ddcef19e"
+          }
+        }
+      ],
+      "checkout_commit": "3bb026d5de12dbe980bc17e3d0a97c751b58fd4b",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-l-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+      "job_id": "0-8204406600020428136_2026-11-25T07-56-39-979571863Z_1736732_i2487-ecdet-l-o365-fixed-speed-13e508cb7.job",
+      "queue_log": {
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204406600020428136_2026-11-25T07-56-39-979571863Z_1736732_i2487-ecdet-l-o365-fixed-speed-13e508cb7.log",
+        "sha256": "b4edf2e9327478450cf58fd52ad04abab8a9c766b2271bbe164c97b57074f07a"
+      }
+    },
+    "ecdet-x-coco": {
+      "cases": [
+        {
+          "backend": "pt16",
+          "batch_size": 1,
+          "conversion": [],
+          "disposition": "measured",
+          "engine": null,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11196,
+            "sm_clock_mhz": 172,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 872517632,
+          "nvml_peak_minus_before_load_bytes": 452984832,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-x-coco/speed-13e508cb7/pt16/speed-b1.json",
+            "sha256": "b88faf4b5ddde93566350f441b6ce8ebe9beb4de0b73e8fa1b9cf236c4425c12"
+          },
+          "setup_wall_ms": {
+            "cold_start": 2917.749756,
+            "load": 1970.396417
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3421.3235793983113,
+              "p50_ms": 0.26687,
+              "p50_ms_per_item": 0.26687,
+              "p95_ms": 0.4450360500000002,
+              "p95_ms_per_item": 0.4450360500000002,
+              "samples": 300,
+              "total_ms": 87.68536299999992
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 27.933011511384542,
+              "p50_ms": 29.223069000000002,
+              "p50_ms_per_item": 29.223069000000002,
+              "p95_ms": 83.18980040000002,
+              "p95_ms_per_item": 83.18980040000002,
+              "samples": 300,
+              "total_ms": 10739.980538000002
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1249.0529524382991,
+              "p50_ms": 0.7738430000000001,
+              "p50_ms_per_item": 0.7738430000000001,
+              "p95_ms": 1.0795336,
+              "p95_ms_per_item": 1.0795336,
+              "samples": 300,
+              "total_ms": 240.18197100000003
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 27.976731540156283,
+              "p50_ms": 29.15492820739746,
+              "p50_ms_per_item": 29.15492820739746,
+              "p95_ms": 83.11270675659182,
+              "p95_ms_per_item": 83.11270675659182,
+              "samples": 300,
+              "total_ms": 10723.196866989136
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 459.53470710856203,
+              "p50_ms": 1.8052389999999998,
+              "p50_ms_per_item": 1.8052389999999998,
+              "p95_ms": 5.083262700000001,
+              "p95_ms_per_item": 5.083262700000001,
+              "samples": 300,
+              "total_ms": 652.8342589999997
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 43.02379676932642,
+              "p50_ms": 22.766897,
+              "p50_ms_per_item": 22.766897,
+              "p95_ms": 27.2615515,
+              "p95_ms_per_item": 27.2615515,
+              "samples": 300,
+              "total_ms": 6972.885299000003
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 16.000238703934507,
+              "p50_ms": 55.3199605,
+              "p50_ms_per_item": 55.3199605,
+              "p95_ms": 115.6736473,
+              "p95_ms_per_item": 115.6736473,
+              "samples": 300,
+              "total_ms": 18749.720272999995
+            }
+          },
+          "torch_peak_allocated_bytes": 382546944,
+          "torch_peak_reserved_bytes": 411041792,
+          "weight": {
+            "bytes": 200304616,
+            "path": "outputs/player-model-comparison/assets/ecdet_x.pth",
+            "sha256": "c87394be021b573fd8e25969b85a8670127120c9d0209ac7807fbadae1a5cec6"
+          }
+        },
+        {
+          "backend": "pt16",
+          "batch_size": 2,
+          "conversion": [],
+          "disposition": "measured",
+          "engine": null,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11223,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 977375232,
+          "nvml_peak_minus_before_load_bytes": 557842432,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-x-coco/speed-13e508cb7/pt16/speed-b2.json",
+            "sha256": "e10216af18a997e5f896e25e5e0560d087994e2538b38c570a84f0d3fe801c9a"
+          },
+          "setup_wall_ms": {
+            "cold_start": 3186.386307,
+            "load": 2039.577541
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4583.3686921130575,
+              "p50_ms": 0.413811,
+              "p50_ms_per_item": 0.2069055,
+              "p95_ms": 0.6369958500000006,
+              "p95_ms_per_item": 0.3184979250000003,
+              "samples": 300,
+              "total_ms": 130.90808099999995
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 54.751407739451324,
+              "p50_ms": 33.0010245,
+              "p50_ms_per_item": 16.50051225,
+              "p95_ms": 48.41518445000004,
+              "p95_ms_per_item": 24.20759222500002,
+              "samples": 300,
+              "total_ms": 10958.622339999996
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1682.5080784503707,
+              "p50_ms": 1.153763,
+              "p50_ms_per_item": 0.5768815,
+              "p95_ms": 1.5435913000000006,
+              "p95_ms_per_item": 0.7717956500000003,
+              "samples": 300,
+              "total_ms": 356.6104720000002
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 54.83712265027472,
+              "p50_ms": 32.926401138305664,
+              "p50_ms_per_item": 16.463200569152832,
+              "p95_ms": 48.34986286163334,
+              "p95_ms_per_item": 24.17493143081667,
+              "samples": 300,
+              "total_ms": 10941.493116378784
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 616.322802815217,
+              "p50_ms": 2.9632604999999996,
+              "p50_ms_per_item": 1.4816302499999998,
+              "p95_ms": 4.580697650000004,
+              "p95_ms_per_item": 2.290348825000002,
+              "samples": 300,
+              "total_ms": 973.5158220000002
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 43.330352159848616,
+              "p50_ms": 45.584371,
+              "p50_ms_per_item": 22.7921855,
+              "p95_ms": 50.5478936,
+              "p95_ms_per_item": 25.2739468,
+              "samples": 300,
+              "total_ms": 13847.106475999992
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 22.79246557971479,
+              "p50_ms": 84.0301805,
+              "p50_ms_per_item": 42.01509025,
+              "p95_ms": 105.57662794999999,
+              "p95_ms_per_item": 52.788313974999994,
+              "samples": 300,
+              "total_ms": 26324.488586000007
+            }
+          },
+          "torch_peak_allocated_bytes": 433428992,
+          "torch_peak_reserved_bytes": 515899392,
+          "weight": {
+            "bytes": 200304616,
+            "path": "outputs/player-model-comparison/assets/ecdet_x.pth",
+            "sha256": "c87394be021b573fd8e25969b85a8670127120c9d0209ac7807fbadae1a5cec6"
+          }
+        },
+        {
+          "backend": "trt16",
+          "batch_size": 1,
+          "conversion": [
+            {
+              "failure": null,
+              "phase": "onnx_export",
+              "wall_ms": 24416.072114
+            },
+            {
+              "failure": null,
+              "phase": "engine_build",
+              "wall_ms": 122688.714854
+            }
+          ],
+          "disposition": "original_plan_pending_trt_diagnosis",
+          "engine": {
+            "bytes": 108100508,
+            "path": "outputs/player-model-comparison/ecdet-x-coco/trt16-trace2/engine/engine.plan",
+            "sha256": "109a76de71ed81fe4e8033d3ac05aeac99a81d83d6c1aa1e46ae97b8ea7c0b95"
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11821,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 639733760,
+          "nvml_peak_minus_before_load_bytes": 220200960,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-x-coco/speed-13e508cb7/trt16/speed-b1.json",
+            "sha256": "1ffc1293830086cbc77caf726cd1be68c9cdf55cebcb04080e647122317d0840"
+          },
+          "setup_wall_ms": {
+            "cold_start": 1162.625523,
+            "load": 3439.308867
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3147.368809117683,
+              "p50_ms": 0.30178000000000005,
+              "p50_ms_per_item": 0.30178000000000005,
+              "p95_ms": 0.45080955,
+              "p95_ms_per_item": 0.45080955,
+              "samples": 300,
+              "total_ms": 95.31771400000002
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 124.76612812821689,
+              "p50_ms": 7.467876,
+              "p50_ms_per_item": 7.467876,
+              "p95_ms": 10.18710725,
+              "p95_ms_per_item": 10.18710725,
+              "samples": 300,
+              "total_ms": 2404.498756999998
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1209.621103688455,
+              "p50_ms": 0.8017595,
+              "p50_ms_per_item": 0.8017595,
+              "p95_ms": 1.0496554,
+              "p95_ms_per_item": 1.0496554,
+              "samples": 300,
+              "total_ms": 248.01154599999998
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 125.62466981960816,
+              "p50_ms": 7.414672136306763,
+              "p50_ms_per_item": 7.414672136306763,
+              "p95_ms": 10.138326168060303,
+              "p95_ms_per_item": 10.138326168060303,
+              "samples": 300,
+              "total_ms": 2388.065978050232
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 349.39103797452947,
+              "p50_ms": 2.5239645,
+              "p50_ms_per_item": 2.5239645,
+              "p95_ms": 5.2198207,
+              "p95_ms_per_item": 5.2198207,
+              "samples": 300,
+              "total_ms": 858.6367919999996
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 41.29796418968119,
+              "p50_ms": 23.85268,
+              "p50_ms_per_item": 23.85268,
+              "p95_ms": 27.5433868,
+              "p95_ms_per_item": 27.5433868,
+              "samples": 300,
+              "total_ms": 7264.280598000004
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 27.44003717440866,
+              "p50_ms": 35.411872,
+              "p50_ms_per_item": 35.411872,
+              "p95_ms": 42.59433415,
+              "p95_ms_per_item": 42.59433415,
+              "samples": 300,
+              "total_ms": 10932.929794999998
+            }
+          },
+          "torch_peak_allocated_bytes": 5161472,
+          "torch_peak_reserved_bytes": 23068672,
+          "weight": {
+            "bytes": 200304616,
+            "path": "outputs/player-model-comparison/assets/ecdet_x.pth",
+            "sha256": "c87394be021b573fd8e25969b85a8670127120c9d0209ac7807fbadae1a5cec6"
+          }
+        },
+        {
+          "backend": "trt16",
+          "batch_size": 2,
+          "conversion": [
+            {
+              "failure": null,
+              "phase": "onnx_export",
+              "wall_ms": 24416.072114
+            },
+            {
+              "failure": null,
+              "phase": "engine_build",
+              "wall_ms": 122688.714854
+            }
+          ],
+          "disposition": "original_plan_pending_trt_diagnosis",
+          "engine": {
+            "bytes": 108100508,
+            "path": "outputs/player-model-comparison/ecdet-x-coco/trt16-trace2/engine/engine.plan",
+            "sha256": "109a76de71ed81fe4e8033d3ac05aeac99a81d83d6c1aa1e46ae97b8ea7c0b95"
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11333,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 639733760,
+          "nvml_peak_minus_before_load_bytes": 220200960,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-x-coco/speed-13e508cb7/trt16/speed-b2.json",
+            "sha256": "4d4a1f60c3ad3285d7c4f1e2dbcc6382ac5021e7930f78474ce3f81aea3c3907"
+          },
+          "setup_wall_ms": {
+            "cold_start": 1140.932341,
+            "load": 2675.883843
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4704.555668242739,
+              "p50_ms": 0.400881,
+              "p50_ms_per_item": 0.2004405,
+              "p95_ms": 0.6293199000000002,
+              "p95_ms_per_item": 0.3146599500000001,
+              "samples": 300,
+              "total_ms": 127.53595499999983
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 168.99758182177,
+              "p50_ms": 11.655965,
+              "p50_ms_per_item": 5.8279825,
+              "p95_ms": 12.9995832,
+              "p95_ms_per_item": 6.4997916,
+              "samples": 300,
+              "total_ms": 3550.3466589999985
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1602.4928592584338,
+              "p50_ms": 1.209349,
+              "p50_ms_per_item": 0.6046745,
+              "p95_ms": 1.6002468500000004,
+              "p95_ms_per_item": 0.8001234250000002,
+              "samples": 300,
+              "total_ms": 374.416645
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 169.83738417673806,
+              "p50_ms": 11.601696014404297,
+              "p50_ms_per_item": 5.800848007202148,
+              "p95_ms": 12.95464916229248,
+              "p95_ms_per_item": 6.47732458114624,
+              "samples": 300,
+              "total_ms": 3532.7911043167114
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 554.0324761611877,
+              "p50_ms": 3.2979155,
+              "p50_ms_per_item": 1.64895775,
+              "p95_ms": 5.24683745,
+              "p95_ms_per_item": 2.623418725,
+              "samples": 300,
+              "total_ms": 1082.9690059999998
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 43.47168991887603,
+              "p50_ms": 45.029416499999996,
+              "p50_ms_per_item": 22.514708249999998,
+              "p95_ms": 51.478218150000004,
+              "p95_ms_per_item": 25.739109075000002,
+              "samples": 300,
+              "total_ms": 13802.085934999996
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 31.580886945160124,
+              "p50_ms": 62.0398115,
+              "p50_ms_per_item": 31.01990575,
+              "p95_ms": 71.45795355,
+              "p95_ms_per_item": 35.728976775,
+              "samples": 300,
+              "total_ms": 18998.833093000005
+            }
+          },
+          "torch_peak_allocated_bytes": 10320896,
+          "torch_peak_reserved_bytes": 23068672,
+          "weight": {
+            "bytes": 200304616,
+            "path": "outputs/player-model-comparison/assets/ecdet_x.pth",
+            "sha256": "c87394be021b573fd8e25969b85a8670127120c9d0209ac7807fbadae1a5cec6"
+          }
+        }
+      ],
+      "checkout_commit": "3bb026d5de12dbe980bc17e3d0a97c751b58fd4b",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-x-coco /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+      "job_id": "0-8204406600340455297_2026-11-25T07-56-39-659544702Z_1736660_i2487-ecdet-x-coco-fixed-speed-13e508cb7.job",
+      "queue_log": {
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204406600340455297_2026-11-25T07-56-39-659544702Z_1736660_i2487-ecdet-x-coco-fixed-speed-13e508cb7.log",
+        "sha256": "4474f21d9d41067007919a82af9be73d1968cdeb9e4bee6f082cac91c8524685"
+      }
+    },
+    "ecdet-x-o365": {
+      "cases": [
+        {
+          "backend": "pt16",
+          "batch_size": 1,
+          "conversion": [],
+          "disposition": "measured",
+          "engine": null,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11314,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 872517632,
+          "nvml_peak_minus_before_load_bytes": 452984832,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-x-o365/speed-13e508cb7/pt16/speed-b1.json",
+            "sha256": "5100457f451fc4b27def5249289a0e7a7a222eef9c4cbce6fd99643e616a100a"
+          },
+          "setup_wall_ms": {
+            "cold_start": 2819.254263,
+            "load": 2169.606193
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3249.6137861095317,
+              "p50_ms": 0.28632250000000004,
+              "p50_ms_per_item": 0.28632250000000004,
+              "p95_ms": 0.4537701,
+              "p95_ms_per_item": 0.4537701,
+              "samples": 300,
+              "total_ms": 92.31866300000002
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 24.569070569715677,
+              "p50_ms": 36.766155499999996,
+              "p50_ms_per_item": 36.766155499999996,
+              "p95_ms": 68.8702853,
+              "p95_ms_per_item": 68.8702853,
+              "samples": 300,
+              "total_ms": 12210.474106000001
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1171.8356931519643,
+              "p50_ms": 0.8048585,
+              "p50_ms_per_item": 0.8048585,
+              "p95_ms": 1.2048891499999999,
+              "p95_ms_per_item": 1.2048891499999999,
+              "samples": 300,
+              "total_ms": 256.00858700000003
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 24.611985067999242,
+              "p50_ms": 36.70401573181152,
+              "p50_ms_per_item": 36.70401573181152,
+              "p95_ms": 68.77963523864746,
+              "p95_ms_per_item": 68.77963523864746,
+              "samples": 300,
+              "total_ms": 12189.183406829834
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 412.35197651621417,
+              "p50_ms": 2.1370395,
+              "p50_ms_per_item": 2.1370395,
+              "p95_ms": 4.03425105,
+              "p95_ms_per_item": 4.03425105,
+              "samples": 300,
+              "total_ms": 727.5337989999998
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 40.28082058182678,
+              "p50_ms": 23.9826105,
+              "p50_ms_per_item": 23.9826105,
+              "p95_ms": 30.477968800000003,
+              "p95_ms_per_item": 30.477968800000003,
+              "samples": 300,
+              "total_ms": 7447.7132209999945
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 14.424072680612856,
+              "p50_ms": 64.8675565,
+              "p50_ms_per_item": 64.8675565,
+              "p95_ms": 97.60878175000002,
+              "p95_ms_per_item": 97.60878175000002,
+              "samples": 300,
+              "total_ms": 20798.56408399999
+            }
+          },
+          "torch_peak_allocated_bytes": 382546944,
+          "torch_peak_reserved_bytes": 411041792,
+          "weight": {
+            "bytes": 200357826,
+            "path": "outputs/player-model-comparison/assets/ecdet_x_o3652coco.pth",
+            "sha256": "be9c77cd4def8aadd0cc679944ba57412f363de2d44f7c6b900289e61316314c"
+          }
+        },
+        {
+          "backend": "pt16",
+          "batch_size": 2,
+          "conversion": [],
+          "disposition": "measured",
+          "engine": null,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11274,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 977375232,
+          "nvml_peak_minus_before_load_bytes": 557842432,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-x-o365/speed-13e508cb7/pt16/speed-b2.json",
+            "sha256": "1566bac0744d4e4952a1f1f145e7248646e3a64159065cdc5fbde55807f1bcf1"
+          },
+          "setup_wall_ms": {
+            "cold_start": 3041.072723,
+            "load": 2053.260118
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4350.663633915728,
+              "p50_ms": 0.4343845,
+              "p50_ms_per_item": 0.21719225,
+              "p95_ms": 0.6585253000000001,
+              "p95_ms_per_item": 0.32926265000000005,
+              "samples": 300,
+              "total_ms": 137.90999500000004
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 54.119770374793376,
+              "p50_ms": 35.391698000000005,
+              "p50_ms_per_item": 17.695849000000003,
+              "p95_ms": 47.7893166,
+              "p95_ms_per_item": 23.8946583,
+              "samples": 300,
+              "total_ms": 11086.521539999989
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1635.7896021023037,
+              "p50_ms": 1.196726,
+              "p50_ms_per_item": 0.598363,
+              "p95_ms": 1.4919867500000001,
+              "p95_ms_per_item": 0.7459933750000001,
+              "samples": 300,
+              "total_ms": 366.795338
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 54.20816575762382,
+              "p50_ms": 35.32972717285156,
+              "p50_ms_per_item": 17.66486358642578,
+              "p95_ms": 47.72564640045166,
+              "p95_ms_per_item": 23.86282320022583,
+              "samples": 300,
+              "total_ms": 11068.443132400513
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 589.3060545525035,
+              "p50_ms": 3.2413265,
+              "p50_ms_per_item": 1.62066325,
+              "p95_ms": 4.6329364,
+              "p95_ms_per_item": 2.3164682,
+              "samples": 300,
+              "total_ms": 1018.146675
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 41.55285849478829,
+              "p50_ms": 47.435356,
+              "p50_ms_per_item": 23.717678,
+              "p95_ms": 53.7354186,
+              "p95_ms_per_item": 26.8677093,
+              "samples": 300,
+              "total_ms": 14439.439830000003
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 22.13042618486756,
+              "p50_ms": 88.3916055,
+              "p50_ms_per_item": 44.19580275,
+              "p95_ms": 104.62434435000002,
+              "p95_ms_per_item": 52.31217217500001,
+              "samples": 300,
+              "total_ms": 27111.994816000002
+            }
+          },
+          "torch_peak_allocated_bytes": 433428992,
+          "torch_peak_reserved_bytes": 515899392,
+          "weight": {
+            "bytes": 200357826,
+            "path": "outputs/player-model-comparison/assets/ecdet_x_o3652coco.pth",
+            "sha256": "be9c77cd4def8aadd0cc679944ba57412f363de2d44f7c6b900289e61316314c"
+          }
+        },
+        {
+          "backend": "trt16",
+          "batch_size": 1,
+          "conversion": [
+            {
+              "failure": null,
+              "phase": "onnx_export",
+              "wall_ms": 26127.481179
+            },
+            {
+              "failure": null,
+              "phase": "engine_build",
+              "wall_ms": 109112.685074
+            }
+          ],
+          "disposition": "original_plan_pending_trt_diagnosis",
+          "engine": {
+            "bytes": 108064972,
+            "path": "outputs/player-model-comparison/ecdet-x-o365/trt16-trace2/engine/engine.plan",
+            "sha256": "b4986ec8b18cb5a869a07b9548bdd992cde0efd59a506a933a3af3b8abdbaf1b"
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11854,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 639733760,
+          "nvml_peak_minus_before_load_bytes": 220200960,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-x-o365/speed-13e508cb7/trt16/speed-b1.json",
+            "sha256": "1cc908af5e484988535b850912b2605ee990671fa19aed3dac1cecfceb042dc8"
+          },
+          "setup_wall_ms": {
+            "cold_start": 1163.430053,
+            "load": 3608.514173
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3174.4850300121643,
+              "p50_ms": 0.29505800000000004,
+              "p50_ms_per_item": 0.29505800000000004,
+              "p95_ms": 0.4585933000000001,
+              "p95_ms_per_item": 0.4585933000000001,
+              "samples": 300,
+              "total_ms": 94.50351699999997
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 122.17451454491157,
+              "p50_ms": 7.5069165,
+              "p50_ms_per_item": 7.5069165,
+              "p95_ms": 11.958159700000001,
+              "p95_ms_per_item": 11.958159700000001,
+              "samples": 300,
+              "total_ms": 2455.5039250000004
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1173.9461482492302,
+              "p50_ms": 0.8117019999999999,
+              "p50_ms_per_item": 0.8117019999999999,
+              "p95_ms": 1.1669035,
+              "p95_ms_per_item": 1.1669035,
+              "samples": 300,
+              "total_ms": 255.54834899999997
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 122.92962287121209,
+              "p50_ms": 7.461503982543945,
+              "p50_ms_per_item": 7.461503982543945,
+              "p95_ms": 11.937540388107301,
+              "p95_ms_per_item": 11.937540388107301,
+              "samples": 300,
+              "total_ms": 2440.420730113983
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 342.0753365170401,
+              "p50_ms": 2.5155385,
+              "p50_ms_per_item": 2.5155385,
+              "p95_ms": 4.980466450000001,
+              "p95_ms_per_item": 4.980466450000001,
+              "samples": 300,
+              "total_ms": 876.9997949999995
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 41.64231198121118,
+              "p50_ms": 23.5814565,
+              "p50_ms_per_item": 23.5814565,
+              "p95_ms": 26.97209135,
+              "p95_ms_per_item": 26.97209135,
+              "samples": 300,
+              "total_ms": 7204.210950999998
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 27.40957401884268,
+              "p50_ms": 35.215711999999996,
+              "p50_ms_per_item": 35.215711999999996,
+              "p95_ms": 45.105491650000005,
+              "p95_ms_per_item": 45.105491650000005,
+              "samples": 300,
+              "total_ms": 10945.080714999998
+            }
+          },
+          "torch_peak_allocated_bytes": 5161472,
+          "torch_peak_reserved_bytes": 23068672,
+          "weight": {
+            "bytes": 200357826,
+            "path": "outputs/player-model-comparison/assets/ecdet_x_o3652coco.pth",
+            "sha256": "be9c77cd4def8aadd0cc679944ba57412f363de2d44f7c6b900289e61316314c"
+          }
+        },
+        {
+          "backend": "trt16",
+          "batch_size": 2,
+          "conversion": [
+            {
+              "failure": null,
+              "phase": "onnx_export",
+              "wall_ms": 26127.481179
+            },
+            {
+              "failure": null,
+              "phase": "engine_build",
+              "wall_ms": 109112.685074
+            }
+          ],
+          "disposition": "original_plan_pending_trt_diagnosis",
+          "engine": {
+            "bytes": 108064972,
+            "path": "outputs/player-model-comparison/ecdet-x-o365/trt16-trace2/engine/engine.plan",
+            "sha256": "b4986ec8b18cb5a869a07b9548bdd992cde0efd59a506a933a3af3b8abdbaf1b"
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 11538,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 639733760,
+          "nvml_peak_minus_before_load_bytes": 220200960,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecdet-x-o365/speed-13e508cb7/trt16/speed-b2.json",
+            "sha256": "d06f09777f63dfe7c32cc6158a14b99000776242febd50b8f0f7fd1e8ac36b72"
+          },
+          "setup_wall_ms": {
+            "cold_start": 1391.979456,
+            "load": 2902.42386
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4015.618157867695,
+              "p50_ms": 0.472387,
+              "p50_ms_per_item": 0.2361935,
+              "p95_ms": 0.74816875,
+              "p95_ms_per_item": 0.374084375,
+              "samples": 300,
+              "total_ms": 149.41659700000005
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 168.05172498998226,
+              "p50_ms": 11.6819265,
+              "p50_ms_per_item": 5.84096325,
+              "p95_ms": 13.10880505,
+              "p95_ms_per_item": 6.554402525,
+              "samples": 300,
+              "total_ms": 3570.3293139999996
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1517.82138980636,
+              "p50_ms": 1.2727255,
+              "p50_ms_per_item": 0.63636275,
+              "p95_ms": 1.6788235000000002,
+              "p95_ms_per_item": 0.8394117500000001,
+              "samples": 300,
+              "total_ms": 395.30342900000016
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 168.87664981216167,
+              "p50_ms": 11.625919818878174,
+              "p50_ms_per_item": 5.812959909439087,
+              "p95_ms": 13.059158039093019,
+              "p95_ms_per_item": 6.529579019546509,
+              "samples": 300,
+              "total_ms": 3552.8890504837036
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 478.70651202659116,
+              "p50_ms": 3.738117,
+              "p50_ms_per_item": 1.8690585,
+              "p95_ms": 6.5116541,
+              "p95_ms_per_item": 3.25582705,
+              "samples": 300,
+              "total_ms": 1253.377560000001
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 39.37428775075705,
+              "p50_ms": 48.660005,
+              "p50_ms_per_item": 24.3300025,
+              "p95_ms": 62.60028415000001,
+              "p95_ms_per_item": 31.300142075000004,
+              "samples": 300,
+              "total_ms": 15238.370883000005
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 29.02513193022516,
+              "p50_ms": 66.58842849999999,
+              "p50_ms_per_item": 33.294214249999996,
+              "p95_ms": 82.92946375000001,
+              "p95_ms_per_item": 41.464731875000005,
+              "samples": 300,
+              "total_ms": 20671.74066399999
+            }
+          },
+          "torch_peak_allocated_bytes": 10320896,
+          "torch_peak_reserved_bytes": 23068672,
+          "weight": {
+            "bytes": 200357826,
+            "path": "outputs/player-model-comparison/assets/ecdet_x_o3652coco.pth",
+            "sha256": "be9c77cd4def8aadd0cc679944ba57412f363de2d44f7c6b900289e61316314c"
+          }
+        }
+      ],
+      "checkout_commit": "3bb026d5de12dbe980bc17e3d0a97c751b58fd4b",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecdet-x-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+      "job_id": "0-8204406599706080216_2026-11-25T07-56-40-293919783Z_1736800_i2487-ecdet-x-o365-fixed-speed-13e508cb7.job",
+      "queue_log": {
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204406599706080216_2026-11-25T07-56-40-293919783Z_1736800_i2487-ecdet-x-o365-fixed-speed-13e508cb7.log",
+        "sha256": "44dee8d0bba8290f281daace387624e09038ce6190b4943539d76c203765cbde"
+      }
+    },
+    "ecpose-l-o365": {
+      "cases": [
+        {
+          "backend": "pt16",
+          "batch_size": 1,
+          "conversion": [],
+          "disposition": "measured",
+          "engine": null,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10400,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 799117312,
+          "nvml_peak_minus_before_load_bytes": 379584512,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecpose-l-o365/speed-13e508cb7/pt16/speed-b1.json",
+            "sha256": "e9fbf9a4131bcf643fbca5f2da2b4d791c1c5dd293acc0414c16894b7e1f9a69"
+          },
+          "setup_wall_ms": {
+            "cold_start": 16076.234746,
+            "load": 1569.358856
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3089.1739805177513,
+              "p50_ms": 0.313538,
+              "p50_ms_per_item": 0.313538,
+              "p95_ms": 0.44673409999999997,
+              "p95_ms_per_item": 0.44673409999999997,
+              "samples": 300,
+              "total_ms": 97.11333900000007
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 32.67772645066346,
+              "p50_ms": 29.521698999999998,
+              "p50_ms_per_item": 29.521698999999998,
+              "p95_ms": 36.1854961,
+              "p95_ms_per_item": 36.1854961,
+              "samples": 300,
+              "total_ms": 9180.565253000002
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1382.797320990595,
+              "p50_ms": 0.706456,
+              "p50_ms_per_item": 0.706456,
+              "p95_ms": 0.9138962,
+              "p95_ms_per_item": 0.9138962,
+              "samples": 300,
+              "total_ms": 216.95153400000004
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 32.73026199428298,
+              "p50_ms": 29.482672691345215,
+              "p50_ms_per_item": 29.482672691345215,
+              "p95_ms": 36.123334884643555,
+              "p95_ms_per_item": 36.123334884643555,
+              "samples": 300,
+              "total_ms": 9165.829471588135
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 419.25239240403425,
+              "p50_ms": 2.26037,
+              "p50_ms_per_item": 2.26037,
+              "p95_ms": 3.2615920000000003,
+              "p95_ms_per_item": 3.2615920000000003,
+              "samples": 300,
+              "total_ms": 715.5594229999992
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 44.736308188412806,
+              "p50_ms": 22.072716,
+              "p50_ms_per_item": 22.072716,
+              "p95_ms": 23.333829150000003,
+              "p95_ms_per_item": 23.333829150000003,
+              "samples": 300,
+              "total_ms": 6705.962385999998
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 17.68174723513086,
+              "p50_ms": 55.105153,
+              "p50_ms_per_item": 55.105153,
+              "p95_ms": 63.6316015,
+              "p95_ms_per_item": 63.6316015,
+              "samples": 300,
+              "total_ms": 16966.649053999994
+            }
+          },
+          "torch_peak_allocated_bytes": 313247232,
+          "torch_peak_reserved_bytes": 335544320,
+          "weight": {
+            "bytes": 138759372,
+            "path": "outputs/player-model-comparison/assets/ecpose_l_o3652coco.pth",
+            "sha256": "091ad72c92ee5de3383176cbae8e8836e9cacf2b9fbec94c11c855fbfe35343c"
+          }
+        },
+        {
+          "backend": "pt16",
+          "batch_size": 2,
+          "conversion": [],
+          "disposition": "measured",
+          "engine": null,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 9767,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 899780608,
+          "nvml_peak_minus_before_load_bytes": 480247808,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecpose-l-o365/speed-13e508cb7/pt16/speed-b2.json",
+            "sha256": "921c786123104e94c1b1aca52be6edf69ef66b345ebb4f8cacdcd1aabd50c807"
+          },
+          "setup_wall_ms": {
+            "cold_start": 18240.731778,
+            "load": 1353.254694
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 3945.2676179574883,
+              "p50_ms": 0.4817205,
+              "p50_ms_per_item": 0.24086025,
+              "p95_ms": 0.6802080500000001,
+              "p95_ms_per_item": 0.34010402500000003,
+              "samples": 300,
+              "total_ms": 152.0809379999999
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 58.41957578870013,
+              "p50_ms": 33.8136485,
+              "p50_ms_per_item": 16.90682425,
+              "p95_ms": 37.146371200000004,
+              "p95_ms_per_item": 18.573185600000002,
+              "samples": 300,
+              "total_ms": 10270.529902000002
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1751.9687244850397,
+              "p50_ms": 1.136052,
+              "p50_ms_per_item": 0.568026,
+              "p95_ms": 1.3395890500000003,
+              "p95_ms_per_item": 0.6697945250000001,
+              "samples": 300,
+              "total_ms": 342.4718669999999
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 58.50297254961744,
+              "p50_ms": 33.76036834716797,
+              "p50_ms_per_item": 16.880184173583984,
+              "p95_ms": 37.112629127502444,
+              "p95_ms_per_item": 18.556314563751222,
+              "samples": 300,
+              "total_ms": 10255.889125823975
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 483.9261345407474,
+              "p50_ms": 4.007289,
+              "p50_ms_per_item": 2.0036445,
+              "p95_ms": 5.1884022,
+              "p95_ms_per_item": 2.5942011,
+              "samples": 300,
+              "total_ms": 1239.8586419999992
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 44.92391713919993,
+              "p50_ms": 44.308144999999996,
+              "p50_ms_per_item": 22.154072499999998,
+              "p95_ms": 45.84243155,
+              "p95_ms_per_item": 22.921215775,
+              "samples": 300,
+              "total_ms": 13355.914582
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 23.60760584237436,
+              "p50_ms": 84.0682515,
+              "p50_ms_per_item": 42.03412575,
+              "p95_ms": 88.5888913,
+              "p95_ms_per_item": 44.29444565,
+              "samples": 300,
+              "total_ms": 25415.537857000003
+            }
+          },
+          "torch_peak_allocated_bytes": 398217216,
+          "torch_peak_reserved_bytes": 436207616,
+          "weight": {
+            "bytes": 138759372,
+            "path": "outputs/player-model-comparison/assets/ecpose_l_o3652coco.pth",
+            "sha256": "091ad72c92ee5de3383176cbae8e8836e9cacf2b9fbec94c11c855fbfe35343c"
+          }
+        },
+        {
+          "backend": "trt16",
+          "batch_size": 1,
+          "conversion": [
+            {
+              "failure": null,
+              "phase": "onnx_export",
+              "wall_ms": 15308.324981
+            },
+            {
+              "failure": null,
+              "phase": "engine_build",
+              "wall_ms": 104472.141709
+            }
+          ],
+          "disposition": "original_plan_pending_trt_diagnosis",
+          "engine": {
+            "bytes": 79789740,
+            "path": "outputs/player-model-comparison/ecpose-l-o365/trt16-trace2/engine/engine.plan",
+            "sha256": "f601d900dba10a8e3eba087ed7dd78ddad0e39f838e7a8bf6c7202447dcef3b8"
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 9878,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 650219520,
+          "nvml_peak_minus_before_load_bytes": 230686720,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecpose-l-o365/speed-13e508cb7/trt16/speed-b1.json",
+            "sha256": "8ab86fdc47eb7907603c43fca3f6ccb3f4470da109cfe65158d5a9ae0507edd6"
+          },
+          "setup_wall_ms": {
+            "cold_start": 1736.145422,
+            "load": 3498.354873
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3207.46842343561,
+              "p50_ms": 0.290829,
+              "p50_ms_per_item": 0.290829,
+              "p95_ms": 0.43137105,
+              "p95_ms_per_item": 0.43137105,
+              "samples": 300,
+              "total_ms": 93.53170800000005
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 123.08549709903359,
+              "p50_ms": 7.752352,
+              "p50_ms_per_item": 7.752352,
+              "p95_ms": 9.812894150000002,
+              "p95_ms_per_item": 9.812894150000002,
+              "samples": 300,
+              "total_ms": 2437.3302060000005
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1390.054797350167,
+              "p50_ms": 0.7170865,
+              "p50_ms_per_item": 0.7170865,
+              "p95_ms": 0.8984382000000001,
+              "p95_ms_per_item": 0.8984382000000001,
+              "samples": 300,
+              "total_ms": 215.81882999999988
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 123.6826964969863,
+              "p50_ms": 7.711199998855591,
+              "p50_ms_per_item": 7.711199998855591,
+              "p95_ms": 9.773548746109011,
+              "p95_ms_per_item": 9.773548746109011,
+              "samples": 300,
+              "total_ms": 2425.5616064071655
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 351.05904403083673,
+              "p50_ms": 2.649882,
+              "p50_ms_per_item": 2.649882,
+              "p95_ms": 4.053712150000001,
+              "p95_ms_per_item": 4.053712150000001,
+              "samples": 300,
+              "total_ms": 854.5571039999991
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 45.17149573598346,
+              "p50_ms": 21.7966915,
+              "p50_ms_per_item": 21.7966915,
+              "p95_ms": 24.90460835,
+              "p95_ms_per_item": 24.90460835,
+              "samples": 300,
+              "total_ms": 6641.356348999996
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 29.149933878301315,
+              "p50_ms": 33.4939555,
+              "p50_ms_per_item": 33.4939555,
+              "p95_ms": 39.62109075,
+              "p95_ms_per_item": 39.62109075,
+              "samples": 300,
+              "total_ms": 10291.618542000007
+            }
+          },
+          "torch_peak_allocated_bytes": 4974592,
+          "torch_peak_reserved_bytes": 23068672,
+          "weight": {
+            "bytes": 138759372,
+            "path": "outputs/player-model-comparison/assets/ecpose_l_o3652coco.pth",
+            "sha256": "091ad72c92ee5de3383176cbae8e8836e9cacf2b9fbec94c11c855fbfe35343c"
+          }
+        },
+        {
+          "backend": "trt16",
+          "batch_size": 2,
+          "conversion": [
+            {
+              "failure": null,
+              "phase": "onnx_export",
+              "wall_ms": 15308.324981
+            },
+            {
+              "failure": null,
+              "phase": "engine_build",
+              "wall_ms": 104472.141709
+            }
+          ],
+          "disposition": "original_plan_pending_trt_diagnosis",
+          "engine": {
+            "bytes": 79789740,
+            "path": "outputs/player-model-comparison/ecpose-l-o365/trt16-trace2/engine/engine.plan",
+            "sha256": "f601d900dba10a8e3eba087ed7dd78ddad0e39f838e7a8bf6c7202447dcef3b8"
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 9877,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 650219520,
+          "nvml_peak_minus_before_load_bytes": 230686720,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecpose-l-o365/speed-13e508cb7/trt16/speed-b2.json",
+            "sha256": "c209b338bd489aa841b06d1a7c337ca733e7fde51a0c48102d75c57dbdc80c8d"
+          },
+          "setup_wall_ms": {
+            "cold_start": 1774.240129,
+            "load": 2066.340423
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 3948.062474851252,
+              "p50_ms": 0.4920965,
+              "p50_ms_per_item": 0.24604825,
+              "p95_ms": 0.6867214,
+              "p95_ms_per_item": 0.3433607,
+              "samples": 300,
+              "total_ms": 151.97327900000005
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 161.7882829517686,
+              "p50_ms": 12.3299555,
+              "p50_ms_per_item": 6.16497775,
+              "p95_ms": 12.7710811,
+              "p95_ms_per_item": 6.38554055,
+              "samples": 300,
+              "total_ms": 3708.5503909999998
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1809.7418567023053,
+              "p50_ms": 1.0839050000000001,
+              "p50_ms_per_item": 0.5419525000000001,
+              "p95_ms": 1.3317390500000001,
+              "p95_ms_per_item": 0.6658695250000001,
+              "samples": 300,
+              "total_ms": 331.538997
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 162.37466153763242,
+              "p50_ms": 12.28985595703125,
+              "p50_ms_per_item": 6.144927978515625,
+              "p95_ms": 12.70621452331543,
+              "p95_ms_per_item": 6.353107261657715,
+              "samples": 300,
+              "total_ms": 3695.157817840576
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 437.1985864594404,
+              "p50_ms": 4.364425499999999,
+              "p50_ms_per_item": 2.1822127499999997,
+              "p95_ms": 5.89470695,
+              "p95_ms_per_item": 2.947353475,
+              "samples": 300,
+              "total_ms": 1372.3740619999992
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 45.84419886531457,
+              "p50_ms": 43.493358,
+              "p50_ms_per_item": 21.746679,
+              "p95_ms": 44.3594312,
+              "p95_ms_per_item": 22.1797156,
+              "samples": 300,
+              "total_ms": 13087.806415000006
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 32.07432224487774,
+              "p50_ms": 62.04848,
+              "p50_ms_per_item": 31.02424,
+              "p95_ms": 64.03904485,
+              "p95_ms_per_item": 32.019522425,
+              "samples": 300,
+              "total_ms": 18706.552719000003
+            }
+          },
+          "torch_peak_allocated_bytes": 9909760,
+          "torch_peak_reserved_bytes": 23068672,
+          "weight": {
+            "bytes": 138759372,
+            "path": "outputs/player-model-comparison/assets/ecpose_l_o3652coco.pth",
+            "sha256": "091ad72c92ee5de3383176cbae8e8836e9cacf2b9fbec94c11c855fbfe35343c"
+          }
+        }
+      ],
+      "checkout_commit": "3bb026d5de12dbe980bc17e3d0a97c751b58fd4b",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecpose-l-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+      "job_id": "0-8204406601172825111_2026-11-25T07-56-38-827174888Z_1736457_i2487-ecpose-l-o365-fixed-speed-13e508cb7.job",
+      "queue_log": {
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204406601172825111_2026-11-25T07-56-38-827174888Z_1736457_i2487-ecpose-l-o365-fixed-speed-13e508cb7.log",
+        "sha256": "0ae8d864f2980694200e35be19493e1ecc8487dc0488ed0beee82b230ba3d78c"
+      }
+    },
+    "ecpose-x-o365": {
+      "cases": [
+        {
+          "backend": "pt16",
+          "batch_size": 1,
+          "conversion": [],
+          "disposition": "measured",
+          "engine": null,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10068,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 914460672,
+          "nvml_peak_minus_before_load_bytes": 494927872,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecpose-x-o365/speed-13e508cb7/pt16/speed-b1.json",
+            "sha256": "9051ead56d69669236368ae42b557fabdee5ec8ff43719e3559619bf687942c8"
+          },
+          "setup_wall_ms": {
+            "cold_start": 4570.538111,
+            "load": 1992.470031
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3215.5809043371114,
+              "p50_ms": 0.3011495,
+              "p50_ms_per_item": 0.3011495,
+              "p95_ms": 0.4026200000000001,
+              "p95_ms_per_item": 0.4026200000000001,
+              "samples": 300,
+              "total_ms": 93.29574
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 32.86592725498036,
+              "p50_ms": 29.7208645,
+              "p50_ms_per_item": 29.7208645,
+              "p95_ms": 36.3623781,
+              "p95_ms_per_item": 36.3623781,
+              "samples": 300,
+              "total_ms": 9127.994402
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1420.3862162691419,
+              "p50_ms": 0.6951,
+              "p50_ms_per_item": 0.6951,
+              "p95_ms": 0.85385805,
+              "p95_ms_per_item": 0.85385805,
+              "samples": 300,
+              "total_ms": 211.21015999999997
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 32.92308175539046,
+              "p50_ms": 29.671119689941406,
+              "p50_ms_per_item": 29.671119689941406,
+              "p95_ms": 36.262250709533696,
+              "p95_ms_per_item": 36.262250709533696,
+              "samples": 300,
+              "total_ms": 9112.148195266724
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 432.0824764561712,
+              "p50_ms": 2.234943,
+              "p50_ms_per_item": 2.234943,
+              "p95_ms": 3.1342610500000005,
+              "p95_ms_per_item": 3.1342610500000005,
+              "samples": 300,
+              "total_ms": 694.3118880000005
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 44.9713472368924,
+              "p50_ms": 22.0909785,
+              "p50_ms_per_item": 22.0909785,
+              "p95_ms": 23.0476224,
+              "p95_ms_per_item": 23.0476224,
+              "samples": 300,
+              "total_ms": 6670.914225000001
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 17.807697581106343,
+              "p50_ms": 55.3413665,
+              "p50_ms_per_item": 55.3413665,
+              "p95_ms": 62.84506520000001,
+              "p95_ms_per_item": 62.84506520000001,
+              "samples": 300,
+              "total_ms": 16846.647278999997
+            }
+          },
+          "torch_peak_allocated_bytes": 414286336,
+          "torch_peak_reserved_bytes": 450887680,
+          "weight": {
+            "bytes": 206712140,
+            "path": "outputs/player-model-comparison/assets/ecpose_x_o3652coco.pth",
+            "sha256": "2d79c0fd21831e4f3e6d5ba7bfa10b5e6e8ecb2641180299d7a1bd968b33f4f6"
+          }
+        },
+        {
+          "backend": "pt16",
+          "batch_size": 2,
+          "conversion": [],
+          "disposition": "measured",
+          "engine": null,
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10080,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 1040289792,
+          "nvml_peak_minus_before_load_bytes": 620756992,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecpose-x-o365/speed-13e508cb7/pt16/speed-b2.json",
+            "sha256": "15fd023d2db5c18d2b4f0e96e1f355652ce86af6741f439c0d123f07e9164289"
+          },
+          "setup_wall_ms": {
+            "cold_start": 3257.967388,
+            "load": 1794.268896
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 4058.928168579951,
+              "p50_ms": 0.47114049999999996,
+              "p50_ms_per_item": 0.23557024999999998,
+              "p95_ms": 0.6647040000000001,
+              "p95_ms_per_item": 0.33235200000000004,
+              "samples": 300,
+              "total_ms": 147.822276
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 56.36593943373261,
+              "p50_ms": 34.924798499999994,
+              "p50_ms_per_item": 17.462399249999997,
+              "p95_ms": 39.7328379,
+              "p95_ms_per_item": 19.86641895,
+              "samples": 300,
+              "total_ms": 10644.726336999993
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1890.7200134074744,
+              "p50_ms": 1.0376275,
+              "p50_ms_per_item": 0.51881375,
+              "p95_ms": 1.2704707,
+              "p95_ms_per_item": 0.63523535,
+              "samples": 300,
+              "total_ms": 317.3394239999999
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 56.44496508100828,
+              "p50_ms": 34.88435363769531,
+              "p50_ms_per_item": 17.442176818847656,
+              "p95_ms": 39.688818359375,
+              "p95_ms_per_item": 19.8444091796875,
+              "samples": 300,
+              "total_ms": 10629.823211669922
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 482.48120203983575,
+              "p50_ms": 3.9235765,
+              "p50_ms_per_item": 1.96178825,
+              "p95_ms": 5.6082821,
+              "p95_ms_per_item": 2.80414105,
+              "samples": 300,
+              "total_ms": 1243.5717649999997
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 45.50726760294009,
+              "p50_ms": 43.642292499999996,
+              "p50_ms_per_item": 21.821146249999998,
+              "p95_ms": 45.6754569,
+              "p95_ms_per_item": 22.83772845,
+              "samples": 300,
+              "total_ms": 13184.707226000002
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 23.444943498478608,
+              "p50_ms": 84.403678,
+              "p50_ms_per_item": 42.201839,
+              "p95_ms": 91.54177215000001,
+              "p95_ms_per_item": 45.77088607500001,
+              "samples": 300,
+              "total_ms": 25591.872296
+            }
+          },
+          "torch_peak_allocated_bytes": 500077568,
+          "torch_peak_reserved_bytes": 576716800,
+          "weight": {
+            "bytes": 206712140,
+            "path": "outputs/player-model-comparison/assets/ecpose_x_o3652coco.pth",
+            "sha256": "2d79c0fd21831e4f3e6d5ba7bfa10b5e6e8ecb2641180299d7a1bd968b33f4f6"
+          }
+        },
+        {
+          "backend": "trt16",
+          "batch_size": 1,
+          "conversion": [
+            {
+              "failure": null,
+              "phase": "onnx_export",
+              "wall_ms": 14448.797551
+            },
+            {
+              "failure": null,
+              "phase": "engine_build",
+              "wall_ms": 116918.252409
+            }
+          ],
+          "disposition": "original_plan_pending_trt_diagnosis",
+          "engine": {
+            "bytes": 112485268,
+            "path": "outputs/player-model-comparison/ecpose-x-o365/trt16-trace2/engine/engine.plan",
+            "sha256": "c878bc92ee859de02efc62daa5cefb97e8b49a44cad0e386207a5320baf8559e"
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10703,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "65905b57aa91769e11f7fb0f31276ebfb03a201973970b9ede14d24cc09dc6f4",
+          "nvml_device_peak_sampled_bytes": 692162560,
+          "nvml_peak_minus_before_load_bytes": 272629760,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecpose-x-o365/speed-13e508cb7/trt16/speed-b1.json",
+            "sha256": "bc18e2ce462872ce15f8bb03fa2bbd295fce883ca535df576439867103aff990"
+          },
+          "setup_wall_ms": {
+            "cold_start": 1748.426224,
+            "load": 3678.909608
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 300,
+              "items_per_second": 3211.3820285323986,
+              "p50_ms": 0.298725,
+              "p50_ms_per_item": 0.298725,
+              "p95_ms": 0.4175667,
+              "p95_ms_per_item": 0.4175667,
+              "samples": 300,
+              "total_ms": 93.41772400000008
+            },
+            "forward": {
+              "items": 300,
+              "items_per_second": 115.21089959259585,
+              "p50_ms": 8.5344885,
+              "p50_ms_per_item": 8.5344885,
+              "p95_ms": 9.174532750000001,
+              "p95_ms_per_item": 9.174532750000001,
+              "samples": 300,
+              "total_ms": 2603.9202979999977
+            },
+            "h2d": {
+              "items": 300,
+              "items_per_second": 1377.1675797142345,
+              "p50_ms": 0.7098835,
+              "p50_ms_per_item": 0.7098835,
+              "p95_ms": 0.9039912500000001,
+              "p95_ms_per_item": 0.9039912500000001,
+              "samples": 300,
+              "total_ms": 217.83841300000012
+            },
+            "model_gpu": {
+              "items": 300,
+              "items_per_second": 115.75472440522306,
+              "p50_ms": 8.486560344696045,
+              "p50_ms_per_item": 8.486560344696045,
+              "p95_ms": 9.13713631629944,
+              "p95_ms_per_item": 9.13713631629944,
+              "samples": 300,
+              "total_ms": 2591.6868753433228
+            },
+            "postprocess": {
+              "items": 300,
+              "items_per_second": 356.3852681891272,
+              "p50_ms": 2.6463555,
+              "p50_ms_per_item": 2.6463555,
+              "p95_ms": 3.63427035,
+              "p95_ms_per_item": 3.63427035,
+              "samples": 300,
+              "total_ms": 841.7856369999993
+            },
+            "preprocess": {
+              "items": 300,
+              "items_per_second": 45.09025114292776,
+              "p50_ms": 22.012374,
+              "p50_ms_per_item": 22.012374,
+              "p95_ms": 23.479572100000002,
+              "p95_ms_per_item": 23.479572100000002,
+              "samples": 300,
+              "total_ms": 6653.322889000006
+            },
+            "stage_wall": {
+              "items": 300,
+              "items_per_second": 28.678268685738388,
+              "p50_ms": 34.533421000000004,
+              "p50_ms_per_item": 34.533421000000004,
+              "p95_ms": 37.25305505,
+              "p95_ms_per_item": 37.25305505,
+              "samples": 300,
+              "total_ms": 10460.882534000006
+            }
+          },
+          "torch_peak_allocated_bytes": 4967424,
+          "torch_peak_reserved_bytes": 23068672,
+          "weight": {
+            "bytes": 206712140,
+            "path": "outputs/player-model-comparison/assets/ecpose_x_o3652coco.pth",
+            "sha256": "2d79c0fd21831e4f3e6d5ba7bfa10b5e6e8ecb2641180299d7a1bd968b33f4f6"
+          }
+        },
+        {
+          "backend": "trt16",
+          "batch_size": 2,
+          "conversion": [
+            {
+              "failure": null,
+              "phase": "onnx_export",
+              "wall_ms": 14448.797551
+            },
+            {
+              "failure": null,
+              "phase": "engine_build",
+              "wall_ms": 116918.252409
+            }
+          ],
+          "disposition": "original_plan_pending_trt_diagnosis",
+          "engine": {
+            "bytes": 112485268,
+            "path": "outputs/player-model-comparison/ecpose-x-o365/trt16-trace2/engine/engine.plan",
+            "sha256": "c878bc92ee859de02efc62daa5cefb97e8b49a44cad0e386207a5320baf8559e"
+          },
+          "environment": {
+            "compute_capability": [
+              12,
+              0
+            ],
+            "cuda": "13.0",
+            "cuda_device": "cuda:0",
+            "driver": "621.24",
+            "fp32_precision": {
+              "cudnn": "ieee",
+              "cudnn_conv": "ieee",
+              "matmul": "ieee"
+            },
+            "gpu": "NVIDIA GeForce RTX 5060 Ti",
+            "gpu_total_bytes": 17074749440,
+            "gpu_uuid": "15feca48-ad19-0234-6b87-88551f498c6d",
+            "max_memory_clock_mhz": 14001,
+            "max_sm_clock_mhz": 3090,
+            "memory_clock_mhz": 405,
+            "power_limit_mw": 180000,
+            "power_mw": 10630,
+            "sm_clock_mhz": 180,
+            "telemetry_errors": {},
+            "tensorrt": {
+              "tensorrt_cu13": "10.14.1.48.post1"
+            },
+            "torch": "2.13.0+cu130"
+          },
+          "failure": null,
+          "input_order_sha256": "18b8baf4e30fbdd40fc816d62040a48134391b1494ea42cebfd34d47389d7888",
+          "nvml_device_peak_sampled_bytes": 692162560,
+          "nvml_peak_minus_before_load_bytes": 272629760,
+          "parity_not_evaluated_reason": "PT32未計測",
+          "parity_status": "not_evaluated",
+          "protocol": {
+            "batch_sizes": [
+              1,
+              2
+            ],
+            "blocks": 3,
+            "iterations_per_block": 100,
+            "warmup": 30
+          },
+          "raw": {
+            "path": "outputs/player-model-comparison/ecpose-x-o365/speed-13e508cb7/trt16/speed-b2.json",
+            "sha256": "f25a9f564225afdf7943fe23cb36f84fedf01ba11cbf5e82eda35e9983188c89"
+          },
+          "setup_wall_ms": {
+            "cold_start": 2753.417318,
+            "load": 3032.440491
+          },
+          "status": "ok",
+          "summary": {
+            "d2h": {
+              "items": 600,
+              "items_per_second": 3661.179063679326,
+              "p50_ms": 0.531741,
+              "p50_ms_per_item": 0.2658705,
+              "p95_ms": 0.7665401500000002,
+              "p95_ms_per_item": 0.3832700750000001,
+              "samples": 300,
+              "total_ms": 163.88163200000002
+            },
+            "forward": {
+              "items": 600,
+              "items_per_second": 139.39105396955443,
+              "p50_ms": 14.343898,
+              "p50_ms_per_item": 7.171949,
+              "p95_ms": 14.901050549999999,
+              "p95_ms_per_item": 7.4505252749999995,
+              "samples": 300,
+              "total_ms": 4304.436927
+            },
+            "h2d": {
+              "items": 600,
+              "items_per_second": 1716.5522302327722,
+              "p50_ms": 1.142215,
+              "p50_ms_per_item": 0.5711075,
+              "p95_ms": 1.4038747500000002,
+              "p95_ms_per_item": 0.7019373750000001,
+              "samples": 300,
+              "total_ms": 349.53786400000035
+            },
+            "model_gpu": {
+              "items": 600,
+              "items_per_second": 139.92561714790742,
+              "p50_ms": 14.283872127532959,
+              "p50_ms_per_item": 7.1419360637664795,
+              "p95_ms": 14.840391921997071,
+              "p95_ms_per_item": 7.4201959609985355,
+              "samples": 300,
+              "total_ms": 4287.992522239685
+            },
+            "postprocess": {
+              "items": 600,
+              "items_per_second": 405.97993037266906,
+              "p50_ms": 4.805668,
+              "p50_ms_per_item": 2.402834,
+              "p95_ms": 6.59152385,
+              "p95_ms_per_item": 3.295761925,
+              "samples": 300,
+              "total_ms": 1477.9055690000005
+            },
+            "preprocess": {
+              "items": 600,
+              "items_per_second": 45.29738784547787,
+              "p50_ms": 44.090809,
+              "p50_ms_per_item": 22.0454045,
+              "p95_ms": 49.0595593,
+              "p95_ms_per_item": 24.52977965,
+              "samples": 300,
+              "total_ms": 13245.796911000005
+            },
+            "stage_wall": {
+              "items": 600,
+              "items_per_second": 30.616337938382042,
+              "p50_ms": 65.455442,
+              "p50_ms_per_item": 32.727721,
+              "p95_ms": 70.3415848,
+              "p95_ms_per_item": 35.1707924,
+              "samples": 300,
+              "total_ms": 19597.379712999984
+            }
+          },
+          "torch_peak_allocated_bytes": 9903616,
+          "torch_peak_reserved_bytes": 23068672,
+          "weight": {
+            "bytes": 206712140,
+            "path": "outputs/player-model-comparison/assets/ecpose_x_o3652coco.pth",
+            "sha256": "2d79c0fd21831e4f3e6d5ba7bfa10b5e6e8ecb2641180299d7a1bd968b33f4f6"
+          }
+        }
+      ],
+      "checkout_commit": "3bb026d5de12dbe980bc17e3d0a97c751b58fd4b",
+      "command": "bash knowledge/runs/run-meiji-player-model-comparison/edgecrafter_speed_run.sh ecpose-x-o365 /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs 13e508cb78c46663fbe58ad8be03bcf9c96816a6",
+      "job_id": "0-8204406600906716001_2026-11-25T07-56-39-093283998Z_1736525_i2487-ecpose-x-o365-fixed-speed-13e508cb7.job",
+      "queue_log": {
+        "path": ".worktree-outputs/parent-2492-issue-2487-edgecrafter/player-model-comparison/queue-logs/0-8204406600906716001_2026-11-25T07-56-39-093283998Z_1736525_i2487-ecpose-x-o365-fixed-speed-13e508cb7.log",
+        "sha256": "81590c8ceefb33f13e04d7266d6211677219f0753a9f1d467b0f3d1df264cd63"
+      }
+    }
+  },
+  "schema_version": 1,
+  "timing_protocol_sha256": "39e362cb87c7c373f8c1ad25e5e28025aab89b1467be21ca3139c2fb456136a2"
+}

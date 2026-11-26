@@ -46,7 +46,7 @@ def main(cfg: DictConfig) -> int:
     except (OSError, RuntimeError, TypeError, ValueError) as error:
         return _report((AssetCheck("pipeline_configuration", "configuration", "error",
                                   f"Asset inventory unavailable: {error}"),))
-    checks = check_assets(requirements)
+    checks = check_assets(requirements, check_dino_extension=any(item.name == "dino_ops" for item in requirements))
     if any(requirement.path_error is not None for requirement in requirements):
         checks += (AssetCheck("pipeline_configuration", "configuration", "error",
                               "Full runtime validation unavailable until invalid asset paths or configuration inputs are repaired"),)
