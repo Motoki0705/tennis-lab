@@ -2,7 +2,7 @@
 id: run-meiji-multiview-scene
 type: run
 task: tennis_scene
-sequence: 90
+sequence: 106
 recorded_at: '2026-11-24'
 title: Meiji 4cam全69本の3D時間IDからの身体復元と新旧比較
 issue: 2446
