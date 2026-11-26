@@ -5,7 +5,8 @@ from __future__ import annotations
 import argparse
 import csv
 import json
-from collections import Counter
+from collections import Counter, defaultdict
+from hashlib import sha256
 from pathlib import Path
 from typing import Any
 
@@ -28,8 +29,36 @@ def read_json(path: Path) -> Any:
     return json.loads(path.read_text(encoding="utf-8"))
 
 
-def count_review(extract: Path) -> dict[str, Any]:
-    clips = read_json(extract / "index.json")["clips"]
+def original_clusters(archive: Path, digest: str) -> dict[str, Any]:
+    (path,) = (archive / "all/progress").glob("*/progress.json")
+    content = path.read_bytes()
+    if sha256(content).hexdigest() != digest:
+        raise ValueError(
+            "Original association diagnostics do not match the extract receipt"
+        )
+    clips = {}
+    for name, clip in json.loads(content)["clips"].items():
+        association = clip.get("diagnostics", {}).get("association")
+        if clip["status"] != "failed" or association is None:
+            continue
+        segments = defaultdict(list)
+        for index, identity in zip(
+            association["candidates"],
+            association["clustering"]["identity_of_candidate"],
+            strict=True,
+        ):
+            segment = association["segments"][index]
+            segments[segment["camera"], segment["track_id"]].append(
+                (segment["start"], segment["end"], identity)
+            )
+        clips[name.rsplit("/", 1)[-1]] = segments
+    return clips
+
+
+def count_review(extract: Path, archive: Path) -> dict[str, Any]:
+    manifest = read_json(extract / "index.json")
+    clips = manifest["clips"]
+    clusters = original_clusters(archive, manifest["source"]["progress.json"])
     with (BUNDLE / "anchor-labels.csv").open(newline="") as handle:
         labels = list(csv.DictReader(handle))
     reviewed = read_json(BUNDLE / "events.json")
@@ -72,6 +101,8 @@ def count_review(extract: Path) -> dict[str, Any]:
 
         counts: Counter[str] = Counter()
         focus_by_role: Counter[str] = Counter()
+        ids_by_role = {role: Counter() for role in ROLES}
+        candidates = clusters.get(name, {})
         seen = set()
         for label in (r for r in labels if r["clip"] == name):
             frame, camera = int(label["frame"]), label["camera"]
@@ -99,6 +130,9 @@ def count_review(extract: Path) -> dict[str, Any]:
                 counts["tracked"] += row["track"] is not None
                 counts["selected"] += row["selected"]
                 counts["carrier"] += row["group"] is not None
+                for start, end, identity in candidates.get((camera, row["group"]), ()):
+                    if start <= frame < end:
+                        ids_by_role[role][identity] += 1
                 for focus in clip["focus"]:
                     if (
                         focus["camera"] == camera
@@ -160,6 +194,9 @@ def count_review(extract: Path) -> dict[str, Any]:
             "anchor_counts": dict(counts),
             "events": {key: event_counts[key] for key in EVENTS},
             "focus_carrier_matches_by_role": dict(focus_by_role),
+            "original_cluster_rows_by_role": {
+                role: dict(count) for role, count in ids_by_role.items()
+            },
         }
     return result
 
@@ -167,9 +204,10 @@ def count_review(extract: Path) -> dict[str, Any]:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("extract", type=Path)
+    parser.add_argument("i2363_run", type=Path)
     parser.add_argument("output", type=Path)
     args = parser.parse_args()
-    result = count_review(args.extract)
+    result = count_review(args.extract, args.i2363_run)
     args.output.write_text(
         json.dumps(result, indent=2, ensure_ascii=False) + "\n", encoding="utf-8"
     )
