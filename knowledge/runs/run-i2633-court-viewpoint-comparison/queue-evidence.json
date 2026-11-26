@@ -1,0 +1,50 @@
+{
+  "broad-s42": {
+    "job": "0-8204305937730784863_2026-11-26T11-54-22-269215136Z_285077_i2633-viewpoint-broad-s42.job",
+    "state": "done",
+    "commit": "38eb91cde9d5667de2bd648b27c5cb593331c1b9",
+    "resource": "all",
+    "captured_at": "2026-11-26T23:15:31+09:00",
+    "finished_at_ns": 1795707679497361843,
+    "captured_to_finished_seconds": 5148.497362,
+    "log_sha256": "d63feba3d30db8163178065bb3f5e76a7c7285cb4e02a2ac8f2880b5a8f795b8",
+    "output_receipt_matches_stdout": true,
+    "clean_execution_snapshot": true
+  },
+  "broad-s43": {
+    "job": "0-8204305937289569594_2026-11-26T11-54-22-710430405Z_285195_i2633-viewpoint-broad-s43.job",
+    "state": "done",
+    "commit": "38eb91cde9d5667de2bd648b27c5cb593331c1b9",
+    "resource": "all",
+    "captured_at": "2026-11-27T00:41:19+09:00",
+    "finished_at_ns": 1795712752931118796,
+    "captured_to_finished_seconds": 5073.931119,
+    "log_sha256": "8d55cf90185eecefc5a328338f413b560d2a6c73888b301582fbd915640d3f7f",
+    "output_receipt_matches_stdout": true,
+    "clean_execution_snapshot": true
+  },
+  "narrow-s42": {
+    "job": "0-8204305938240258536_2026-11-26T11-54-21-759741463Z_284942_i2633-viewpoint-narrow-s42.job",
+    "state": "done",
+    "commit": "38eb91cde9d5667de2bd648b27c5cb593331c1b9",
+    "resource": "all",
+    "captured_at": "2026-11-26T21:44:03+09:00",
+    "finished_at_ns": 1795702530479648421,
+    "captured_to_finished_seconds": 5487.479649,
+    "log_sha256": "8715920addc48b0f2ac88b01410ca425d68fbfb3f68955fdba9462a0c695315b",
+    "output_receipt_matches_stdout": true,
+    "clean_execution_snapshot": true
+  },
+  "narrow-s43": {
+    "job": "0-8204305936795499069_2026-11-26T11-54-23-204500930Z_285297_i2633-viewpoint-narrow-s43.job",
+    "state": "done",
+    "commit": "38eb91cde9d5667de2bd648b27c5cb593331c1b9",
+    "resource": "all",
+    "captured_at": "2026-11-27T02:05:53+09:00",
+    "finished_at_ns": 1795718037751418016,
+    "captured_to_finished_seconds": 5284.751418,
+    "log_sha256": "a1e30e81041c02256c3aa5372c0132bc80708766c3aa873fcdb91cf2cb7ac430",
+    "output_receipt_matches_stdout": true,
+    "clean_execution_snapshot": true
+  }
+}
