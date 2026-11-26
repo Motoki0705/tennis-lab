@@ -1,0 +1,10 @@
+{
+  "clip_002": {"remove_detection_rows":{"cam0":[10630,12586,12640,12694]}},
+  "clip_004": {"remove_detection_rows":{"cam3":[1818,1869],"cam2":[1978]}},
+  "clip_023": {"remove_detection_rows":{"cam0":[9452,9701]}},
+  "clip_028": {"remove_detection_rows":{"cam0":[2759],"cam3":[4800]}},
+  "clip_036": {"remove_detection_rows":{"cam2":[1606]},"join_groups":{"camera":"cam2","groups":[4,3],"checked_frames":{"3":[2,62,122,182,283],"4":[242,277,311,345,404]}}},
+  "clip_038": {"remove_detection_rows":{"cam2":[1049]},"join_groups":{"camera":"cam2","groups":[4,3],"checked_frames":{"3":[2,49,96,143,200],"4":[179,224,262,299,336]}}},
+  "clip_049": {"remove_detection_rows":{"cam1":[2192,2339]}},
+  "clip_058": {"remove_detection_rows":{"cam0":[4397,4564]}}
+}
