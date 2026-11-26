@@ -10,7 +10,7 @@ store=$2
 manifest=$3
 output=$4
 script="$(dirname -- "$0")/evaluate.py"
-export PYTHONPATH=. OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1
+export PYTHONPATH=. OMP_NUM_THREADS=2 OPENBLAS_NUM_THREADS=1 MKL_NUM_THREADS=1 PYTHONDONTWRITEBYTECODE=1
 mkdir -p -- "$output"
 
 case "$stage" in
@@ -20,7 +20,10 @@ case "$stage" in
         .venv/bin/python "$script" shape --store "$store" --plan "$output/anchors.json" --output "$output/shape.json"
         ;;
     gpu)
-        .venv/bin/python "$script" gpu --store "$store" --plan "$output/anchors.json" --output "$output/temporal.json"
+        if [[ -v TENNIS_REPRO_DIR ]]; then
+            realpath -- "$output" > "$TENNIS_REPRO_DIR/output_dir.txt"
+        fi
+        .venv/bin/python "$script" gpu --store "$store" --plan "$(dirname -- "$script")/anchors.json" --output "$output/temporal.json"
         ;;
     *)
         printf 'unknown stage: %s\n' "$stage" >&2
