@@ -1,0 +1,1677 @@
+{
+  "footprints": [
+    {
+      "camera": "all",
+      "cohort": "all_sampled",
+      "width": 1920,
+      "height": 1080,
+      "sampled": 2208,
+      "measured": 2121,
+      "reasons": {
+        "measured": 2121,
+        "component_at_crop_edge": 44,
+        "component_far": 36,
+        "insufficient_pixels": 4,
+        "low_contrast": 3
+      },
+      "diameter_px": {
+        "n": 2121,
+        "p05": 2.3094,
+        "median": 4.0,
+        "p95": 6.8029
+      },
+      "blur_proxy_px": {
+        "n": 2121,
+        "p05": 0.6025,
+        "median": 2.6458,
+        "p95": 6.0495
+      },
+      "major_axis_px": {
+        "n": 2121,
+        "p05": 3.4641,
+        "median": 5.0335,
+        "p95": 9.3296
+      },
+      "peak_delta": {
+        "n": 2121,
+        "p05": 21.5,
+        "median": 66.5,
+        "p95": 189.5
+      },
+      "noise_mad": {
+        "n": 2121,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "all",
+      "cohort": "all_sampled",
+      "width": 1280,
+      "height": 720,
+      "sampled": 2208,
+      "measured": 2080,
+      "reasons": {
+        "measured": 2080,
+        "component_at_crop_edge": 38,
+        "insufficient_pixels": 53,
+        "component_far": 31,
+        "low_contrast": 6
+      },
+      "diameter_px": {
+        "n": 2080,
+        "p05": 1.7638,
+        "median": 2.9721,
+        "p95": 4.6188
+      },
+      "blur_proxy_px": {
+        "n": 2080,
+        "p05": 0.0,
+        "median": 2.1909,
+        "p95": 4.2406
+      },
+      "major_axis_px": {
+        "n": 2080,
+        "p05": 2.3094,
+        "median": 3.4641,
+        "p95": 6.4291
+      },
+      "peak_delta": {
+        "n": 2080,
+        "p05": 18.5,
+        "median": 59.5,
+        "p95": 180.0
+      },
+      "noise_mad": {
+        "n": 2080,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "all",
+      "cohort": "all_sampled",
+      "width": 512,
+      "height": 288,
+      "sampled": 2208,
+      "measured": 360,
+      "reasons": {
+        "insufficient_pixels": 1688,
+        "low_contrast": 95,
+        "measured": 360,
+        "component_at_crop_edge": 30,
+        "component_far": 35
+      },
+      "diameter_px": {
+        "n": 360,
+        "p05": 1.1547,
+        "median": 1.7638,
+        "p95": 2.354745
+      },
+      "blur_proxy_px": {
+        "n": 360,
+        "p05": 0.0,
+        "median": 1.633,
+        "p95": 5.726915000000001
+      },
+      "major_axis_px": {
+        "n": 360,
+        "p05": 2.3094,
+        "median": 2.582,
+        "p95": 6.9282
+      },
+      "peak_delta": {
+        "n": 360,
+        "p05": 19.0,
+        "median": 58.0,
+        "p95": 191.55
+      },
+      "noise_mad": {
+        "n": 360,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "all",
+      "cohort": "measured_at_all_sizes",
+      "width": 1920,
+      "height": 1080,
+      "sampled": 339,
+      "measured": 339,
+      "reasons": {
+        "measured": 339
+      },
+      "diameter_px": {
+        "n": 339,
+        "p05": 3.2601199999999997,
+        "median": 5.9581,
+        "p95": 9.099499999999995
+      },
+      "blur_proxy_px": {
+        "n": 339,
+        "p05": 1.67834,
+        "median": 4.1854,
+        "p95": 12.965539999999988
+      },
+      "major_axis_px": {
+        "n": 339,
+        "p05": 4.608110000000001,
+        "median": 8.041,
+        "p95": 15.59058999999998
+      },
+      "peak_delta": {
+        "n": 339,
+        "p05": 35.0,
+        "median": 86.0,
+        "p95": 221.0
+      },
+      "noise_mad": {
+        "n": 339,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "all",
+      "cohort": "measured_at_all_sizes",
+      "width": 1280,
+      "height": 720,
+      "sampled": 339,
+      "measured": 339,
+      "reasons": {
+        "measured": 339
+      },
+      "diameter_px": {
+        "n": 339,
+        "p05": 2.3094,
+        "median": 4.0881,
+        "p95": 6.33796
+      },
+      "blur_proxy_px": {
+        "n": 339,
+        "p05": 0.0,
+        "median": 2.8284,
+        "p95": 8.276289999999964
+      },
+      "major_axis_px": {
+        "n": 339,
+        "p05": 3.3333,
+        "median": 5.4569,
+        "p95": 10.06076999999995
+      },
+      "peak_delta": {
+        "n": 339,
+        "p05": 30.0,
+        "median": 78.5,
+        "p95": 211.04999999999998
+      },
+      "noise_mad": {
+        "n": 339,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "all",
+      "cohort": "measured_at_all_sizes",
+      "width": 512,
+      "height": 288,
+      "sampled": 339,
+      "measured": 339,
+      "reasons": {
+        "measured": 339
+      },
+      "diameter_px": {
+        "n": 339,
+        "p05": 1.1547,
+        "median": 1.7638,
+        "p95": 2.3094
+      },
+      "blur_proxy_px": {
+        "n": 339,
+        "p05": 0.0,
+        "median": 1.633,
+        "p95": 5.180359999999999
+      },
+      "major_axis_px": {
+        "n": 339,
+        "p05": 2.3094,
+        "median": 2.582,
+        "p95": 6.271049999999997
+      },
+      "peak_delta": {
+        "n": 339,
+        "p05": 19.0,
+        "median": 60.5,
+        "p95": 192.54999999999998
+      },
+      "noise_mad": {
+        "n": 339,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam0",
+      "cohort": "all_sampled",
+      "width": 1920,
+      "height": 1080,
+      "sampled": 552,
+      "measured": 534,
+      "reasons": {
+        "measured": 534,
+        "component_at_crop_edge": 11,
+        "component_far": 6,
+        "insufficient_pixels": 1
+      },
+      "diameter_px": {
+        "n": 534,
+        "p05": 2.3094,
+        "median": 3.9391,
+        "p95": 6.4059800000000005
+      },
+      "blur_proxy_px": {
+        "n": 534,
+        "p05": 0.7423,
+        "median": 2.54745,
+        "p95": 5.291129999999998
+      },
+      "major_axis_px": {
+        "n": 534,
+        "p05": 3.4641,
+        "median": 4.761,
+        "p95": 8.421314999999998
+      },
+      "peak_delta": {
+        "n": 534,
+        "p05": 26.650000000000002,
+        "median": 69.5,
+        "p95": 131.67499999999998
+      },
+      "noise_mad": {
+        "n": 534,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam0",
+      "cohort": "all_sampled",
+      "width": 1280,
+      "height": 720,
+      "sampled": 552,
+      "measured": 520,
+      "reasons": {
+        "measured": 520,
+        "component_at_crop_edge": 8,
+        "insufficient_pixels": 18,
+        "component_far": 6
+      },
+      "diameter_px": {
+        "n": 520,
+        "p05": 1.7638,
+        "median": 2.8184,
+        "p95": 4.372299999999999
+      },
+      "blur_proxy_px": {
+        "n": 520,
+        "p05": 0.0,
+        "median": 1.8371,
+        "p95": 3.8556799999999978
+      },
+      "major_axis_px": {
+        "n": 520,
+        "p05": 2.3094,
+        "median": 3.4641,
+        "p95": 5.882625
+      },
+      "peak_delta": {
+        "n": 520,
+        "p05": 22.0,
+        "median": 62.75,
+        "p95": 123.07499999999993
+      },
+      "noise_mad": {
+        "n": 520,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam0",
+      "cohort": "all_sampled",
+      "width": 512,
+      "height": 288,
+      "sampled": 552,
+      "measured": 83,
+      "reasons": {
+        "insufficient_pixels": 437,
+        "low_contrast": 20,
+        "measured": 83,
+        "component_at_crop_edge": 7,
+        "component_far": 5
+      },
+      "diameter_px": {
+        "n": 83,
+        "p05": 1.1818700000000002,
+        "median": 1.7638,
+        "p95": 2.3094
+      },
+      "blur_proxy_px": {
+        "n": 83,
+        "p05": 0.0,
+        "median": 1.633,
+        "p95": 4.481139999999995
+      },
+      "major_axis_px": {
+        "n": 83,
+        "p05": 2.3094,
+        "median": 2.582,
+        "p95": 5.447169999999994
+      },
+      "peak_delta": {
+        "n": 83,
+        "p05": 17.1,
+        "median": 43.5,
+        "p95": 128.54999999999993
+      },
+      "noise_mad": {
+        "n": 83,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam0",
+      "cohort": "measured_at_all_sizes",
+      "width": 1920,
+      "height": 1080,
+      "sampled": 80,
+      "measured": 80,
+      "reasons": {
+        "measured": 80
+      },
+      "diameter_px": {
+        "n": 80,
+        "p05": 3.2491649999999996,
+        "median": 5.41275,
+        "p95": 7.916434999999999
+      },
+      "blur_proxy_px": {
+        "n": 80,
+        "p05": 1.7512299999999998,
+        "median": 4.119999999999999,
+        "p95": 8.15346499999999
+      },
+      "major_axis_px": {
+        "n": 80,
+        "p05": 4.4704,
+        "median": 7.83475,
+        "p95": 12.330544999999995
+      },
+      "peak_delta": {
+        "n": 80,
+        "p05": 41.45,
+        "median": 74.75,
+        "p95": 151.2
+      },
+      "noise_mad": {
+        "n": 80,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam0",
+      "cohort": "measured_at_all_sizes",
+      "width": 1280,
+      "height": 720,
+      "sampled": 80,
+      "measured": 80,
+      "reasons": {
+        "measured": 80
+      },
+      "diameter_px": {
+        "n": 80,
+        "p05": 2.207005,
+        "median": 3.82285,
+        "p95": 5.416074999999999
+      },
+      "blur_proxy_px": {
+        "n": 80,
+        "p05": 0.8461650000000002,
+        "median": 2.80555,
+        "p95": 6.162274999999995
+      },
+      "major_axis_px": {
+        "n": 80,
+        "p05": 3.331965,
+        "median": 5.122299999999999,
+        "p95": 8.799484999999997
+      },
+      "peak_delta": {
+        "n": 80,
+        "p05": 28.85,
+        "median": 67.25,
+        "p95": 145.525
+      },
+      "noise_mad": {
+        "n": 80,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam0",
+      "cohort": "measured_at_all_sizes",
+      "width": 512,
+      "height": 288,
+      "sampled": 80,
+      "measured": 80,
+      "reasons": {
+        "measured": 80
+      },
+      "diameter_px": {
+        "n": 80,
+        "p05": 1.412815,
+        "median": 1.7638,
+        "p95": 2.3094
+      },
+      "blur_proxy_px": {
+        "n": 80,
+        "p05": 0.0,
+        "median": 1.633,
+        "p95": 3.9063549999999982
+      },
+      "major_axis_px": {
+        "n": 80,
+        "p05": 2.3094,
+        "median": 2.582,
+        "p95": 4.687544999999998
+      },
+      "peak_delta": {
+        "n": 80,
+        "p05": 17.0,
+        "median": 43.5,
+        "p95": 129.99999999999997
+      },
+      "noise_mad": {
+        "n": 80,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam1",
+      "cohort": "all_sampled",
+      "width": 1920,
+      "height": 1080,
+      "sampled": 552,
+      "measured": 524,
+      "reasons": {
+        "measured": 524,
+        "component_at_crop_edge": 17,
+        "component_far": 10,
+        "insufficient_pixels": 1
+      },
+      "diameter_px": {
+        "n": 524,
+        "p05": 2.3094,
+        "median": 3.7058,
+        "p95": 7.283314999999998
+      },
+      "blur_proxy_px": {
+        "n": 524,
+        "p05": 0.7423,
+        "median": 2.6665,
+        "p95": 6.951004999999994
+      },
+      "major_axis_px": {
+        "n": 524,
+        "p05": 3.4641,
+        "median": 4.7684999999999995,
+        "p95": 9.893519999999995
+      },
+      "peak_delta": {
+        "n": 524,
+        "p05": 20.575000000000003,
+        "median": 57.0,
+        "p95": 98.92499999999998
+      },
+      "noise_mad": {
+        "n": 524,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam1",
+      "cohort": "all_sampled",
+      "width": 1280,
+      "height": 720,
+      "sampled": 552,
+      "measured": 518,
+      "reasons": {
+        "measured": 518,
+        "insufficient_pixels": 9,
+        "component_far": 10,
+        "component_at_crop_edge": 14,
+        "low_contrast": 1
+      },
+      "diameter_px": {
+        "n": 518,
+        "p05": 1.7638,
+        "median": 2.43,
+        "p95": 5.054379999999999
+      },
+      "blur_proxy_px": {
+        "n": 518,
+        "p05": 0.0,
+        "median": 2.1909,
+        "p95": 4.739749999999999
+      },
+      "major_axis_px": {
+        "n": 518,
+        "p05": 2.3094,
+        "median": 3.4641,
+        "p95": 6.864869999999999
+      },
+      "peak_delta": {
+        "n": 518,
+        "p05": 17.0,
+        "median": 51.0,
+        "p95": 93.57499999999999
+      },
+      "noise_mad": {
+        "n": 518,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam1",
+      "cohort": "all_sampled",
+      "width": 512,
+      "height": 288,
+      "sampled": 552,
+      "measured": 94,
+      "reasons": {
+        "insufficient_pixels": 409,
+        "low_contrast": 27,
+        "measured": 94,
+        "component_far": 14,
+        "component_at_crop_edge": 8
+      },
+      "diameter_px": {
+        "n": 94,
+        "p05": 1.1547,
+        "median": 2.0817,
+        "p95": 2.5159949999999998
+      },
+      "blur_proxy_px": {
+        "n": 94,
+        "p05": 0.0,
+        "median": 1.9365,
+        "p95": 5.950085
+      },
+      "major_axis_px": {
+        "n": 94,
+        "p05": 2.3094,
+        "median": 3.0551,
+        "p95": 7.110439999999998
+      },
+      "peak_delta": {
+        "n": 94,
+        "p05": 18.65,
+        "median": 44.0,
+        "p95": 87.29999999999995
+      },
+      "noise_mad": {
+        "n": 94,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam1",
+      "cohort": "measured_at_all_sizes",
+      "width": 1920,
+      "height": 1080,
+      "sampled": 84,
+      "measured": 84,
+      "reasons": {
+        "measured": 84
+      },
+      "diameter_px": {
+        "n": 84,
+        "p05": 3.306375,
+        "median": 6.447699999999999,
+        "p95": 9.827224999999999
+      },
+      "blur_proxy_px": {
+        "n": 84,
+        "p05": 2.403055,
+        "median": 4.6392500000000005,
+        "p95": 21.09082999999995
+      },
+      "major_axis_px": {
+        "n": 84,
+        "p05": 4.752955,
+        "median": 9.0638,
+        "p95": 25.262594999999948
+      },
+      "peak_delta": {
+        "n": 84,
+        "p05": 30.725,
+        "median": 66.75,
+        "p95": 107.59999999999997
+      },
+      "noise_mad": {
+        "n": 84,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 2.1127049999999956
+      }
+    },
+    {
+      "camera": "cam1",
+      "cohort": "measured_at_all_sizes",
+      "width": 1280,
+      "height": 720,
+      "sampled": 84,
+      "measured": 84,
+      "reasons": {
+        "measured": 84
+      },
+      "diameter_px": {
+        "n": 84,
+        "p05": 2.29779,
+        "median": 4.411,
+        "p95": 6.768844999999997
+      },
+      "blur_proxy_px": {
+        "n": 84,
+        "p05": 1.3588500000000001,
+        "median": 3.22485,
+        "p95": 14.430824999999965
+      },
+      "major_axis_px": {
+        "n": 84,
+        "p05": 3.84836,
+        "median": 6.259550000000001,
+        "p95": 17.235714999999963
+      },
+      "peak_delta": {
+        "n": 84,
+        "p05": 27.875,
+        "median": 60.75,
+        "p95": 98.62499999999999
+      },
+      "noise_mad": {
+        "n": 84,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 2.1127049999999956
+      }
+    },
+    {
+      "camera": "cam1",
+      "cohort": "measured_at_all_sizes",
+      "width": 512,
+      "height": 288,
+      "sampled": 84,
+      "measured": 84,
+      "reasons": {
+        "measured": 84
+      },
+      "diameter_px": {
+        "n": 84,
+        "p05": 1.1547,
+        "median": 2.0817,
+        "p95": 2.485454999999999
+      },
+      "blur_proxy_px": {
+        "n": 84,
+        "p05": 0.0,
+        "median": 1.633,
+        "p95": 5.165989999999999
+      },
+      "major_axis_px": {
+        "n": 84,
+        "p05": 2.3094,
+        "median": 2.582,
+        "p95": 6.241504999999999
+      },
+      "peak_delta": {
+        "n": 84,
+        "p05": 19.075,
+        "median": 44.0,
+        "p95": 90.39999999999992
+      },
+      "noise_mad": {
+        "n": 84,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam2",
+      "cohort": "all_sampled",
+      "width": 1920,
+      "height": 1080,
+      "sampled": 552,
+      "measured": 532,
+      "reasons": {
+        "component_far": 8,
+        "component_at_crop_edge": 8,
+        "measured": 532,
+        "low_contrast": 2,
+        "insufficient_pixels": 2
+      },
+      "diameter_px": {
+        "n": 532,
+        "p05": 2.3094,
+        "median": 4.2047,
+        "p95": 6.46676
+      },
+      "blur_proxy_px": {
+        "n": 532,
+        "p05": 0.7423,
+        "median": 2.9039,
+        "p95": 6.138834999999999
+      },
+      "major_axis_px": {
+        "n": 532,
+        "p05": 3.4641,
+        "median": 5.56365,
+        "p95": 8.78436
+      },
+      "peak_delta": {
+        "n": 532,
+        "p05": 23.275,
+        "median": 91.25,
+        "p95": 203.0
+      },
+      "noise_mad": {
+        "n": 532,
+        "p05": 0.0,
+        "median": 0.0,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam2",
+      "cohort": "all_sampled",
+      "width": 1280,
+      "height": 720,
+      "sampled": 552,
+      "measured": 524,
+      "reasons": {
+        "measured": 524,
+        "component_at_crop_edge": 8,
+        "component_far": 6,
+        "insufficient_pixels": 10,
+        "low_contrast": 4
+      },
+      "diameter_px": {
+        "n": 524,
+        "p05": 1.8070000000000002,
+        "median": 2.9721,
+        "p95": 4.425185
+      },
+      "blur_proxy_px": {
+        "n": 524,
+        "p05": 0.0,
+        "median": 2.1909,
+        "p95": 4.250259999999999
+      },
+      "major_axis_px": {
+        "n": 524,
+        "p05": 2.3094,
+        "median": 3.7636,
+        "p95": 6.12667
+      },
+      "peak_delta": {
+        "n": 524,
+        "p05": 20.075000000000003,
+        "median": 82.25,
+        "p95": 192.0
+      },
+      "noise_mad": {
+        "n": 524,
+        "p05": 0.0,
+        "median": 0.0,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam2",
+      "cohort": "all_sampled",
+      "width": 512,
+      "height": 288,
+      "sampled": 552,
+      "measured": 96,
+      "reasons": {
+        "component_far": 7,
+        "component_at_crop_edge": 6,
+        "insufficient_pixels": 425,
+        "measured": 96,
+        "low_contrast": 18
+      },
+      "diameter_px": {
+        "n": 96,
+        "p05": 1.4513,
+        "median": 1.7638,
+        "p95": 2.3094
+      },
+      "blur_proxy_px": {
+        "n": 96,
+        "p05": 0.0,
+        "median": 1.633,
+        "p95": 5.2433250000000005
+      },
+      "major_axis_px": {
+        "n": 96,
+        "p05": 2.3094,
+        "median": 2.582,
+        "p95": 6.490500000000001
+      },
+      "peak_delta": {
+        "n": 96,
+        "p05": 21.25,
+        "median": 81.5,
+        "p95": 182.375
+      },
+      "noise_mad": {
+        "n": 96,
+        "p05": 0.0,
+        "median": 0.0,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam2",
+      "cohort": "measured_at_all_sizes",
+      "width": 1920,
+      "height": 1080,
+      "sampled": 94,
+      "measured": 94,
+      "reasons": {
+        "measured": 94
+      },
+      "diameter_px": {
+        "n": 94,
+        "p05": 3.65078,
+        "median": 5.8864,
+        "p95": 8.285689999999999
+      },
+      "blur_proxy_px": {
+        "n": 94,
+        "p05": 1.8429,
+        "median": 4.52985,
+        "p95": 15.914509999999986
+      },
+      "major_axis_px": {
+        "n": 94,
+        "p05": 4.994870000000001,
+        "median": 7.9562,
+        "p95": 20.405304999999988
+      },
+      "peak_delta": {
+        "n": 94,
+        "p05": 36.65,
+        "median": 121.0,
+        "p95": 212.02499999999998
+      },
+      "noise_mad": {
+        "n": 94,
+        "p05": 0.0,
+        "median": 0.0,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam2",
+      "cohort": "measured_at_all_sizes",
+      "width": 1280,
+      "height": 720,
+      "sampled": 94,
+      "measured": 94,
+      "reasons": {
+        "measured": 94
+      },
+      "diameter_px": {
+        "n": 94,
+        "p05": 2.38922,
+        "median": 3.94825,
+        "p95": 5.389699999999999
+      },
+      "blur_proxy_px": {
+        "n": 94,
+        "p05": 0.6025,
+        "median": 3.05565,
+        "p95": 10.495739999999993
+      },
+      "major_axis_px": {
+        "n": 94,
+        "p05": 3.4641,
+        "median": 5.39465,
+        "p95": 13.71760499999999
+      },
+      "peak_delta": {
+        "n": 94,
+        "p05": 33.325,
+        "median": 112.0,
+        "p95": 197.04999999999998
+      },
+      "noise_mad": {
+        "n": 94,
+        "p05": 0.0,
+        "median": 0.0,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam2",
+      "cohort": "measured_at_all_sizes",
+      "width": 512,
+      "height": 288,
+      "sampled": 94,
+      "measured": 94,
+      "reasons": {
+        "measured": 94
+      },
+      "diameter_px": {
+        "n": 94,
+        "p05": 1.54345,
+        "median": 1.7638,
+        "p95": 2.3094
+      },
+      "blur_proxy_px": {
+        "n": 94,
+        "p05": 0.0,
+        "median": 1.633,
+        "p95": 4.986259999999998
+      },
+      "major_axis_px": {
+        "n": 94,
+        "p05": 2.3094,
+        "median": 2.582,
+        "p95": 6.202874999999999
+      },
+      "peak_delta": {
+        "n": 94,
+        "p05": 20.950000000000003,
+        "median": 83.0,
+        "p95": 182.52499999999998
+      },
+      "noise_mad": {
+        "n": 94,
+        "p05": 0.0,
+        "median": 0.0,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam3",
+      "cohort": "all_sampled",
+      "width": 1920,
+      "height": 1080,
+      "sampled": 552,
+      "measured": 531,
+      "reasons": {
+        "measured": 531,
+        "component_far": 12,
+        "component_at_crop_edge": 8,
+        "low_contrast": 1
+      },
+      "diameter_px": {
+        "n": 531,
+        "p05": 2.3943000000000003,
+        "median": 4.1889,
+        "p95": 6.940799999999999
+      },
+      "blur_proxy_px": {
+        "n": 531,
+        "p05": 0.0,
+        "median": 2.4159,
+        "p95": 5.7363
+      },
+      "major_axis_px": {
+        "n": 531,
+        "p05": 3.4641,
+        "median": 5.1366,
+        "p95": 9.83965
+      },
+      "peak_delta": {
+        "n": 531,
+        "p05": 19.5,
+        "median": 67.5,
+        "p95": 202.75
+      },
+      "noise_mad": {
+        "n": 531,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam3",
+      "cohort": "all_sampled",
+      "width": 1280,
+      "height": 720,
+      "sampled": 552,
+      "measured": 518,
+      "reasons": {
+        "measured": 518,
+        "insufficient_pixels": 16,
+        "component_far": 9,
+        "component_at_crop_edge": 8,
+        "low_contrast": 1
+      },
+      "diameter_px": {
+        "n": 518,
+        "p05": 2.034895,
+        "median": 2.9721,
+        "p95": 4.627934999999999
+      },
+      "blur_proxy_px": {
+        "n": 518,
+        "p05": 0.0,
+        "median": 1.9581,
+        "p95": 3.803519999999999
+      },
+      "major_axis_px": {
+        "n": 518,
+        "p05": 2.3094,
+        "median": 3.4641,
+        "p95": 6.8633299999999995
+      },
+      "peak_delta": {
+        "n": 518,
+        "p05": 17.0,
+        "median": 63.75,
+        "p95": 197.075
+      },
+      "noise_mad": {
+        "n": 518,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam3",
+      "cohort": "all_sampled",
+      "width": 512,
+      "height": 288,
+      "sampled": 552,
+      "measured": 87,
+      "reasons": {
+        "insufficient_pixels": 417,
+        "measured": 87,
+        "low_contrast": 30,
+        "component_far": 9,
+        "component_at_crop_edge": 9
+      },
+      "diameter_px": {
+        "n": 87,
+        "p05": 1.1547,
+        "median": 2.1292,
+        "p95": 2.894340000000001
+      },
+      "blur_proxy_px": {
+        "n": 87,
+        "p05": 0.0,
+        "median": 1.633,
+        "p95": 5.587060000000001
+      },
+      "major_axis_px": {
+        "n": 87,
+        "p05": 2.3094,
+        "median": 2.582,
+        "p95": 7.0022
+      },
+      "peak_delta": {
+        "n": 87,
+        "p05": 23.15,
+        "median": 93.5,
+        "p95": 238.35
+      },
+      "noise_mad": {
+        "n": 87,
+        "p05": 0.7413,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam3",
+      "cohort": "measured_at_all_sizes",
+      "width": 1920,
+      "height": 1080,
+      "sampled": 81,
+      "measured": 81,
+      "reasons": {
+        "measured": 81
+      },
+      "diameter_px": {
+        "n": 81,
+        "p05": 3.6443,
+        "median": 5.9714,
+        "p95": 9.3383
+      },
+      "blur_proxy_px": {
+        "n": 81,
+        "p05": 1.4609,
+        "median": 3.2175,
+        "p95": 8.5683
+      },
+      "major_axis_px": {
+        "n": 81,
+        "p05": 4.715,
+        "median": 7.4811,
+        "p95": 11.8808
+      },
+      "peak_delta": {
+        "n": 81,
+        "p05": 43.5,
+        "median": 127.0,
+        "p95": 246.5
+      },
+      "noise_mad": {
+        "n": 81,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam3",
+      "cohort": "measured_at_all_sizes",
+      "width": 1280,
+      "height": 720,
+      "sampled": 81,
+      "measured": 81,
+      "reasons": {
+        "measured": 81
+      },
+      "diameter_px": {
+        "n": 81,
+        "p05": 2.43,
+        "median": 4.146,
+        "p95": 6.3986
+      },
+      "blur_proxy_px": {
+        "n": 81,
+        "p05": 0.0,
+        "median": 2.4495,
+        "p95": 6.1297
+      },
+      "major_axis_px": {
+        "n": 81,
+        "p05": 3.4641,
+        "median": 5.219,
+        "p95": 8.1224
+      },
+      "peak_delta": {
+        "n": 81,
+        "p05": 39.5,
+        "median": 121.5,
+        "p95": 242.0
+      },
+      "noise_mad": {
+        "n": 81,
+        "p05": 0.0,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    },
+    {
+      "camera": "cam3",
+      "cohort": "measured_at_all_sizes",
+      "width": 512,
+      "height": 288,
+      "sampled": 81,
+      "measured": 81,
+      "reasons": {
+        "measured": 81
+      },
+      "diameter_px": {
+        "n": 81,
+        "p05": 1.1547,
+        "median": 2.1292,
+        "p95": 2.3094
+      },
+      "blur_proxy_px": {
+        "n": 81,
+        "p05": 0.0,
+        "median": 1.633,
+        "p95": 5.2673
+      },
+      "major_axis_px": {
+        "n": 81,
+        "p05": 2.3094,
+        "median": 2.582,
+        "p95": 6.3462
+      },
+      "peak_delta": {
+        "n": 81,
+        "p05": 25.0,
+        "median": 99.0,
+        "p95": 238.5
+      },
+      "noise_mad": {
+        "n": 81,
+        "p05": 0.7413,
+        "median": 0.7413,
+        "p95": 1.4826
+      }
+    }
+  ],
+  "annotation_census": {
+    "all": {
+      "frames": 184912,
+      "outside_centres": 4136,
+      "outside_centre_rate": 0.022367396383144413,
+      "by_flag": {
+        "reported_visible": 123007,
+        "unverified": 57821,
+        "reported_no": 3613,
+        "out_of_frame": 471
+      },
+      "by_status": {
+        "candidate_supported": 6835,
+        "estimated": 49712,
+        "interpolated": 6476,
+        "observed": 121889
+      },
+      "outside_by_status": {
+        "estimated": 4125,
+        "candidate_supported": 4,
+        "interpolated": 4,
+        "observed": 3
+      },
+      "clip_container_mbps": {
+        "n": 276,
+        "p05": 4.151325,
+        "median": 8.31265,
+        "p95": 11.013675
+      }
+    },
+    "cam0": {
+      "frames": 46228,
+      "outside_centres": 688,
+      "outside_centre_rate": 0.014882755040235356,
+      "by_flag": {
+        "reported_visible": 32428,
+        "unverified": 13082,
+        "reported_no": 544,
+        "out_of_frame": 174
+      },
+      "by_status": {
+        "candidate_supported": 1667,
+        "estimated": 11000,
+        "interpolated": 1282,
+        "observed": 32279
+      },
+      "outside_by_status": {
+        "estimated": 688
+      },
+      "clip_container_mbps": {
+        "n": 69,
+        "p05": 10.21526,
+        "median": 10.8772,
+        "p95": 11.19396
+      }
+    },
+    "cam1": {
+      "frames": 46228,
+      "outside_centres": 630,
+      "outside_centre_rate": 0.013628104179285281,
+      "by_flag": {
+        "reported_visible": 31429,
+        "unverified": 14150,
+        "reported_no": 484,
+        "out_of_frame": 165
+      },
+      "by_status": {
+        "candidate_supported": 1769,
+        "estimated": 11836,
+        "interpolated": 1589,
+        "observed": 31034
+      },
+      "outside_by_status": {
+        "candidate_supported": 1,
+        "estimated": 629
+      },
+      "clip_container_mbps": {
+        "n": 69,
+        "p05": 7.85238,
+        "median": 8.1698,
+        "p95": 8.39618
+      }
+    },
+    "cam2": {
+      "frames": 46228,
+      "outside_centres": 756,
+      "outside_centre_rate": 0.01635372501514234,
+      "by_flag": {
+        "reported_visible": 30901,
+        "unverified": 14510,
+        "reported_no": 782,
+        "out_of_frame": 35
+      },
+      "by_status": {
+        "candidate_supported": 1815,
+        "estimated": 12032,
+        "interpolated": 1830,
+        "observed": 30551
+      },
+      "outside_by_status": {
+        "estimated": 756
+      },
+      "clip_container_mbps": {
+        "n": 69,
+        "p05": 4.02566,
+        "median": 4.3186,
+        "p95": 4.75186
+      }
+    },
+    "cam3": {
+      "frames": 46228,
+      "outside_centres": 2062,
+      "outside_centre_rate": 0.044605001297914684,
+      "by_flag": {
+        "reported_visible": 28249,
+        "unverified": 16079,
+        "reported_no": 1803,
+        "out_of_frame": 97
+      },
+      "by_status": {
+        "candidate_supported": 1584,
+        "estimated": 14844,
+        "interpolated": 1775,
+        "observed": 28025
+      },
+      "outside_by_status": {
+        "candidate_supported": 3,
+        "estimated": 2052,
+        "interpolated": 4,
+        "observed": 3
+      },
+      "clip_container_mbps": {
+        "n": 69,
+        "p05": 8.12926,
+        "median": 8.6979,
+        "p95": 9.12778
+      }
+    }
+  },
+  "audit_counts": [
+    {
+      "camera": "all",
+      "stratum": "all",
+      "n": 64,
+      "visible": 27,
+      "offset_candidate": 1,
+      "occluded": 2,
+      "unresolved_in_frame": 11,
+      "out_of_frame": 1,
+      "indeterminate": 22
+    },
+    {
+      "camera": "all",
+      "stratum": "observed_inside",
+      "n": 32,
+      "visible": 26,
+      "offset_candidate": 1,
+      "occluded": 0,
+      "unresolved_in_frame": 4,
+      "out_of_frame": 0,
+      "indeterminate": 1
+    },
+    {
+      "camera": "all",
+      "stratum": "other_inside",
+      "n": 16,
+      "visible": 1,
+      "offset_candidate": 0,
+      "occluded": 2,
+      "unresolved_in_frame": 7,
+      "out_of_frame": 0,
+      "indeterminate": 6
+    },
+    {
+      "camera": "all",
+      "stratum": "outside_coord",
+      "n": 16,
+      "visible": 0,
+      "offset_candidate": 0,
+      "occluded": 0,
+      "unresolved_in_frame": 0,
+      "out_of_frame": 1,
+      "indeterminate": 15
+    },
+    {
+      "camera": "cam0",
+      "stratum": "all",
+      "n": 16,
+      "visible": 6,
+      "offset_candidate": 0,
+      "occluded": 1,
+      "unresolved_in_frame": 3,
+      "out_of_frame": 0,
+      "indeterminate": 6
+    },
+    {
+      "camera": "cam0",
+      "stratum": "observed_inside",
+      "n": 8,
+      "visible": 6,
+      "offset_candidate": 0,
+      "occluded": 0,
+      "unresolved_in_frame": 2,
+      "out_of_frame": 0,
+      "indeterminate": 0
+    },
+    {
+      "camera": "cam0",
+      "stratum": "other_inside",
+      "n": 4,
+      "visible": 0,
+      "offset_candidate": 0,
+      "occluded": 1,
+      "unresolved_in_frame": 1,
+      "out_of_frame": 0,
+      "indeterminate": 2
+    },
+    {
+      "camera": "cam0",
+      "stratum": "outside_coord",
+      "n": 4,
+      "visible": 0,
+      "offset_candidate": 0,
+      "occluded": 0,
+      "unresolved_in_frame": 0,
+      "out_of_frame": 0,
+      "indeterminate": 4
+    },
+    {
+      "camera": "cam1",
+      "stratum": "all",
+      "n": 16,
+      "visible": 9,
+      "offset_candidate": 0,
+      "occluded": 1,
+      "unresolved_in_frame": 1,
+      "out_of_frame": 1,
+      "indeterminate": 4
+    },
+    {
+      "camera": "cam1",
+      "stratum": "observed_inside",
+      "n": 8,
+      "visible": 8,
+      "offset_candidate": 0,
+      "occluded": 0,
+      "unresolved_in_frame": 0,
+      "out_of_frame": 0,
+      "indeterminate": 0
+    },
+    {
+      "camera": "cam1",
+      "stratum": "other_inside",
+      "n": 4,
+      "visible": 1,
+      "offset_candidate": 0,
+      "occluded": 1,
+      "unresolved_in_frame": 1,
+      "out_of_frame": 0,
+      "indeterminate": 1
+    },
+    {
+      "camera": "cam1",
+      "stratum": "outside_coord",
+      "n": 4,
+      "visible": 0,
+      "offset_candidate": 0,
+      "occluded": 0,
+      "unresolved_in_frame": 0,
+      "out_of_frame": 1,
+      "indeterminate": 3
+    },
+    {
+      "camera": "cam2",
+      "stratum": "all",
+      "n": 16,
+      "visible": 6,
+      "offset_candidate": 0,
+      "occluded": 0,
+      "unresolved_in_frame": 3,
+      "out_of_frame": 0,
+      "indeterminate": 7
+    },
+    {
+      "camera": "cam2",
+      "stratum": "observed_inside",
+      "n": 8,
+      "visible": 6,
+      "offset_candidate": 0,
+      "occluded": 0,
+      "unresolved_in_frame": 1,
+      "out_of_frame": 0,
+      "indeterminate": 1
+    },
+    {
+      "camera": "cam2",
+      "stratum": "other_inside",
+      "n": 4,
+      "visible": 0,
+      "offset_candidate": 0,
+      "occluded": 0,
+      "unresolved_in_frame": 2,
+      "out_of_frame": 0,
+      "indeterminate": 2
+    },
+    {
+      "camera": "cam2",
+      "stratum": "outside_coord",
+      "n": 4,
+      "visible": 0,
+      "offset_candidate": 0,
+      "occluded": 0,
+      "unresolved_in_frame": 0,
+      "out_of_frame": 0,
+      "indeterminate": 4
+    },
+    {
+      "camera": "cam3",
+      "stratum": "all",
+      "n": 16,
+      "visible": 6,
+      "offset_candidate": 1,
+      "occluded": 0,
+      "unresolved_in_frame": 4,
+      "out_of_frame": 0,
+      "indeterminate": 5
+    },
+    {
+      "camera": "cam3",
+      "stratum": "observed_inside",
+      "n": 8,
+      "visible": 6,
+      "offset_candidate": 1,
+      "occluded": 0,
+      "unresolved_in_frame": 1,
+      "out_of_frame": 0,
+      "indeterminate": 0
+    },
+    {
+      "camera": "cam3",
+      "stratum": "other_inside",
+      "n": 4,
+      "visible": 0,
+      "offset_candidate": 0,
+      "occluded": 0,
+      "unresolved_in_frame": 3,
+      "out_of_frame": 0,
+      "indeterminate": 1
+    },
+    {
+      "camera": "cam3",
+      "stratum": "outside_coord",
+      "n": 4,
+      "visible": 0,
+      "offset_candidate": 0,
+      "occluded": 0,
+      "unresolved_in_frame": 0,
+      "out_of_frame": 0,
+      "indeterminate": 4
+    }
+  ],
+  "audited_size": {
+    "explicit_size_count": 18,
+    "minor_axis_px": {
+      "n": 18,
+      "p05": 2.0,
+      "median": 3.0,
+      "p95": 6.0
+    },
+    "major_axis_px": {
+      "n": 18,
+      "p05": 3.0,
+      "median": 4.5,
+      "p95": 7.149999999999999
+    },
+    "absolute_minor_difference_px": {
+      "n": 18,
+      "p05": 0.02764500000000003,
+      "median": 0.3066,
+      "p95": 0.9360249999999981
+    },
+    "observed_native_measured_visibility": {
+      "visible": 26,
+      "unresolved_in_frame": 4,
+      "offset_candidate": 1
+    }
+  }
+}

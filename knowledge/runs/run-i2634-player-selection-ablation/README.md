@@ -77,6 +77,8 @@ git -C "$main" worktree add --detach "$replay_tree" dfb03c0785c7a7a41850c5cd6909
 
 初期化したworktreeのrootから起動する。E側の歴史的archiveを `MEIJI3_ARCHIVED_OUTPUTS`、#2363の保存runを `MEIJI4_I2363_RUN`、3cam datasetを `MEIJI3_DATASET` で指定できる。既定の場所はスクリプトを参照。CPUプロセス間の並列数は `--jobs`、BLASその他のスレッド数は各1。再実行は新しい出力ディレクトリを指定する。2D追跡の既存実験表は `history.py` から単独生成できる。
 
+#2493の公開後の#2363ストアでは、`scene.json` が新しいシーンを指す。測定時の索引は各clipの `updates/multiview_scene/<revision>.json` の `before["scene.json"]` から得られる。69本すべてでそのSHA-256が入力記録と一致し、再生で読む校正・追跡・選別、および保存された人物三角測量の参照は公開前後で一致した。索引全体のSHA-256を比べる場合は公開前の索引を使う。 [入力ハッシュ](inputs.json) [公開履歴の読み方](../../../src/tennis_scene/multiview_scene/README.md)
+
 ```bash
 cd "$replay_tree"
 study=knowledge/runs/run-i2634-player-selection-ablation
