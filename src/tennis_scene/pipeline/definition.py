@@ -145,6 +145,8 @@ if TYPE_CHECKING:
 
     from src.submodules.configuration import (
         DinoDetectorRuntimeConfig,
+        RFDetrRuntimeConfig,
+        RTMPoseRuntimeConfig,
         ViTPoseRuntimeConfig,
     )
     from src.tennis_scene.configuration import PipelineRuntimeConfig
@@ -284,7 +286,8 @@ def validate_override_names(overrides: Mapping[str, Any], recipe: RecipeName = S
         raise ValueError(f'Unknown component override: {sorted(unknown)}')
 
 
-def _person_runtime_identity(runtime: DinoDetectorRuntimeConfig | ViTPoseRuntimeConfig,
+def _person_runtime_identity(
+                             runtime: DinoDetectorRuntimeConfig | ViTPoseRuntimeConfig | RFDetrRuntimeConfig | RTMPoseRuntimeConfig,
                              device: str, *, key: str = "runtime") -> dict[str, Any]:
     options = json_value(runtime)
     del options["engines"]
@@ -380,8 +383,8 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     encoder_assets = {} if encoder is None else {"encoder" if name == "checkpoint" else name: path for name, path in encoder.weights.items()}
 
     runtime = cfg.people.runtime
-    detector_runtime = _person_runtime_identity(runtime.dino_detector, runtime.device)
-    pose_runtime = _person_runtime_identity(runtime.vitpose, runtime.device)
+    detector_runtime = _person_runtime_identity(cfg.people.detector_runtime, runtime.device)
+    pose_runtime = _person_runtime_identity(cfg.people.pose_runtime, runtime.device)
 
     def body_assets() -> dict[str, Any]:
         if body_enabled:
@@ -453,16 +456,17 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         detection_node = f"person_detection/{camera}"
         if cfg.ecpose is None:
             add(detection_node, components["person_detection"], PersonDetectionInputAssembler(),
-                {}, lambda: {"detector": "dino",
-                 "assets": bound_assets(people_enabled, {"checkpoint": cfg.people.dino_checkpoint}),
+                {}, lambda: {"detector": cfg.people.detector,
+                 "assets": bound_assets(people_enabled, cfg.people.detection_assets()),
                  **detector_runtime,
                  "scope": "full_frame", "enabled": people_enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
-                 "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera)
+                 "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera,
+                component_origin_only=cfg.people.uses_alternative_models)
             add(f"person_pose_features/{camera}", components["person_pose_features"],
                 PersonPoseFeaturesInputAssembler(), {"detections": detection_node},
                 lambda: {**components['person_pose_features'].cache_identity(), **pose_runtime,
-                    "assets": bound_assets(people_enabled, {"pose": cfg.people.vitpose_checkpoint})}, camera=camera,
-                after_components=('person_detection',))
+                    "assets": bound_assets(people_enabled, cfg.people.pose_assets())}, camera=camera,
+                after_components=('person_detection',), component_origin_only=cfg.people.uses_alternative_models)
         else:
             joint_node = f"{ECPOSE_RECIPE}/{camera}"
             ecpose_module = components[ECPOSE_RECIPE]
@@ -618,8 +622,10 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
     body_assets = (cfg.people.body_assets() if cfg.fasthmr is None else
                    {f"fasthmr_{name}": path for name, path in
                     {**cfg.fasthmr.inference_weights, **cfg.fasthmr.geometry_weights}.items()})
-    person_assets = ({"detector": cfg.people.dino_checkpoint, "vitpose": cfg.people.vitpose_checkpoint}
-                     if cfg.ecpose is None else {"ecpose": cfg.ecpose.checkpoint})
+    person_assets = ({
+        "detector" if cfg.people.detector == "dino" else cfg.people.detector: cfg.people.detection_assets()["checkpoint"],
+        "vitpose" if cfg.people.pose == "vitpose-h" else cfg.people.pose: cfg.people.pose_assets()["pose"],
+    } if cfg.ecpose is None else {"ecpose": cfg.ecpose.checkpoint})
     event_checkpoint = None if cfg.event_detection is None else cfg.event_detection.checkpoint
     return {
         **({"court": cfg.court_kp.checkpoint} if cfg.direct_annotation is None and cfg.video_court is None else {}),

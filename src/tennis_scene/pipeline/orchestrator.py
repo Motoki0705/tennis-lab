@@ -87,8 +87,9 @@ class TennisSceneOrchestrator:
         self._video_court_side_key: tuple[object, ...] | None = None
         self.code_identity = document_digest(compatible_source_digests(
             source_digests(PROJECT_ROOT / "src"), ball_court_side=config.court_side_evidence == "ball",
-            tensorrt=config.people.runtime.uses_tensorrt or (config.ecpose is not None and config.ecpose.engine is not None),
-            standard_recipe=config.recipe == STANDARD_RECIPE, standard_people=config.ecpose is None))
+            tensorrt=config.people.uses_tensorrt or (config.ecpose is not None and config.ecpose.engine is not None),
+            standard_recipe=config.recipe == STANDARD_RECIPE, standard_people=config.ecpose is None,
+            alternative_people=config.people.uses_alternative_models))
 
     @classmethod
     def from_runtime_config(cls, cfg: PipelineRuntimeConfig, *, model_event: ModelEventHook | None = None) -> TennisSceneOrchestrator:
@@ -108,7 +109,25 @@ class TennisSceneOrchestrator:
         shared = self.prepare_video_court()
         side = self.prepare_video_court_side(shared)
         settings = json_value(cfg.processing_settings)
-        people_runtime = settings.get("people_models", {}).get("runtime", {})
+        people = settings.get("people_models", {})
+        people_runtime = people.get("runtime", {})
+        # Omit selectors with legacy values and the dormant model settings.
+        # Older saved configurations lack these fields entirely.
+        if cfg.people.detector == "dino":
+            people.pop("detector", None)
+            people.pop("rfdetr_checkpoint", None)
+            people_runtime.pop("rfdetr_l", None)
+        else:
+            people.pop("dino_checkpoint", None)
+            people.pop("dino_repository", None)
+            people_runtime.pop("dino_detector", None)
+        if cfg.people.pose == "vitpose-h":
+            people.pop("pose", None)
+            people.pop("rtmpose_checkpoint", None)
+            people_runtime.pop("rtmpose_x", None)
+        else:
+            people.pop("vitpose_checkpoint", None)
+            people_runtime.pop("vitpose", None)
         for name in ("dino_detector", "vitpose", "hmr2", "clip_reid", "gvhmr"):
             options = people_runtime.get(name, {})
             if options.get("backend") == "pytorch":
@@ -132,6 +151,8 @@ class TennisSceneOrchestrator:
             "checkpoints": {key: cfg.court_kp.asset_catalog.file_identity(path) for key, path in enabled_model_assets(cfg).items()},
             "models": publication_model_identities(cfg),
             "component_overrides": overrides,
+            **({"people_models": {"detector": cfg.people.detector, "pose": cfg.people.pose}}
+               if cfg.people.uses_alternative_models and cfg.enabled["person_observations"] else {}),
             **({"recipe": cfg.recipe} if cfg.recipe != STANDARD_RECIPE else {}),
             **({"appearance_preprocessing": appearance_feature_settings(cfg.tracking.features)}
                if cfg.enabled["person_observations"] else {}),
@@ -261,7 +282,7 @@ class TennisSceneOrchestrator:
             direct_event_settings = None
             if direct is not None:
                 from src.tasks.base.annotation.paths import AnnotationLayout
-                if self.config.people.runtime.uses_tensorrt:
+                if self.config.people.uses_tensorrt or self.config.people.uses_alternative_models:
                     direct_model_identity = document_digest(publication_model_identities(self.config))
                 direct_event_settings = EventDetectionModule(event_config, source.clip_id).cache_identity()
                 workflow = direct.workflow(source, self.annotation_layout or AnnotationLayout.production())

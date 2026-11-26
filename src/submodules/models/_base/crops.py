@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from collections.abc import Iterable, Iterator
+from collections.abc import Generator, Iterable, Iterator
 from pathlib import Path
 
 import cv2
@@ -32,7 +32,7 @@ def iter_person_crops(
 def iter_frame_person_crops(
     frames_bgr: Iterable[tuple[int, NDArray[np.uint8]]],
     boxes_xys: Tensor, frame_indices: Tensor, *, batch_size: int,
-) -> Iterator[tuple[Tensor, Tensor]]:
+) -> Generator[tuple[Tensor, Tensor], None, None]:
     """Crop an ordered BGR stream without encoding a surrogate video.
 
     Frame IDs must increase strictly, and every requested ID must occur.
@@ -47,14 +47,44 @@ def iter_frame_person_crops(
         raise TypeError("Indexed crop requests require CPU tensors and int64 frame indices")
     if not boxes_xys.is_floating_point() or not bool(torch.isfinite(boxes_xys).all()) or bool((boxes_xys[:, 2] <= 0).any()):
         raise ValueError("Crop boxes must be finite with positive size")
-    if type(batch_size) is not int or batch_size < 1 or bool((frame_indices < 0).any()) or bool((frame_indices.diff() < 0).any()):
+    if type(batch_size) is not int or batch_size < 1:
+        raise ValueError("Crop batch size must be a positive integer")
+    crops: list[np.ndarray] = []
+    boxes: list[Tensor] = []
+    for frame, rows in iter_requested_frames(frames_bgr, frame_indices):
+        with span("preprocess", operation="pose_resize"):
+            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+            height, width = rgb.shape[:2]
+            small = cv2.resize(rgb, (int(width * .5), int(height * .5)))
+        for row in range(rows.start, rows.stop):
+            box = boxes_xys[row].float()
+            factor = float(box[2]) * .5 / 256 / 2
+            source = cv2.GaussianBlur(small, (5, 5), (factor - 1) / 2) if factor > 1.1 else small
+            with span("preprocess", operation="person_crop"):
+                crop, _ = crop_and_resize(source, box[:2].numpy() * .5, float(box[2]) * .5, 256, enlarge_ratio=1.)
+            crops.append(crop)
+            boxes.append(box)
+            if len(crops) == batch_size:
+                pixels = torch.from_numpy(np.stack(crops))
+                yield ((pixels / 255. - IMAGE_MEAN) / IMAGE_STD).permute(0, 3, 1, 2), torch.stack(boxes)
+                crops, boxes = [], []
+    if crops:
+        pixels = torch.from_numpy(np.stack(crops))
+        yield ((pixels / 255. - IMAGE_MEAN) / IMAGE_STD).permute(0, 3, 1, 2), torch.stack(boxes)
+
+
+def iter_requested_frames(
+    frames_bgr: Iterable[tuple[int, NDArray[np.uint8]]], frame_indices: Tensor,
+) -> Iterator[tuple[NDArray[np.uint8], slice]]:
+    """Yield each requested BGR image and its contiguous request-row slice."""
+    if frame_indices.ndim != 1 or frame_indices.device.type != "cpu" or frame_indices.dtype != torch.int64:
+        raise TypeError("Crop frame indices must be a CPU int64 vector")
+    if bool((frame_indices < 0).any()) or bool((frame_indices.diff() < 0).any()):
         raise ValueError("Crop indices must be nonnegative and ordered")
     if not len(frame_indices):
         return
     indices = frame_indices.tolist()
     row = 0
-    crops: list[np.ndarray] = []
-    boxes: list[Tensor] = []
     previous = -1
     shape: tuple[int, ...] | None = None
     for index, frame in frames_bgr:
@@ -70,27 +100,11 @@ def iter_frame_person_crops(
             raise ValueError(f"Missing requested source frame {indices[row]}")
         if index < indices[row]:
             continue
-        with span("preprocess", operation="pose_resize"):
-            rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
-            height, width = rgb.shape[:2]
-            small = cv2.resize(rgb, (int(width * .5), int(height * .5)))
+        start = row
         while row < len(indices) and indices[row] == index:
-            box = boxes_xys[row].float()
-            factor = float(box[2]) * .5 / 256 / 2
-            source = cv2.GaussianBlur(small, (5, 5), (factor - 1) / 2) if factor > 1.1 else small
-            with span("preprocess", operation="person_crop"):
-                crop, _ = crop_and_resize(source, box[:2].numpy() * .5, float(box[2]) * .5, 256, enlarge_ratio=1.)
-            crops.append(crop)
-            boxes.append(box)
             row += 1
-            if len(crops) == batch_size:
-                pixels = torch.from_numpy(np.stack(crops))
-                yield ((pixels / 255. - IMAGE_MEAN) / IMAGE_STD).permute(0, 3, 1, 2), torch.stack(boxes)
-                crops, boxes = [], []
+        yield frame, slice(start, row)
         if row == len(indices):
             break
     if row != len(indices):
         raise ValueError(f"Frame stream ended before requested source frame {indices[row]}")
-    if crops:
-        pixels = torch.from_numpy(np.stack(crops))
-        yield ((pixels / 255. - IMAGE_MEAN) / IMAGE_STD).permute(0, 3, 1, 2), torch.stack(boxes)

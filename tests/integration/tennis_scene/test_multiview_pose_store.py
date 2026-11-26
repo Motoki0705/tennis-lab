@@ -1,3 +1,4 @@
+import json
 from dataclasses import replace
 from pathlib import Path
 from sys import argv
@@ -21,11 +22,16 @@ from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
-from src.tennis_scene.pipeline.components.person_detection import PersonDetectionOutput
+from src.tennis_scene.pipeline.components.person_detection import (
+    PersonDetectionModule,
+    PersonDetectionOutput,
+)
 from src.tennis_scene.pipeline.components.person_features import (
+    PersonPoseFeaturesModule,
     PersonPoseFeaturesOutput,
 )
 from src.tennis_scene.pipeline.definition import standard_definition
+from src.tennis_scene.pipeline.people_artifacts import require_current_people_artifacts
 from src.tennis_scene.pipeline.runner import ComponentRunner
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec, unpack_value
@@ -79,7 +85,7 @@ def saved_inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
         },
         "person_pose_features": {"enabled": True},
     }
-    nodes = [
+    nodes = tuple(
         replace(
             node,
             settings={
@@ -88,7 +94,7 @@ def saved_inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
             },
         )
         for node in nodes
-    ]
+    )
     ComponentRunner(nodes, store).run(
         [
             "court_calibration",
@@ -422,6 +428,47 @@ def test_original_detection_rows_must_match_saved_pose(saved_inputs):
     with pytest.raises(ValueError, match="source row mismatch"):
         read_saved_inputs(store.root, side)
 
+
+@pytest.mark.parametrize(("detector", "pose"), [
+    ("rfdetr-l", "rtmpose-x"), ("rfdetr-l", "vitpose-h"), ("dino", "rtmpose-x"),
+])
+def test_alternative_people_artifacts_preserve_the_3d_input_and_publication_contract(saved_inputs, detector, pose):
+    store, source, _, _, _, side = saved_inputs
+    refs = store.references()
+    code = store.descriptor(refs["person_detection/cam0"])["identity"]["implementation"]
+    det_models = {"detector": {"architecture": detector if detector == "rfdetr-l" else "dino_4scale_swin_l"}}
+    pose_models = {"pose": {"architecture": pose if pose == "rtmpose-x" else "vitpose_huge_coco17"}}
+    for camera in source.camera_ids:
+        dependencies: dict[str, ArtifactRef] = {}
+        for component, output, model, markers in (
+            (PersonDetectionModule, PersonDetectionOutput, det_models, {"detector": detector}),
+            (PersonPoseFeaturesModule, PersonPoseFeaturesOutput, pose_models,
+             {"pose": pose, "joint_confidence": "raw_simcc_peak"} if pose == "rtmpose-x" else {}),
+        ):
+            node = f"{component.io.name}/{camera}"
+            reference = refs[node]
+            codec = ArtifactCodec(output)
+            descriptor = store.descriptor(reference)
+            identity = descriptor["identity"]
+            published = store.publish(
+                node, store.load(reference, codec), codec, schema=reference.schema, version=reference.version,
+                identity={**identity, "component_class": f"{component.__module__}.{component.__qualname__}",
+                          "settings": {**identity["settings"], "models": model, **markers}},
+                dependencies=dependencies, provenance={"origin": "component"},
+            )
+            dependencies = {"detections": published}
+    adopted = read_saved_inputs(store.root, side)
+    assert len(adopted.observations.poses) == len(source.camera_ids)
+    result = reconstruct(adopted.observations)
+    assert result.joint_valid.any()
+    document = json.loads(store.index_path.read_text())
+    publication = {"code_sha256": code, "people_models": {"detector": detector, "pose": pose},
+                   "models": {"person_detection": det_models, "person_pose_features": pose_models}}
+    required = require_current_people_artifacts(store.root, document, source.camera_ids, publication)
+    assert len(required) == 2 * len(source.camera_ids)
+    different = {**publication, "people_models": {"detector": "dino" if detector == "rfdetr-l" else "rfdetr-l", "pose": pose}}
+    with pytest.raises(ValueError, match="differ from the configured selection"):
+        require_current_people_artifacts(store.root, document, source.camera_ids, different)
 
 def test_side_rejects_missing_video_wrong_digest_player_evidence_and_changed_camera_or_media(
     saved_inputs,

@@ -23,9 +23,11 @@ def source_digests(source: Path) -> dict[str, str]:
 
 def compatible_source_digests(
     sources: dict[str, str], *, ball_court_side: bool = False, tensorrt: bool = False,
-    standard_recipe: bool = False, standard_people: bool = False,
+    standard_recipe: bool = False, standard_people: bool = False, alternative_people: bool = False,
 ) -> dict[str, str]:
     """Keep the baseline identity for exact, compatible source changes."""
+    if not alternative_people:
+        sources = _compatible_patch(sources, "people_models_cache_compatibility.json")
     sources = _compatible_patch(sources, "multiview_scene_cache_compatibility.json")
     sources = _compatible_patch(sources, "event_detection_cache_compatibility.json")
     sources = _compatible_patch(sources, "pose_comparison_cache_compatibility.json")

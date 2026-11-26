@@ -19,6 +19,7 @@ from src.tennis_scene.pipeline.components.person_features import (
     require_alignment,
 )
 from src.tennis_scene.pipeline.contracts import ClipSource
+from src.tennis_scene.pipeline.people_artifacts import stored_people_models
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec, restore_type
 from src.tennis_scene.pipeline.storage.scene_index import read_component_descriptor
@@ -64,10 +65,10 @@ class PoseInputs:
                 rows, np.arange(len(rows))
             ):
                 raise ValueError(
-                    f"Every original DINO row is required: {video.camera_id}"
+                    f"Every original detector row is required: {video.camera_id}"
                 )
             if (detection.boxes_xyxy[:, 2:] <= detection.boxes_xyxy[:, :2]).any():
-                raise ValueError(f"DINO rows require positive boxes: {video.camera_id}")
+                raise ValueError(f"Detector rows require positive boxes: {video.camera_id}")
 
 
 @dataclass(frozen=True)
@@ -203,6 +204,7 @@ def read_saved_inputs(directory: Path, side: PinnedCourtSide) -> SavedPoseInputs
     court_dependencies = {}
     detections = []
     poses = []
+    model_selection = None
     for camera in source.camera_ids:
         court_observation = f"court_detection/{camera}"
         detection = f"person_detection/{camera}"
@@ -220,25 +222,11 @@ def read_saved_inputs(directory: Path, side: PinnedCourtSide) -> SavedPoseInputs
             raise ValueError(
                 f"Unexpected raw detection, pose or court dependencies: {camera}"
             )
-        settings = d_doc["identity"].get("settings")
-        if not isinstance(settings, dict) or settings.get("enabled") is not True:
-            raise ValueError(f"Saved DINO observations require enabled=true: {camera}")
-        pose_settings = p_doc["identity"].get("settings")
-        if (
-            not isinstance(pose_settings, dict)
-            or pose_settings.get("enabled") is not True
-        ):
-            raise ValueError(
-                f"Saved ViTPose observations require enabled=true: {camera}"
-            )
-        if (
-            settings.get("detector"),
-            settings.get("scope"),
-            settings.get("merge_duplicates"),
-        ) != ("dino", "full_frame", False):
-            raise ValueError(
-                f"Person observations require unmerged full-frame DINO rows: {camera}"
-            )
+        models = stored_people_models(d_doc["identity"].get("settings"), p_doc["identity"].get("settings"),
+                                      camera=camera, require_unmerged=True)
+        if model_selection is not None and model_selection != models:
+            raise ValueError(f"People model selection changes between cameras: {camera}")
+        model_selection = models
         refs.update({court_observation: c_ref, detection: d_ref, pose: p_ref})
         court_dependencies[camera] = index["artifacts"][court_observation]
         detections.append(_value(root, d_ref, d_doc, PersonDetectionOutput))

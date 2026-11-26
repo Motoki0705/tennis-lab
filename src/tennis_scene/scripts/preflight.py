@@ -8,6 +8,7 @@ from dataclasses import asdict
 from omegaconf import DictConfig
 from yaml import YAMLError
 
+from src.submodules.models.rfdetr.person_detector import require_rf_detr_version
 from src.tennis_scene.configuration import (
     PipelineRuntimeConfig,
     pipeline_asset_configuration,
@@ -52,8 +53,11 @@ def main(cfg: DictConfig) -> int:
                               "Full runtime validation unavailable until invalid asset paths or configuration inputs are repaired"),)
     else:
         try:
-            PipelineRuntimeConfig.from_config(cfg)
-        except (OSError, RuntimeError, TypeError, ValueError, YAMLError) as error:
+            runtime = PipelineRuntimeConfig.from_config(cfg)
+            if (runtime.enabled["person_observations"] and runtime.people.detector == "rfdetr-l"
+                and not runtime.people.detector_runtime.engines):
+                require_rf_detr_version()
+        except (ImportError, OSError, RuntimeError, TypeError, ValueError, YAMLError) as error:
             checks += (AssetCheck("pipeline_configuration", "configuration", "error", str(error)),)
     # Hydra discards the task function's return value when invoked as a CLI.
     # Raise inside the task so missing assets cannot produce a successful shell exit.

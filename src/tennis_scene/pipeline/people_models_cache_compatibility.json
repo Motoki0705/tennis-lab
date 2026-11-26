@@ -1,0 +1,129 @@
+{
+  "baseline_commit": "329dc6880f944cd8913fcb098ea8bbe647350c02",
+  "files": {
+    "submodules/configuration.py": {
+      "before": "a56d5481f0100531bbf7744bdefed6959f5414bd3e289bf64a5436a54b22b859",
+      "after": "1a602b8f634ba5a3e73b116678bb41c66b593403ed2bdb4cce787e5352a08ec9"
+    },
+    "submodules/models/__init__.py": {
+      "before": "2be8f1e3302aefe107ec7bca557f74fa64631dc672b6a11175199a52f4e0ae6e",
+      "after": "0a49c74df10f63891a0373355146b5009f0453728907ef75d473d2adfcb14e81"
+    },
+    "submodules/models/_base/crops.py": {
+      "before": "58181ee77ffd37f71d298c98c4c0f408740f5895089ad50d61e7e4ed6f472433",
+      "after": "66002784ada4b2a894d9ec6f1cefc2daee3774fb8e355bb6ff8b22dc25786a92"
+    },
+    "submodules/models/rfdetr/__init__.py": {
+      "before": null,
+      "after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "submodules/models/rfdetr/onnx_export.py": {
+      "before": null,
+      "after": "982cab05d7a13866aaf4e71eed7b7ab6e4427df8c2879b76fd819886b4c10454"
+    },
+    "submodules/models/rfdetr/person_detector.py": {
+      "before": null,
+      "after": "bf3ac8a609f0c92b29732d413d9284c692afcdc758484539bf80b8bc3b050882"
+    },
+    "submodules/models/rtmpose/__init__.py": {
+      "before": null,
+      "after": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "submodules/models/rtmpose/pose2d.py": {
+      "before": null,
+      "after": "8aad7c479f440f0ec7ed2e89eb9d3868d4aa2abcd395ca690a5c59951c28339d"
+    },
+    "submodules/people_model_assets.py": {
+      "before": null,
+      "after": "73fb503c0c9b96090acafb10c00bcdd3773cc30334afd108e7d215b3925d2bf4"
+    },
+    "submodules/scripts/install_people_model_checkpoint.py": {
+      "before": null,
+      "after": "8927bb4ee73b464417a82c859ed16cc20abf59e16e2bbabe987718a5e442f068"
+    },
+    "submodules/vendor/rtmpose/__init__.py": {
+      "before": null,
+      "after": "89fa0e7169fb0c400a675bcb839fbca7be74932817c82b1fe7d13ba0553cd5f3"
+    },
+    "submodules/vendor/rtmpose/network.py": {
+      "before": null,
+      "after": "34fb53326985e24fb27be884d84da7c29b2f42c96924dbec8b455523059ad63f"
+    },
+    "tennis_scene/configuration.py": {
+      "before": "77a81d2b1a26f0cd04456159466f1003b9d7d7ced2d54b45c9e4b53616934922",
+      "after": "850fdae678eaa45bfd4e25ba599f862d0247c96825570fe81e796d0ae46960c2"
+    },
+    "tennis_scene/multiview_pose/inputs.py": {
+      "before": "f559ac80331dd9dac9a48cd30d3c707fa962b73b3d9685ad6948d8e051b67ee6",
+      "after": "5e2a19bdd00fa4d26a4ea0ed36674245a9848704920655ccd16090b36164b18c"
+    },
+    "tennis_scene/pipeline/components/person_detection.py": {
+      "before": "a8268b3a60f65c2d6bb3fadb888ee866ce5d043e0280d55b44bc25602083c505",
+      "after": "1fadeba3afc4b6f344eed3979890487068fff00207fde46ec63131d04f5c2734"
+    },
+    "tennis_scene/pipeline/components/person_features.py": {
+      "before": "4cb29adcefbbbd3051ec30807e22c2439a93880b7ce704535b064d4fd43e105f",
+      "after": "4405e5def362787e8283a60e29a1b9cbe016559702123f73c3d67a71a1d803c8"
+    },
+    "tennis_scene/pipeline/components/pose_estimation.py": {
+      "before": "7c1461c86e4afec02da989bf59c8f76a117f08b4acae9d1601950e5386d8be82",
+      "after": "5f5500032241abe67f58f80dba5d1ffbbc9bd13200612109bd2020998e7f3a5c"
+    },
+    "tennis_scene/pipeline/dataset_publication.py": {
+      "before": "32c047716ae03ac66d1fcc5314712e01e213ade48a5fc31e763b7b246f740255",
+      "after": "eea71518bc5bdc592282b85b816d45a7bb1291ccde7ad1374053159febd9c6ec"
+    },
+    "tennis_scene/pipeline/definition.py": {
+      "before": "0dce9ff6a224f07bbecdb455fd245f32a00bb245d139192eb15550770d9a6654",
+      "after": "21317dd081ef74f2943067005a730c789842023671c28b9944ca1407e93cb01a"
+    },
+    "tennis_scene/pipeline/model_assets.py": {
+      "before": "d864d54eaa61483e98263ae790b299e21334ae7dd6c3b824ce0c6d8c3ae7fa61",
+      "after": "058db768a2bb05bcae2e136f7bdb5248b6300511c6d08cab43a203626ac59b69"
+    },
+    "tennis_scene/pipeline/model_resources.py": {
+      "before": "3be5cdaeeb41d17d07509969f26ee0ac7e36466528c1589192cb9cd9cd8c8249",
+      "after": "1df28b788354e4701e79d4b589235b2b6aec202d852bc6882174ffe50fcb2ad9"
+    },
+    "tennis_scene/pipeline/observation_types.py": {
+      "before": "2db28080df9a78612a1f93b169edf08193fd9469c36d3807c26092992f881675",
+      "after": "10c68477fc83c93dd5b310acf8ada74862931df126a407c56b80a050ba5d5fde"
+    },
+    "tennis_scene/pipeline/orchestrator.py": {
+      "before": "a877cff9b76a979210b6d5b16487b5bc5bd15b4d10bc6290a67ffb6b1838ce77",
+      "after": "469b76d23438d42755901678be7e7bd49350de7cfef151d105b506573fe1a0cc"
+    },
+    "tennis_scene/pipeline/people_artifacts.py": {
+      "before": null,
+      "after": "9d47781ef064f0854bca6ed323a8990713481aca43d48f39195cc3d133773a6b"
+    },
+    "tennis_scene/pipeline/source_identity.py": {
+      "before": "cea24607d54b6d8e876539e5098be261e4b93765002c47d18858d2608bb40585",
+      "after": "e575f3221188a188478bf1ae18b228acfc3d4bcb72e345b486e5c1593e6c3ed2"
+    },
+    "tennis_scene/pipeline/tensorrt_assets.py": {
+      "before": "3bebfbacc2445139996bec8c0734d11cd9ce51c6792eea069e524fcd31ef7ebe",
+      "after": "18b73d529c22ebe30a16548b9f581e7880116ff77f4cb8acd2dd4115ec35b7d5"
+    },
+    "tennis_scene/pipeline/video_batch.py": {
+      "before": "4a552ab442c8375efc32d0d71c24ec21628ca93fc7553c243529277c3d5a5ec9",
+      "after": "0290a4db0242410dd35e66d81bbc018e1104f77b5f28012076ba7cdc70f16778"
+    },
+    "tennis_scene/preflight.py": {
+      "before": "5f01058cd9f83526a651ce109ac3fb51f35ed976b2d2cbe58e7d6888e6479eb8",
+      "after": "458027dbaa713021f3d604c3be26617f4f6f5b12a6482e02aea1c308801310ee"
+    },
+    "tennis_scene/scripts/preflight.py": {
+      "before": "b283a288ae871d481c91599ea230f7a065feca88550d6f24138db8c3d2d7dcc2",
+      "after": "bf88c6fb39439f250bb1d628bf4b286962fb7f596d8f08647f8d9ce5f4474ff3"
+    },
+    "tennis_scene/scripts/tensorrt.py": {
+      "before": "2755230c9a9f0555ef40b8d1bb21898decad03c56e3e3856eccee10ddb5bc5ce",
+      "after": "ba03b4986b57f796f00e23a82f92af3fc2fc788882eb259987cc886202e805e0"
+    },
+    "utils/configuration/inventory.py": {
+      "before": "95b4cd05267ed635be8af4d581eb9d38cf7efc69a0cbb300fce72fccca8ba0e4",
+      "after": "877ea6e5e0a8b557450876cb931c59e5076014118784cd5510e6a739ad5788c5"
+    }
+  }
+}

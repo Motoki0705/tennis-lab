@@ -11,6 +11,9 @@ from hydra import compose, initialize_config_dir
 
 from src.submodules.models.dino.onnx_export import export_dino_onnx
 from src.submodules.models.gvhmr.onnx_export import ROTARY_MAX_FRAMES, export_gvhmr_onnx
+from src.submodules.models.rfdetr.onnx_export import export_rfdetr_onnx
+from src.submodules.models.rtmpose.pose2d import ONNX_OPSET as RTMPOSE_OPSET
+from src.submodules.models.rtmpose.pose2d import load_rtmpose_x
 from src.submodules.smpl_assets import require_smpl_asset
 from src.submodules.vendor.gvhmr.hmr2 import load_hmr2
 from src.submodules.vendor.gvhmr.vitpose import build_vitpose_huge
@@ -25,6 +28,8 @@ from src.tennis_scene.pipeline.model_resources import (
     dino_tensorrt,
     gvhmr_tensorrt,
     hmr2_tensorrt,
+    rfdetr_tensorrt,
+    rtmpose_tensorrt,
     vitpose_tensorrt,
 )
 from src.tennis_scene.pipeline.tensorrt_assets import TensorRTModel
@@ -60,7 +65,7 @@ PATH_BOUNDARY = NonHydraPathBoundary(
 )
 
 
-def export_image_model(path: Path, model: torch.nn.Module, spec: TensorRTModel) -> None:
+def export_image_model(path: Path, model: torch.nn.Module, spec: TensorRTModel, *, opset: int = 19) -> None:
     """Export an image model with one dynamic batch dimension."""
     pixels = spec.inputs["pixels"]
     batch = spec.batch_multiplier
@@ -76,7 +81,7 @@ def export_image_model(path: Path, model: torch.nn.Module, spec: TensorRTModel) 
             input_names=list(spec.inputs),
             output_names=list(spec.outputs),
             dynamic_axes={name: {0: "batch"} for name in (*spec.inputs, *spec.outputs)},
-            opset_version=19,
+            opset_version=opset,
             dynamo=False,
         )
 
@@ -126,11 +131,15 @@ def _export_model(args: argparse.Namespace, cfg: PipelineRuntimeConfig) -> None:
                 external_root=cfg.roots.external_asset_root,
             )
             spec = clip_tensorrt(checkpoint)
+        elif args.model == "rfdetr-l":
+            _, rf_runtime = config.rfdetr_settings()
+            spec = rfdetr_tensorrt(config, rf_runtime.batch_size)
         else:
             spec = {
                 "vitpose": vitpose_tensorrt,
                 "hmr2": hmr2_tensorrt,
                 "gvhmr": gvhmr_tensorrt,
+                "rtmpose-x": rtmpose_tensorrt,
             }[args.model](config)
 
     def export(path: Path) -> None:
@@ -141,6 +150,12 @@ def _export_model(args: argparse.Namespace, cfg: PipelineRuntimeConfig) -> None:
             return
         if args.model == "gvhmr":
             export_gvhmr_onnx(config.gvhmr_checkpoint, path, keep_mask_reference=args.keep_mask_reference)
+            return
+        if args.model == "rfdetr-l":
+            export_rfdetr_onnx(spec.assets["checkpoint"], path, spec.inputs["input"].shape[0])
+            return
+        if args.model == "rtmpose-x":
+            export_image_model(path, load_rtmpose_x(spec.assets["checkpoint"]).half(), spec, opset=RTMPOSE_OPSET)
             return
         model: torch.nn.Module
         if args.model == "vitpose":
@@ -182,6 +197,12 @@ def _profile(
         raise ValueError("GVHMR TensorRT requires --frames MIN OPT MAX")
     if not is_gvhmr and args.frames is not None:
         raise ValueError("--frames is used only for GVHMR")
+    if export.model == "rfdetr-l":
+        spec = export.inputs["input"]
+        batch = spec.shape[0]
+        if batch < 1 or args.opt_batch != batch or args.max_batch != batch:
+            raise ValueError(f"RF-DETR-L export fixes batch {batch}; use --opt-batch {batch} --max-batch {batch}")
+        return {"input": InputProfile(minimum=spec.shape, optimum=spec.shape, maximum=spec.shape)}
     if args.frames is not None:
         minimum, optimum, maximum = args.frames
         if not 1 <= minimum <= optimum <= maximum <= ROTARY_MAX_FRAMES:
@@ -207,7 +228,7 @@ def main() -> None:
     export = actions.add_parser(
         "export", help="Export the configured model to typed ONNX"
     )
-    export.add_argument("model", choices=("vitpose", "hmr2", "clip", "dino", "gvhmr"))
+    export.add_argument("model", choices=("vitpose", "hmr2", "clip", "dino", "gvhmr", "rfdetr-l", "rtmpose-x"))
     export.add_argument("directory", type=Path)
     export.add_argument("--image-size", type=int, nargs=2, metavar=("HEIGHT", "WIDTH"))
     export.add_argument("--keep-mask-reference", action="store_true", help="Retain the original GVHMR ONNX graph for ORT comparison")
@@ -261,7 +282,7 @@ def main() -> None:
             _profile(args, manifest),
             device=torch.device(args.device),
             workspace_bytes=args.workspace_mib * 1024**2,
-            detailed_profiling=manifest.model == "gvhmr_siga24_denoiser",
+            detailed_profiling=manifest.model in {"gvhmr_siga24_denoiser", "rtmpose-x"},
         )
         print(result.model_dump_json(indent=2))
 

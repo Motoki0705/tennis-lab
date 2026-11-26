@@ -194,6 +194,12 @@ def _required_publication_components(inputs: DatasetClipInputs, identity: Mappin
         )
 
         required.update(require_current_ecpose_artifacts(root.resolve(), document, inputs.camera_ids, identity))
+    if "people_models" in identity:
+        from src.tennis_scene.pipeline.people_artifacts import (
+            require_current_people_artifacts,
+        )
+
+        required.update(require_current_people_artifacts(root.resolve(), document, inputs.camera_ids, identity))
     if APPEARANCE_MEDIA in identity:
         node = "player_association"
         reference = document["artifacts"][node]

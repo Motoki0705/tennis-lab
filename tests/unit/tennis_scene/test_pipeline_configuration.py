@@ -47,6 +47,39 @@ def test_defaults_associate_players_and_decide_sides() -> None:
     assert runtime.people.runtime.dino_detector.precision == "fp32"
     assert runtime.people.runtime.vitpose.precision == "fp32"
     assert runtime.people.runtime.vitpose.flip_test is True
+    assert (runtime.people.detector, runtime.people.pose) == ("dino", "vitpose-h")
+
+
+@pytest.mark.parametrize(("detector", "pose"), [
+    ("rfdetr-l", "vitpose-h"), ("dino", "rtmpose-x"), ("rfdetr-l", "rtmpose-x"),
+])
+def test_people_model_selections_bind_their_own_backends(detector: str, pose: str) -> None:
+    cfg = _runtime([
+        f"people_models.detector={detector}", f"people_models.pose={pose}",
+        "people_models.runtime.rfdetr_l.confidence=0.27", "people_models.runtime.rfdetr_l.precision=fp16",
+        "people_models.runtime.rtmpose_x.backend=tensorrt", "people_models.runtime.rtmpose_x.precision=fp16",
+        "people_models.runtime.rtmpose_x.engines=[tensorrt/rtmpose-x/b8]",
+    ], bind_inputs=False)
+    assert (cfg.people.detector, cfg.people.pose) == (detector, pose)
+    assert cfg.people.detector_runtime.confidence == (0.27 if detector == "rfdetr-l" else 0.30)
+    assert cfg.people.detector_runtime.precision == ("fp16" if detector == "rfdetr-l" else "fp32")
+    assert cfg.people.detector_runtime.engines == ()
+    assert cfg.people.pose_runtime.precision == ("fp16" if pose == "rtmpose-x" else "fp32")
+    assert cfg.people.uses_tensorrt is (pose == "rtmpose-x")
+
+
+@pytest.mark.parametrize(("overrides", "error"), [
+    (["people_models.detector=ecpose"], "people_models.detector must be"),
+    (["people_models.pose=rtmpose"], "people_models.pose must be"),
+    (["people_models.pose=rtmpose-x", "people_models.runtime.rtmpose_x.backend=tensorrt",
+      "people_models.runtime.rtmpose_x.precision=fp16"], "explicit engine directories"),
+    (["people_models.detector=rfdetr-l", "people_models.runtime.rfdetr_l.backend=tensorrt",
+      "people_models.runtime.rfdetr_l.precision=fp16", "people_models.runtime.rfdetr_l.batch_size=2",
+      "people_models.runtime.rfdetr_l.engines=[tensorrt/rf-b2]"], "one engine for each batch"),
+])
+def test_alternative_people_runtime_rejects_invalid_choices(overrides: list[str], error: str) -> None:
+    with pytest.raises(ValueError, match=error):
+        _runtime(overrides, bind_inputs=False)
 
 
 @pytest.mark.parametrize("precision", ["bf16", "fp16"])
@@ -268,12 +301,11 @@ def test_invalid_inputs_or_dependency_choices_fail_before_models(
 
 @pytest.mark.parametrize("prefix", ["", "+"])
 @pytest.mark.parametrize("override", [
-    "people_models.detector=dino",
     "people_models.yolo_checkpoint=retired.pt",
     "people_models.runtime.tracking.yolo_confidence=0.5",
 ])
 def test_removed_detector_settings_are_rejected(prefix: str, override: str) -> None:
-    """Removed YOLO/selector keys must fail even when added to an old config."""
+    """Removed YOLO keys must fail even when added to an old config."""
     error = UnknownConfigurationKeyError if prefix else ConfigCompositionException
     with pytest.raises(error, match=override.split("=")[0].rsplit(".", 1)[-1]):
         _runtime([prefix + override], bind_inputs=False)
@@ -281,7 +313,7 @@ def test_removed_detector_settings_are_rejected(prefix: str, override: str) -> N
 
 def test_default_coco_source_and_explicit_finetuned_comparison() -> None:
     runtime = _runtime([])
-    assert not hasattr(runtime.people, "detector")
+    assert runtime.people.detector == "dino"
     assert runtime.people.dino_checkpoint == (
         runtime.roots.checkpoint_root / "dino/checkpoint0029_4scale_swin.pth"
     )

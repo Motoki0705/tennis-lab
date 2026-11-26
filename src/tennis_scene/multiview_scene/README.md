@@ -8,7 +8,7 @@
 保存済み設定から使うのは、パスのルート、HMR2・GVHMR・SMPLの資産と実行設定、crop拡張、
 サンプリング上限、人物可視性と身体配置の設定です。出力はSceneResult v2です。
 
-選手IDと元DINO行でカメラごとのcrop、ViTPose関節、実観測maskを組み立てます。
+選手IDと元検出行でカメラごとのcrop、COCO17関節、実観測maskを組み立てます。
 `body_view_selection` はその観測で代表カメラと区間を決め、`hmr2_features`、`gvhmr`、
 `body_placement`、`scene_assembly` は既存の処理を使います。身体配置へ渡す骨格は実測3Dです。
 補間関節とフレーム・時間IDの曖昧さは、元検出行と共に `multiview_scene_inputs` に保存します。
