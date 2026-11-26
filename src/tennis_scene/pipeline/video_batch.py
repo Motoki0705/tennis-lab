@@ -18,7 +18,7 @@ from src.tennis_scene.pipeline.clip_inputs import (
     prepare_video_inputs,
 )
 from src.tennis_scene.pipeline.dataset_publication import (
-    ANNOTATION_RELATIVE_DIR,
+    annotation_root,
     completed_annotation,
     publish_annotation,
     record_annotation_failure,
@@ -31,6 +31,7 @@ from src.tennis_scene.pipeline.execution_plan import (
     NodeKey,
 )
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
+from src.tennis_scene.pipeline.recipes import recipe_directory
 from src.tennis_scene.pipeline.runner import PlanExecutor
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore, ClipStoreCache
 from src.utils.configuration import PathRole
@@ -175,7 +176,7 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
         raise ValueError("Video batches require complete clips and the model pipeline")
     cfg.resolver.validate(PathRole.DATA, dataset_directory)
     validate_id_component(video_id, field_name="video_id")
-    directory = (dataset_directory / "videos" / video_id / "annotations" / "tennis_scene" / "batch"
+    directory = (recipe_directory(dataset_directory / "videos" / video_id / "annotations" / "tennis_scene", cfg.recipe) / "batch"
                  if progress_directory is None else progress_directory)
     progress = VideoBatchProgress(directory, video_id, pipeline_config_yaml,
         overwrite=overwrite, continue_on_error=continue_on_error, recording_devices=recording_devices, batching=batching,
@@ -186,7 +187,7 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
 
     def failed(clip_id: str, error: Exception) -> None:
         clip = bound[clip_id]
-        message = record_annotation_failure(clip.inputs.clip_dir, clip_id, error)
+        message = record_annotation_failure(clip.inputs.clip_dir, clip_id, error, publication_identity=identity)
         progress.outcome(VideoClipOutcome(clip_id, "failed", error=message))
         if isinstance(error, ReconstructionUnavailable):
             progress.document["clips"][clip_id].update(reason=error.reason, diagnostics=json_value(error.diagnostics))
@@ -249,7 +250,7 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
                                                 overrides=orchestrator.components, video_court=video_court,
                                                 video_court_side=video_court_side)
                     orchestrator.validate_plan_assets(nodes)
-                    store = ClipStore(inputs.clip_dir / ANNOTATION_RELATIVE_DIR, json_value(source),
+                    store = ClipStore(annotation_root(inputs.clip_dir, identity), json_value(source),
                                       memory_entries=0, shared_cache=store_cache)
                     clips.append(ClipExecution(key, nodes, store, cfg.cache_overwrite))
                 except Exception as error:

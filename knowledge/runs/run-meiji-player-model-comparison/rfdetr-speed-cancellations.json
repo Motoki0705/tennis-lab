@@ -1,0 +1,61 @@
+{
+  "schema_version": 1,
+  "model_id": "rfdetr-l",
+  "adapter_commit": "c97557d7beb44fbf096a14713527604d3ea6d9f7",
+  "baseline_commit": "14ca88f8a5616087435b411f79d2b63214d887e2",
+  "input_id": "meiji_4cam/person-model-speed-v1",
+  "input_manifest_sha256": "64c74d75e5f1afe869911f1620b9c8e8a793fc4c4e4ac830f4abd97b21fb1a62",
+  "image_count": 96,
+  "completion_directory": ".training_queue/control/completions",
+  "cancellation_reason": null,
+  "jobs": [
+    {
+      "backend": "pt32",
+      "batch_size": 1,
+      "job_id": "0-8204459650988321183_2026-11-24T17-12-29-011678816Z_3667397_i2487-rfdetr-l-pt32-b1-speed.job",
+      "state": "cancelled",
+      "finished_at_ns": 1795564273800534866,
+      "completion_sha256": "ea0dfdeb9e9d136d59e4ad480907bf43865e353b69c6b3a25e93fff7564e6a87"
+    },
+    {
+      "backend": "pt32",
+      "batch_size": 2,
+      "job_id": "0-8204459650715102407_2026-11-24T17-12-29-284897592Z_3667465_i2487-rfdetr-l-pt32-b2-speed.job",
+      "state": "cancelled",
+      "finished_at_ns": 1795564273498400479,
+      "completion_sha256": "07e7c245f70dab18ce659be67379c447b48eaa4ecabf8c9bbca1344496ae5b04"
+    },
+    {
+      "backend": "pt16",
+      "batch_size": 1,
+      "job_id": "0-8204459650443192095_2026-11-24T17-12-29-556807904Z_3667534_i2487-rfdetr-l-pt16-b1-speed.job",
+      "state": "cancelled",
+      "finished_at_ns": 1795564273194151760,
+      "completion_sha256": "a7de7aae65f5bb7683faf53a6604b825210bc8945958f7d0df6f54166fc8884c"
+    },
+    {
+      "backend": "pt16",
+      "batch_size": 2,
+      "job_id": "0-8204459650127155170_2026-11-24T17-12-29-872844829Z_3667601_i2487-rfdetr-l-pt16-b2-speed.job",
+      "state": "cancelled",
+      "finished_at_ns": 1795564272896653042,
+      "completion_sha256": "dab730db8fc33b26d39d18211b617190fea7701bc154ef40697e1044ad388a5e"
+    },
+    {
+      "backend": "trt16",
+      "batch_size": 1,
+      "job_id": "0-8204459649807334227_2026-11-24T17-12-30-192665772Z_3667674_i2487-rfdetr-l-trt16-b1-speed.job",
+      "state": "cancelled",
+      "finished_at_ns": 1795564272579633713,
+      "completion_sha256": "a0dffe00a0d53b3cad12a4aefca7ae9cc55c6e091fd5ab80496c0597ea468713"
+    },
+    {
+      "backend": "trt16",
+      "batch_size": 2,
+      "job_id": "0-8204459649535148361_2026-11-24T17-12-30-464851638Z_3667747_i2487-rfdetr-l-trt16-b2-speed.job",
+      "state": "cancelled",
+      "finished_at_ns": 1795564272245957730,
+      "completion_sha256": "73bff55e6e41783514eafc746a9f47707cf43d2f69504e3260e6009a79b817de"
+    }
+  ]
+}

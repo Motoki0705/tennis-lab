@@ -1,4 +1,4 @@
-"""Detached controller for manual worker CI and queue follow-ups."""
+"""Detached controller for manual worker CI, queue, and local job follow-ups."""
 
 from __future__ import annotations
 
@@ -7,7 +7,6 @@ import json
 import os
 import re
 import shutil
-import socket
 import subprocess
 import sys
 import time
@@ -26,9 +25,10 @@ from lib.ops_review.review_locks import pr_lease
 
 from . import worker_followup, worker_slots
 from .github import GitHub
+from .local_jobs import LOCAL_JOB_ENV_VAR, notify_ready
 from .snapshot import git
 from .state import Store
-from .worker_wait_sources import ci_result, queue_result
+from .worker_wait_sources import ci_result, local_result, queue_result
 
 POLL_SECONDS = 10
 FORWARDED_ENV = (
@@ -55,20 +55,23 @@ def _exec_property(setting: str, *argv: str | Path) -> str:
     return f"--property={setting}=:{quoted}"
 
 
+def _monitor_checkout(store: Store, chain: str) -> Path:
+    if not re.fullmatch(r"[0-9a-f]{32}", chain):
+        raise ValueError("invalid worker follow-up ID")
+    return store.directory.resolve() / "worker-monitor-checkouts" / chain
+
+
 def start(
     store: Store, repo: str, parent: int, child: int, worker: str, chain: str
 ) -> None:
-    if not re.fullmatch(r"[0-9a-f]{32}", chain):
-        raise ValueError("invalid worker follow-up ID")
+    checkout = _monitor_checkout(store, chain)
     source = Path(__file__).resolve().parents[3]
     head = git("rev-parse", "--verify", "HEAD^{commit}", cwd=source).decode().strip()
     if git("status", "--porcelain", "--", *MONITOR_SOURCE_PATHS, cwd=source).strip():
         raise ValueError("commit the worker monitor source before starting a follow-up")
     common = common_directory(source)
     directory = store.directory.resolve()
-    pins = directory / "worker-monitor-checkouts"
-    pins.mkdir(mode=0o700, parents=True, exist_ok=True)
-    checkout = pins / chain
+    checkout.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
     if checkout.exists():
         raise ValueError("worker follow-up checkout already exists")
     git_bin, ln = shutil.which("git"), shutil.which("ln")
@@ -122,10 +125,9 @@ def start(
     # A transient service is forked by the user manager. setsid alone would
     # still leave a descendant of an agent runner subject to subreaper cleanup.
     options = [f"--setenv={name}" for name in FORWARDED_ENV if name in os.environ]
-    queue = os.environ.get("TRAINING_QUEUE_DIR")
-    options.append(
-        f"--setenv=TRAINING_QUEUE_DIR={Path(queue).resolve() if queue else ''}"
-    )
+    for var in ("TRAINING_QUEUE_DIR", LOCAL_JOB_ENV_VAR):
+        value = os.environ.get(var)
+        options.append(f"--setenv={var}={Path(value).resolve() if value else ''}")
     result = subprocess.run(
         [
             "systemd-run",
@@ -164,13 +166,24 @@ def start(
         )
 
 
-def _notify_ready() -> None:
-    address = os.environ.get("NOTIFY_SOCKET")
-    if address:
-        with socket.socket(socket.AF_UNIX, socket.SOCK_DGRAM) as channel:
-            channel.sendto(
-                b"READY=1", "\0" + address[1:] if address[0] == "@" else address
-            )
+_notify_ready = notify_ready
+
+
+def _observe_jobs(
+    kind: str,
+    job_ids: list[str],
+    poll: Callable[[str, float, dict[str, float]], dict[str, Any] | None],
+) -> Callable[[], dict[str, Any] | None]:
+    missing_completion_since: dict[str, float] = {}
+
+    def observe() -> dict[str, Any] | None:
+        now = time.monotonic()
+        results = [poll(job, now, missing_completion_since) for job in job_ids]
+        if any(result is None for result in results):
+            return None
+        return {"kind": kind, "jobs": results}
+
+    return observe
 
 
 @dataclass(frozen=True)
@@ -246,7 +259,7 @@ class Monitor:
                 ci_result, backend, request, task["branch"], root=Path(task["worktree"])
             )
             deadline = time.monotonic() + CI_TIMEOUT
-        else:
+        elif request["kind"] == "queue":
             configured = os.environ.get("TRAINING_QUEUE_DIR")
             root = (
                 Path(configured)
@@ -264,25 +277,33 @@ class Monitor:
                 / ".training_queue"
             )
             lease = nullcontext()
-            missing_completion_since: dict[str, float] = {}
-
-            def observe_queue() -> dict[str, Any] | None:
-                now = time.monotonic()
-                results = [
-                    queue_result(
-                        root,
-                        job,
-                        now=now,
-                        missing_completion_since=missing_completion_since,
-                    )
-                    for job in request["job_ids"]
-                ]
-                if any(result is None for result in results):
-                    return None
-                return {"kind": "queue", "jobs": results}
-
-            observe = observe_queue
+            observe = _observe_jobs(
+                "queue",
+                request["job_ids"],
+                lambda job, now, missing: queue_result(
+                    root, job, now=now, missing_completion_since=missing
+                ),
+            )
             deadline = None
+        elif request["kind"] == "local":
+            configured = os.environ.get(LOCAL_JOB_ENV_VAR)
+            if configured:
+                root = Path(configured)
+                if not root.is_absolute():
+                    raise ValueError(f"{LOCAL_JOB_ENV_VAR} must be absolute")
+            else:
+                root = self.store.directory / "local-jobs"
+            lease = nullcontext()
+            observe = _observe_jobs(
+                "local",
+                request["job_ids"],
+                lambda job, now, missing: local_result(
+                    root, job, now=now, missing_completion_since=missing
+                ),
+            )
+            deadline = None
+        else:
+            raise ValueError(f"unknown wait kind: {request['kind']}")
 
         next_check = time.monotonic()
         with lease:
@@ -327,6 +348,14 @@ class Monitor:
             ):
                 record["state"] = "done"
             else:
+                if request["kind"] == "ci" and observed["status"] not in {
+                    "success",
+                    "failure",
+                    "conflict",
+                }:
+                    raise ValueError(
+                        f"unknown CI observation status: {observed['status']!r}"
+                    )
                 event = worker_followup.event_key(request)
                 if event in record["resumptions"]:
                     record.update(state="needs_parent", reason="event_already_consumed")
@@ -408,16 +437,36 @@ def resume_prompt(wait: dict[str, Any], result: dict[str, Any]) -> str:
             "全jobが終端した。成果物を検証し、指定された記録を更新する。"
             "失敗・取消は原因と残件を確認する。再投入した場合は新しいjob IDを宣言する。"
         )
+    elif wait["kind"] == "local":
+        action = (
+            "全ローカルコマンドが終了した。各jobの exit_code・log・log_excerpt を確認し、"
+            "失敗や取消があれば原因を修正して再実行する。"
+            "問題がなければ commit・push・CI待ち、または後続jobの登録へ進む。"
+        )
+    elif result["status"] == "conflict":
+        base = result.get("base_ref")
+        target = (
+            f"最新の{base.strip()}"
+            if isinstance(base, str) and base.strip()
+            else "最新のbase branch"
+        )
+        action = (
+            f"対象HEADのPR #{wait['pr']} にmerge conflictがあり、CIが起動していない。"
+            f"同じbranchとPRで{target}を取り込んでコンフリクトを解消し、"
+            "検証してpushしたらPARENT_RESULTで新HEADを宣言する。"
+        )
     elif result["status"] == "failure":
         action = (
             f"対象HEADの{workflow} CIが失敗した。失敗job・step・ログ要点を参照し、"
             "同じbranchとPRで修正する。修正をpushしたら新HEADを宣言する。"
         )
-    else:
+    elif result["status"] == "success":
         action = (
             f"対象HEADの{workflow} CIが成功した。宣言した後続作業を行う。\n"
             + wait["next_step"]
         )
+    else:
+        raise ValueError(f"unknown CI observation status: {result.get('status')!r}")
     return (
         "## parent CLI が確認した待機結果\n\n"
         + action
@@ -428,9 +477,6 @@ def resume_prompt(wait: dict[str, Any], result: dict[str, Any]) -> str:
 
 
 def main() -> int:
-    from lib.checkout_lock import guard_interactive_cli
-
-    guard_interactive_cli()
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("state_dir", type=Path)
     parser.add_argument("repo")
@@ -439,8 +485,27 @@ def main() -> int:
     parser.add_argument("worker")
     parser.add_argument("chain")
     args = parser.parse_args()
+    store = Store(args.state_dir)
+    source = Path(__file__).resolve().parents[3]
+    try:
+        if source != _monitor_checkout(store, args.chain):
+            raise ValueError("start the follow-up service from its pinned worktree")
+        git_dir, common, head = git(
+            "rev-parse",
+            "--path-format=absolute",
+            "--git-dir",
+            "--git-common-dir",
+            "--abbrev-ref",
+            "HEAD",
+            cwd=source,
+        ).splitlines()
+        if git_dir == common or head != b"HEAD":
+            raise ValueError("worker follow-up checkout must be a detached worktree")
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        print(f"worker follow-up checkout refused: {exc}", file=sys.stderr)
+        return 75
     monitor = Monitor(
-        Store(args.state_dir),
+        store,
         args.repo,
         args.parent,
         args.child,

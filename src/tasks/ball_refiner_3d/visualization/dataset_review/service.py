@@ -20,6 +20,7 @@ from src.tasks.ball_refiner_3d.data.dataset import SharedDataset
 from src.tasks.ball_refiner_3d.data.preprocessing import corrupt_trajectory
 from src.tasks.ball_refiner_3d.data.schema import CorruptedTrajectory, Rally
 from src.tasks.ball_refiner_3d.data.targets.events import gaussian_event_target
+from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
 from src.tasks.ball_refiner_3d.inference.predictor import RefinerPredictor
 from src.tasks.ball_refiner_3d.physics.units import decode_field, physical_field
 from src.tasks.ball_refiner_3d.visualization.dataset_review.artifacts import (
@@ -237,7 +238,10 @@ class ReviewService:
             rally.events, checkpoint.info["event_sigma_frames"]
         )
         if (
-            not np.allclose(arrays["event_target"][take], target, atol=1e-6)
+            not np.array_equal(arrays.get("event_classes"), EVENT_CLASSES)
+            or probability.shape != target.shape
+            or arrays["event_target"][take].shape != target.shape
+            or not np.allclose(arrays["event_target"][take], target, atol=1e-6)
             or not np.isfinite(probability).all()
             or np.any((probability < 0) | (probability > 1))
         ):

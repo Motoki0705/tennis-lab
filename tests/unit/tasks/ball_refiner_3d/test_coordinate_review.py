@@ -237,8 +237,11 @@ def test_saved_and_real_cpu_inference_share_exact_inputs_and_all_frames(review):
         live["scene"]["event_probability"],
         atol=1e-6,
     )
-    assert np.asarray(live["scene"]["event_probability"]).shape == (96,)
-    assert np.asarray(live["scene"]["event_target"])[[15, 45, 85]].tolist() == [
+    assert live["scene"]["event_classes"] == ["shot", "bounce", "net"]
+    assert np.asarray(live["scene"]["event_probability"]).shape == (96, 3)
+    assert np.asarray(live["scene"]["event_target"])[
+        [15, 45, 85], [0, 1, 0]
+    ].tolist() == [
         1.0,
         1.0,
         1.0,

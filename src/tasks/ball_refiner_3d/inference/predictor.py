@@ -97,12 +97,28 @@ class RefinerPredictor(BasePredictor[RefinerPrediction]):
         *,
         fps: float,
         seed: int,
+        fps_tolerance: float = 0.0,
         batch_size: int = 32,
         segment: Tensor | None = None,
     ) -> RefinerPrediction:
-        if not math.isclose(fps, self.metadata["fps"], abs_tol=1e-6, rel_tol=0):
+        """Predict on the original frames, allowing one FPS ULP for roundoff."""
+        if not math.isfinite(fps_tolerance) or fps_tolerance < 0:
+            raise ValueError("Require a finite, nonnegative FPS tolerance")
+        checkpoint_fps = self.metadata["fps"]
+        tolerance = max(1e-6, fps_tolerance)
+        if (
+            not math.isfinite(fps)
+            or fps <= 0
+            or not math.isclose(
+                fps,
+                checkpoint_fps,
+                abs_tol=tolerance + math.ulp(max(fps, checkpoint_fps)),
+                rel_tol=0,
+            )
+        ):
             raise ValueError(
-                "Input FPS does not match checkpoint FPS; resample explicitly"
+                f"Input FPS {fps} does not match checkpoint FPS {checkpoint_fps} "
+                f"within {tolerance} Hz"
             )
         result = refine_coordinates(
             self.model,

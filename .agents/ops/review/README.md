@@ -10,6 +10,11 @@
 - [knowledge_records.py](knowledge_records.py) は [記録専用CIの共通判定](../lib/README.md#ナレッジ記録専用prのci) から差分と結果を照合し、GitHubが認識する閉鎖対象を確認する。[knowledge_evidence.py](knowledge_evidence.py) が現HEADの受入確認とPR本文を照合し、[knowledge_progression.py](knowledge_progression.py) が専用マージ要求を保存する。
 - workerログ・判断ログの公開はそれぞれの専用経路を使う。[worker_logs](../worker_logs/README.md)・[decision_logs](../decision_logs/README.ja.md)
 
+観測間隔の間にcheckoutの版が変わった場合、controllerは保存済みの進行段階と中断理由を `parent_wait` に記録し、
+終了コード75を返す。中断の通知は新しく起動したCLIから通常の通知経路で配送する。
+`wait-merge`・`merge-status` と `controller.log` で理由を確認し、`merge-continue --run-id RUN --instruction-file FILE` で同じ進行を再開できる。
+マージ後のCI待ちから再開する場合は、保存したmerge commitを照合する。
+
 `review_capacity_deferred` で中断した場合は、容量回復後に `merge-continue` で同じレビュー回を再試行できる。
 レビューCLI未起動の証拠とランナーの終了を照合したときに起動枠が戻る。各試行の記録は
 `review_usage` で確認できる。`repair_capacity_deferred` も、同じ修正IDで再試行するための中断になる。

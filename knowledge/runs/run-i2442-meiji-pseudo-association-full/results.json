@@ -1,0 +1,1999 @@
+{
+  "attempt_counts": {
+    "accepted": 69
+  },
+  "attempt_wall_seconds_sum": 5953.299,
+  "by_stratum": {
+    "high_confidence_random": {
+      "planned": 144,
+      "published": 144
+    },
+    "selection_rejected_near_court": {
+      "planned": 399,
+      "published": 399
+    },
+    "single_view_no_3d": {
+      "planned": 71,
+      "published": 71
+    },
+    "stopped_clip": {
+      "planned": 66,
+      "published": 66
+    },
+    "switch_or_fragment": {
+      "planned": 350,
+      "published": 350
+    },
+    "unassigned_or_reprojection": {
+      "planned": 187,
+      "published": 187
+    }
+  },
+  "clip_status_counts": {
+    "published": 69
+  },
+  "clips": {
+    "video_000/clip_000": {
+      "ambiguous_boxes": 26,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "e143d0f4dfc3605be372e606930f630aee35e7bbeaf58394170b7943688ee2fa",
+          "labels_sha256": "6509a2ca9e63bf05799cad9b600152667900ce17275eb0c34c3214b497ed2328",
+          "prompt_sha256": "7445604a3ae33eef90d16c1a05c6c2ff6cd90f9af16642bb324faaeb8c1f7435",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55008,
+            "output_tokens": 3521,
+            "reasoning_output_tokens": 985
+          },
+          "wall_seconds": 71.006
+        }
+      ],
+      "boxes": 551,
+      "frame_count": 18,
+      "labels_sha256": "6509a2ca9e63bf05799cad9b600152667900ce17275eb0c34c3214b497ed2328",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_001": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "6fdb854d428d9dd0b41b90199f2865d56defc70801ef977b91a698a69320ee34",
+          "labels_sha256": "750a7a159e4c52d2e8bae2a055d4259ce593850332a91f3dca854b6397c12eb4",
+          "prompt_sha256": "309b6a1176d5362df9fb0a51c3cad5bfa3c320db0487c2d0ca6add22c693b593",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 63271,
+            "output_tokens": 5886,
+            "reasoning_output_tokens": 1807
+          },
+          "wall_seconds": 114.054
+        }
+      ],
+      "boxes": 616,
+      "frame_count": 22,
+      "labels_sha256": "750a7a159e4c52d2e8bae2a055d4259ce593850332a91f3dca854b6397c12eb4",
+      "planned_frames": 22,
+      "status": "published"
+    },
+    "video_000/clip_002": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "6af0bb394e71254c1d631cba379662fb8de80c49093d4c2daa5c760ad55bc513",
+          "labels_sha256": "6c8437b2e778ae6323e2b6ffb32b2da28176612b1804a79f365e785aba9dd21d",
+          "prompt_sha256": "3f795888a4dc1d0b22078b505bf7921ca71edb3283940ebc61bce6ce40a7ef53",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 0,
+            "input_tokens": 52951,
+            "output_tokens": 3349,
+            "reasoning_output_tokens": 1070
+          },
+          "wall_seconds": 67.703
+        }
+      ],
+      "boxes": 479,
+      "frame_count": 17,
+      "labels_sha256": "6c8437b2e778ae6323e2b6ffb32b2da28176612b1804a79f365e785aba9dd21d",
+      "planned_frames": 17,
+      "status": "published"
+    },
+    "video_000/clip_003": {
+      "ambiguous_boxes": 2,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "14c3f05b5a487bb40fb2e73d996a0d027e477e911c9e00c42da096d43fe8bb22",
+          "labels_sha256": "28a6ee283f4ec1641313aa941f3fac68c0b53e907c710ff2525b7fb80e747f9d",
+          "prompt_sha256": "0dee368ca1f3fb7a8b8801aff0eec51a2c2d87230df68871486eb13a8aedd64d",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 61211,
+            "output_tokens": 4189,
+            "reasoning_output_tokens": 1344
+          },
+          "wall_seconds": 83.937
+        }
+      ],
+      "boxes": 611,
+      "frame_count": 21,
+      "labels_sha256": "28a6ee283f4ec1641313aa941f3fac68c0b53e907c710ff2525b7fb80e747f9d",
+      "planned_frames": 21,
+      "status": "published"
+    },
+    "video_000/clip_004": {
+      "ambiguous_boxes": 3,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "86392a63ca50b414b80dcce6db93031ffed5db4e67fc0b1f59e2dd3febe6a33c",
+          "labels_sha256": "580f0eb5fd280258e79a0ffb1e35ea36a8da4d5b0581904a9c85eb67010a179f",
+          "prompt_sha256": "ac76d093fcf19d99c034247d91827f7ad6134e7d2ba66ccb9f59b9b2b6663664",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 46753,
+            "output_tokens": 3540,
+            "reasoning_output_tokens": 1658
+          },
+          "wall_seconds": 70.673
+        }
+      ],
+      "boxes": 399,
+      "frame_count": 14,
+      "labels_sha256": "580f0eb5fd280258e79a0ffb1e35ea36a8da4d5b0581904a9c85eb67010a179f",
+      "planned_frames": 14,
+      "status": "published"
+    },
+    "video_000/clip_005": {
+      "ambiguous_boxes": 4,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "eecf9ff37c1018dc235f7baa5657e670d869f3fc43e4300334b9695e082974b2",
+          "labels_sha256": "b29351095b7a8c9a1055d2f6dbf792458b8f1203524454f1fc9105472726f1ad",
+          "prompt_sha256": "904ff93e9e6d1f879935d2ae420c1628d2bc988567d69ed4dc8056af5a6be712",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 59144,
+            "output_tokens": 6102,
+            "reasoning_output_tokens": 2302
+          },
+          "wall_seconds": 118.174
+        }
+      ],
+      "boxes": 580,
+      "frame_count": 20,
+      "labels_sha256": "b29351095b7a8c9a1055d2f6dbf792458b8f1203524454f1fc9105472726f1ad",
+      "planned_frames": 20,
+      "status": "published"
+    },
+    "video_000/clip_006": {
+      "ambiguous_boxes": 29,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "0cab11979aed5057567260e81ff895efc97e72e97a26351a792ef1a678da88c6",
+          "labels_sha256": "078b4fb841589930068366e6db0628901510029bf14dd82514cb00ee3ae5a273",
+          "prompt_sha256": "17f67a0ce58d34e36bc9caad4c999f1b9c5bbc3959dcca38f7aa4f41f4324a83",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 56862,
+            "output_tokens": 4613,
+            "reasoning_output_tokens": 1024
+          },
+          "wall_seconds": 90.652
+        }
+      ],
+      "boxes": 542,
+      "frame_count": 19,
+      "labels_sha256": "078b4fb841589930068366e6db0628901510029bf14dd82514cb00ee3ae5a273",
+      "planned_frames": 19,
+      "status": "published"
+    },
+    "video_000/clip_007": {
+      "ambiguous_boxes": 2,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "4583f33042bec6442aad5e229334615806af168dedb28171f69ce9265c59e101",
+          "labels_sha256": "211a240e172e3e10f70fc93cb1950c655acb216ca16e495d6d3fc4357cc4565e",
+          "prompt_sha256": "5521ae6fbbbb6e7fd439752005d3e7d7a1a8dee6fca5ce996aaaf913b77e7f31",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 50870,
+            "output_tokens": 4611,
+            "reasoning_output_tokens": 1483
+          },
+          "wall_seconds": 91.664
+        }
+      ],
+      "boxes": 488,
+      "frame_count": 16,
+      "labels_sha256": "211a240e172e3e10f70fc93cb1950c655acb216ca16e495d6d3fc4357cc4565e",
+      "planned_frames": 16,
+      "status": "published"
+    },
+    "video_000/clip_008": {
+      "ambiguous_boxes": 18,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "5cae14b6943b599fe630f1d4184a5a76f0efe6f4f85f8cef156b17926766beb5",
+          "labels_sha256": "c5188b1728d4596120991e2c829cfad2e8fe7ba10c7bfd453e35aa426a0e1819",
+          "prompt_sha256": "72a1d3168169726126d2c0131b4f57ac96e76e3ebc7b2900cdf97045d751d3d6",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55010,
+            "output_tokens": 4653,
+            "reasoning_output_tokens": 2261
+          },
+          "wall_seconds": 92.513
+        }
+      ],
+      "boxes": 514,
+      "frame_count": 18,
+      "labels_sha256": "c5188b1728d4596120991e2c829cfad2e8fe7ba10c7bfd453e35aa426a0e1819",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_009": {
+      "ambiguous_boxes": 12,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "84f96b2368d0b35aa4eda6b1deba2baceb315fec6395dfceedf6757dbd4ef7a5",
+          "labels_sha256": "155327afac75d91787b5de8c74a17db20a9370eec8cf37814932fea1e0fe058a",
+          "prompt_sha256": "aefd3e5391fc862f7d27b63a0a1cab1d9391f00b1e36879645bfd7470ebbbc1e",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 71538,
+            "output_tokens": 5865,
+            "reasoning_output_tokens": 2388
+          },
+          "wall_seconds": 114.444
+        }
+      ],
+      "boxes": 754,
+      "frame_count": 26,
+      "labels_sha256": "155327afac75d91787b5de8c74a17db20a9370eec8cf37814932fea1e0fe058a",
+      "planned_frames": 26,
+      "status": "published"
+    },
+    "video_000/clip_010": {
+      "ambiguous_boxes": 28,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "3d7304c177308c7a94bbcd9e70c128cb4dced8b702e72e948ab7b78af58167cf",
+          "labels_sha256": "6bbb348482057cc78c851c663fffb6b19d6ee613b2b8f3899782812c7f07141e",
+          "prompt_sha256": "3cc60ad9333c10634240958163b1aacb04d526138ab881a406ed8089b2183d4a",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 57244,
+            "output_tokens": 4391,
+            "reasoning_output_tokens": 1778
+          },
+          "wall_seconds": 86.99
+        }
+      ],
+      "boxes": 553,
+      "frame_count": 20,
+      "labels_sha256": "6bbb348482057cc78c851c663fffb6b19d6ee613b2b8f3899782812c7f07141e",
+      "planned_frames": 20,
+      "status": "published"
+    },
+    "video_000/clip_011": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "6dfd2feabfd0b773147f64b58a0bb8c38d8d64f155dfd40ca051422488a2f725",
+          "labels_sha256": "e4774ff18358b6730bfb6715009fccab950b2b2adef58c93f4ed3cd2d867f9a2",
+          "prompt_sha256": "0898ecfad5c70e1f8f3c7483a6ee05789b7f57212d7d5eff18aa9b05efbd4626",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 57082,
+            "output_tokens": 5546,
+            "reasoning_output_tokens": 2058
+          },
+          "wall_seconds": 107.252
+        }
+      ],
+      "boxes": 523,
+      "frame_count": 19,
+      "labels_sha256": "e4774ff18358b6730bfb6715009fccab950b2b2adef58c93f4ed3cd2d867f9a2",
+      "planned_frames": 19,
+      "status": "published"
+    },
+    "video_000/clip_012": {
+      "ambiguous_boxes": 1,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "04d6dfc301e1889b59209dd2072b87ff1d54fd219f3a31d06399acd7c4285350",
+          "labels_sha256": "e11e4f15bf363875d7b9c24a6e0855354da3af374a5ffb9d3bd09fd7208c3dc8",
+          "prompt_sha256": "b27c1e2809a9977442afc2a9b2dc091bcbe4d190d2cfabc85d8979af3e158e16",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 38480,
+            "output_tokens": 2797,
+            "reasoning_output_tokens": 1448
+          },
+          "wall_seconds": 57.399
+        }
+      ],
+      "boxes": 277,
+      "frame_count": 10,
+      "labels_sha256": "e11e4f15bf363875d7b9c24a6e0855354da3af374a5ffb9d3bd09fd7208c3dc8",
+      "planned_frames": 10,
+      "status": "published"
+    },
+    "video_000/clip_013": {
+      "ambiguous_boxes": 12,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "6246d1168ee4190d8bb46fe4f112f8fb484c53f712d5b638d4baa1866ed95900",
+          "labels_sha256": "cf05b6781691095adb18f3472a7cef60748e17c0265bfba15a75a665be4a2896",
+          "prompt_sha256": "5578ec03a990bec65a00f9103d2736a1eb2c7456b25cd5e8b5fded4724619759",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55012,
+            "output_tokens": 3351,
+            "reasoning_output_tokens": 1046
+          },
+          "wall_seconds": 70.58
+        }
+      ],
+      "boxes": 486,
+      "frame_count": 18,
+      "labels_sha256": "cf05b6781691095adb18f3472a7cef60748e17c0265bfba15a75a665be4a2896",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_014": {
+      "ambiguous_boxes": 17,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "a1c4ef38c98c165a2a10d784813ccbb18f91bfe6db8bb9a5f5148db50cd77438",
+          "labels_sha256": "81dd23462018b3b4b41030b25b8e8139c4f545b27390feedee8ddfdef0f35a2f",
+          "prompt_sha256": "8037703e77090ad33f7c93038d5f9c6ef782e0137ba1322406a2a14539256b6b",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55013,
+            "output_tokens": 3243,
+            "reasoning_output_tokens": 872
+          },
+          "wall_seconds": 66.498
+        }
+      ],
+      "boxes": 507,
+      "frame_count": 18,
+      "labels_sha256": "81dd23462018b3b4b41030b25b8e8139c4f545b27390feedee8ddfdef0f35a2f",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_015": {
+      "ambiguous_boxes": 2,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "0146dd76e883cacbf81f5c6bbacceedbfc7d729332f4c856837e07ec9ffa694a",
+          "labels_sha256": "1a19196be1963e78482490119ef51907a1d8acb19026275f53f437fd1cb8f151",
+          "prompt_sha256": "323e4672498d82e191c93b0ebac88f962422e6bda88de560e16ec20f42179b20",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55004,
+            "output_tokens": 5208,
+            "reasoning_output_tokens": 1827
+          },
+          "wall_seconds": 102.649
+        }
+      ],
+      "boxes": 516,
+      "frame_count": 18,
+      "labels_sha256": "1a19196be1963e78482490119ef51907a1d8acb19026275f53f437fd1cb8f151",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_016": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "0173df277ee1f2a44f6634fb087f741f8ef24b6b27eb34e855f8b798960bb119",
+          "labels_sha256": "06b13886ac60d3ac99245ef35701e2b5085a013f0c5edfc0f6416aebe1a1921c",
+          "prompt_sha256": "0b296c6d5e6e50dce4049916b74cc55bd3521afe4d7d5eaea7836002a50de7cd",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 67414,
+            "output_tokens": 4550,
+            "reasoning_output_tokens": 1146
+          },
+          "wall_seconds": 90.586
+        }
+      ],
+      "boxes": 674,
+      "frame_count": 24,
+      "labels_sha256": "06b13886ac60d3ac99245ef35701e2b5085a013f0c5edfc0f6416aebe1a1921c",
+      "planned_frames": 24,
+      "status": "published"
+    },
+    "video_000/clip_017": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "a022fd77f304cc543d165f7244e6ff5f13c6ce13a119fc891280b562d8d9b381",
+          "labels_sha256": "796715fa6c9f76dff36b360dc7d0464ad0ae01f51a29769ca88ef550df494fdc",
+          "prompt_sha256": "534eb49718e8ae641bc5a921a8016853922b41c3a1c830479dd0b71f76ee3a10",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 48812,
+            "output_tokens": 3255,
+            "reasoning_output_tokens": 1293
+          },
+          "wall_seconds": 66.076
+        }
+      ],
+      "boxes": 413,
+      "frame_count": 15,
+      "labels_sha256": "796715fa6c9f76dff36b360dc7d0464ad0ae01f51a29769ca88ef550df494fdc",
+      "planned_frames": 15,
+      "status": "published"
+    },
+    "video_000/clip_018": {
+      "ambiguous_boxes": 17,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "f4a1794b6045b28bb36c28e4781fa654c262720002eb0ac70c39afde1c6c2f28",
+          "labels_sha256": "659ffd9e85341434f2f9dd06d4eafc6e91c1766dac970e60a872e1402f61cf77",
+          "prompt_sha256": "618e4bbf74c428217cc0a315597b7885a4a5613f984f5b4cece815ded6de4875",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55012,
+            "output_tokens": 3469,
+            "reasoning_output_tokens": 1056
+          },
+          "wall_seconds": 71.847
+        }
+      ],
+      "boxes": 521,
+      "frame_count": 18,
+      "labels_sha256": "659ffd9e85341434f2f9dd06d4eafc6e91c1766dac970e60a872e1402f61cf77",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_019": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "85b78a75bb71346cab2982a9fcdd38572f478b35b99aa9c5351ca955eed229e4",
+          "labels_sha256": "a88209ae01d4aa45df21825e79a255fedd2040928afe76c6da83ed709bb403c4",
+          "prompt_sha256": "b57fb8c1184bd2f84a426b62e85629d3ec8b89570e11eaf6174253b13c9495f7",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 64916,
+            "output_tokens": 4740,
+            "reasoning_output_tokens": 1730
+          },
+          "wall_seconds": 96.359
+        }
+      ],
+      "boxes": 652,
+      "frame_count": 23,
+      "labels_sha256": "a88209ae01d4aa45df21825e79a255fedd2040928afe76c6da83ed709bb403c4",
+      "planned_frames": 23,
+      "status": "published"
+    },
+    "video_000/clip_020": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "c0faee7a7e7af90a5012bd7f3cb4722a0c0d4681cd063ff4eb8ca8a6b43d06dc",
+          "labels_sha256": "081f22b44d8d182a98707bc0f70c95c4478f5822fb99d84cd8caf1d005d7aec7",
+          "prompt_sha256": "15bc44db2b94fb3e3338bf870cb4847120465452f7312dcc80cb504c1cb95a1e",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 48815,
+            "output_tokens": 4634,
+            "reasoning_output_tokens": 1768
+          },
+          "wall_seconds": 91.801
+        }
+      ],
+      "boxes": 436,
+      "frame_count": 15,
+      "labels_sha256": "081f22b44d8d182a98707bc0f70c95c4478f5822fb99d84cd8caf1d005d7aec7",
+      "planned_frames": 15,
+      "status": "published"
+    },
+    "video_000/clip_021": {
+      "ambiguous_boxes": 2,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "bdd04c56a448646672c531398770e61c3085928b43fd3e6cce700077cc6e977b",
+          "labels_sha256": "5ea462f479bccf16030066cf9bb158c20d1c57583ab622c2a473bb099b193168",
+          "prompt_sha256": "527289b3258ca789eb2e20ad921d72127a244ce639b202adfe816a658efa7452",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 71537,
+            "output_tokens": 5158,
+            "reasoning_output_tokens": 1818
+          },
+          "wall_seconds": 103.42
+        }
+      ],
+      "boxes": 711,
+      "frame_count": 26,
+      "labels_sha256": "5ea462f479bccf16030066cf9bb158c20d1c57583ab622c2a473bb099b193168",
+      "planned_frames": 26,
+      "status": "published"
+    },
+    "video_000/clip_022": {
+      "ambiguous_boxes": 4,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "c9e7b77d9a3850361d9a97495e226c5c65086aaf2d11cf5fe0a553b8596f50e6",
+          "labels_sha256": "b68899a3e25e4c34f84d365b50fc8faaab0ae6f81ff109e5999c8d1e6dc8eb55",
+          "prompt_sha256": "0857a04b0909fae70900758824d59602d0ca2b573db0b9b1bc30352cf290093a",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 71542,
+            "output_tokens": 5157,
+            "reasoning_output_tokens": 1728
+          },
+          "wall_seconds": 102.043
+        }
+      ],
+      "boxes": 749,
+      "frame_count": 26,
+      "labels_sha256": "b68899a3e25e4c34f84d365b50fc8faaab0ae6f81ff109e5999c8d1e6dc8eb55",
+      "planned_frames": 26,
+      "status": "published"
+    },
+    "video_000/clip_023": {
+      "ambiguous_boxes": 2,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "9cf55183fedc0f7b840344af8c57ed4d31dfa7d74b7ff9ff24aa41d6b37f2c7f",
+          "labels_sha256": "0449c5cb23242002c970a922859a8c622075cb400c44a34b30804fc58e066f39",
+          "prompt_sha256": "9bc0a7c80f206e6af83c2b98b982bbd3122daebfbdd133f4b734b76354ef0bca",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 52958,
+            "output_tokens": 4647,
+            "reasoning_output_tokens": 2359
+          },
+          "wall_seconds": 94.091
+        }
+      ],
+      "boxes": 487,
+      "frame_count": 17,
+      "labels_sha256": "0449c5cb23242002c970a922859a8c622075cb400c44a34b30804fc58e066f39",
+      "planned_frames": 17,
+      "status": "published"
+    },
+    "video_000/clip_024": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "ea005eae9e06081e7615b1d18aca9d81525c917f7d4d96df68d49640f13b6de0",
+          "labels_sha256": "9ba86874343b95c55a22647d5628ebfb3200109890aaaf719da8ee3c79a2b80a",
+          "prompt_sha256": "5dfe4aacc34fccce0546a95a89a3c1f91eeaed3def558d8a5461da3481a40f87",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 50879,
+            "output_tokens": 4897,
+            "reasoning_output_tokens": 2758
+          },
+          "wall_seconds": 96.167
+        }
+      ],
+      "boxes": 449,
+      "frame_count": 16,
+      "labels_sha256": "9ba86874343b95c55a22647d5628ebfb3200109890aaaf719da8ee3c79a2b80a",
+      "planned_frames": 16,
+      "status": "published"
+    },
+    "video_000/clip_025": {
+      "ambiguous_boxes": 2,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "7e6080d8e73411d0e931b7cb98247d45b76b373557c6e659b38c7eabc5b3d6a6",
+          "labels_sha256": "3ce91bf09ac6116ff008b3cbddb405c8c2d6225031803db99d3502112a54479a",
+          "prompt_sha256": "8c492b1652d04dadd54891fe674335a0fbdb05885e352f1e6720abbb82f22821",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 44684,
+            "output_tokens": 5727,
+            "reasoning_output_tokens": 3106
+          },
+          "wall_seconds": 110.828
+        }
+      ],
+      "boxes": 408,
+      "frame_count": 13,
+      "labels_sha256": "3ce91bf09ac6116ff008b3cbddb405c8c2d6225031803db99d3502112a54479a",
+      "planned_frames": 13,
+      "status": "published"
+    },
+    "video_000/clip_026": {
+      "ambiguous_boxes": 9,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "7382c3aebe0a84a58ea0723b3bf500ebfe01e7ddcbfdb00d20c97c8599d186c1",
+          "labels_sha256": "671146649732c05f2f3f78983407e59e3c27228168d15f5999c2d9ad0c6132e5",
+          "prompt_sha256": "050d3fb2ef5adfdc1ce99025995481349a0485aa13008ad92a143854909f275e",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 63286,
+            "output_tokens": 4719,
+            "reasoning_output_tokens": 1703
+          },
+          "wall_seconds": 93.94
+        }
+      ],
+      "boxes": 651,
+      "frame_count": 22,
+      "labels_sha256": "671146649732c05f2f3f78983407e59e3c27228168d15f5999c2d9ad0c6132e5",
+      "planned_frames": 22,
+      "status": "published"
+    },
+    "video_000/clip_027": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "7babdd35968c04ef70e4a7bad11c77559cedd3920ce890e33ca2666002d60b54",
+          "labels_sha256": "f11df93ae773e5ef4c8710be57b7d1dc20e8bbb57903f456883e8075eabd724a",
+          "prompt_sha256": "71c08b4acfe3333d8acee654363ab5fea83fb268a737a5aa9764b841b6ed9001",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 48810,
+            "output_tokens": 4891,
+            "reasoning_output_tokens": 1984
+          },
+          "wall_seconds": 95.954
+        }
+      ],
+      "boxes": 448,
+      "frame_count": 15,
+      "labels_sha256": "f11df93ae773e5ef4c8710be57b7d1dc20e8bbb57903f456883e8075eabd724a",
+      "planned_frames": 15,
+      "status": "published"
+    },
+    "video_000/clip_028": {
+      "ambiguous_boxes": 13,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "e6975fdd5309d47a2665a4257b097e2b03728c5ff706de37ea8b674fc60e9ef8",
+          "labels_sha256": "d06c0cd2cc0d658aa560da17f34d15c8d824cec677bf88a917ef26d1156e4bba",
+          "prompt_sha256": "8473ff6f416f945ff8f2006aa4828bfdb09f836896d34b5699c95f77f03de54e",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55015,
+            "output_tokens": 6358,
+            "reasoning_output_tokens": 3900
+          },
+          "wall_seconds": 121.801
+        }
+      ],
+      "boxes": 535,
+      "frame_count": 18,
+      "labels_sha256": "d06c0cd2cc0d658aa560da17f34d15c8d824cec677bf88a917ef26d1156e4bba",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_029": {
+      "ambiguous_boxes": 6,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "20738f34f0e41a7abd3d247b0e8e342ff7129ef1184299f6144117f3c739d68e",
+          "labels_sha256": "6d30fcd1ce952fdbf845ba500b3ace6bb8d47b343150e17cefca948925e4016b",
+          "prompt_sha256": "74845e95a61197c5b2f54f3a731c99c9e49efed99951c4594d46a7e6c6e49fdf",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 61421,
+            "output_tokens": 5130,
+            "reasoning_output_tokens": 2104
+          },
+          "wall_seconds": 100.379
+        }
+      ],
+      "boxes": 672,
+      "frame_count": 21,
+      "labels_sha256": "6d30fcd1ce952fdbf845ba500b3ace6bb8d47b343150e17cefca948925e4016b",
+      "planned_frames": 21,
+      "status": "published"
+    },
+    "video_000/clip_030": {
+      "ambiguous_boxes": 1,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "e5b1e437eeaa6ac8c22f3986fbcf30f27bc451daf7de864d106e5c6ab654c7af",
+          "labels_sha256": "b4c838a1baf32ea72dbb64153be7a96e701710df37b4587710bf9be86533ed40",
+          "prompt_sha256": "af92c4cf81b8bc0e7fed510d90854cad10b62ab52947e8c50766363690138f37",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55013,
+            "output_tokens": 4400,
+            "reasoning_output_tokens": 1893
+          },
+          "wall_seconds": 87.153
+        }
+      ],
+      "boxes": 550,
+      "frame_count": 18,
+      "labels_sha256": "b4c838a1baf32ea72dbb64153be7a96e701710df37b4587710bf9be86533ed40",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_031": {
+      "ambiguous_boxes": 18,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "38aa34464e8cee1b29585b3d62637f5db3a9ed2707045e26544d72a4e2fa1afb",
+          "labels_sha256": "12494a652b343703629fa962367929a5b28ea45b6c9d4b08f8ff61751f14ac9d",
+          "prompt_sha256": "dcdb8f7a8a201c721ffdf92cf5d6986d918ed1ad5513fd1839177bb050000de0",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 58933,
+            "output_tokens": 4156,
+            "reasoning_output_tokens": 1473
+          },
+          "wall_seconds": 82.562
+        }
+      ],
+      "boxes": 570,
+      "frame_count": 20,
+      "labels_sha256": "12494a652b343703629fa962367929a5b28ea45b6c9d4b08f8ff61751f14ac9d",
+      "planned_frames": 20,
+      "status": "published"
+    },
+    "video_000/clip_032": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "ba53087ac7e7382c35fa8917847a2653b7610f59834c64fe0217aae69137cc9f",
+          "labels_sha256": "242f9ad41cbba2d67faf4ac516516934fb199a24d9c56dc5f60d0a477bd6a89c",
+          "prompt_sha256": "176325c1886354c29a950a7fd7296913599f5f10dc0715af49ba8e066cae66de",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 46746,
+            "output_tokens": 4218,
+            "reasoning_output_tokens": 1401
+          },
+          "wall_seconds": 82.875
+        }
+      ],
+      "boxes": 435,
+      "frame_count": 14,
+      "labels_sha256": "242f9ad41cbba2d67faf4ac516516934fb199a24d9c56dc5f60d0a477bd6a89c",
+      "planned_frames": 14,
+      "status": "published"
+    },
+    "video_000/clip_033": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "1c399dbb306c447f82df548548b90ed3de2eedc4f0795998ebcd6a51e3d68505",
+          "labels_sha256": "b52b8d518a7cdda5b5e3d5442f8413294ee4e8f1ac0bd5b64ca83b43b5ec233a",
+          "prompt_sha256": "7e3778b4ba6f623960feb323a9890d2298cd53dab4c1fdc7bac1ec16b215a568",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 48814,
+            "output_tokens": 5231,
+            "reasoning_output_tokens": 2220
+          },
+          "wall_seconds": 100.792
+        }
+      ],
+      "boxes": 473,
+      "frame_count": 15,
+      "labels_sha256": "b52b8d518a7cdda5b5e3d5442f8413294ee4e8f1ac0bd5b64ca83b43b5ec233a",
+      "planned_frames": 15,
+      "status": "published"
+    },
+    "video_000/clip_034": {
+      "ambiguous_boxes": 2,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "29c8093e9f3854b0d1caf156b47b9f8e36f69842754909fc8c5c6c3302fbb2a4",
+          "labels_sha256": "5f68f878dee06280f714e9ac7eeb2c2b043ed6aea07ccc81e61f62e8053b98d2",
+          "prompt_sha256": "34701da5d19337bd2b5e409af5df79462600581cf13a4ec7e86f47aead775c71",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55022,
+            "output_tokens": 4123,
+            "reasoning_output_tokens": 1547
+          },
+          "wall_seconds": 83.497
+        }
+      ],
+      "boxes": 558,
+      "frame_count": 18,
+      "labels_sha256": "5f68f878dee06280f714e9ac7eeb2c2b043ed6aea07ccc81e61f62e8053b98d2",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_035": {
+      "ambiguous_boxes": 6,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "16727a7930b11df708f196d26d9e8ad8f88e36440061dc80cd147b920e98e60a",
+          "labels_sha256": "7d2c240a02853a868c5bedfac31a299aef33c04425b742803abaffdc90168e21",
+          "prompt_sha256": "150e4a9f25d527ed1f9eb92d72d0a660a8f5bfc269b17bb79e6526b7631f57a9",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 71545,
+            "output_tokens": 5298,
+            "reasoning_output_tokens": 1715
+          },
+          "wall_seconds": 104.175
+        }
+      ],
+      "boxes": 799,
+      "frame_count": 26,
+      "labels_sha256": "7d2c240a02853a868c5bedfac31a299aef33c04425b742803abaffdc90168e21",
+      "planned_frames": 26,
+      "status": "published"
+    },
+    "video_000/clip_036": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "1a231e813d61fcfc1e6c2fdf51fac4c95378f1b06c156fef5978e63cb02e4354",
+          "labels_sha256": "682545b0af7ead712ae82829427448d3a1f14034208d91ff803200c7ec051226",
+          "prompt_sha256": "470061b9d1b459cd6c95235b0d70eece42993b89ef8b34ecd1668a179891d300",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 12416,
+            "input_tokens": 55431,
+            "output_tokens": 4059,
+            "reasoning_output_tokens": 1488
+          },
+          "wall_seconds": 81.177
+        }
+      ],
+      "boxes": 561,
+      "frame_count": 18,
+      "labels_sha256": "682545b0af7ead712ae82829427448d3a1f14034208d91ff803200c7ec051226",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_037": {
+      "ambiguous_boxes": 3,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "d8690fc1e375e6713452e6f120b628289ed8957c43d006f2e0bdfe70c2f72075",
+          "labels_sha256": "30edf516f381fb770324138f5ab61c19c06a997124052cb9b6f956006338bdcb",
+          "prompt_sha256": "05cf2cf492a8e209f505d8736eeca21ce2296f783f39fd9ee5fbff26cd8ee0aa",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 12416,
+            "input_tokens": 38801,
+            "output_tokens": 2956,
+            "reasoning_output_tokens": 1355
+          },
+          "wall_seconds": 59.761
+        }
+      ],
+      "boxes": 342,
+      "frame_count": 11,
+      "labels_sha256": "30edf516f381fb770324138f5ab61c19c06a997124052cb9b6f956006338bdcb",
+      "planned_frames": 11,
+      "status": "published"
+    },
+    "video_000/clip_038": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "9d0edc57bbf876da26b594f1d990a30801e9b70db043a33af59c91626ae95aa9",
+          "labels_sha256": "a3daa098cd82fc8de480ccc9dc09833949151ee3572b8618daa1bdd5c57f2f3e",
+          "prompt_sha256": "42c5f1406f89c619907b32e9cd54bd7a2e6e9697dbcae5521259f5070ab45f6f",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 48813,
+            "output_tokens": 3340,
+            "reasoning_output_tokens": 1253
+          },
+          "wall_seconds": 66.423
+        }
+      ],
+      "boxes": 453,
+      "frame_count": 15,
+      "labels_sha256": "a3daa098cd82fc8de480ccc9dc09833949151ee3572b8618daa1bdd5c57f2f3e",
+      "planned_frames": 15,
+      "status": "published"
+    },
+    "video_000/clip_039": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "85d39c185230f0dc4b51b150e3c3680c094a8f5c85868eeca1eed1ffc2e0a0de",
+          "labels_sha256": "b69c2e0cd3e7afcaae16cf4955d8773490e8851c8546e3746212328ad5aa116e",
+          "prompt_sha256": "06577c07195e811e8bfbcc1a1115730ba786b8898fa339cd36e90fe25661f712",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 48814,
+            "output_tokens": 3901,
+            "reasoning_output_tokens": 1066
+          },
+          "wall_seconds": 77.405
+        }
+      ],
+      "boxes": 429,
+      "frame_count": 15,
+      "labels_sha256": "b69c2e0cd3e7afcaae16cf4955d8773490e8851c8546e3746212328ad5aa116e",
+      "planned_frames": 15,
+      "status": "published"
+    },
+    "video_000/clip_040": {
+      "ambiguous_boxes": 2,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "45737a4dfb8043523405a2c52e421040102ffb7b53f2556fbb05877542be9ab2",
+          "labels_sha256": "bd24318a4d2a32fdb1318d505a6f4c3369382bc789c8639b73f748729e5b28c0",
+          "prompt_sha256": "701c51283bba6a82fa6a0ba039c8fe966e194372b2835e8ca266f995ca4d5ad6",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 60996,
+            "output_tokens": 3877,
+            "reasoning_output_tokens": 1178
+          },
+          "wall_seconds": 78.235
+        }
+      ],
+      "boxes": 578,
+      "frame_count": 21,
+      "labels_sha256": "bd24318a4d2a32fdb1318d505a6f4c3369382bc789c8639b73f748729e5b28c0",
+      "planned_frames": 21,
+      "status": "published"
+    },
+    "video_000/clip_041": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "0f22d3d30b3aa6222684545956410447d4ed3eeeb66506774bf0a6e99abf14db",
+          "labels_sha256": "de3501714ca55b58d3d7ec8f35759abc83d05d9eee23438e0266d254508fc2e9",
+          "prompt_sha256": "9f8449dcd4a01292730fe3313feb9165cffc4115d8e53cb718b095c3b160b007",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 46744,
+            "output_tokens": 5294,
+            "reasoning_output_tokens": 3409
+          },
+          "wall_seconds": 102.458
+        }
+      ],
+      "boxes": 402,
+      "frame_count": 14,
+      "labels_sha256": "de3501714ca55b58d3d7ec8f35759abc83d05d9eee23438e0266d254508fc2e9",
+      "planned_frames": 14,
+      "status": "published"
+    },
+    "video_000/clip_042": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "440fbbef298b7d3b3bede2eff56361c20a256599e68825fe7e367d6f7fed53d5",
+          "labels_sha256": "883c666e6d8db8cb490b392385f687a468d54bf7f729fd8730c1292ff9894b6d",
+          "prompt_sha256": "9d87b51fc2f48ba340a6c1a6f0d5bc55baf1e38a798dff8831192b2d8ea35647",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55009,
+            "output_tokens": 6604,
+            "reasoning_output_tokens": 3102
+          },
+          "wall_seconds": 126.071
+        }
+      ],
+      "boxes": 547,
+      "frame_count": 18,
+      "labels_sha256": "883c666e6d8db8cb490b392385f687a468d54bf7f729fd8730c1292ff9894b6d",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_043": {
+      "ambiguous_boxes": 1,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "e28d1762e38ea624712d752e6a3849d7165fddab035a7f599c4f1f8cf4402939",
+          "labels_sha256": "3f7fc281a0dc90dd135aa5a527851bfbb99e0f8755ff21c3578786a09bb83027",
+          "prompt_sha256": "e2def7fed636dd395130a6d115fcf9158b794c2a08a8090ebfa2867dbcd8a4be",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55010,
+            "output_tokens": 5221,
+            "reasoning_output_tokens": 1832
+          },
+          "wall_seconds": 102.531
+        }
+      ],
+      "boxes": 519,
+      "frame_count": 18,
+      "labels_sha256": "3f7fc281a0dc90dd135aa5a527851bfbb99e0f8755ff21c3578786a09bb83027",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_044": {
+      "ambiguous_boxes": 3,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "87b5b12e2b4455dcfef3e93a29073415f85e3f0f70adf8ca55ad9cb938e5d5ab",
+          "labels_sha256": "88726f543ee04dc9a4ccdeed51ac5b485f8055f4794dd0614d3a88cec856318c",
+          "prompt_sha256": "2cc665cf43f05d5134ac5116dd1a609e1b083571dca13eb1e55782c30464c5fa",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 61214,
+            "output_tokens": 3568,
+            "reasoning_output_tokens": 781
+          },
+          "wall_seconds": 73.347
+        }
+      ],
+      "boxes": 594,
+      "frame_count": 21,
+      "labels_sha256": "88726f543ee04dc9a4ccdeed51ac5b485f8055f4794dd0614d3a88cec856318c",
+      "planned_frames": 21,
+      "status": "published"
+    },
+    "video_000/clip_045": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "1ca6c66d9e769dc0228b86a8e1e5726f94a1c563a3aa98eb78eba98301d04374",
+          "labels_sha256": "4df350af734bc39e9e546b859a16dcc27b74e43302c9b0842da8eb4f55d17744",
+          "prompt_sha256": "2eff3f14e1c41c00579293b750ad1c1d0f05bf4987d94ef9015c70a0b0f4a260",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55011,
+            "output_tokens": 4428,
+            "reasoning_output_tokens": 1097
+          },
+          "wall_seconds": 87.541
+        }
+      ],
+      "boxes": 503,
+      "frame_count": 18,
+      "labels_sha256": "4df350af734bc39e9e546b859a16dcc27b74e43302c9b0842da8eb4f55d17744",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_046": {
+      "ambiguous_boxes": 3,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "6490862ad56f0ed6ef88caa379f00be1d2705f744ce3d4434d412d6ef82aa8a6",
+          "labels_sha256": "92a5014f1c7e6d33706d442e8ef1eba5ba7c36ca582c0fd6c1810fdbcc830699",
+          "prompt_sha256": "03fa0470eceaa2767b3448ecc856ca1ee67e81bbe93c78dee9133c5cfb2b86ec",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 44684,
+            "output_tokens": 3591,
+            "reasoning_output_tokens": 1878
+          },
+          "wall_seconds": 71.019
+        }
+      ],
+      "boxes": 348,
+      "frame_count": 13,
+      "labels_sha256": "92a5014f1c7e6d33706d442e8ef1eba5ba7c36ca582c0fd6c1810fdbcc830699",
+      "planned_frames": 13,
+      "status": "published"
+    },
+    "video_000/clip_047": {
+      "ambiguous_boxes": 4,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "cd7901f30c11edb397eda2bfbd6f7f9af454de7a2f00c2af4369284bdf58f635",
+          "labels_sha256": "5c239c189e8971a492b90abbc2ab64b488b82bb42da27d81b79a4be4bfbe33cf",
+          "prompt_sha256": "d2c3e6be4583ac94194b115208e49637b1108dff4504609c50913371c1b037bb",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 42616,
+            "output_tokens": 2478,
+            "reasoning_output_tokens": 799
+          },
+          "wall_seconds": 50.877
+        }
+      ],
+      "boxes": 360,
+      "frame_count": 12,
+      "labels_sha256": "5c239c189e8971a492b90abbc2ab64b488b82bb42da27d81b79a4be4bfbe33cf",
+      "planned_frames": 12,
+      "status": "published"
+    },
+    "video_000/clip_048": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "73abc6031c7ac234a81d0cad566bb4c52b6b1fc384bd93d4414280b4012d1878",
+          "labels_sha256": "9d860b56f48b2b34bfe233e943542384d402a9bacce01cbf76676ae73efd0bf2",
+          "prompt_sha256": "54703b34ac7888f028ba29b30b76eff98bdfd4ce4ef41bcc36b90b5364235484",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 61208,
+            "output_tokens": 3520,
+            "reasoning_output_tokens": 820
+          },
+          "wall_seconds": 70.805
+        }
+      ],
+      "boxes": 578,
+      "frame_count": 21,
+      "labels_sha256": "9d860b56f48b2b34bfe233e943542384d402a9bacce01cbf76676ae73efd0bf2",
+      "planned_frames": 21,
+      "status": "published"
+    },
+    "video_000/clip_049": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "40eec8798c32fbb01ee32cd7579779ca37933f5324049fbc8f9df99be2097f29",
+          "labels_sha256": "4112036065006f661dc121e7317a87347b5e0c37f2844a2dbc4b4d9cfa38056d",
+          "prompt_sha256": "00fd71c65a7a8e72cce70f29c4f545568a1e221dc4309bbdc0390bd28ad89eb4",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 40549,
+            "output_tokens": 4055,
+            "reasoning_output_tokens": 1954
+          },
+          "wall_seconds": 79.377
+        }
+      ],
+      "boxes": 312,
+      "frame_count": 11,
+      "labels_sha256": "4112036065006f661dc121e7317a87347b5e0c37f2844a2dbc4b4d9cfa38056d",
+      "planned_frames": 11,
+      "status": "published"
+    },
+    "video_000/clip_050": {
+      "ambiguous_boxes": 9,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "98fb71afc62fe61e2b9c8a932022aa397397b65b5a493d1470a1356794590f62",
+          "labels_sha256": "197f0c6e14b9212b20a796ba8eabc059b411ce8ee58689a9be4de10786d9075e",
+          "prompt_sha256": "7385bc86e66e4ae6ed8a0b9308848578a86adf6ddaa272792da06d2b373bca10",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 58931,
+            "output_tokens": 3916,
+            "reasoning_output_tokens": 1431
+          },
+          "wall_seconds": 78.319
+        }
+      ],
+      "boxes": 520,
+      "frame_count": 20,
+      "labels_sha256": "197f0c6e14b9212b20a796ba8eabc059b411ce8ee58689a9be4de10786d9075e",
+      "planned_frames": 20,
+      "status": "published"
+    },
+    "video_000/clip_051": {
+      "ambiguous_boxes": 6,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "178440e0e6ba86a4848116f732b926592c4a12d437204ce3b3cee6830a4a5579",
+          "labels_sha256": "adf1b2cb0c03744e1ae03216d1855db3fe909fcdc5bbbcf80b55e24c97c74332",
+          "prompt_sha256": "b9982576bb9ebbe47b854252d3a6dee37c73f0ddb7f852299dbbf904ccedb4a0",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 52520,
+            "output_tokens": 3472,
+            "reasoning_output_tokens": 1254
+          },
+          "wall_seconds": 69.827
+        }
+      ],
+      "boxes": 471,
+      "frame_count": 17,
+      "labels_sha256": "adf1b2cb0c03744e1ae03216d1855db3fe909fcdc5bbbcf80b55e24c97c74332",
+      "planned_frames": 17,
+      "status": "published"
+    },
+    "video_000/clip_052": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "adecc02c56052af0582a5141a7563229683a1963272f7889c6e376af30fde509",
+          "labels_sha256": "76c416fa814c810ae9e6cff26a31bcd173fe7602fe44421992134f857eb68b66",
+          "prompt_sha256": "902f294560c40b30dedbeab1d7361fa514f5e73376cbb6aad05312f784acb856",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 58925,
+            "output_tokens": 4280,
+            "reasoning_output_tokens": 1682
+          },
+          "wall_seconds": 84.562
+        }
+      ],
+      "boxes": 549,
+      "frame_count": 20,
+      "labels_sha256": "76c416fa814c810ae9e6cff26a31bcd173fe7602fe44421992134f857eb68b66",
+      "planned_frames": 20,
+      "status": "published"
+    },
+    "video_000/clip_053": {
+      "ambiguous_boxes": 11,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "b2b6feabb9d1e33ecd4a8e94d96277a181bda1a08377dca5f29eeaf7ca98d214",
+          "labels_sha256": "57e489179e643cc2d082825fa9bf5d5d7efbf507f697301796c201cf47e5d326",
+          "prompt_sha256": "26a0946a397683638de57ffe822f354da798afd15ed05441cbb0eace0cc4c9d5",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 57080,
+            "output_tokens": 5492,
+            "reasoning_output_tokens": 2909
+          },
+          "wall_seconds": 106.864
+        }
+      ],
+      "boxes": 551,
+      "frame_count": 19,
+      "labels_sha256": "57e489179e643cc2d082825fa9bf5d5d7efbf507f697301796c201cf47e5d326",
+      "planned_frames": 19,
+      "status": "published"
+    },
+    "video_000/clip_054": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "204561a042bae8d56361b4455b5945216727263f98447dc4ce6f008699066f98",
+          "labels_sha256": "d4488f54b8a3b136abe08eb2a33f6c8a8b15e23afb7a3564576fc42c9a7d2978",
+          "prompt_sha256": "cd7c67f7ab1962f6bad13dc6154e9de388f292f9a0ad204ddaeba8d340057997",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 46743,
+            "output_tokens": 3475,
+            "reasoning_output_tokens": 925
+          },
+          "wall_seconds": 69.523
+        }
+      ],
+      "boxes": 377,
+      "frame_count": 14,
+      "labels_sha256": "d4488f54b8a3b136abe08eb2a33f6c8a8b15e23afb7a3564576fc42c9a7d2978",
+      "planned_frames": 14,
+      "status": "published"
+    },
+    "video_000/clip_055": {
+      "ambiguous_boxes": 2,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "bb856d8d48e92dd5751473d443fb7736ef9bcfca55d6dd4cde78843049c6f3b4",
+          "labels_sha256": "ff7a62c93194d0dcd7ff3c1085aeefe92231558e0339e821007fa6c0a343cf5c",
+          "prompt_sha256": "01210769c32ba48067fbc52c94f70e478d543210534481fdcf55c8c74ed74eff",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55012,
+            "output_tokens": 6399,
+            "reasoning_output_tokens": 3087
+          },
+          "wall_seconds": 122.6
+        }
+      ],
+      "boxes": 501,
+      "frame_count": 18,
+      "labels_sha256": "ff7a62c93194d0dcd7ff3c1085aeefe92231558e0339e821007fa6c0a343cf5c",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_056": {
+      "ambiguous_boxes": 3,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "bbfc487e3b0954f07ac36cafb020f6083a4720f47b51a583dd54fb54447da194",
+          "labels_sha256": "bfc3ed7256fa500e976f37228f7de5c936643cda430f2d5bde5189a791c9a7cb",
+          "prompt_sha256": "1e623727acc1828e74b1917f9543628a038e3348c2c2e7faf80cd838caef54b3",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 47755,
+            "output_tokens": 2817,
+            "reasoning_output_tokens": 914
+          },
+          "wall_seconds": 57.388
+        }
+      ],
+      "boxes": 383,
+      "frame_count": 15,
+      "labels_sha256": "bfc3ed7256fa500e976f37228f7de5c936643cda430f2d5bde5189a791c9a7cb",
+      "planned_frames": 15,
+      "status": "published"
+    },
+    "video_000/clip_057": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "129ae1c42ffd46fe3681ca2cb0bf2eac989b16e09030295694e95a33e66e57d1",
+          "labels_sha256": "19a9f4958175e7fbabf5a296a2308887211c626b35938b74131b6257c4097739",
+          "prompt_sha256": "8933ff82c1e0ae19ced5cf1aacbd08500054ac05c6f6ce228de10176678db405",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 40548,
+            "output_tokens": 2780,
+            "reasoning_output_tokens": 1237
+          },
+          "wall_seconds": 56.391
+        }
+      ],
+      "boxes": 317,
+      "frame_count": 11,
+      "labels_sha256": "19a9f4958175e7fbabf5a296a2308887211c626b35938b74131b6257c4097739",
+      "planned_frames": 11,
+      "status": "published"
+    },
+    "video_000/clip_058": {
+      "ambiguous_boxes": 3,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "bd03c6c41d7285e69ddb13c2a52fd56b4a59765076b2265e346e6224f38cdd97",
+          "labels_sha256": "462ea77814f59c72f37f750cca7252a965b381ad21a4d0695e5db690bbc6f0e8",
+          "prompt_sha256": "f51166a5c113f1faa45586c7210cf659e9c4cc5ffca8d2ece9d7c6b76c52aa32",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 50882,
+            "output_tokens": 3362,
+            "reasoning_output_tokens": 1226
+          },
+          "wall_seconds": 67.337
+        }
+      ],
+      "boxes": 446,
+      "frame_count": 16,
+      "labels_sha256": "462ea77814f59c72f37f750cca7252a965b381ad21a4d0695e5db690bbc6f0e8",
+      "planned_frames": 16,
+      "status": "published"
+    },
+    "video_000/clip_059": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "82e299b14d933b2b018b0333830cd2f6573c3ce5d1e8a1b7cbabd3fef147e975",
+          "labels_sha256": "95960ee384206f75ab66cc0c79dc466bdbea463f23bbb98021049b989f8ff60e",
+          "prompt_sha256": "ea4a61128b81cd572eed6e5e301e8cbad007173a2c002609e92f4b458e02a5c9",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 44684,
+            "output_tokens": 4426,
+            "reasoning_output_tokens": 2642
+          },
+          "wall_seconds": 86.368
+        }
+      ],
+      "boxes": 381,
+      "frame_count": 13,
+      "labels_sha256": "95960ee384206f75ab66cc0c79dc466bdbea463f23bbb98021049b989f8ff60e",
+      "planned_frames": 13,
+      "status": "published"
+    },
+    "video_000/clip_060": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "3aeaf3e39857e806dcce096433a0f15401484f3e84e8e4e85ee06b2e175035e5",
+          "labels_sha256": "2f33853247259d56f655f512ef85f4223c0ec71c758cdaff5661bdf37e692d57",
+          "prompt_sha256": "8567ab55dfa4d3c81cd92c0fb7d8c5a25e7585ed823b07cabf463f78473f0b3c",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 38484,
+            "output_tokens": 2792,
+            "reasoning_output_tokens": 902
+          },
+          "wall_seconds": 56.291
+        }
+      ],
+      "boxes": 276,
+      "frame_count": 10,
+      "labels_sha256": "2f33853247259d56f655f512ef85f4223c0ec71c758cdaff5661bdf37e692d57",
+      "planned_frames": 10,
+      "status": "published"
+    },
+    "video_000/clip_061": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "c55cb88a44da8c9fbee674cdc5e56ec5abb38c44a95e8aeef3807892a78cac7f",
+          "labels_sha256": "3f7e8b0b076a462eba8de5eacde31e8401c06361ef45d24f80aadd0cdc82422a",
+          "prompt_sha256": "62995b57549fdf676a0ebe87b710b509511b25551df4fdba4fec3dc4643a1123",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 46749,
+            "output_tokens": 3795,
+            "reasoning_output_tokens": 1154
+          },
+          "wall_seconds": 74.528
+        }
+      ],
+      "boxes": 390,
+      "frame_count": 14,
+      "labels_sha256": "3f7e8b0b076a462eba8de5eacde31e8401c06361ef45d24f80aadd0cdc82422a",
+      "planned_frames": 14,
+      "status": "published"
+    },
+    "video_000/clip_062": {
+      "ambiguous_boxes": 5,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "fe6ad68a97662c3ed2b997899202509c014dba78535c252538e7e4db7c4dd475",
+          "labels_sha256": "549008cf3559fd597a038e7b85fbb24beb460e7fce0c4ba7b1f94ee14acac82b",
+          "prompt_sha256": "3b50f36f44f0a78bc163fbbca4c9030616b0903ba3c277e27ff6468c1e09104b",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 50875,
+            "output_tokens": 4497,
+            "reasoning_output_tokens": 1480
+          },
+          "wall_seconds": 88.309
+        }
+      ],
+      "boxes": 460,
+      "frame_count": 16,
+      "labels_sha256": "549008cf3559fd597a038e7b85fbb24beb460e7fce0c4ba7b1f94ee14acac82b",
+      "planned_frames": 16,
+      "status": "published"
+    },
+    "video_000/clip_063": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "0f16db8218317fa63ed6f265b757c237fc1594cef7c6bbafbe11b56d04a21ccb",
+          "labels_sha256": "f8c09eae1fb9f06922d5b958dd2f6dc9fd884f94e8fcf0093dfab695c6661262",
+          "prompt_sha256": "ca4fd3ada702a1b266bfd11bf7dcd65aada2aa3c4a0417df1987a50980622ac4",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 55007,
+            "output_tokens": 5975,
+            "reasoning_output_tokens": 2690
+          },
+          "wall_seconds": 114.498
+        }
+      ],
+      "boxes": 493,
+      "frame_count": 18,
+      "labels_sha256": "f8c09eae1fb9f06922d5b958dd2f6dc9fd884f94e8fcf0093dfab695c6661262",
+      "planned_frames": 18,
+      "status": "published"
+    },
+    "video_000/clip_064": {
+      "ambiguous_boxes": 3,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "84cd1700de3714452545ecc4d2c1d4c228014fd178866f0eddb8e3e92913d598",
+          "labels_sha256": "b185bd7e7d650ad270d04d2684595219435a8efd4c5eff443309189d7ff94dc3",
+          "prompt_sha256": "4ac72e98d34dd269554e7601ee6761918809f4a0fff677a5c873fd3ffbdf83e2",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 65352,
+            "output_tokens": 5820,
+            "reasoning_output_tokens": 2688
+          },
+          "wall_seconds": 112.543
+        }
+      ],
+      "boxes": 679,
+      "frame_count": 23,
+      "labels_sha256": "b185bd7e7d650ad270d04d2684595219435a8efd4c5eff443309189d7ff94dc3",
+      "planned_frames": 23,
+      "status": "published"
+    },
+    "video_000/clip_065": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "78adcfd03fa8eeceea9569ea221fdb6de6e41b2e87f2c83ecdb12bb41f54a08f",
+          "labels_sha256": "68769d8f9667b1b30f18482ac8f837349364526a3350bdbed050a7d3c2d7a91a",
+          "prompt_sha256": "6efb7d5985ea50816169094a4a21594a14d9ba3cab27f410bddd7660a5e4a6da",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 52733,
+            "output_tokens": 3517,
+            "reasoning_output_tokens": 1258
+          },
+          "wall_seconds": 70.105
+        }
+      ],
+      "boxes": 483,
+      "frame_count": 17,
+      "labels_sha256": "68769d8f9667b1b30f18482ac8f837349364526a3350bdbed050a7d3c2d7a91a",
+      "planned_frames": 17,
+      "status": "published"
+    },
+    "video_000/clip_066": {
+      "ambiguous_boxes": 0,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "57b01ad55f89c7ae8a6f0f3488227cf7057abe29cfbfcbfec714067e5f79dd11",
+          "labels_sha256": "9164dad742b2d0fd4a4d6288e3bc692c66fbeb21cf4e5f6f98b895bd61156202",
+          "prompt_sha256": "01333c37a3a36696e7e649b85d3179c81c4de419b56a3a1e3f7de2710c9ea46e",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 48812,
+            "output_tokens": 3831,
+            "reasoning_output_tokens": 1861
+          },
+          "wall_seconds": 75.458
+        }
+      ],
+      "boxes": 416,
+      "frame_count": 15,
+      "labels_sha256": "9164dad742b2d0fd4a4d6288e3bc692c66fbeb21cf4e5f6f98b895bd61156202",
+      "planned_frames": 15,
+      "status": "published"
+    },
+    "video_000/clip_067": {
+      "ambiguous_boxes": 12,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "9e503db7a10b4a0427b29f13e187db8a7e3c758fa0814058d4b5bdc0a84c0589",
+          "labels_sha256": "381affd30ef35e58c73c09b5c8e7d9fb2e2be77440a3c4fb956f7e7cef6e7829",
+          "prompt_sha256": "f2058844d6bcc9711826fdaa968911e71fa7ce90fbb38e589460a1b9e9fd1ef7",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 48816,
+            "output_tokens": 4802,
+            "reasoning_output_tokens": 2707
+          },
+          "wall_seconds": 93.238
+        }
+      ],
+      "boxes": 456,
+      "frame_count": 15,
+      "labels_sha256": "381affd30ef35e58c73c09b5c8e7d9fb2e2be77440a3c4fb956f7e7cef6e7829",
+      "planned_frames": 15,
+      "status": "published"
+    },
+    "video_000/clip_068": {
+      "ambiguous_boxes": 20,
+      "attempts": [
+        {
+          "attempt": "attempt-0001",
+          "exit_code": 0,
+          "input_sha256": "b01ddd60bb96161dfb2f2a76189efbb8fb1df280a8f33ce9eb7cfb72d726bc14",
+          "labels_sha256": "6a5e96feb59e6b6123396363e3b578ddb0f16d837f545cfd3c7b26a579aac5a6",
+          "prompt_sha256": "2dd7a860b79a837b780dd3c8ccaf8a60650c2e311411d4b3c45efd7f0f287862",
+          "rate_limits": [],
+          "status": "accepted",
+          "stop_reason": null,
+          "usage": {
+            "cache_write_input_tokens": 0,
+            "cached_input_tokens": 15616,
+            "input_tokens": 46743,
+            "output_tokens": 2860,
+            "reasoning_output_tokens": 972
+          },
+          "wall_seconds": 59.589
+        }
+      ],
+      "boxes": 402,
+      "frame_count": 14,
+      "labels_sha256": "6a5e96feb59e6b6123396363e3b578ddb0f16d837f545cfd3c7b26a579aac5a6",
+      "planned_frames": 14,
+      "status": "published"
+    }
+  },
+  "effort": "xhigh",
+  "frame_counts": {
+    "published": 1205
+  },
+  "human_review_ready": 170,
+  "input_snapshot_sha256": "b380d77c8ee80b9a9d0faaaab1c7cceccd3f8f8eb446e1b23b3d51224cdda62a",
+  "model": "gpt-6.1-terra",
+  "planned_frames": 1205,
+  "selection_sha256": "be9108d27454148e35537597606c2937c6786d9327a4d87006ae89c29c837b7e",
+  "sessions": [
+    {
+      "driver_sha256": "e2272ad199b19b541b6cbe3410aeb516e4f140a24aae7dc418eded9ccad47933",
+      "finished_at": "2026-11-23T19:10:45+00:00",
+      "git_head": "7c1ad6d989f0ed6c6bd9ef81e6347753fa43349f",
+      "instructions_sha256": "33719632a3b2e255f3ce9439265a7e9fc327e2b0d29cfe851c3ba5dbb53aa1ae",
+      "started_at": "2026-11-23T18:42:24+00:00",
+      "statuses": {
+        "published": 69
+      },
+      "wall_seconds": 1701.183
+    }
+  ],
+  "show_prior_association": false,
+  "usage": {
+    "cache_write_input_tokens": 0,
+    "cached_input_tokens": 1055488,
+    "input_tokens": 3713178,
+    "output_tokens": 300823,
+    "reasoning_output_tokens": 119084
+  }
+}

@@ -546,6 +546,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "tennis_scene.multiview_tracking",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tennis_scene.ball_events.__main__": (
+        "tennis_scene.rule_ball_events",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tennis_scene.visualization.player_view.__main__": (
         "tennis_scene.player_view_bundle",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -794,6 +798,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _non_hydra_boundary(
         "src.tennis_scene.multiview_tracking.__main__",
+        "main",
+        domain="tennis_scene",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tennis_scene.ball_events.__main__",
         "main",
         domain="tennis_scene",
         executable_module=True,

@@ -112,6 +112,43 @@ ViTPoseは、同じworktreeで4ファイルの読み書き権限と親が管理�
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-score outputs/i2444/holdout
 ```
 
+### 未見評価の再現
+
+`holdout-plan` と `holdout-score` は、採点時の `590c2377810762fdea0d5485d10307e612de51eb` で実行する。この版には両方の入口があり、`src` は固定ソルバー `466ba35cfacc496a9b8b895de2f85fad6a8dd849` と一致する。`_solver_config()` は `src` と `meiji3.json` の設定を照合して採点条件を守る。main取り込み後のHEADでは `src` の差分を検出するため、入力を処理する前に停止する。
+
+採点版を別worktreeに取り出し、共有入力とvenv、出力先を初期化する。 [worktreeの初期化手順](../../../.agents/ops/storage_tier/README.md#worktrees-and-service)
+
+```bash
+main=$(dirname "$(git rev-parse --path-format=absolute --git-common-dir)")
+replay_tree="$main/.claude/worktrees/i2444-holdout-590c2377"
+git -C "$main" worktree add --detach "$replay_tree" 590c2377810762fdea0d5485d10307e612de51eb
+```
+
+固定入力は採点時の `pose-plan.json`、`vitpose/complete.json`、`vitpose/stores/` と、計画が指すr18観測アーカイブおよび人手部分参照ラベル。補完校正と各ラベルのSHA-256は公開済みの採点JSONに記録した。初期化後に同じシェルで以下を実行すると、固定ストアを参照して新しい出力先に採点開始記録と結果を保存する。 [採点結果と入力SHA](holdout-pair-score.json)
+
+```bash
+cd "$replay_tree"
+run=knowledge/runs/run-multiview-pose-link-recall-20261124
+original="/mnt/wsl/tennis-data$main/.worktree-outputs/parent-1739-issue-2444-primary/i2444/holdout"
+replay_dir=$(mktemp -d outputs/i2444-holdout-replay.XXXXXXXX)
+mkdir "$replay_dir/vitpose"
+cp "$original/pose-plan.json" "$replay_dir/pose-plan.json"
+cp "$original/vitpose/complete.json" "$replay_dir/vitpose/complete.json"
+ln -s "$original/vitpose/stores" "$replay_dir/vitpose/stores"
+printf '%s  %s\n' \
+  6043c92a2f0cb58a5e3583bb6230e75d40e5695de9e40549f47e5d4ca8d33be9 "$replay_dir/pose-plan.json" \
+  4966ade3bec4fea665a2613f1e9255117de70f1f2a58fa12aa7ccef0ecbe7270 "$replay_dir/vitpose/complete.json" |
+  sha256sum -c - &&
+  bash "$run/reproduce.sh" holdout-score "$replay_dir"
+```
+
+計画を生成し直す場合も、同じ採点版と採点時のアーカイブ・データパスを使う。生成結果を保存済み計画と照合する。
+
+```bash
+bash "$run/reproduce.sh" holdout-plan "$replay_dir/plan-check" &&
+  cmp "$original/pose-plan.json" "$replay_dir/plan-check/pose-plan.json"
+```
+
 ## 再現
 
 リポジトリrootから実行する。既定出力は `outputs/i2444/refine/qualified`。保存済みデータの配置と環境変数は初回評価と同じ。
@@ -122,7 +159,6 @@ bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh meiji3
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh meiji4
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-inputs
 bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-recovery outputs/i2444/holdout
-bash knowledge/runs/run-multiview-pose-link-recall-20261124/reproduce.sh holdout-plan outputs/i2444/holdout
 ```
 
 公開するのは再現コードと指標・digest。元映像と骨格配列はローカルに保存する。

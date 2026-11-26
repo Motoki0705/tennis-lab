@@ -13,10 +13,12 @@ import torch
 
 from src.tasks.ball_refiner_3d.data.schema import PreparedRally
 from src.tasks.ball_refiner_3d.evaluation.evaluator import evaluate
+from src.tasks.ball_refiner_3d.evaluation.events import event_metrics
 from src.tasks.ball_refiner_3d.evaluation.physics import (
     integrated_metrics,
     physics_metrics,
 )
+from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
 from src.tasks.ball_refiner_3d.model_io.checkpoint import (
     checkpoint_flight_clock,
     load_checkpoint,
@@ -57,7 +59,12 @@ def evaluate_checkpoint(
     )
     prediction_dir.mkdir()
     with (prediction_dir / "pred_test.npz").open("xb") as stream:
-        np.savez_compressed(stream, allow_pickle=False, **predictions)
+        np.savez_compressed(
+            stream,
+            allow_pickle=False,
+            event_classes=np.asarray(EVENT_CLASSES),
+            **predictions,
+        )
     unit = report["unit"]
     metrics = {
         f"test_rmse_{unit}": report["all"]["rmse"],
@@ -69,6 +76,7 @@ def evaluate_checkpoint(
         "test_event_brier": report["event_probability"]["brier"],
         "test_event_soft_ce": report["event_probability"]["soft_cross_entropy"],
         **physics_metrics(report["physics"]),
+        **event_metrics(report["physics"]["events"]),
         **(integrated_metrics(report) if selected.config.physics_heads else {}),
     }
     if "best_step" in common_metadata:

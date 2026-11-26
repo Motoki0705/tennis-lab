@@ -7,10 +7,14 @@ are real; no live GitHub, agent, GPU or timed waits are used.
 from __future__ import annotations
 
 import copy
+import fcntl
 import importlib
 import json
+import subprocess
 import sys
+from collections.abc import Iterator
 from pathlib import Path
+from types import SimpleNamespace
 from typing import Any, TypeVar, cast
 
 import pytest
@@ -337,8 +341,40 @@ def test_interruption_at_worker_intent_requires_recovery_not_relaunch(
     assert backend.repair_count[11] == 1
 
 
-def test_restart_saved_ci_stage_without_reviewer_and_no_registry_lock(
-    tmp_path: Path,
+@pytest.fixture
+def guarded_checkout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Iterator[Path]:
+    root = tmp_path / "main-checkout"
+    subprocess.run(["git", "init", "-q", str(root)], check=True)
+    subprocess.run(
+        [
+            "git",
+            "-C",
+            str(root),
+            "-c",
+            "user.name=Checkout Test",
+            "-c",
+            "user.email=checkout@example.invalid",
+            "commit",
+            "--quiet",
+            "--allow-empty",
+            "-m",
+            "baseline",
+        ],
+        check=True,
+    )
+    checkout = importlib.import_module("lib.checkout_lock")
+    monkeypatch.setattr(
+        checkout, "__file__", str(root / ".agents/ops/lib/checkout_lock.py")
+    )
+    checkout.guard_interactive_cli()
+    try:
+        yield root / ".git/ops-code.lock"
+    finally:
+        checkout._release_cli_lock()
+
+
+def test_restart_saved_ci_stage_without_reviewer_and_releases_checkout_while_waiting(
+    tmp_path: Path, guarded_checkout: Path
 ) -> None:
     path, backend, clock = setup(tmp_path)
     backend.checks[11] = ["pending", "success"]
@@ -346,13 +382,123 @@ def test_restart_saved_ci_stage_without_reviewer_and_no_registry_lock(
     def interrupted_sleep(seconds: float) -> None:
         assert read(path)["targets"]["11"]["stage"] == "ci_wait"
         assert not list(tmp_path.glob("**/registry.lock"))
+        with guarded_checkout.open("a") as updater:
+            fcntl.flock(updater, fcntl.LOCK_EX | fcntl.LOCK_NB)
         raise KeyboardInterrupt
 
     with pytest.raises(KeyboardInterrupt):
         Engine(path, backend, clock=clock, sleep=interrupted_sleep).run()
+    with guarded_checkout.open("a") as updater, pytest.raises(BlockingIOError):
+        fcntl.flock(updater, fcntl.LOCK_EX | fcntl.LOCK_NB)
     clock.now += 60
     assert run(path, backend, clock)["status"] == "completed"
     assert backend.review_count == 1
+
+
+def test_wait_merge_releases_checkout_until_the_next_event(
+    tmp_path: Path, guarded_checkout: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path, _, _ = setup(tmp_path)
+    gate = importlib.import_module("lib.ops_review.merge_gate_impl")
+
+    def pause(_: float) -> None:
+        with guarded_checkout.open("a") as updater:
+            fcntl.flock(updater, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            state = read(path)
+            state["events"].append({"id": 2, "kind": "completed"})
+            save(path, state)
+
+    monkeypatch.setattr(gate, "time", SimpleNamespace(sleep=pause))
+    assert gate.wait(path, after=1)["events"] == [{"id": 2, "kind": "completed"}]
+
+
+def test_checkout_update_during_main_ci_notifies_and_resumes_same_merge(
+    tmp_path: Path, guarded_checkout: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    initial, backend, clock = setup(tmp_path)
+    state = read(initial)
+    path = tmp_path / "progressions" / state["id"] / "state.json"
+    save(path, state)
+    backend.main_ci = "pending"
+    gate = importlib.import_module("lib.ops_review.merge_gate_impl")
+    live = importlib.import_module("lib.ops_review.progression_backend")
+
+    def update(seconds: float) -> None:
+        with guarded_checkout.open("a") as updater:
+            fcntl.flock(updater, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            subprocess.run(
+                [
+                    "git",
+                    "-C",
+                    str(guarded_checkout.parents[1]),
+                    "-c",
+                    "user.name=Checkout Test",
+                    "-c",
+                    "user.email=checkout@example.invalid",
+                    "commit",
+                    "--quiet",
+                    "--allow-empty",
+                    "-m",
+                    "git-sync update",
+                ],
+                check=True,
+            )
+        clock.sleep(seconds)
+
+    def deliver(command: list[str], *, timeout: int, check: bool) -> None:
+        assert timeout == 60 and check
+        assert command[-1] == "--deliver-checkout-interruption"
+        paused = read(path)
+        assert paused["status"] == "parent_wait"
+        assert paused["events"][-1]["delivered"] is False
+        assert not [call for call in backend.calls if call[0] == "notify"]
+        # Exercise the delivery-only entry after the old controller released its lock.
+        with monkeypatch.context() as child:
+            child.setattr(sys, "argv", command[1:])
+            assert gate.main() == 0
+
+    monkeypatch.setattr(live, "LiveBackend", lambda *_: backend)
+    monkeypatch.setattr(
+        gate,
+        "Engine",
+        lambda path, backend, state: Engine(
+            path, backend, state=state, clock=clock, sleep=update
+        ),
+    )
+    monkeypatch.setattr(
+        gate,
+        "subprocess",
+        SimpleNamespace(run=deliver, SubprocessError=subprocess.SubprocessError),
+    )
+    monkeypatch.setattr(sys, "argv", ["merge_gate.py", "--state", str(path)])
+    assert gate.main() == 75
+    paused = read(path)
+    target = paused["targets"]["11"]
+    assert (target["stage"], target["resume_stage"]) == (
+        "parent_wait",
+        "post_merge_wait",
+    )
+    assert target["merge_commit"] == "a" * 40
+    assert target["main_ci"]["status"] == "pending"
+    (notice,) = paused["events"]
+    assert notice["kind"] == "parent_wait" and notice["delivered"] is True
+    assert "checkout HEAD changed during wait" in notice["reason"]
+    assert gate.wait(path, after=notice["id"])["status"] == "parent_wait"
+    assert [call for call in backend.calls if call[0] == "notify"] == [
+        ("notify", "parent_wait"),
+    ]
+    assert run(path, backend, clock)["status"] == "parent_wait"
+
+    backend.main_ci = "success"
+    resumed = Engine(path, backend, clock=clock, sleep=clock.sleep)
+    resumed.continue_run(
+        "Resume the saved post-merge confirmation from the new checkout"
+    )
+    assert resumed.run()["status"] == "completed"
+    assert backend.review_count == 1
+    assert [call for call in backend.calls if call[0] == "merge"] == [
+        ("merge", 11, backend.heads[11]),
+    ]
 
 
 def test_get_scope_ignores_unrelated_issues(tmp_path: Path) -> None:

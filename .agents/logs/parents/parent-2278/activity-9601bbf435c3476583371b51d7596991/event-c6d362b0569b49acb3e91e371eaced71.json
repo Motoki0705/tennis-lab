@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "3ea0a5ff79724220bb5e08bfec0b15c3",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.review-request; artifact=command response; content_sha256=660b5a6a41a057c3ce1116de7109df5eff62f6be095c97130796e7076412cc91; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "rejected",
+      "summary": "parent.review-request: rejected before execution; ValueError; details in private evidence",
+      "verifies": []
+    },
+    "id": "c6d362b0569b49acb3e91e371eaced71",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "9601bbf435c3476583371b51d7596991",
+      "delegation": null,
+      "issue": null,
+      "parent": 2278,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "b06115ea9c05434ba4b796ac92f0e78b"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-22T11:11:14.207504+00:00"
+      },
+      "recorded_at": "2026-11-22T11:11:14.207520+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

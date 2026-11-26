@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8204407397945499403_2026-11-25T07-43-22-054500596Z_1639663_i2491-fasthmr-camerahmr-pt16-speed",
+  "name": "i2491-fasthmr-camerahmr-pt16-speed",
+  "command": "sha256sum -c outputs/fasthmr-setup/speed-pt16/source.sha256 && bash outputs/fasthmr-setup/speed-pt16/run.sh /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2492-issue-2496-primary/person-model-speed-baseline-v1/inputs",
+  "provider": "codex",
+  "session": "01a20d45-575e-7a53-90c5-48b09053fa2b",
+  "issue": "2491",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "8a25fe12b543656cb1e883e7251bd1a3fd299fd0",
+  "branch": "codex/parent-2492-issue-2491-primary",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2492-issue-2491-primary",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2492-issue-2491-primary",
+  "captured_at": "2026-11-25T20:04:43+09:00"
+}

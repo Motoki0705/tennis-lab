@@ -220,7 +220,17 @@ def read_saved_inputs(directory: Path, side: PinnedCourtSide) -> SavedPoseInputs
             raise ValueError(
                 f"Unexpected raw detection, pose or court dependencies: {camera}"
             )
-        settings = d_doc["identity"]["settings"]
+        settings = d_doc["identity"].get("settings")
+        if not isinstance(settings, dict) or settings.get("enabled") is not True:
+            raise ValueError(f"Saved DINO observations require enabled=true: {camera}")
+        pose_settings = p_doc["identity"].get("settings")
+        if (
+            not isinstance(pose_settings, dict)
+            or pose_settings.get("enabled") is not True
+        ):
+            raise ValueError(
+                f"Saved ViTPose observations require enabled=true: {camera}"
+            )
         if (
             settings.get("detector"),
             settings.get("scope"),

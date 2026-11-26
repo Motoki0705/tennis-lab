@@ -1,0 +1,47 @@
+name: Close parent evidence
+
+on:
+  issues:
+    types: [closed]
+
+permissions:
+  contents: read
+  issues: write
+
+jobs:
+  close:
+    if: ${{ !contains(github.event.issue.labels.*.name, 'parent-evidence') && !startsWith(github.event.issue.body, '<!-- parent-evidence:') }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout trusted workflow commit
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.sha }}
+          persist-credentials: false
+          submodules: false
+      - name: Set up lightweight Python
+        uses: astral-sh/setup-uv@37802adc94f370d6bfd71619e3f0bf239e1f3b78 # v7.6.0
+        with:
+          python-version: '3.11'
+          enable-cache: false
+      - name: Close verified evidence for this issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PARENT_ISSUE_NUMBER: ${{ github.event.issue.number }}
+          PYTHONPATH: .agents/ops
+        shell: bash
+        run: |
+          # Exit 3 requests another observation of this issue's evidence binding.
+          for delay in 0 15 45; do
+            if (( delay > 0 )); then
+              sleep "$delay"
+            fi
+            status=0
+            uv run --isolated --no-project --with jsonschema==4.26.0 --with markdown-it-py==4.0.0 --with requests==2.34.2 \
+              python -m parent --repo "$GITHUB_REPOSITORY" --parent "${PARENT_ISSUE_NUMBER:?}" evidence-close --apply || status=$?
+            if (( status != 3 )); then
+              exit "$status"
+            fi
+          done
+          exit "$status"

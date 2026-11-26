@@ -1,0 +1,7 @@
+保存済みの6,844画像を共通 parity 基準で再判定しました。ECDet の COCO-only 2種は PT16 で基準内、O365 2種と初回の ECDet-L COCO TRT16 は基準外でした。疑似GTの採点値は変わっていません。[判定値と生予測のハッシュ](https://github.com/Motoki0705/tennis-lab/blob/dae8229d40866b9dea7265ea7be4149a72e36d40/knowledge/runs/run-meiji-player-model-comparison/edgecrafter-shared-parity.json)
+
+`codex/parent-2492-issue-2487-edgecrafter` の `dae8229d40866b9dea7265ea7be4149a72e36d40` に、#2497 の修正候補に合わせた共通判定と、全コホートの採点を実行する入口を反映しました。pytest 67件と pre-commit が通過しました。[#2487 の検証記録](https://github.com/Motoki0705/tennis-lab/issues/2487#issuecomment-7148049399)
+
+共有キューには ECPose 6条件と、ECDet 4種の再変換版 TRT16 の精度採点を登録しました。速度・VRAM 計測は親からの再投入指示待ちです。
+
+PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204435109032253972_2026-11-25T00-01-30-967746027Z_2328385_i2487-ecpose-l-o365-cohort-accuracy-v2.job","0-8204435108759322743_2026-11-25T00-01-31-240677256Z_2328457_i2487-ecpose-x-o365-cohort-accuracy-v2.job","0-8204435108489627851_2026-11-25T00-01-31-510372148Z_2328519_i2487-ecdet-l-coco-cohort-accuracy-v2.job","0-8204435108187971794_2026-11-25T00-01-31-812028205Z_2328586_i2487-ecdet-x-coco-cohort-accuracy-v2.job","0-8204435107915154038_2026-11-25T00-01-32-084845961Z_2328656_i2487-ecdet-l-o365-cohort-accuracy-v2.job","0-8204435107638843503_2026-11-25T00-01-32-361156496Z_2328726_i2487-ecdet-x-o365-cohort-accuracy-v2.job"]}}

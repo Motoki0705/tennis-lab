@@ -1,0 +1,81 @@
+{
+  "record": {
+    "data": {
+      "action_id": "3dac303c99484939a6b40561374bea0a",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=merge.progression; artifact=progression state; content_sha256=103b5203be7ea71c39569e748fbaa82bb2539949037ea1b5c0cb66c6e74489b1; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "partial",
+      "summary": "Automatic progression: parent_wait; review_failed: [local path] --agent codex --profile review --review-selection-file [local path] --cwd [local path] --prompt-file [local path] --out [local path] --mcp-config [local path] --json-schema [local path] --mode read-only --log-dir [local path] --run-dir [local path] exited 1: agent_exec: agent=codex mode=read-only profile=review model=gpt-6.2-sol effort=xhigh reason=runtime_error",
+      "verifies": []
+    },
+    "id": "25ae3bf6f270430cb38b611de727b49d",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "e062117be55a49999f7aa48b3587a163",
+      "delegation": null,
+      "issue": null,
+      "parent": 2278,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": "0de1384ec3914503957b500104cf85e3"
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-20T20:22:23.435429+00:00"
+      },
+      "recorded_at": "2026-11-20T20:22:23.435444+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {
+      "posix": 9
+    },
+    "replacements": 16,
+    "version": 2
+  }
+}
