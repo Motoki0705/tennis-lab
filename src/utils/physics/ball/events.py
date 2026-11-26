@@ -32,10 +32,10 @@ def pick_event_frames(
     return np.array(sorted(accepted), dtype=np.int64)
 
 
-def match_event_offsets(
+def match_event_pairs(
     predicted: NDArray[np.integer], truth: NDArray[np.integer], tolerance: int
 ) -> NDArray[np.int64]:
-    """Signed offsets for the most matches, then the smallest total absolute error."""
+    """Return (prediction, truth) pairs, maximizing count then minimizing error."""
     frames = np.unique(predicted.astype(np.int64))
     targets = np.unique(truth.astype(np.int64))
     offsets = frames[:, None] - targets[None, :]
@@ -45,9 +45,15 @@ def match_event_offsets(
     rows, columns = linear_sum_assignment(
         np.where(distances <= tolerance, distances, penalty)
     )
-    return np.asarray(
-        offsets[rows, columns][distances[rows, columns] <= tolerance], dtype=np.int64
-    )
+    keep = distances[rows, columns] <= tolerance
+    return np.column_stack((frames[rows[keep]], targets[columns[keep]]))
+
+
+def match_event_offsets(
+    predicted: NDArray[np.integer], truth: NDArray[np.integer], tolerance: int
+) -> NDArray[np.int64]:
+    pairs = match_event_pairs(predicted, truth, tolerance)
+    return pairs[:, 0] - pairs[:, 1]
 
 
 def event_detection_report(
