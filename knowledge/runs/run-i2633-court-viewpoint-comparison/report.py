@@ -363,7 +363,7 @@ def comparison(campaign: Path) -> dict[str, Any]:
 
 def write_csv(path: Path, rows: list[dict[str, Any]]) -> None:
     with path.open("x", newline="", encoding="utf-8") as stream:
-        table = csv.DictWriter(stream, list(rows[0]))
+        table = csv.DictWriter(stream, list(rows[0]), lineterminator="\n")
         table.writeheader()
         table.writerows(rows)
 
