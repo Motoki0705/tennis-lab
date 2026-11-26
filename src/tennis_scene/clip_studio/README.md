@@ -13,9 +13,10 @@
 
 入力はDATA root相対の`tennis_multiview/raw/<dataset_id>/video_<3桁以上>/cam<index>.mp4`。
 cameraはcam0から連番で、指定videoだけを開きます。保存先は
-`tennis_multiview/processed/<dataset_id>/projects.json`（v1）、出力先はその隣の
+`tennis_multiview/processed/<dataset_id>/projects.json`（v2）、出力先はその隣の
 `dataset/videos/<video_id>/clips/<clip_name>/`です。dataset/clip v2のスキーマとreaderは
 [generate_dataset/manifest.py](../generate_dataset/manifest.py)が所有します。
+既存の `projects.json` v1 は試合設定・カウントともに未入力として開き、次回の保存で v2 に更新します。
 旧raw直下の`cam0.mp4`や旧`dataset/clips/...`配置を自動探索・移行しません。
 
 新規プロジェクト作成時だけ、全動画のコンテナの `creation_time` をUTCへそろえ、最も遅い録画開始を共通時刻0秒として同期オフセットを初期設定します。1つでも時刻が欠落・不正（タイムゾーンなしを含む）、または取得できない場合は、全カメラ0秒の従来動作で開始します。初期推定の結果と失敗理由は起動ログと画面上部に表示します。通知はそのサーバー起動中に表示され、通常の編集操作では消えません。既存JSONは、全オフセットが0秒・クリップ未登録でも再推定せず、そのまま読み込みます。初期値は映像を確認して音声同期・手動調整で修正できます。
@@ -78,6 +79,35 @@ offsetの推定方法は既存project JSONからは分かりません。
 4. **修正する**：一覧からクリップを選び、名前・開始・終了を変更して保存する。「現在位置を開始／終了に」と区間リピートも利用できる。
 5. **書き出す**：選択クリップまたは全クリップを出力する。fps・解像度の不一致や範囲外は、バッチ全体の事前検証で明示的にエラーにする。
 
+### クリップのカウント
+
+1. 「試合設定とカウントCSV」で、動画ごとに固定の選手・ペア A/B の表示名、採点方式、最初のサーブ側を設定します。
+2. 保存済みクリップを選び、「クリップのカウント」で開始前カウントを入力します。直前の終了後カウントを使う場合は「直前から連鎖」を選びます。サーブ側は自動または A/B の手動入力を選べます。
+3. 「A の得点」または「B の得点」で確定すると終了後カウントが表示され、開始時刻順の次の未入力クリップに仮入力されます。カウント一覧と選択中の表示は読取専用レビューでも確認できます。
+
+「不明」「複数ポイント」には理由を入力します。そこで連鎖が止まるので、次の開始前カウントは手入力します。「ポイント外」には理由を入力し、前の終了後カウントを次へ引き継ぎます。通過するカウントがない場合のサーブ側は手動で指定します。「カウントを消去」で未入力に戻ります。
+
+先行クリップのカウントを訂正すると、次に手入力した開始前カウントか、連鎖が止まるクリップの手前まで再計算します。保存の確認画面に、開始前カウントまたは自動サーブが変わる後続クリップ数を表示します。開始前の手入力が直前の終了後と食い違う場合は「不連続」と表示し、その値から連鎖を再開します。時刻・名前の編集や消去で連鎖が途切れた場合も、保存したカウントを表示して「不連続」を示します。
+
+- **ソフトテニス**は奇数のゲーム数で設定し、通常は 4 点先取・2 点差でゲームを取ります。最終ゲームは 7 点先取・2 点差で、サーブ側を 2 点ごとに交代します。[日本ソフトテニス連盟のルール](https://www.jsta.or.jp/wp-content/uploads/2016/02/rule_match.pdf)
+- **硬式テニス**は 3 または 5 セットマッチで、ノーアドと最終セット形式を設定できます。10 点マッチタイブレークはセット数が並んだ時点で最終セットに代えて行います。硬式の第 2 セット以降で、以前のゲーム数が分からない区間から記録を始めるときは、最初のクリップのサーブ側を手入力してサーブ順を確定します。[ITF Rules of Tennis 第 5・6・14 条、付録 VI](https://www.world.tennis/media/7221/2026-rules-of-tennis-english.pdf)
+
+ポイントは A/B の順で整数を入力します。通常ゲームは 0〜3 点とアドバンテージの 4 点で表し、硬式では 0・15・30・40・AD に変換して表示します。ファイナルゲームやタイブレークのデュース以降は、サーブ順を保つため計 4 点単位で正規化します。7 点先取ならデュースは 6–6 または 7–7、10 点先取なら 9–9 または 10–10 です。
+
+`projects.json` v2 は動画に `match`、クリップに `score` を持ち、各項目の `null` が未入力を表します。開始前は `before` の `games`、`points`、硬式の `sets` に格納します。ポイント外の記録は `before` を省きます。終了後カウントは確定済みの開始前と得点側から計算します。
+
+### カウントCSV
+
+「試合設定とカウントCSV」から UTF-8 CSV を取り込み、ダウンロードできます。ヘッダーは以下の順と列名を使用します。
+
+```csv
+clip_name,status,sets_a,sets_b,games_a,games_b,points_a,points_b,server,winner,note
+```
+
+- `clip_name` は保存済みクリップの名前です。`status` は `auto`（仮入力）、`confirmed`（確定）、`unknown`（不明）、`not_point`（ポイント外）、`multiple_points`（複数ポイント）です。
+- `server` と確定時の `winner` は `A` または `B` を指定します。確定以外の `winner`、ソフトテニスのセット列、ポイント外の各カウント列は空欄です。不明・ポイント外・複数ポイントの `note` には理由を書きます。
+- ダウンロードには入力済みクリップが含まれます。取り込んだ行だけを開始前の手入力（`anchor`）・手動サーブ（`manual`）として保存します。存在しない名前、重複行、ルール違反を含め全行を検証し、全行が有効なら 1 回の操作として保存します。再ダウンロードで CSV 列の値を確認できます。
+
 ### カメラの読込
 
 動画の読込はカメラ数に比例して重くなるため、表示中のカメラだけを読み込みます。
@@ -106,6 +136,7 @@ offsetの推定方法は既存project JSONからは分かりません。
 | 移動量（⚙） | 1フレーム / 0.1 / 1 / 5 / 10 / 30秒 |
 | Shift + ← / → | 選択移動量の10倍 |
 | `,` / `.` | 選択カメラのfpsで常に1フレーム移動 |
+| A / B | 選択クリップに A / B の得点を記録して確定 |
 | Ctrl/Cmd + Z / Shift + Z | 取り消し / やり直し |
 | F | 単一カメラの全画面表示・終了 |
 
@@ -119,7 +150,7 @@ offsetの推定方法は既存project JSONからは分かりません。
 
 ### 保存と長時間処理
 
-クリップ作成・変更・削除と同期変更は、その都度JSONへatomic writeで自動保存します。保存失敗時は操作を適用せず、エラーを表示します。取り消し履歴はサーバー起動中の最新100操作です。複数タブの古い編集要求は拒否されるため、「再読込」してからやり直してください。再生位置や表示モードはプロジェクトJSONには保存しません。
+クリップ作成・変更・削除、同期変更、試合設定とカウント編集は、その都度JSONへatomic writeで自動保存します。連鎖再計算とCSV取り込みを含め、取り消し履歴はサーバー起動中の最新100操作です。保存失敗時は操作を適用せず、エラーを表示します。複数タブの古い編集要求は拒否されるため、「再読込」してからやり直してください。再生位置や表示モードはプロジェクトJSONには保存しません。
 
 音声同期と書き出しは1つのバックグラウンドワーカーで実行し、画面を操作しながら進捗を確認できます。書き出しは開始時の保存済み編集状態を使用します。**書き出しのキャンセルは実行中のエンコードプロセスを停止**し、そのクリップの途中ファイルを削除します。完成・公開済みクリップは保持します。動画は一時領域で全カメラの検証まで終えてから公開するため、中断したクリップをそのまま再実行できます。カメラ別のフレーム数で進捗を表示します。音声同期のキャンセルは解析結果を破棄します。サーバー停止後に実行中ジョブを再開する機能はありません。
 
@@ -140,6 +171,7 @@ fps・解像度が異なる場合は `export.fps`、`export.width`、`export.hei
 - `initialization.py`：新規プロジェクトの録画時刻による初期同期と、既存プロジェクトの復元。
 - `layout.py`：raw dataset/videoからcamera、`projects.json`、dataset出力先を厳密に導出。
 - `project.py`：dataset単位の`projects.json`とvideo projectの単一定義・I/O。
+- `score_chain.py` / `score_csv.py`：クリップ間の再計算とCSV入出力。採点ルールは共通の [tennis_scoring.py](../../utils/tennis_scoring.py) を使用する。
 - `timeline.py`：`local_time = global_time + offset_sec`、区間 `[start_sec, end_sec)` と最近傍フレームの写像。
 - `state.py`：cv2非依存のタイムライン状態。
 - `sources.py`：smart-seek・縮小・LRU付きのプレビュー取得。
@@ -150,13 +182,13 @@ fps・解像度が異なる場合は `export.fps`、`export.width`、`export.hei
 ## 検証
 
 ```bash
-.venv/bin/python -m pytest tests/unit/tennis_scene/clip_studio \
+.venv/bin/python -m pytest tests/unit/utils/test_tennis_scoring.py tests/unit/tennis_scene/clip_studio \
   tests/unit/tennis_scene/test_configuration.py \
   tests/integration/tennis_scene/test_clip_studio_web.py \
   tests/integration/tennis_scene/test_clip_export.py
 ```
 
-ブラウザ回帰テストは `tests/e2e/tennis_scene/clip_studio_browser.mjs`。Playwrightのインストール先を `PLAYWRIGHT_MODULE`、60秒以上・2カメラ以上の**空の検証専用dataset `clip_studio_edit_test`**のURLを `CLIP_STUDIO_TEST_URL` に指定してNodeで実行します。テストはクリップと同期オフセットを変更します。実dataset名では編集前に拒否します。必要なら `CHROMIUM_PATH` でブラウザ実行ファイルを指定します。
+ブラウザ回帰テストは `tests/e2e/tennis_scene/clip_studio_browser.mjs`。Playwrightのインストール先を `PLAYWRIGHT_MODULE`、60秒以上・2カメラ以上の**空の検証専用dataset `clip_studio_edit_test`**のURLを `CLIP_STUDIO_TEST_URL` に指定してNodeで実行します。テストはクリップ・同期オフセット・試合設定・カウントを変更します。実dataset名では編集前に拒否します。必要なら `CHROMIUM_PATH` でブラウザ実行ファイルを指定します。
 
 再生要求の競合とカメラ読込制御の回帰テストは `node --test tests/e2e/tennis_scene/playback.test.mjs` で実行できます（Playwright不要）。
 
@@ -164,4 +196,4 @@ fps・解像度が異なる場合は `export.fps`、`export.width`、`export.hei
 10fps・2camera・offset `[0,-1]`・`clip_000=[2,4)`・未出力の検証専用dataset
 `clip_studio_review_test`を読取専用で開き、`CLIP_STUDIO_REVIEW_TEST_URL`と
 `PLAYWRIGHT_MODULE`を指定します。実datasetでは起動前に拒否します。
-frame照合・範囲外・半開区間・登録状態・API書込み拒否・再読込・狭い画面を検証します。
+frame照合・範囲外・半開区間・登録状態・カウント表示・API書込み拒否・再読込・狭い画面を検証します。

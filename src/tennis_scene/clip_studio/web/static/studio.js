@@ -1,5 +1,6 @@
 import {Playback, clamp, segmentPercent, stepSeconds, timecode} from './playback.js';
 import {DatasetReview} from './review.js';
+import {Scoring} from './scoring.js';
 const $ = id => document.getElementById(id);
 let project, selected = null, markIn = null, markOut = null, saving = false, view = null, proposal = null;
 function status(message, error = false) { $('status').textContent = message; $('status').classList.toggle('error', error); }
@@ -24,6 +25,7 @@ function setSyncPanel(visible) {
   $('sync-panel').parentElement.classList.toggle('sync-visible', visible);
 }
 const review = new DatasetReview(status);
+const scoring = new Scoring(bind, previewAndEdit, mutate);
 const playback = new Playback($('viewers'), (time, playing) => {
   $('time').textContent = timecode(time); $('seek-time').value = time.toFixed(3);
   $('seek').value = time; $('play').textContent = playing ? 'Ⅱ 停止' : '▶ 再生';
@@ -83,11 +85,12 @@ function renderClips() {
     button.dataset.clip = clip.name;
     const title = document.createElement('span'); title.textContent = clip.name;
     const times = document.createElement('small'); times.textContent = `${timecode(clip.start_sec)} / ${(clip.end_sec - clip.start_sec).toFixed(2)}s`;
-    button.append(title, times); button.onclick = () => selectClip(clip.name); $('clips').append(button);
+    button.append(title, times, scoring.row(clip)); button.onclick = () => selectClip(clip.name); $('clips').append(button);
   });
   const clip = project.clips.find(c => c.name === selected);
   $('clip-editor').hidden = project.read_only || !clip;
   if (clip) { $('clip-name').value = clip.name; $('clip-start').value = clip.start_sec.toFixed(6); $('clip-end').value = clip.end_sec.toFixed(6); }
+  scoring.select(clip);
   renderTrack();
   review.select(selected); review.decorateRows();
 }
@@ -109,7 +112,7 @@ function renderOffsets() {
     $('offsets').append(row);
   });
 }
-function renderProject(initial = false) {
+function renderProject(initial = false, scoreOnly = false) {
   document.body.classList.toggle('read-only', project.read_only);
   $('video').textContent = `${project.dataset_id} / ${project.video_id}`;
   $('saved').textContent = project.read_only ? '読取専用レビュー' : '保存済み'; $('saved').title = project.projects_path;
@@ -119,22 +122,34 @@ function renderProject(initial = false) {
       $(id).replaceChildren(); project.sources.forEach((source,index) => { const option = new Option(source.camera_id, index); $(id).add(option); });
     });
   }
-  applyMode(); review.load(project, selected); playback.load(project);
+  scoring.load(project);
+  applyMode(); review.load(project, selected); playback.load(project, scoreOnly);
   if (!view) setView(...[project.extent[0], project.extent[1] - project.extent[0]]);
   else setView(view[0], view[1] - view[0]);
   const [a,b] = project.common;
   $('common').textContent = b > a ? `全カメラ共通 ${timecode(a)} – ${timecode(b)}` : '全カメラ共通の区間なし';
   renderClips(); renderOffsets(); marks();
 }
-async function mutate(operation) {
+async function previewAndEdit(operation) {
+  if (saving) throw new Error('保存中です。完了を待って操作してください。');
+  const preview = await api('edit/preview', {revision: project.revision, ...operation});
+  if (preview.changed_clips) {
+    const scope = operation.name ? `${operation.name} の変更で、後続の` : '試合設定の変更で、';
+    if (!window.confirm(`${scope}${preview.changed_clips} クリップのカウントが変わります。保存しますか？`)) return;
+  }
+  await mutate(operation, preview.revision);
+}
+async function mutate(operation, revision = project.revision) {
   if (project.read_only) throw new Error('読取専用レビューでは変更できません。');
   if (saving) throw new Error('保存中です。完了を待って操作してください。');
-  saving = true; $('saved').textContent = '保存中…'; marks(); playback.pause(); clearLoop();
+  const scoreOnly = ['set_score', 'set_match', 'import_scores'].includes(operation.action);
+  saving = true; $('saved').textContent = '保存中…'; marks();
+  if (!scoreOnly) { playback.pause(); clearLoop(); }
   try {
-    project = await api('edit', {revision: project.revision, ...operation});
+    project = await api('edit', {revision, ...operation});
     if (operation.action === 'create') selected = project.clips.at(-1).name;
     if (operation.action === 'update') selected = operation.new_name;
-    proposal = null; $('proposal').replaceChildren(); renderProject(); status('変更を保存しました');
+    proposal = null; $('proposal').replaceChildren(); renderProject(false, scoreOnly); status('変更を保存しました');
   } catch (error) { $('saved').textContent = '保存失敗・操作は未適用'; throw error; }
   finally { saving = false; marks(); }
 }
@@ -241,6 +256,12 @@ document.addEventListener('keydown', e => {
   if (e.key === ' ' && e.target.closest('button')) return;
   if (e.ctrlKey || e.metaKey) {
     if (e.key.toLowerCase() === 'z') { e.preventDefault(); $(e.shiftKey ? 'redo' : 'undo').click(); } return;
+  }
+  const key = e.key.toLowerCase();
+  if ((key === 'a' || key === 'b') && !e.repeat) {
+    const button = scoring.winnerButton(key);
+    if (button) { e.preventDefault(); button.click(); }
+    return;
   }
   const actions = {' ':'play',i:'mark-in',o:'mark-out',c:'create'};
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); step(e.key === 'ArrowLeft' ? -1 : 1,e.shiftKey ? 10 : 1); }

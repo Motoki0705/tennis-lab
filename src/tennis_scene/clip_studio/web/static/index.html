@@ -31,6 +31,69 @@
 <aside><div class="section-head"><h2>ラリークリップ</h2><span id="count">0 clips</span></div><div id="clips"></div>
 <section id="clip-review" aria-label="選択clipのdataset状態"><p class="hint">一覧からclipを選ぶと区間と出力状態を確認できます。</p></section>
 <form id="clip-editor" hidden><h3>選択クリップの編集</h3><label>名前<input id="clip-name" required pattern="[A-Za-z0-9][A-Za-z0-9._-]*"></label><label>開始（秒）<input id="clip-start" type="number" step="any" required></label><button id="set-start" type="button">現在位置を開始に</button><label>終了（秒・この時刻は含まない）<input id="clip-end" type="number" step="any" required></label><button id="set-end" type="button">現在位置を終了に</button><div class="toolbar"><button type="submit" class="primary">変更を保存</button><button id="delete" type="button" class="danger">削除</button></div><div class="toolbar"><button id="loop" type="button">区間リピート</button><button id="export-one" type="button">このクリップを書き出す</button></div></form>
+<section id="score-panel" aria-labelledby="score-title" hidden>
+  <h3 id="score-title">クリップのカウント</h3>
+  <p id="score-current"></p>
+  <p id="score-after"></p>
+  <p id="score-saved-note" hidden></p>
+  <p id="score-warning" hidden></p>
+  <button id="open-match" type="button" hidden>試合設定を開く</button>
+  <form id="score-form" hidden>
+    <div class="score-options">
+      <label>状態<select id="score-status">
+        <option value="auto">仮入力</option><option value="confirmed">確定</option>
+        <option value="unknown">不明</option><option value="not_point">ポイント外</option>
+        <option value="multiple_points">複数ポイント</option>
+      </select></label>
+      <label id="before-source-label">開始前の入力元<select id="before-source">
+        <option value="anchor">手入力</option><option value="chain">直前から連鎖</option>
+      </select></label>
+    </div>
+    <fieldset id="score-before">
+      <legend>開始前カウント</legend>
+      <div class="score-counts"><span></span><span>A</span><span>B</span>
+        <span class="score-sets">セット</span><input id="score-sets-a" class="score-sets" aria-label="セット A" type="number" min="0" step="1" required><input id="score-sets-b" class="score-sets" aria-label="セット B" type="number" min="0" step="1" required>
+        <span>ゲーム</span><input id="score-games-a" aria-label="ゲーム A" type="number" min="0" step="1" required><input id="score-games-b" aria-label="ゲーム B" type="number" min="0" step="1" required>
+        <span>ポイント</span><input id="score-points-a" aria-label="ポイント A" type="number" min="0" step="1" required><input id="score-points-b" aria-label="ポイント B" type="number" min="0" step="1" required>
+      </div>
+      <p id="score-input-hint" class="hint"></p>
+    </fieldset>
+    <label>サーブ側<select id="score-server">
+      <option value="auto">自動</option><option value="A">A（手動）</option><option value="B">B（手動）</option>
+    </select></label>
+    <label>理由・メモ<textarea id="score-note" rows="2"></textarea></label>
+    <div id="score-winners" class="toolbar" aria-label="得点側を指定して確定">
+      <button id="winner-a" type="button" class="primary">A の得点（A）</button>
+      <button id="winner-b" type="button" class="primary">B の得点（B）</button>
+    </div>
+    <div class="toolbar"><button id="score-save" type="submit">カウントを保存</button><button id="score-clear" type="button" class="danger">カウントを消去</button></div>
+  </form>
+</section>
+<details id="match-settings" hidden>
+  <summary>試合設定とカウントCSV</summary>
+  <p id="match-current"></p>
+  <form id="match-form" hidden>
+    <div class="score-options">
+      <label>A の表示名<input id="match-a" required></label><label>B の表示名<input id="match-b" required></label>
+      <label>採点方式<select id="match-type"><option value="soft_tennis">ソフトテニス</option><option value="tennis">硬式テニス</option></select></label>
+      <label>最初のサーブ側<select id="match-first-server"><option>A</option><option>B</option></select></label>
+    </div>
+    <label id="match-soft">マッチのゲーム数<input id="match-games" type="number" min="1" step="2" required></label>
+    <div id="match-hard" class="score-options">
+      <label>セット数<select id="match-best-of"><option value="3">3セット</option><option value="5">5セット</option></select></label>
+      <label class="score-checkbox"><input id="match-no-ad" type="checkbox">ノーアド</label>
+      <label>最終セット<select id="match-final-set">
+        <option value="tie_break">通常タイブレーク</option><option value="match_tie_break">10点マッチタイブレーク</option><option value="advantage">アドバンテージセット</option>
+      </select></label>
+    </div>
+    <div class="toolbar"><button type="submit">試合設定を保存</button></div>
+  </form>
+  <a id="score-csv-download" download>カウントCSVをダウンロード</a>
+  <form id="score-csv-form" hidden>
+    <label>取り込むカウントCSV<input id="score-csv-file" type="file" accept=".csv,text/csv" required></label>
+    <button type="submit">CSVを取り込む</button>
+  </form>
+</details>
 <section class="exports"><button id="export-all">全クリップを書き出す</button><div id="job" role="status" aria-live="polite"></div><progress id="job-progress" hidden></progress><button id="cancel-job" hidden>書き出しをキャンセル</button></section>
 </aside>
 </main><script type="module" src="/static/studio.js"></script>

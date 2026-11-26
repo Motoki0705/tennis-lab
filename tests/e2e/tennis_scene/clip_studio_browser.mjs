@@ -2,11 +2,13 @@
 // PLAYWRIGHT_MODULE=/absolute/node_modules/playwright/index.mjs
 // CLIP_STUDIO_TEST_URL=http://127.0.0.1:8767 node tests/e2e/tennis_scene/clip_studio_browser.mjs
 import assert from 'node:assert/strict';
+import {readFile} from 'node:fs/promises';
 import {pathToFileURL} from 'node:url';
 const {chromium} = await import(pathToFileURL(process.env.PLAYWRIGHT_MODULE).href);
 const browser = await chromium.launch({headless:true,
   ...(process.env.CHROMIUM_PATH ? {executablePath:process.env.CHROMIUM_PATH} : {})});
 const page = await browser.newPage({viewport:{width:1440,height:1000}});
+page.setDefaultTimeout(5000);
 const errors = [];
 page.on('pageerror',error => errors.push(error.message));
 const frameRequests = [];
@@ -15,12 +17,25 @@ const streamedCameras = () => page.locator('video').evaluateAll(videos => videos
 const openSettings = async () => { if (await page.locator('#settings-menu').isHidden()) await page.locator('#settings').click(); };
 const base = process.env.CLIP_STUDIO_TEST_URL;
 assert.ok(base, 'CLIP_STUDIO_TEST_URL must identify a disposable test project');
+const snapshot = async () => (await page.request.get(`${base}/api/project`)).json();
+const row = name => page.locator(`.clip-row[data-clip="${name}"]`);
+const waitForSave = () => page.waitForFunction(() => document.querySelector('#saved').textContent === '保存済み');
+async function confirmChanges(click, count, accept = true) {
+  const answered = page.waitForEvent('dialog').then(async dialog => {
+    const message = dialog.message();
+    if (accept) await dialog.accept(); else await dialog.dismiss();
+    return message;
+  });
+  const [, message] = await Promise.all([click(), answered]);
+  assert.match(message, new RegExp(`${count} クリップのカウントが変わります`));
+}
 try {
   await page.goto(base);
   await page.waitForSelector('.viewer img:not([hidden])');
-  const initial = await (await page.request.get(`${base}/api/project`)).json();
+  const initial = await snapshot();
   assert.equal(initial.dataset_id, 'clip_studio_edit_test', 'Never run editing E2E on a production project');
   assert.equal(initial.clips.length, 0, 'Use an empty disposable project');
+  assert.equal(initial.match, null, 'Use a fresh disposable project with no saved match');
   assert.ok(initial.sources.length >= 2);
   assert.ok(initial.extent[1] > 40);
   assert.equal(await page.locator('.viewer:visible').count(), 1);
@@ -128,6 +143,8 @@ try {
   await page.locator('#clip-name').fill('rally_test');
   await page.locator('#clip-editor button[type=submit]').click();
   await page.waitForFunction(() => document.querySelector('.clip-row')?.textContent.includes('rally_test'));
+  await page.locator('#export-one').click();
+  await page.waitForFunction(() => document.querySelector('#job').textContent.includes('クリップを書き出しました'), null, {timeout: 10000});
   await page.locator('#delete').click();
   await page.waitForFunction(() => document.querySelector('#count').textContent === '0 clips');
   await page.locator('#undo').click();
@@ -158,6 +175,90 @@ try {
   const saved = await (await page.request.get(`${base}/api/project`)).json();
   assert.equal(saved.sources[1].offset_sec,0.25);
   assert.ok(Math.abs(saved.clips[0].start_sec-frameTime)<1e-6);
+
+  // Score saved clips while watching the source, then correct the confirmed chain.
+  await page.locator('#sync-close').click();
+  for (const [start, end] of [[15, 17], [22, 25]]) {
+    await seek(start); await page.locator('#mark-in').click();
+    await seek(end); await page.locator('#mark-out').click();
+    await page.locator('#create').click(); await waitForSave();
+  }
+  let state = await snapshot();
+  const [first, second, third] = state.clips.map(clip => clip.name);
+  assert.deepEqual(state.clips.map(clip => clip.score), [null, null, null]);
+  assert.match(await row(second).textContent(), /未入力/);
+  await row(first).click();
+  await page.locator('#open-match').click();
+  await page.locator('#match-a').fill('青ペア');
+  await page.locator('#match-b').fill('赤ペア');
+  await page.locator('#match-form button[type=submit]').click(); await waitForSave();
+  await page.locator('#score-points-a').fill('2');
+  await page.locator('#score-points-b').fill('1');
+  await page.keyboard.press('b'); // The focused score input suppresses shortcuts.
+  assert.equal((await snapshot()).clips[0].score, null);
+  await page.locator('#play').click();
+  await page.waitForFunction(() => document.querySelector('#play').textContent.includes('停止'));
+  await confirmChanges(() => page.keyboard.press('a'), 1);
+  await waitForSave();
+  assert.match(await page.locator('#play').textContent(), /停止/, 'score save preserves playback');
+  assert.match(await page.locator('#score-after').textContent(), /終了後.*3–1/);
+  await row(second).click();
+  assert.match(await row(second).textContent(), /開始前.*3–1.*仮入力/);
+  await page.locator('#score-note').fill('ネット際');
+  await page.locator('#score-server').selectOption('B');
+  await confirmChanges(() => page.locator('#winner-b').click(), 1);
+  await waitForSave();
+  state = await snapshot();
+  assert.equal(state.clips[1].score.winner, 'B');
+  assert.deepEqual(state.clips[2].score.before.points, [3, 2]);
+
+  await page.reload(); await row(first).click();
+  assert.match(await page.locator('#score-current').textContent(), /確定.*青ペア/);
+  await confirmChanges(() => page.locator('#winner-b').click(), 2, false);
+  assert.equal((await snapshot()).revision, state.revision, 'cancelled preview leaves the revision unchanged');
+  await confirmChanges(() => page.locator('#winner-b').click(), 2);
+  await waitForSave();
+  state = await snapshot();
+  assert.deepEqual(state.clips.map(clip => clip.score.before.points), [[2, 1], [2, 2], [2, 3]]);
+  assert.equal(state.clips[1].score.note, 'ネット際');
+  assert.equal(state.clips[1].score.server, 'B');
+  assert.equal(state.clips[1].score.winner, 'B');
+  assert.match(await row(third).textContent(), /2–3/);
+
+  await row(second).click();
+  await page.locator('#clip-name').fill('moved_rally');
+  await page.locator('#clip-start').fill('29');
+  await page.locator('#clip-end').fill('31');
+  await page.locator('#clip-editor button[type=submit]').click(); await waitForSave();
+  await page.reload(); await row('moved_rally').click();
+  const moved = await snapshot();
+  assert.deepEqual(moved.clips.map(clip => clip.score), state.clips.map(clip => clip.score));
+  assert.match(await row(third).textContent(), /不連続/);
+
+  await page.locator('#match-settings summary').click();
+  const [download] = await Promise.all([
+    page.waitForEvent('download'), page.locator('#score-csv-download').click(),
+  ]);
+  const csv = await readFile(await download.path(), 'utf8');
+  assert.match(csv, /moved_rally,confirmed,,,0,0,2,2,B,B,ネット際/);
+  await page.locator('#score-csv-file').setInputFiles({
+    name: 'score.csv', mimeType: 'text/csv',
+    buffer: Buffer.from(csv.split('\r\n')[0] + '\r\nmoved_rally,confirmed,,,0,0,1,1,A,A,CSV取込\r\n'),
+  });
+  await page.locator('#score-csv-form button[type=submit]').click(); await waitForSave();
+  const imported = await snapshot();
+  assert.deepEqual(imported.clips[0].score, moved.clips[0].score);
+  assert.deepEqual(imported.clips[2].score, moved.clips[2].score);
+  assert.equal(imported.clips[1].score.note, 'CSV取込');
+  assert.equal(imported.clips[1].score.server_source, 'manual');
+  await page.locator('#undo').click(); await waitForSave();
+  assert.deepEqual((await snapshot()).clips, moved.clips);
+  await page.locator('#score-clear').click(); await waitForSave();
+  await row('moved_rally').locator('.clip-score.unscored').waitFor();
+  assert.match(await row('moved_rally').textContent(), /未入力/);
+  assert.deepEqual((await snapshot()).clips[2].score, moved.clips[2].score);
+
+  await page.locator('#sync-toggle').click();
   await page.setViewportSize({width:780,height:1000});
   assert.ok(await page.locator('#seek').isVisible());
   const [narrowViewersBox, narrowSyncBox] = await Promise.all([
@@ -167,5 +268,5 @@ try {
   assert.ok(narrowSyncBox.y >= narrowViewersBox.y + narrowViewersBox.height);
   assert.deepEqual(errors,[]);
   if(process.env.CLIP_STUDIO_SCREENSHOT) await page.screenshot({path:process.env.CLIP_STUDIO_SCREENSHOT,fullPage:true});
-  console.log('PASS: single-camera streaming, on-demand comparison, sync finish release, fullscreen minimal bar, settings menu, clip-mode panels, pointer-anchored per-camera zoom, nearby collapsible sync panel, keyboard steps, fractional-frame edits, undo, reload, progressive scrubbing, 2x playback, sync offsets, responsive layout');
+  console.log('PASS: playback, clip edits, sync and responsive layout; score entry during playback, chain preview/cancel/apply, reload, rename and reorder, CSV download/import/undo, and clearing');
 } finally { await browser.close(); }

@@ -45,9 +45,20 @@ try {
   assert.equal(await page.locator('#export-all').isVisible(),false);
   assert.equal(await page.locator('#sync-toggle').isVisible(),false);
   assert.equal(await page.locator('#clip-editor').isVisible(),false);
+  assert.equal(await page.locator('#score-form').isVisible(),false);
+  assert.equal(await page.locator('#match-form').isVisible(),false);
+  if (original.clips[0].score?.status === 'confirmed') {
+    assert.match(await page.locator('.clip-score').textContent(), /開始前.*確定.*得点/);
+    assert.match(await page.locator('#score-after').textContent(), /終了後/);
+    assert.equal(await page.locator('#score-saved-note').textContent(), original.clips[0].score.note);
+  } else if (original.clips[0].score === null) {
+    assert.equal(await page.locator('#score-current').textContent(), '未入力');
+  }
   // The endpoint must enforce readonly even when the UI is bypassed.
   for (const [path,body] of [
     ['edit',{revision:0,action:'create',start_sec:5,end_sec:6}],
+    ['edit/preview',{revision:0,action:'set_score',name:'clip_000',score:null}],
+    ['edit',{revision:0,action:'set_score',name:'clip_000',score:null}],
     ['jobs',{revision:0,kind:'export'}],['jobs',{revision:0,kind:'sync'}],
   ]) assert.equal((await page.request.post(`${base}/api/${path}`,{data:body})).status(),403);
   await page.locator('#reload').click();

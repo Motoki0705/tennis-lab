@@ -18,6 +18,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from src.tennis_scene.clip_studio.export import ExportSettings
 from src.tennis_scene.clip_studio.initialization import StartupNotice
 from src.tennis_scene.clip_studio.project import ClipStudioProject
+from src.tennis_scene.clip_studio.score_csv import export_scores
 from src.tennis_scene.clip_studio.sources import PreviewSource
 from src.tennis_scene.clip_studio.timeline import source_frame_index
 from src.tennis_scene.clip_studio.web.jobs import JobRequest, Jobs
@@ -131,7 +132,13 @@ def create_app(
         return FileResponse(STATIC / "index.html")
 
     def static(name: str) -> FileResponse:
-        if name not in {"studio.js", "playback.js", "review.js", "style.css"}:
+        if name not in {
+            "studio.js",
+            "playback.js",
+            "review.js",
+            "scoring.js",
+            "style.css",
+        }:
             raise HTTPException(404)
         return FileResponse(STATIC / name)
 
@@ -144,19 +151,37 @@ def create_app(
     def get_review(revision: int) -> dict[str, Any]:
         with editor.lock:
             editor.check_revision(revision)
-            return review_catalog(
+            result: dict[str, Any] = review_catalog(
                 editor.project, editor.infos, editor.path, settings.output_dir
             )
+            return result
 
     def get_correspondence(
         time: Annotated[float, Query(allow_inf_nan=False)], revision: int
     ) -> dict[str, Any]:
         with editor.lock:
             editor.check_revision(revision)
-            return frame_correspondence(editor.project, editor.infos, time)
+            result: dict[str, Any] = frame_correspondence(
+                editor.project, editor.infos, time
+            )
+            return result
 
     def edit(request: Edit) -> dict[str, Any]:
         return editor.edit(request)
+
+    def preview_edit(request: Edit) -> dict[str, int]:
+        return editor.preview(request)
+
+    def score_csv(revision: int) -> Response:
+        with editor.lock:
+            editor.check_revision(revision)
+            return Response(
+                export_scores(editor.project),
+                media_type="text/csv",
+                headers={
+                    "Content-Disposition": f'attachment; filename="{editor.project.video_id}-scores.csv"'
+                },
+            )
 
     def media(camera: int) -> FileResponse:
         if not 0 <= camera < len(sources):
@@ -189,13 +214,16 @@ def create_app(
         )
 
     def start_job(request: JobRequest) -> dict[str, Any]:
-        return jobs.start(request)
+        result: dict[str, Any] = jobs.start(request)
+        return result
 
     def get_job() -> dict[str, Any]:
-        return jobs.snapshot()
+        result: dict[str, Any] = jobs.snapshot()
+        return result
 
     def cancel_job() -> dict[str, Any]:
-        return jobs.cancel()
+        result: dict[str, Any] = jobs.cancel()
+        return result
 
     app.middleware("http")(same_origin)
     app.add_exception_handler(ValueError, value_error)
@@ -208,6 +236,8 @@ def create_app(
     app.add_api_route("/api/review", get_review, methods=["GET"])
     app.add_api_route("/api/correspondence", get_correspondence, methods=["GET"])
     app.add_api_route("/api/edit", edit, methods=["POST"])
+    app.add_api_route("/api/edit/preview", preview_edit, methods=["POST"])
+    app.add_api_route("/api/score-csv", score_csv, methods=["GET"])
     app.add_api_route("/api/media/{camera}", media, methods=["GET"])
     app.add_api_route("/api/frame/{camera}", frame, methods=["GET"])
     app.add_api_route("/api/jobs", start_job, methods=["POST"])
