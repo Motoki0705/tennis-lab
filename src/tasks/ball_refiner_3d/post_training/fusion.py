@@ -87,11 +87,6 @@ class PlayerFusion(nn.Module):
         self.interaction = SetAttention(width) if mode == "set-attention" else None
 
     def forward(self, ball: Tensor, players: Tensor, valid: Tensor) -> Tensor:
-        expected = (*ball.shape[:-1], PLAYER_SLOTS)
-        if players.shape != (*expected, PLAYER_FEATURES) or valid.shape != expected:
-            raise ValueError("Require (B,T,4,D) player features and (B,T,4) validity")
-        if valid.dtype != torch.bool:
-            raise ValueError("Player validity must be boolean")
         clean = torch.where(valid[..., None], players, 0)
         if self.mode == "per-player":
             encoded = torch.stack(

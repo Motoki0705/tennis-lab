@@ -1,13 +1,21 @@
 """Asymmetric joint and timeline fixtures for physical units and validity."""
 
+from dataclasses import replace
+
 import numpy as np
+import pytest
 from numpy.typing import NDArray
 
+from src.tasks.ball_refiner_3d.post_training.dataset import Clip
+from src.tasks.ball_refiner_3d.post_training.labels import Annotations
 from src.tasks.ball_refiner_3d.post_training.motion import (
+    PLAYER_FEATURES,
     BodySkeleton,
+    MotionFeatures,
     extract_motion,
     wrist_features,
 )
+from src.tasks.ball_refiner_3d.post_training.runner import FrameInputs
 from src.tennis_scene.schema import SceneResult
 from src.utils.schema.player import SMPLH_JOINT_IDX, SMPLH_SKELETON
 
@@ -91,3 +99,34 @@ def test_stable_slots_and_velocity_masks_do_not_cross_gaps() -> None:
         [0, 0, 0, 0, 0, 0],
         [1, 1, 1, 1, 0, 0],
     ]
+
+
+@pytest.mark.parametrize(
+    ("field", "message"),
+    [("players", "player features"), ("root_valid", "boolean player validity")],
+)
+def test_bad_player_arrays_are_rejected_before_model_execution(
+    field: str, message: str
+) -> None:
+    valid: NDArray[np.bool_] = np.ones((2, 4), dtype=np.bool_)
+    motion = MotionFeatures(
+        np.zeros((2, 3), np.float32),
+        np.ones(2, dtype=np.bool_),
+        np.zeros((2, 4, PLAYER_FEATURES), np.float32),
+        valid,
+        valid,
+        (1, 2, 3, 4),
+    )
+    parts = {
+        "players": motion.players[..., :2],
+        "root_valid": valid.astype(np.uint8),
+    }
+    clip = Clip(
+        "video_000/clip_001",
+        60.0,
+        replace(motion, **{field: parts[field]}),
+        Annotations((), motion.ball_valid),
+        None,
+    )
+    with pytest.raises(ValueError, match=message):
+        FrameInputs.from_clip(clip)

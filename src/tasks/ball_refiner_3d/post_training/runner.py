@@ -36,6 +36,7 @@ from src.tasks.ball_refiner_3d.post_training.labels import (
 from src.tasks.ball_refiner_3d.post_training.motion import (
     COORDINATE_SCALE,
     PLAYER_FEATURES,
+    PLAYER_SLOTS,
 )
 from src.tasks.ball_refiner_3d.post_training.scoring import (
     Decision,
@@ -86,6 +87,16 @@ class FrameInputs(NamedTuple):
     @classmethod
     def from_clip(cls, clip: Clip) -> FrameInputs:
         m = clip.motion
+        frames = len(m.ball_valid)
+        if m.players.shape != (frames, PLAYER_SLOTS, PLAYER_FEATURES):
+            raise ValueError("Require (T,4,D) player features on the clip frame grid")
+        if (
+            m.root_valid.shape != (frames, PLAYER_SLOTS)
+            or m.root_valid.dtype != np.bool_
+        ):
+            raise ValueError(
+                "Require (T,4) boolean player validity on the clip frame grid"
+            )
         missing = torch.from_numpy(~m.ball_valid[None])
         return cls(
             torch.from_numpy((m.ball_m / COORDINATE_SCALE)[None]),
@@ -104,7 +115,7 @@ class FrameInputs(NamedTuple):
             self.valid.to(device) if with_motion else self.valid,
         )
 
-    def forward(self, model: Model) -> RefinerOutput:
+    def predict(self, model: Model) -> RefinerOutput:
         if isinstance(model, MotionRefiner):
             output: RefinerOutput = model(*self)
         else:
@@ -179,7 +190,7 @@ def _validation(
     with torch.inference_mode():
         for item in clips:
             logits = (
-                item.frames.to(device, with_motion=True).forward(model).event_logits
+                item.frames.to(device, with_motion=True).predict(model).event_logits
             )
             losses.append(float(item.loss(logits)))
             estimates = logits[0].sigmoid().cpu().numpy()
@@ -216,7 +227,7 @@ def _fit(
             item = train[index]
             optimizer.zero_grad(set_to_none=True)
             logits = (
-                item.frames.to(device, with_motion=True).forward(model).event_logits
+                item.frames.to(device, with_motion=True).predict(model).event_logits
             )
             loss = item.loss(logits)
             loss.backward()
@@ -255,7 +266,7 @@ def _fit(
 def _measure(
     model: Model, inputs: FrameInputs, device: torch.device
 ) -> tuple[RefinerOutput, list[float], int | None]:
-    inputs.forward(model)
+    inputs.predict(model)
     cuda = device.type == "cuda"
     if cuda:
         torch.cuda.synchronize(device)
@@ -264,7 +275,7 @@ def _measure(
     result: RefinerOutput
     for repetition in range(TIMING_REPEATS):
         start = time.perf_counter()
-        result = inputs.forward(model)
+        result = inputs.predict(model)
         if cuda:
             torch.cuda.synchronize(device)
         elapsed_ms.append((time.perf_counter() - start) * 1_000)
