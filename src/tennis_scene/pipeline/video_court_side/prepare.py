@@ -45,27 +45,13 @@ from .artifact import (
     VideoCourtSideArtifact,
     VideoSideDecision,
     require_accepted_courts,
+    shared_calibration_digest,
 )
 from .inputs import CourtSideBuildRequest, PinnedSideInputs, selected_evidence_clips
 
 
 def calibration_digest(inputs: CourtSideInput | PlayerCourtSideInput, court: VideoCourtArtifact) -> str:
-    calibration = inputs.calibration
-    diagnostics = calibration.court.diagnostics or {}
-    refs = diagnostics.get("shared_courts", [])
-    scope = court.manifest
-    expected = [(scope["dataset_id"], scope["video_id"], camera, scope["cameras"][camera]) for camera in inputs.source.camera_ids]
-    if (diagnostics.get("temporal_policy") != "static_video_shared_broadcast"
-            or [(r["dataset_id"], r["video_id"], r["camera_id"], r["artifact_digest"]) for r in refs] != expected):
-        raise ValueError("Court side inputs require calibration from the pinned video_shared court")
-    drift = drift_identity(court).get("camera_digests", {})
-    if any(r["drift_digest"] != drift.get(r["camera_id"]) for r in refs):
-        raise ValueError("Frozen calibration disagrees with the selected court drift evidence")
-    for view in calibration.calibration.views:
-        if not 0 <= view.source_index < len(expected) or inputs.source.camera_ids[view.source_index] != view.camera.camera_id:
-            raise ValueError("Calibrated court side cameras disagree with the source view order")
-    digest: str = document_digest({"cameras": [v.camera for v in calibration.calibration.views], "reference": calibration.reference_camera})
-    return digest
+    return shared_calibration_digest(inputs.source, inputs.calibration, court)
 
 
 def observations_digest(indices: NDArray[np.int64], uv: NDArray[np.float32], visible: NDArray[np.bool_]) -> str:

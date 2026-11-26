@@ -49,7 +49,11 @@ export class Playback {
     this.seekEpoch = 0;
     this.tiles = [];
   }
-  load(project) {
+  load(project, preservePlayback = false) {
+    if (preservePlayback && this.playing) {
+      this.project = project;
+      return;
+    }
     this.pause(false);
     this.project = project;
     ++this.generation;

@@ -105,7 +105,7 @@ def build_label_masks(
 ) -> dict[str, NDArray[Any]]:
     """Compute label validity masks and confidence weights for a whole clip.
 
-    The three reconstruction validity masks come from the SceneResult v2 and
+    The three reconstruction validity masks come from SceneResult v2/v3 and
     are hard gates: 2D visibility never re-enables a rejected 3D teacher.
 
     Returns a dict with:

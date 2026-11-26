@@ -3,9 +3,10 @@
 from __future__ import annotations
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
-from typing import TYPE_CHECKING, Literal
+from typing import TYPE_CHECKING, Any, Literal
 
 from src.tennis_scene.archive import load_scene_result
 from src.tennis_scene.pipeline.artifacts import (
@@ -14,6 +15,7 @@ from src.tennis_scene.pipeline.artifacts import (
     write_json_atomic,
 )
 from src.tennis_scene.pipeline.body_artifacts import require_current_body_artifacts
+from src.tennis_scene.pipeline.components.event_detection import EVENT_DETECTION
 from src.tennis_scene.pipeline.contracts import ClipSource
 from src.tennis_scene.pipeline.imports import (
     BallAnnotationImporter,
@@ -93,7 +95,9 @@ def scene_receipt(
     *,
     people_runtime: SubmoduleRuntimeConfig,
     model_identity: str | None = None,
+    event_settings: Mapping[str, Any] | None = None,
 ) -> dict[str, object]:
+    node = "scene_assembly" if event_settings is None else EVENT_DETECTION
     result: dict[str, object] = {
         "status": "complete",
         "source_sha256": store.source_key,
@@ -102,7 +106,8 @@ def scene_receipt(
         "court_detection": config.court_detection,
         "person_precision": _person_precision(people_runtime),
         **({"model_identity": model_identity} if model_identity is not None else {}),
-        "scene_artifact": json_value(store.references()["scene_assembly"]),
+        "scene_artifact": json_value(store.references()[node]),
+        **({EVENT_DETECTION: event_settings} if event_settings is not None else {}),
         "archive": str(archive),
         "archive_sha256": dual_sha256(archive),
         "metadata_sha256": dual_sha256(archive.with_suffix(".metadata.json")),
@@ -118,16 +123,20 @@ def saved_scene(
     *,
     people_runtime: SubmoduleRuntimeConfig,
     model_identity: str | None = None,
+    event_settings: Mapping[str, Any] | None = None,
 ) -> tuple[SceneResult, dict[str, object]]:
     receipt = json.loads((store.root / "scene-completion.json").read_text())
+    references = store.references()
+    node = "scene_assembly" if event_settings is None else EVENT_DETECTION
     if (
         receipt["status"] != "complete"
         or receipt["source_sha256"] != store.source_key
         or receipt["request_sha256"] != request_digest
         or receipt["bundle_sha256"] != config.bundle_sha256
         or receipt["court_detection"] != config.court_detection
+        or receipt.get(EVENT_DETECTION) != event_settings
         or document_digest(receipt["scene_artifact"])
-        != document_digest(json_value(store.references()["scene_assembly"]))
+        != document_digest(json_value(references.get(node)))
     ):
         raise ValueError("Saved scene completion differs from the selected workflow")
     if "person_precision" in receipt:
@@ -144,7 +153,8 @@ def saved_scene(
     if receipt.get("model_identity") != model_identity:
         raise ValueError("Saved scene model identity differs from the selected workflow")
     archive = Path(receipt["archive"])
-    required = require_current_body_artifacts(store.root, json_value(store.references()['scene_assembly']))
+    required = require_current_body_artifacts(store.root, json_value(references["scene_assembly"]))
+    required[node] = json_value(references[node])
     if indexed_scene_path(store.root / 'scene.json', required_components=required) != archive.resolve():
         raise ValueError('Saved scene archive differs from its current component export')
     if (

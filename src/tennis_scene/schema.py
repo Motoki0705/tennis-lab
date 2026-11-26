@@ -20,6 +20,7 @@ from src.tasks.base.model_io import (
     validate_model_artifact_court_keypoint_contract,
     write_model_artifact_court_keypoint_contract,
 )
+from src.tennis_scene.ball_event_schema import validate_scene_ball_events
 
 COURT_REFERENCE_PROVENANCE_KEY = "court_reference_provenance"
 
@@ -102,12 +103,24 @@ class SceneResult:
     player_kp_3d_rejection_code: NDArray[np.uint8] | None = None
     ball_rejection_code: NDArray[np.uint8] | None = None
 
+    # Optional in the dataclass so historical v1/v2 archives and artifacts can
+    # omit these fields. The v3 validator enforces the columns for each source.
+    ball_event_frame: NDArray[np.int32] | None = field(default=None, metadata={"artifact_optional": True})
+    ball_event_kind: NDArray[np.uint8] | None = field(default=None, metadata={"artifact_optional": True})
+    ball_event_coverage: NDArray[np.bool_] | None = field(default=None, metadata={"artifact_optional": True})
+    ball_event_score: NDArray[np.float32] | None = field(default=None, metadata={"artifact_optional": True})
+    ball_event_status: NDArray[np.uint8] | None = field(default=None, metadata={"artifact_optional": True})
+    ball_event_frame_uncertainty: NDArray[np.uint8] | None = field(default=None, metadata={"artifact_optional": True})
+    ball_event_in_point: NDArray[np.bool_] | None = field(default=None, metadata={"artifact_optional": True})
+    ball_event_subtype: NDArray[np.uint8] | None = field(default=None, metadata={"artifact_optional": True})
+    ball_event_side: NDArray[np.int8] | None = field(default=None, metadata={"artifact_optional": True})
+
     @property
     def schema_version(self) -> int:
         if not isinstance(self.metadata, dict):
             raise TypeError("Scene metadata must be a dictionary")
         value = self.metadata.get("scene_schema_version", 1)
-        if type(value) is not int or value not in (1, 2):
+        if type(value) is not int or value not in (1, 2, 3):
             raise ValueError("Unsupported SceneResult schema version")
         return value
 
@@ -122,12 +135,14 @@ SCENE_REASON_FIELDS = (
 
 
 def validate_scene_result_arrays(result: SceneResult) -> None:
-    """V2 requires explicit reconstruction validity, including empty scenes.
+    """V2 and v3 require explicit reconstruction validity, including empty scenes.
 
     Versionless historical archives are v1 and retain their original contract.
     Validity is never inferred from zero-filled geometry or 2D visibility.
     """
-    if result.schema_version == 1:
+    version = result.schema_version
+    validate_scene_ball_events(result, version=version)
+    if version == 1:
         present = [name for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS) if getattr(result, name) is not None]
         if present:
             raise ValueError(f"v1 scenes have no reconstruction validity fields: {present}")

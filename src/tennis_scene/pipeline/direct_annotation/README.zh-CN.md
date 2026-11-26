@@ -55,6 +55,7 @@ benchmark condition核对；缺失、损坏或冲突会显式停止。controller
 .venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
   'video_paths=[samples/cam0.mp4,samples/cam1.mp4,samples/cam2.mp4]' \
   'camera_ids=[cam0,cam1,cam2]' 'clip_id=meiji_3cam/video_000/clip_000' \
+  event_detection.method=rule \
   ball_detection.method=gpt_annotation ball_detection.checkpoint=null \
   direct_annotation.request=chat_annotation/campaigns/scene-inputs/request.json \
   direct_annotation.request_sha256="$REQUEST_SHA256" \

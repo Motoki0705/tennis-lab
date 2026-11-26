@@ -1,0 +1,416 @@
+{
+  "r7_plan_sha256": "97f01790ce568bd1189d731b9fbe27b44a880b6ecadcacb35abe1dd018eb4540",
+  "r7_features_sha256": "544871acff0054754a96a808290bd7535458ed45339923cec3d02cdbba680334",
+  "side_report_sha256": "80df2f60ebba67d996471009d2aa6f0a94bed35f16905ef95ac01559f9664fd6",
+  "clips": {
+    "video_000/clip_000": {
+      "calibration_artifact_id": "85b0e4f36faf4d1c4c15a8093522371af0c4ad67d9a6b26c1752d48a7de2c99e",
+      "scores": {
+        "greedy": {
+          "pairs_legacy": {
+            "tp": 3384,
+            "fp": 128,
+            "fn": 2501,
+            "precision": 0.9635535307517085,
+            "recall": 0.5750212404418011,
+            "f1": 0.7202298605938066
+          },
+          "coverage": {
+            "cam0": {
+              "label_boxes": 2120,
+              "matched_label_boxes": 2120,
+              "unmatched_predicted_boxes": 2448,
+              "unmatched_predicted_boxes_with_id": 1543
+            },
+            "cam1": {
+              "label_boxes": 2005,
+              "matched_label_boxes": 2005,
+              "unmatched_predicted_boxes": 226,
+              "unmatched_predicted_boxes_with_id": 27
+            },
+            "cam2": {
+              "label_boxes": 2021,
+              "matched_label_boxes": 2020,
+              "unmatched_predicted_boxes": 1570,
+              "unmatched_predicted_boxes_with_id": 1197
+            }
+          },
+          "pairs_player_only": {
+            "tp": 3384,
+            "fp": 107,
+            "fn": 2501,
+            "precision": 0.9693497565167574,
+            "recall": 0.5750212404418011,
+            "f1": 0.7218430034129693
+          },
+          "solver_ms_p50": 0.008777016773819923,
+          "solver_ms_p95": 0.01101199595723301
+        },
+        "milp": {
+          "pairs_legacy": {
+            "tp": 3489,
+            "fp": 85,
+            "fn": 2396,
+            "precision": 0.9762171236709569,
+            "recall": 0.5928632115548004,
+            "f1": 0.7377101173485568
+          },
+          "coverage": {
+            "cam0": {
+              "label_boxes": 2120,
+              "matched_label_boxes": 2120,
+              "unmatched_predicted_boxes": 2448,
+              "unmatched_predicted_boxes_with_id": 1541
+            },
+            "cam1": {
+              "label_boxes": 2005,
+              "matched_label_boxes": 2005,
+              "unmatched_predicted_boxes": 226,
+              "unmatched_predicted_boxes_with_id": 33
+            },
+            "cam2": {
+              "label_boxes": 2021,
+              "matched_label_boxes": 2020,
+              "unmatched_predicted_boxes": 1570,
+              "unmatched_predicted_boxes_with_id": 1223
+            }
+          },
+          "pairs_player_only": {
+            "tp": 3489,
+            "fp": 63,
+            "fn": 2396,
+            "precision": 0.9822635135135135,
+            "recall": 0.5928632115548004,
+            "f1": 0.7394299035710502
+          },
+          "solver_ms_p50": 6.519798014778644,
+          "solver_ms_p95": 8.68442195787793
+        }
+      },
+      "source_frames": 1010,
+      "camera_rows": [
+        4568,
+        2231,
+        3590
+      ],
+      "label_sha256": "80aee90d551a6618e5514d161aecdc5d3265093deb652970da563ec001f8f5f9",
+      "turns": [
+        false,
+        false,
+        true
+      ],
+      "changed_frames": 126,
+      "higher_geometry_score_frames": 126,
+      "max_candidates": 25,
+      "p95_candidates": 16.0,
+      "empty_frames": 0
+    },
+    "video_000/clip_007": {
+      "calibration_artifact_id": "d8ee67c22079abf69e9e594bb6b1000e6bbe354ab6167c0aba672e9b2033c145",
+      "scores": {
+        "greedy": {
+          "pairs_legacy": {
+            "tp": 3164,
+            "fp": 32,
+            "fn": 508,
+            "precision": 0.9899874843554443,
+            "recall": 0.8616557734204793,
+            "f1": 0.9213744903902156
+          },
+          "coverage": {
+            "cam0": {
+              "label_boxes": 1426,
+              "matched_label_boxes": 1426,
+              "unmatched_predicted_boxes": 1755,
+              "unmatched_predicted_boxes_with_id": 927
+            },
+            "cam1": {
+              "label_boxes": 1385,
+              "matched_label_boxes": 1385,
+              "unmatched_predicted_boxes": 81,
+              "unmatched_predicted_boxes_with_id": 72
+            },
+            "cam2": {
+              "label_boxes": 1528,
+              "matched_label_boxes": 1528,
+              "unmatched_predicted_boxes": 1285,
+              "unmatched_predicted_boxes_with_id": 927
+            }
+          },
+          "pairs_player_only": {
+            "tp": 3164,
+            "fp": 4,
+            "fn": 508,
+            "precision": 0.9987373737373737,
+            "recall": 0.8616557734204793,
+            "f1": 0.9251461988304094
+          },
+          "solver_ms_p50": 0.009331997716799378,
+          "solver_ms_p95": 0.01167249429272487
+        },
+        "milp": {
+          "pairs_legacy": {
+            "tp": 3216,
+            "fp": 34,
+            "fn": 456,
+            "precision": 0.9895384615384616,
+            "recall": 0.8758169934640523,
+            "f1": 0.9292112106327651
+          },
+          "coverage": {
+            "cam0": {
+              "label_boxes": 1426,
+              "matched_label_boxes": 1426,
+              "unmatched_predicted_boxes": 1755,
+              "unmatched_predicted_boxes_with_id": 959
+            },
+            "cam1": {
+              "label_boxes": 1385,
+              "matched_label_boxes": 1385,
+              "unmatched_predicted_boxes": 81,
+              "unmatched_predicted_boxes_with_id": 73
+            },
+            "cam2": {
+              "label_boxes": 1528,
+              "matched_label_boxes": 1528,
+              "unmatched_predicted_boxes": 1285,
+              "unmatched_predicted_boxes_with_id": 973
+            }
+          },
+          "pairs_player_only": {
+            "tp": 3216,
+            "fp": 5,
+            "fn": 456,
+            "precision": 0.99844768705371,
+            "recall": 0.8758169934640523,
+            "f1": 0.9331205570868997
+          },
+          "solver_ms_p50": 6.087649991968647,
+          "solver_ms_p95": 7.960015862772703
+        }
+      },
+      "source_frames": 652,
+      "camera_rows": [
+        3181,
+        1466,
+        2813
+      ],
+      "label_sha256": "18350c373d84f34a60efe5487c2811b8dfc3e1b1b15922fdcea8c6150cd4cea1",
+      "turns": [
+        false,
+        false,
+        true
+      ],
+      "changed_frames": 128,
+      "higher_geometry_score_frames": 128,
+      "max_candidates": 26,
+      "p95_candidates": 20.0,
+      "empty_frames": 0
+    },
+    "video_001/clip_001": {
+      "calibration_artifact_id": "c55382b889a81fff4d67c82a850b14e311bffd48c63ad3264858bd6df96afec6",
+      "scores": {
+        "greedy": {
+          "pairs_legacy": {
+            "tp": 6496,
+            "fp": 815,
+            "fn": 954,
+            "precision": 0.8885241417042812,
+            "recall": 0.8719463087248323,
+            "f1": 0.8801571709233792
+          },
+          "coverage": {
+            "cam0": {
+              "label_boxes": 3703,
+              "matched_label_boxes": 3703,
+              "unmatched_predicted_boxes": 3243,
+              "unmatched_predicted_boxes_with_id": 1755
+            },
+            "cam1": {
+              "label_boxes": 3777,
+              "matched_label_boxes": 3777,
+              "unmatched_predicted_boxes": 681,
+              "unmatched_predicted_boxes_with_id": 526
+            },
+            "cam2": {
+              "label_boxes": 3793,
+              "matched_label_boxes": 3793,
+              "unmatched_predicted_boxes": 2775,
+              "unmatched_predicted_boxes_with_id": 1742
+            }
+          },
+          "pairs_player_only": {
+            "tp": 6496,
+            "fp": 0,
+            "fn": 954,
+            "precision": 1.0,
+            "recall": 0.8719463087248323,
+            "f1": 0.931593288398107
+          },
+          "solver_ms_p50": 0.010830495739355683,
+          "solver_ms_p95": 0.014782021753489968
+        },
+        "milp": {
+          "pairs_legacy": {
+            "tp": 6395,
+            "fp": 959,
+            "fn": 1055,
+            "precision": 0.8695947783519173,
+            "recall": 0.8583892617449664,
+            "f1": 0.8639556876519859
+          },
+          "coverage": {
+            "cam0": {
+              "label_boxes": 3703,
+              "matched_label_boxes": 3703,
+              "unmatched_predicted_boxes": 3243,
+              "unmatched_predicted_boxes_with_id": 1842
+            },
+            "cam1": {
+              "label_boxes": 3777,
+              "matched_label_boxes": 3777,
+              "unmatched_predicted_boxes": 681,
+              "unmatched_predicted_boxes_with_id": 619
+            },
+            "cam2": {
+              "label_boxes": 3793,
+              "matched_label_boxes": 3793,
+              "unmatched_predicted_boxes": 2775,
+              "unmatched_predicted_boxes_with_id": 1768
+            }
+          },
+          "pairs_player_only": {
+            "tp": 6395,
+            "fp": 0,
+            "fn": 1055,
+            "precision": 1.0,
+            "recall": 0.8583892617449664,
+            "f1": 0.9237992054893464
+          },
+          "solver_ms_p50": 6.03185199724976,
+          "solver_ms_p95": 8.263072394765913
+        }
+      },
+      "source_frames": 1300,
+      "camera_rows": [
+        6946,
+        4458,
+        6568
+      ],
+      "label_sha256": "d780dc83051119f7028345e03ff89d2d6599dd9c847ece10e2b599ac2fcf7ffb",
+      "turns": [
+        false,
+        false,
+        true
+      ],
+      "changed_frames": 372,
+      "higher_geometry_score_frames": 372,
+      "max_candidates": 36,
+      "p95_candidates": 29.0,
+      "empty_frames": 0
+    },
+    "video_002/clip_013": {
+      "calibration_artifact_id": "f46e2111f25ce05d2637e081384055a1d2aadcf2dfe6b70e3211341ae0f657c7",
+      "scores": {
+        "greedy": {
+          "pairs_legacy": {
+            "tp": 2524,
+            "fp": 24,
+            "fn": 652,
+            "precision": 0.9905808477237049,
+            "recall": 0.7947103274559194,
+            "f1": 0.8819007686932215
+          },
+          "coverage": {
+            "cam0": {
+              "label_boxes": 1059,
+              "matched_label_boxes": 1059,
+              "unmatched_predicted_boxes": 1293,
+              "unmatched_predicted_boxes_with_id": 29
+            },
+            "cam1": {
+              "label_boxes": 1074,
+              "matched_label_boxes": 1074,
+              "unmatched_predicted_boxes": 9,
+              "unmatched_predicted_boxes_with_id": 6
+            },
+            "cam2": {
+              "label_boxes": 1256,
+              "matched_label_boxes": 1256,
+              "unmatched_predicted_boxes": 19,
+              "unmatched_predicted_boxes_with_id": 4
+            }
+          },
+          "pairs_player_only": {
+            "tp": 2524,
+            "fp": 24,
+            "fn": 652,
+            "precision": 0.9905808477237049,
+            "recall": 0.7947103274559194,
+            "f1": 0.8819007686932215
+          },
+          "solver_ms_p50": 0.007905007805675268,
+          "solver_ms_p95": 0.010472984286025161
+        },
+        "milp": {
+          "pairs_legacy": {
+            "tp": 2583,
+            "fp": 24,
+            "fn": 593,
+            "precision": 0.9907940161104718,
+            "recall": 0.8132871536523929,
+            "f1": 0.8933079716410167
+          },
+          "coverage": {
+            "cam0": {
+              "label_boxes": 1059,
+              "matched_label_boxes": 1059,
+              "unmatched_predicted_boxes": 1293,
+              "unmatched_predicted_boxes_with_id": 14
+            },
+            "cam1": {
+              "label_boxes": 1074,
+              "matched_label_boxes": 1074,
+              "unmatched_predicted_boxes": 9,
+              "unmatched_predicted_boxes_with_id": 6
+            },
+            "cam2": {
+              "label_boxes": 1256,
+              "matched_label_boxes": 1256,
+              "unmatched_predicted_boxes": 19,
+              "unmatched_predicted_boxes_with_id": 4
+            }
+          },
+          "pairs_player_only": {
+            "tp": 2583,
+            "fp": 2,
+            "fn": 593,
+            "precision": 0.9992263056092844,
+            "recall": 0.8132871536523929,
+            "f1": 0.896719319562576
+          },
+          "solver_ms_p50": 1.1310580011922866,
+          "solver_ms_p95": 8.141535797039953
+        }
+      },
+      "source_frames": 535,
+      "camera_rows": [
+        2352,
+        1083,
+        1275
+      ],
+      "label_sha256": "b1b69981509b2d22703b6bdd281c71596dc09f15716f6ad25ba8c833a0708428",
+      "turns": [
+        false,
+        false,
+        true
+      ],
+      "changed_frames": 51,
+      "higher_geometry_score_frames": 51,
+      "max_candidates": 16,
+      "p95_candidates": 13.0,
+      "empty_frames": 0
+    }
+  },
+  "wall_seconds": 24.353504839993548
+}

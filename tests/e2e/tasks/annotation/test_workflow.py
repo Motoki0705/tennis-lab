@@ -9,6 +9,8 @@ from pathlib import Path
 
 import pytest
 
+from tests.support.module_process import isolated_module_command
+
 
 @pytest.mark.parametrize(
     "entrypoint",
@@ -125,7 +127,7 @@ def test_review_cli_annotation_and_adoption(tmp_path: Path) -> None:
 def test_scene_entrypoint_annotates_continues_reloads_triangulates_and_publishes(tmp_path: Path) -> None:
     """A clean CPU process keeps unrelated pytest model memory out of the budget."""
     from src.utils.paths import PROJECT_ROOT
-    result = subprocess.run([sys.executable, "-m", "tests.e2e.tasks.annotation.test_workflow", str(tmp_path)],
+    result = subprocess.run(isolated_module_command("tests.e2e.tasks.annotation.test_workflow", str(tmp_path)),
         cwd=PROJECT_ROOT, capture_output=True, text=True, timeout=240)
     assert result.returncode == 0, result.stdout + result.stderr
 
@@ -228,6 +230,7 @@ def _exercise_direct_scene(tmp_path: Path) -> None:
             patch.setattr(TennisSceneOrchestrator, "from_runtime_config", lambda cfg: orchestrator)
             assert unwrap(run_pipeline.main)(fixture.hydra_config) == 0
         scene = load_scene_result(fixture.config.output_path)
+        assert scene.schema_version == 3 and scene.metadata["ball_events"]["source"] == "rule"
         np.testing.assert_array_equal(scene.ball_3d_valid, [True, True, True, False])
         np.testing.assert_allclose(scene.ball_3d[:3], fixture.fixed.truth[:3], atol=2e-5)
         assert len(timed_out) == 1 and len(clocks) == 4
@@ -236,6 +239,7 @@ def _exercise_direct_scene(tmp_path: Path) -> None:
         assert receipt["learning"]["status"] == "not_requested"
         assert orchestrator.last_store is not None
         references = orchestrator.last_store.references()
+        assert references["event_detection"].version == 3
         ball = orchestrator.last_store.load(references["ball_triangulation"], ArtifactCodec(BallAnnotationTriangulationOutput))
         assert ball.estimated[1, 0] and ball.used_views[1, 0] and not ball.observed[1, 0]
         assert ball.missing_reasons[-1] == "insufficient_views"

@@ -106,17 +106,77 @@ def test_read_only_review_rejects_every_write_route_and_keeps_original(web_clien
     from src.tennis_scene.clip_studio.web.service import Edit
 
     client, runtime = web_client
-    project = client.app.state.editor.project
-    project.save(runtime.export.projects_path, runtime.export.resolver)
+    client.post(
+        "/api/edit",
+        json={"revision": 0, "action": "create", "start_sec": 0.5, "end_sec": 1.0},
+    ).raise_for_status()
+    client.post(
+        "/api/edit",
+        json={
+            "revision": 1,
+            "action": "set_match",
+            "match": {
+                "sides": {"A": "青", "B": "赤"},
+                "rules": {"type": "soft_tennis", "match_games": 7},
+                "first_server": "A",
+            },
+        },
+    ).raise_for_status()
+    client.post(
+        "/api/edit",
+        json={
+            "revision": 2,
+            "action": "set_score",
+            "name": "clip_000",
+            "score": {
+                "status": "confirmed",
+                "before": {"games": [0, 0], "points": [2, 1]},
+                "before_source": "anchor",
+                "server": None,
+                "server_source": "auto",
+                "winner": "A",
+                "note": "",
+            },
+        },
+    ).raise_for_status()
     before = runtime.export.projects_path.read_bytes()
     with TestClient(
         create_app(runtime, load_review_project(runtime), read_only=True)
     ) as review:
-        assert review.get("/api/project").json()["read_only"]
+        saved = review.get("/api/project").json()
+        assert saved["read_only"]
+        assert saved["clips"][0]["score"]["winner"] == "A"
+        assert saved["score_views"]["clip_000"]["after"]["points"] == [3, 1]
+        csv = review.get("/api/score-csv?revision=0")
+        assert csv.headers["content-type"].startswith("text/csv")
+        assert "clip_000,confirmed,,,0,0,2,1,A,A," in csv.text
+        assert review.get("/api/score-csv?revision=3").status_code == 409
         for path, body in [
             (
                 "/api/edit",
                 {"revision": 0, "action": "create", "start_sec": 0.5, "end_sec": 1.0},
+            ),
+            (
+                "/api/edit/preview",
+                {
+                    "revision": 0,
+                    "action": "set_score",
+                    "name": "clip_000",
+                    "score": None,
+                },
+            ),
+            (
+                "/api/edit",
+                {
+                    "revision": 0,
+                    "action": "set_score",
+                    "name": "clip_000",
+                    "score": None,
+                },
+            ),
+            (
+                "/api/edit",
+                {"revision": 0, "action": "import_scores", "csv_text": csv.text},
             ),
             ("/api/jobs", {"revision": 0, "kind": "export"}),
             ("/api/jobs", {"revision": 0, "kind": "sync"}),
@@ -176,9 +236,7 @@ def test_review_package_cli_opens_saved_project_read_only(web_client, monkeypatc
             assert snapshot["video_id"] == project.video_id
             assert review.get("/api/jobs").json() == {"status": "idle"}
             assert (
-                review.get("/api/frame/1?time=0.5&revision=0").headers[
-                    "x-frame-index"
-                ]
+                review.get("/api/frame/1?time=0.5&revision=0").headers["x-frame-index"]
                 == "7"
             )
             for path, body in [
@@ -204,7 +262,9 @@ def test_review_package_cli_opens_saved_project_read_only(web_client, monkeypatc
     assert not runtime.export.output_dir.exists()
 
 
-def test_review_package_cli_does_not_initialize_missing_project(web_client, monkeypatch):
+def test_review_package_cli_does_not_initialize_missing_project(
+    web_client, monkeypatch
+):
     from src.tennis_scene.clip_studio import __main__ as review_cli
 
     _, runtime = web_client
@@ -249,12 +309,13 @@ def test_sync_controls_share_a_collapsible_media_area_with_video(web_client):
     )
 
 
-
 def test_playback_settings_and_fullscreen_stage_are_served(web_client):
     """Rate/step live in the gear menu inside the fullscreen stage with the timeline."""
     client, _ = web_client
     index = client.get("/").text
-    stage = index[index.index('<section id="stage"') : index.index('<section id="time-review"')]
+    stage = index[
+        index.index('<section id="stage"') : index.index('<section id="time-review"')
+    ]
     menu = stage[stage.index('<div id="settings-menu"') :]
     assert '<select id="rate">' in menu and '<select id="step">' in menu
     for element in ('id="fullscreen"', 'id="viewers"', 'id="seek"', 'id="clip-track"'):
@@ -264,6 +325,7 @@ def test_playback_settings_and_fullscreen_stage_are_served(web_client):
     stylesheet = client.get("/static/style.css").text
     assert ".clip-mode #dataset-map,.clip-mode #time-review{display:none}" in stylesheet
     assert "#stage:fullscreen" in stylesheet
+
 
 def test_autosave_revision_and_cross_origin_protection(web_client):
     client, runtime = web_client

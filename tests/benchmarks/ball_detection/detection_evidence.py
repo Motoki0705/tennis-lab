@@ -111,7 +111,7 @@ def main() -> None:
     with initialize_config_dir(version_base="1.3", config_dir=str(project / "src/tennis_scene/configs")):
         config = compose(config_name="pipeline", overrides=overrides)
     (report / "qualification.pipeline_config.yaml").write_text(OmegaConf.to_yaml(config, resolve=True))
-    runtime = PipelineRuntimeConfig.from_config(config, bind_inputs=False)
+    runtime = PipelineRuntimeConfig.from_config(config, bind_inputs=False, bind_event_detection=False)
     manifest = ClipManifest.load(args.clip.resolve())
     source = build_clip_source(tuple(manifest.media_path(camera) for camera in manifest.camera_ids),
                                tuple(manifest.camera_ids), clip_id=manifest.clip_id)

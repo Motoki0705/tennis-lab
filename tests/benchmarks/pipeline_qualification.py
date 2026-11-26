@@ -169,7 +169,7 @@ def validate(report: Path) -> None:
         runner.run()
         require_statuses(runner.statuses, preflight['order'], 'loaded')
         scene = load_scene_result(store.index_path)
-        same_scene(scene, runner.output('scene_assembly'))
+        same_scene(scene, runner.output('event_detection'))
         receipt['outputs'] = audit_outputs(runner, source, scene)
         receipt['video'] = render(scene, source, report / 'three_camera_full.mp4')
         receipt.update(status='ok', frames=source.num_frames, artifacts=json_value(runner.references))

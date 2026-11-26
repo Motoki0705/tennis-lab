@@ -18,6 +18,7 @@ from src.tennis_scene.pipeline.batching import (
     WorkingMemory,
     drain_batch_jobs,
 )
+from src.tennis_scene.pipeline.components.event_detection import EVENT_DETECTION
 from src.tennis_scene.pipeline.errors import is_clip_failure
 from src.tennis_scene.pipeline.execution_plan import (
     ClipExecution,
@@ -344,12 +345,14 @@ class PlanExecutor:
     def finalize_clip(self, clip_id: str, *, memory: SourceMemory | None = None) -> tuple[SceneResult, Path]:
         """Export a completed clip independently of any other clip's outcome."""
         plan = self.plan
-        if not plan.clip_complete(clip_id) or (clip_id, "scene_assembly") not in plan.references:
+        key = (clip_id, EVENT_DETECTION)
+        if key not in plan.nodes:
+            key = (clip_id, "scene_assembly")
+        if not plan.clip_complete(clip_id) or key not in plan.references:
             raise ValueError(f"Cannot finalize an incomplete clip: {clip_id}")
-        key = (clip_id, "scene_assembly")
         scene = self._read_artifact(plan.clips[clip_id].store, plan.references[key], plan.nodes[key].io.output_type, memory)
         if not isinstance(scene, SceneResult):
-            raise TypeError("scene_assembly must produce a SceneResult")
+            raise TypeError(f"{key[1]} must produce a SceneResult")
         if memory is not None:
             memory.reserve(artifact_memory_bytes(scene))
         if clip_id not in plan.exports:

@@ -21,6 +21,7 @@ from src.tennis_scene.configuration import PipelineRuntimeConfig
 from src.tennis_scene.pipeline import TennisSceneOrchestrator
 from src.utils.configuration import PathRole
 from src.utils.paths import PROJECT_ROOT
+from tests.support.module_process import isolated_module_command
 from tests.support.tennis_scene.direct_workflow import (
     complete_annotations,
     direct_fixture,
@@ -154,12 +155,10 @@ def test_blank_cli_pins_policy_runs_isolated_condition_and_reports_without_publi
     # retaining the real scheduler and the fixed 1536 MiB budget.
     parent_pss = _process_pss()
     result = subprocess.run(
-        [
-            sys.executable,
-            "-m",
+        isolated_module_command(
             "tests.integration.tasks.annotation.test_scene_workflow",
             str(tmp_path),
-        ],
+        ),
         cwd=PROJECT_ROOT,
         env={**os.environ, "PYTHONPATH": str(PROJECT_ROOT)},
         capture_output=True,
