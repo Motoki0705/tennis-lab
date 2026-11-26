@@ -41,6 +41,11 @@ from src.tennis_scene.pipeline.components.ecpose import (
     ECPoseFeaturesModule,
     ECPoseModule,
 )
+from src.tennis_scene.pipeline.components.event_detection import (
+    EVENT_DETECTION,
+    EventDetectionInputAssembler,
+    EventDetectionModule,
+)
 from src.tennis_scene.pipeline.components.fasthmr import FastHMRModule
 from src.tennis_scene.pipeline.components.gvhmr import GVHMRModule
 from src.tennis_scene.pipeline.components.hmr2_features import HMR2FeaturesModule
@@ -123,6 +128,7 @@ from src.tennis_scene.pipeline.recipes import (
     RecipeName,
 )
 from src.tennis_scene.pipeline.runner import ComponentNode
+from src.tennis_scene.pipeline.source_identity import source_commit
 from src.tennis_scene.pipeline.video_court.component import (
     SharedCourtAssembler,
     SharedCourtModule,
@@ -233,8 +239,12 @@ def declared_model_identities(cfg: PipelineRuntimeConfig, stage: str, component:
 
 
 def publication_model_identities(cfg: PipelineRuntimeConfig) -> dict[str, Any]:
-    return {stage: declared_model_identities(cfg, stage, component)
-        for stage, component in standard_model_components(cfg, ()).items()}
+    identities = {stage: declared_model_identities(cfg, stage, component)
+                  for stage, component in standard_model_components(cfg, ()).items()}
+    identities[EVENT_DETECTION] = model_identities(
+        cfg.require_event_detection().model_specs(), cfg.court_kp.asset_catalog.file_identity,
+    )
+    return identities
 
 
 def binds_appearance_media(cfg: PipelineRuntimeConfig, overrides: Mapping[str, Any]) -> bool:
@@ -304,6 +314,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     ``settings`` of a standard component are built lazily so that asset
     identities (which require every enabled asset to exist) are computed only
     for components that are not overridden.
+    Stage-only callers can leave event detection unbound.
     """
     ids = source.camera_ids
     overrides = {} if overrides is None else overrides
@@ -587,6 +598,11 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         SceneAssemblyInputAssembler(cfg.human_vis_threshold, include_ball=include_ball),
         {**reconstructed, "skeleton": "player_triangulation", "placement": "body_placement",
          **({"ball": "ball_triangulation"} if include_ball else {})}, lambda: {"enabled": cfg.enabled})
+    if cfg.event_detection is not None:
+        events = EventDetectionModule(cfg.event_detection, source.clip_id, code_commit=source_commit())
+        add(EVENT_DETECTION, events, EventDetectionInputAssembler(), {"scene": "scene_assembly"},
+            events.cache_identity, require_component=None if EVENT_DETECTION in overrides else events.require_inputs,
+            component_origin_only=True)
     unknown = set(overrides) - {node.name for node in nodes}
     if unknown:
         raise ValueError(f'Unknown component override: {sorted(unknown)}')
@@ -605,9 +621,11 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
                     {**cfg.fasthmr.inference_weights, **cfg.fasthmr.geometry_weights}.items()})
     person_assets = ({"detector": cfg.people.dino_checkpoint, "vitpose": cfg.people.vitpose_checkpoint}
                      if cfg.ecpose is None else {"ecpose": cfg.ecpose.checkpoint})
+    event_checkpoint = None if cfg.event_detection is None else cfg.event_detection.checkpoint
     return {
         **({"court": cfg.court_kp.checkpoint} if cfg.direct_annotation is None and cfg.video_court is None else {}),
         **({"ball": cfg.ball_detection.checkpoint} if cfg.ball_detection is not None and not cfg.omit_ball_components else {}),
+        **({"ball_event_refiner": event_checkpoint} if event_checkpoint is not None else {}),
         **(person_assets if people else {}),
         **({"association_encoder": cfg.association_encoder_weights} if people and cfg.association_encoder_weights is not None else {}),
         **({"tracking_encoder": cfg.tracking_encoder_weights, "aflink": cfg.aflink_checkpoint} if people else {}),

@@ -119,6 +119,11 @@ SHA-256に結び付けます。画面内の4ステータスを等重みで三角
 選手軸は空で、無効を表すmaskと停止理由、人物による再検証の有無をsceneに記録します。
 CPUで読み込んだ固定成果物を使い、通常runnerのキャッシュ照合は標準経路で引き続き有効です。
 
+完成markerのSceneResult版は、保存済みのmetadataと採用成果物の系譜に照合します。
+v2のexportは `scene_assembly` を参照します。イベント注釈付きのv3では同じ映像・時間軸・幾何で
+イベント列、coverage、根拠を引き継ぎ、新しい `scene_assembly` に依存する `event_detection` をexportします。
+推定イベント付きのclipを更新するには新しい軌道でのイベント推定が必要なため、このコマンドは参照の切替前に停止します。
+
 sceneの `metadata.external_ball.status_codes` はcamera × frameの入力ステータスを
 `status_labels` の添字で表します。採用座標は `ball_vis`、3D欠測理由は
 `ball_rejection_code`（1はview不足、7は幾何solver不成立）で確認できます。

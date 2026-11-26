@@ -2,7 +2,7 @@
 id: run-meiji-external-ball-20261124
 type: run
 task: tennis_scene
-sequence: 98
+sequence: 105
 recorded_at: '2026-11-24'
 title: Meiji 4camの外部ボール位置を既存の69シーンへ反映
 issue: 2458

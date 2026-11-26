@@ -145,6 +145,14 @@ axis with validity masks, and that player validation was skipped for those
 cameras. The import runs on CPU and leaves the standard runner's cache
 identity checks in effect.
 
+The completion marker declares the scene version, which the import checks
+against the archive metadata and adopted component lineage. A v2 publication
+exports `scene_assembly`. A v3 publication with saved frame annotations reuses
+the event rows, coverage and evidence on the same timeline and camera geometry.
+Its `event_detection` export depends on the new `scene_assembly`. Clips with
+inferred events require a new event detection run for the changed trajectory,
+so this command rejects them before switching pointers.
+
 The ball fit uses the annotation geometry policy above. In the exported
 archive, `metadata.external_ball.status_codes` and `status_labels` describe the
 input positions in camera/frame order. `ball_vis` identifies those accepted

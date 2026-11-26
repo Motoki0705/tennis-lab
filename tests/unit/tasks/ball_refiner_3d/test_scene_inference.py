@@ -44,8 +44,9 @@ def test_predictor_fps_tolerance(predictor, fps, tolerance, accepted):
             predictor.predict(coordinates, missing, fps=fps, seed=0, **overrides)
 
 
+@pytest.mark.parametrize("schema_version", [2, 3])
 def test_scene_prediction_preserves_mask_frame_grid_and_actual_fps(
-    tmp_path, monkeypatch, predictor
+    tmp_path, monkeypatch, predictor, schema_version
 ):
     scene = SceneResult(
         num_frames=3,
@@ -58,7 +59,7 @@ def test_scene_prediction_preserves_mask_frame_grid_and_actual_fps(
         player_yaw=np.empty((0, 3), np.float32),
         ball_3d=np.array([[1, -2, 3], [np.nan, np.nan, np.nan], [4, 5, 6]], np.float32),
         ball_3d_valid=np.array([True, False, True]),
-        metadata={"scene_schema_version": 2},
+        metadata={"scene_schema_version": schema_version},
     )
     source = tmp_path / "scene.json"
     source.write_bytes(b"fixed index")

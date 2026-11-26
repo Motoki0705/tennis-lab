@@ -249,7 +249,7 @@ def main() -> None:
             version_base="1.3",
         ):
             raw = compose(config_name="pipeline", overrides=args.override)
-        cfg = PipelineRuntimeConfig.from_config(raw, bind_inputs=False)
+        cfg = PipelineRuntimeConfig.from_config(raw, bind_inputs=False, bind_event_detection=False)
         torch.backends.mha.set_fastpath_enabled(False)
         _export_model(args, cfg)
     else:

@@ -3,12 +3,16 @@
 from __future__ import annotations
 
 import time
-from dataclasses import replace
+from dataclasses import fields, replace
 from pathlib import Path
 from typing import Any, TypeVar, cast
 
 import numpy as np
 
+from src.tennis_scene.ball_event_schema import (
+    BALL_EVENT_FIELDS,
+    validate_scene_ball_events,
+)
 from src.tennis_scene.generate_dataset.manifest import ClipManifest, DatasetClipRecord
 from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.assembly import assemble_automatic_scene
@@ -23,6 +27,10 @@ from src.tennis_scene.pipeline.components.ball_reconstruction import (
 from src.tennis_scene.pipeline.components.camera_alignment import CameraAlignmentOutput
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
+)
+from src.tennis_scene.pipeline.components.event_detection import (
+    EVENT_DETECTION,
+    EventDetectionResult,
 )
 from src.tennis_scene.pipeline.contracts import ClipSource
 from src.tennis_scene.pipeline.dataset_publication import (
@@ -95,6 +103,52 @@ def _read_fixed(
         )
     value: Value = store.load(reference, ArtifactCodec(output))
     return reference, descriptor, value
+
+
+def _saved_event_annotations(
+    store: ClipStore,
+    index: dict[str, Any],
+    source: ClipSource,
+    court_reference: dict[str, Any],
+) -> tuple[ArtifactRef, EventDetectionResult]:
+    reference, _, result = _read_fixed(
+        store, index, EVENT_DETECTION, "scene_result", 3, EventDetectionResult
+    )
+    if result.schema_version != 3:
+        raise ValueError("Saved event_detection must contain SceneResult v3")
+    validate_scene_ball_events(result, version=3)
+    if result.metadata["ball_events"]["source"] != "annotation":
+        raise ValueError(
+            "Saved v3 contains inferred events. External ball import can retain "
+            "frame annotations on the same clip; inferred events require a new event_detection run."
+        )
+    if (
+        (result.num_frames, result.fps, (result.width, result.height))
+        != (source.num_frames, source.fps, source.size)
+        or result.metadata.get("dataset_clip_id") != source.clip_id
+        or result.metadata.get("court_reference") != court_reference
+    ):
+        raise ValueError(
+            "Saved event annotations disagree with the fixed clip, frame grid or geometry"
+        )
+    return reference, result
+
+
+def _attach_event_annotations(
+    scene: SceneResult, previous: EventDetectionResult, reference: ArtifactRef
+) -> EventDetectionResult:
+    values = {item.name: getattr(scene, item.name) for item in fields(SceneResult)}
+    values.update({name: getattr(previous, name) for name in BALL_EVENT_FIELDS})
+    values["metadata"] = {
+        **scene.metadata,
+        "scene_schema_version": 3,
+        "ball_events": previous.metadata["ball_events"],
+        "external_ball": {
+            **scene.metadata["external_ball"],
+            "saved_event_detection": json_value(reference),
+        },
+    }
+    return EventDetectionResult(**values, event_evidence=previous.event_evidence)
 
 
 def _statistics(
@@ -280,6 +334,11 @@ def update_clip(
             "elapsed_seconds": time.perf_counter() - start,
         }
     before.verify(root)
+    saved_events = (
+        _saved_event_annotations(store, index, source, geometry.document)
+        if marker is not None and marker["scene_schema_version"] == 3
+        else None
+    )
     assert_current_component_lineage(
         index, root, {"court_calibration": json_value(calibration_ref)}
     )
@@ -298,11 +357,12 @@ def update_clip(
         *,
         version: int = 1,
         origin: str = "component",
+        linked_arrays: dict[int, Path] | None = None,
     ) -> ArtifactRef:
         ref = store.publish(
             name,
             value,
-            ArtifactCodec(codec),
+            ArtifactCodec(codec, linked_arrays=linked_arrays),
             schema=schema,
             version=version,
             identity={**identity, "node": name, "dependencies": json_value(deps)},
@@ -383,7 +443,8 @@ def update_clip(
             store, index, "scene_assembly", "scene_result", 2, SceneResult
         )
         if (
-            original["dependencies"].get("alignment") != json_value(alignment_ref)
+            previous.schema_version != 2
+            or original["dependencies"].get("alignment") != json_value(alignment_ref)
             or original["dependencies"].get("calibration")
             != json_value(calibration_ref)
             or previous.metadata.get("court_reference") != geometry.document
@@ -428,11 +489,33 @@ def update_clip(
         {**dependencies, "ball": ball_ref},
         version=2,
     )
-    staged_scene = store.load(scene_ref, ArtifactCodec(SceneResult))
+    staged_scene: SceneResult = store.load(scene_ref, ArtifactCodec(SceneResult))
+    if saved_events is not None:
+        event_reference, previous_events = saved_events
+        event_scene = _attach_event_annotations(
+            staged_scene, previous_events, event_reference
+        )
+        paths = {}
+        for item in fields(SceneResult):
+            value = getattr(event_scene, item.name)
+            if isinstance(value, np.memmap) and value.filename is not None:
+                paths[id(value)] = Path(value.filename)
+        event_ref = stage(
+            EVENT_DETECTION,
+            event_scene,
+            EventDetectionResult,
+            "scene_result",
+            {"scene": scene_ref},
+            version=3,
+            origin="import",
+            linked_arrays=paths,
+        )
+        staged_scene = store.load(event_ref, ArtifactCodec(EventDetectionResult))
     staged = time.perf_counter()
     stats = {
         **_statistics(positions, ball),
         "clip_id": source.clip_id,
+        "scene_schema_version": staged_scene.schema_version,
         "scene_assembly": json_value(scene_ref),
         "previous_scene_assembly": identity["previous_scene_assembly"],
         "input_sha256": positions.sha256,

@@ -111,7 +111,8 @@ def test_player_only_batch_publishes_and_reuses_both_clips(tmp_path: Path, monke
     for clip in clips:
         reconstructed = scene(clip)
         assert reconstructed.metadata["court_reference"]["view_half_turns"] == [False, False, True]
-        assert reconstructed.player_kp_3d_vis.all() and not reconstructed.ball_3d_valid.any()
+        assert reconstructed.player_kp_3d_vis is not None and reconstructed.player_kp_3d_vis.all()
+        assert reconstructed.ball_3d_valid is not None and not reconstructed.ball_3d_valid.any()
 
     reused = execute(pipeline, dataset, batching=batching)
     assert [outcome.status for outcome in reused.outcomes] == ["skipped", "skipped"]
@@ -207,7 +208,9 @@ def test_one_plan_reuses_each_model_once_and_records_real_batch_sizes(tmp_path: 
     assert progress["batch_shapes"]["fake_ball"] == {
         "[16, 3, 4, 6]": {"succeeded": 3 * count, "failed": 0, "items": 16},
         "[8, 3, 4, 6]": {"succeeded": 3 * count, "failed": 0, "items": 8}}
-    assert all(scene(clip).ball_3d_valid.all() for clip in clips)
+    for clip in clips:
+        valid = scene(clip).ball_3d_valid
+        assert valid is not None and valid.all()
     events.clear()
     second = execute(pipeline, dataset)
     assert [o.status for o in second.outcomes] == ["skipped"] * count and not second.plan.nodes and not events
@@ -349,7 +352,7 @@ def test_interruption_and_device_failure_stop_without_partial_markers_then_resum
     assert resumed.exit_code == 0
     assert resumed.plan.statuses[("video_000/clip_000", "ball_detection/cam0")] == "cached"
     assert resumed.plan.statuses[("video_000/clip_000", "ball_detection/cam1")] == "executed"
-    assert all(scene(clip).schema_version == 2 for clip in clips)
+    assert all(scene(clip).schema_version == 3 for clip in clips)
 
 
 def test_shared_model_load_failure_is_fatal_even_when_it_is_a_value_error(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
@@ -544,7 +547,10 @@ def test_shared_side_is_acquired_once_before_plan_and_publishes_each_clip(tmp_pa
     assert all(scene(clip).metadata["court_reference"]["view_half_turns"] == [False, False, True] for clip in clips)
     if evidence == "player":
         assert not any(name.startswith("ball_") for _, name in result.plan.nodes)
-        assert all(scene(clip).player_kp_3d_vis.any() and not scene(clip).ball_3d_valid.any() for clip in clips)
+        for clip in clips:
+            reconstructed = scene(clip)
+            assert reconstructed.player_kp_3d_vis is not None and reconstructed.player_kp_3d_vis.any()
+            assert reconstructed.ball_3d_valid is not None and not reconstructed.ball_3d_valid.any()
         assert all(not any(clip.glob("annotations/tennis_scene/components/ball_*")) for clip in clips)
     progress = json.loads(result.progress_path.read_text())
     side = progress["video_court_side"]
@@ -641,7 +647,7 @@ def test_same_generation_single_and_batch_exports_serialize_and_continue(tmp_pat
         result = execute(pipeline, dataset, batching=BatchConfig(enabled=True))
         assert result.exit_code == 0
         assert [outcome.status for outcome in result.outcomes] == ["generated", "generated"]
-        assert all(scene(clip).schema_version == 2 for clip in clips)
+        assert all(scene(clip).schema_version == 3 for clip in clips)
     finally:
         start.set()
         second_requested.set()

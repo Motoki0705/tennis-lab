@@ -2,7 +2,8 @@
 
 from __future__ import annotations
 
-from dataclasses import replace
+import json
+from dataclasses import fields, replace
 from pathlib import Path
 
 import numpy as np
@@ -15,6 +16,7 @@ from src.tasks.slcs.data.annotation import (
 )
 from src.tasks.slcs.visualization.review.dataset_service import SLCSDatasetReviewService
 from src.tennis_scene.archive import load_scene_result
+from src.tennis_scene.ball_event_schema import BALL_EVENT_FIELDS, ball_event_metadata
 from src.tennis_scene.generate_dataset.manifest import (
     ClipManifest,
     DatasetClipRecord,
@@ -30,6 +32,7 @@ from src.tennis_scene.pipeline.components.camera_geometry import (
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
 )
+from src.tennis_scene.pipeline.components.event_detection import EventDetectionResult
 from src.tennis_scene.pipeline.dataset_publication import (
     ANNOTATION_RELATIVE_DIR,
     completed_annotation,
@@ -53,6 +56,7 @@ from src.tennis_scene.pipeline.storage.scene_export import export_scene
 from src.tennis_scene.pipeline.storage.scene_index import (
     annotation_scene_path,
     indexed_scene_path,
+    read_component_descriptor,
 )
 from src.tennis_scene.pipeline.storage.scene_pointers import ScenePointerUpdateError
 from src.tennis_scene.schema import SceneResult
@@ -61,6 +65,7 @@ from src.utils.configuration import PathContractError
 from src.utils.io import load_json
 from src.utils.video import VideoInfo
 from tests.integration.tennis_scene.test_video_court_side import build, prefix_stores
+from tests.support.tennis_scene.annotations import with_fixture_ball_events
 
 
 def _saved_clip(tmp_path, monkeypatch, mode):
@@ -213,7 +218,11 @@ def _saved_clip(tmp_path, monkeypatch, mode):
         skeleton=None,
         players=None,
         ball=None,
-        metadata={"status": "ok", "pipeline_contract": "declared_components_v1"},
+        metadata={
+            "status": "ok",
+            "pipeline_contract": "declared_components_v1",
+            "dataset_clip_id": source.clip_id,
+        },
     )
     ref = store.publish(
         "scene_assembly",
@@ -225,6 +234,43 @@ def _saved_clip(tmp_path, monkeypatch, mode):
         dependencies={"calibration": cal_ref, "alignment": al_ref},
         provenance={"origin": "component"},
     )
+    if mode in ("saved_v3", "inferred_v3"):
+        if mode == "saved_v3":
+            v3 = with_fixture_ball_events(scene)
+            evidence = {
+                "events": [{"id": "fixture-bounce", "frame": scene.num_frames - 1}]
+            }
+        else:
+            v3 = replace(
+                scene,
+                metadata={
+                    **scene.metadata,
+                    "scene_schema_version": 3,
+                    "ball_events": ball_event_metadata(
+                        "rule", {"code_commit": "a" * 40, "thresholds": {}}
+                    ),
+                },
+                ball_event_frame=np.empty(0, np.int32),
+                ball_event_kind=np.empty(0, np.uint8),
+                ball_event_score=np.empty(0, np.float32),
+                ball_event_coverage=np.zeros(scene.num_frames, bool),
+            )
+            evidence = {"events": []}
+        events = EventDetectionResult(
+            **{item.name: getattr(v3, item.name) for item in fields(SceneResult)},
+            event_evidence=evidence,
+        )
+        ref = store.publish(
+            "event_detection",
+            events,
+            ArtifactCodec(EventDetectionResult),
+            schema="scene_result",
+            version=3,
+            identity={"test": "saved events"},
+            dependencies={"scene": ref},
+            provenance={"origin": "component"},
+        )
+        scene = events
     export_scene(store, scene, ref)
     publish_annotation(
         resolve_dataset_clip(dataset, record),
@@ -235,7 +281,9 @@ def _saved_clip(tmp_path, monkeypatch, mode):
     return pinned, record, positions, store, scene, truth
 
 
-@pytest.mark.parametrize("mode", ["saved", "fallback", "conflict"])
+@pytest.mark.parametrize(
+    "mode", ["saved", "fallback", "conflict", "saved_v3", "inferred_v3"]
+)
 def test_external_ball_swaps_both_pointers_and_reuses_the_saved_scene(
     tmp_path: Path, monkeypatch, mode: str
 ) -> None:
@@ -260,12 +308,28 @@ def test_external_ball_swaps_both_pointers_and_reuses_the_saved_scene(
         assert ScenePointers.read(store.root) == before
         assert not (store.root / "components/external_ball_positions").exists()
         return
+    if mode == "inferred_v3":
+        with pytest.raises(
+            ValueError, match="inferred events require a new event_detection run"
+        ):
+            publish()
+        assert ScenePointers.read(store.root) == before
+        assert not (store.root / "components/external_ball_positions").exists()
+        return
 
     DatasetManifest("fixture", {record.clip_id: record}).save(dataset)
     manifest = ClipManifest.load(dataset / record.path)
     inputs = resolve_dataset_clip(dataset, record)
     review = SLCSDatasetReviewService(dataset)
     replace_text = scene_pointers._replace_text
+    if mode == "saved_v3":
+        original_marker = before.marker()
+        assert original_marker is not None
+        wrong_version = ScenePointers(
+            before.scene, json.dumps({**original_marker, "scene_schema_version": 2})
+        )
+        with pytest.raises(ValueError, match="SceneResult v2 export must reference"):
+            wrong_version.verify(store.root)
 
     def interrupt_annotation(path, content):
         if path.name == "annotation.json":
@@ -303,7 +367,15 @@ def test_external_ball_swaps_both_pointers_and_reuses_the_saved_scene(
     assert indexed_scene_path(store.index_path) == path
     assert has_slcs_annotation(manifest.clip_dir)
     scene = load_slcs_annotation(manifest)
-    assert path.parent.name == store.active("scene_assembly").artifact_id
+    version = 3 if mode == "saved_v3" else 2
+    assert scene.schema_version == marker["scene_schema_version"] == version
+    producer = "event_detection" if version == 3 else "scene_assembly"
+    producer_ref = store.active(producer)
+    assert producer_ref is not None
+    assert path.parent.name == producer_ref.artifact_id
+    assert after.index()["exports"]["scene"]["inputs"] == {
+        producer: json_value(producer_ref)
+    }
     assert report["valid_3d"] == record.num_frames - 1
     np.testing.assert_allclose(scene.ball_3d[0], truth, atol=2e-5)
     assert scene.ball_rejection_code[-1] == 1
@@ -311,8 +383,29 @@ def test_external_ball_swaps_both_pointers_and_reuses_the_saved_scene(
     assert scene.metadata["external_ball"]["status_codes"][1][0] == 3
 
     for node, ref in old_refs.items():
-        if node != "scene_assembly":
+        if node not in {producer, "scene_assembly"}:
             assert store.active(node) == ref
+    if version == 3:
+        assert isinstance(player_scene, EventDetectionResult)
+        assembler = store.active("scene_assembly")
+        assert assembler is not None and assembler.version == 2
+        descriptor = read_component_descriptor(
+            store.root,
+            json_value(producer_ref),
+            node=producer,
+            source_sha256=store.source_key,
+        )
+        assert descriptor["dependencies"] == {"scene": json_value(assembler)}
+        saved_events = store.load(producer_ref, ArtifactCodec(EventDetectionResult))
+        assert saved_events.event_evidence == player_scene.event_evidence
+        assert scene.metadata["ball_events"] == player_scene.metadata["ball_events"]
+        assert scene.metadata["external_ball"]["saved_event_detection"] == json_value(
+            old_refs[producer]
+        )
+        for name in BALL_EVENT_FIELDS:
+            np.testing.assert_array_equal(
+                getattr(scene, name), getattr(player_scene, name)
+            )
     geometry = scene.metadata["external_ball"]["geometry_provenance"]
     if player_scene is None:
         assert geometry["origin"] == SHARED_GEOMETRY
@@ -355,9 +448,17 @@ def test_external_ball_swaps_both_pointers_and_reuses_the_saved_scene(
             annotation_scene_path(store.root, marker)
     else:
         assert has_slcs_annotation(manifest.clip_dir)
-        np.testing.assert_array_equal(
-            load_slcs_annotation(manifest).human_kp_2d, player_scene.human_kp_2d
-        )
+        restored = load_slcs_annotation(manifest)
+        assert restored.schema_version == player_scene.schema_version
+        np.testing.assert_array_equal(restored.human_kp_2d, player_scene.human_kp_2d)
+        if version == 3:
+            assert store.active(producer) == old_refs[producer]
+            np.testing.assert_array_equal(
+                restored.ball_event_frame, player_scene.ball_event_frame
+            )
+            np.testing.assert_array_equal(
+                restored.ball_event_coverage, player_scene.ball_event_coverage
+            )
     np.testing.assert_array_equal(load_scene_result(path).ball_3d, scene.ball_3d)
     assert not restore_publication(store.root)
 

@@ -48,6 +48,7 @@ def configured_pipeline(runtime):
     assert runtime.people.runtime.dino_detector.precision == 'fp16'
     assert runtime.people.runtime.vitpose.precision == 'fp16'
     assert runtime.court_side_evidence == 'player'
+    assert runtime.event_detection.method == 'rule'
     assert runtime.enabled['ball_detection'] == runtime.enabled['ball_reconstruction'] == include_ball
     return pipeline
 with patch.object(TennisSceneOrchestrator, 'from_runtime_config', side_effect=configured_pipeline):
@@ -63,7 +64,7 @@ def test_cli_runs_one_video_and_exits_nonzero_for_unresolved_failure(tmp_path: P
     result = subprocess.run([sys.executable, "-c", _HARNESS,
         f"paths.data_root={tmp_path}", f"paths.output_root={tmp_path / 'outputs'}",
         "dataset_directory=dataset", "video_id=video_000", "progress_directory=progress",
-        f'pipeline_overrides=["device=cuda","people_models.runtime.dino_detector.precision=fp16","people_models.runtime.vitpose.precision=fp16","court_side.evidence=player","ball_detection.enabled={enabled}","ball_reconstruction.enabled={enabled}"]'],
+        f'pipeline_overrides=["device=cuda","people_models.runtime.dino_detector.precision=fp16","people_models.runtime.vitpose.precision=fp16","court_side.evidence=player","ball_detection.enabled={enabled}","ball_reconstruction.enabled={enabled}","event_detection.method=rule"]'],
         cwd=PROJECT_ROOT, env={**os.environ, "CUDA_VISIBLE_DEVICES": "", "VIDEO_BATCH_TEST_ROOT": str(tmp_path),
                               "VIDEO_BATCH_TEST_FAIL": str(int(failed)), "OMP_NUM_THREADS": "1", "MKL_NUM_THREADS": "1",
                               "OPENBLAS_NUM_THREADS": "1"},

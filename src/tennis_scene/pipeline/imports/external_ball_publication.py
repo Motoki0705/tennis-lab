@@ -23,7 +23,10 @@ from src.tennis_scene.pipeline.dataset_publication import (
     scene_array_manifest,
 )
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, clip_store_lock
-from src.tennis_scene.pipeline.storage.scene_export import write_scene_export
+from src.tennis_scene.pipeline.storage.scene_export import (
+    scene_export_node,
+    write_scene_export,
+)
 from src.tennis_scene.pipeline.storage.scene_index import (
     read_component_descriptor,
     resolve_indexed_scene,
@@ -93,13 +96,52 @@ class ScenePointers:
             if index["exports"].get("scene") is not None:
                 raise ValueError("Saved scene export has no annotation marker")
             return None
-        reference = index["artifacts"]["scene_assembly"]
-        path = resolve_indexed_scene(index, root)
+        version = marker.get("scene_schema_version")
+        if type(version) is not int or version not in (2, 3):
+            raise ValueError("Saved annotation must declare SceneResult v2 or v3")
+        artifacts = index["artifacts"]
+        assembly = artifacts.get("scene_assembly")
+        if not isinstance(assembly, dict) or (
+            assembly.get("schema"),
+            assembly.get("version"),
+        ) != ("scene_result", 2):
+            raise ValueError("Saved scene requires an adopted SceneResult v2 assembly")
+        node = scene_export_node(version)
+        reference = artifacts.get(node)
+        export = index["exports"].get("scene")
         if (
-            index["exports"]["scene"]["inputs"] != {"scene_assembly": reference}
-            or marker.get("scene_index") != "scene.json"
+            not isinstance(reference, dict)
+            or (reference.get("schema"), reference.get("version"))
+            != ("scene_result", version)
+            or not isinstance(export, dict)
+            or export.get("inputs") != {node: reference}
+        ):
+            raise ValueError(
+                f"SceneResult v{version} export must reference the adopted {node}"
+            )
+        path: Path = resolve_indexed_scene(
+            index, root, required_components={"scene_assembly": assembly}
+        )
+        if version == 3:
+            descriptor = read_component_descriptor(
+                root, reference, node=node, source_sha256=index["source_sha256"]
+            )
+            if descriptor["dependencies"].get("scene") != assembly:
+                raise ValueError(
+                    "Saved event_detection does not use the adopted scene_assembly"
+                )
+        metadata = json.loads(
+            path.with_suffix(".metadata.json").read_text(encoding="utf-8")
+        )
+        archive_version = (
+            metadata.get("scene_schema_version") if isinstance(metadata, dict) else None
+        )
+        if (
+            marker.get("scene_index") != "scene.json"
             or marker.get("scene_result") != str(path.relative_to(root))
             or marker.get("clip_id") != index["source"]["clip_id"]
+            or type(archive_version) is not int
+            or archive_version != version
         ):
             raise ValueError("Saved scene index and annotation marker disagree")
         return path
@@ -229,9 +271,8 @@ def publish_scene_revision(
     identity: dict[str, Any],
     statistics: dict[str, Any],
 ) -> PublicationReceipt:
-    scene_ref = nodes["scene_assembly"]
-    scene_id = scene_ref.artifact_id
-    journal = _receipt_path(root, scene_id)
+    assembly_id = nodes["scene_assembly"].artifact_id
+    journal = _receipt_path(root, assembly_id)
     with clip_store_lock(root):
         if ScenePointers.read(root) != current:
             raise ValueError(
@@ -242,7 +283,7 @@ def publish_scene_revision(
             raise pending.error()
         input_files.assert_unchanged()
         if journal.exists():
-            receipt = PublicationReceipt.read(root, scene_id)
+            receipt = PublicationReceipt.read(root, assembly_id)
             if receipt.inputs != identity or receipt.before != before:
                 raise ValueError(
                     "External ball receipt conflicts with the requested inputs"
@@ -276,7 +317,9 @@ def _stage_publication(
     identity: dict[str, Any],
     statistics: dict[str, Any],
 ) -> PublicationReceipt:
-    reference = nodes["scene_assembly"]
+    node = scene_export_node(scene.schema_version)
+    reference = nodes[node]
+    assembly_id = nodes["scene_assembly"].artifact_id
     destination = root / "exports" / reference.artifact_id
     if not destination.exists():
         write_scene_export(scene, destination)
@@ -285,15 +328,15 @@ def _stage_publication(
     descriptor = read_component_descriptor(
         root,
         json_value(reference),
-        node="scene_assembly",
+        node=node,
         source_sha256=doc["source_sha256"],
     )
     _verify_archive(archive, scene, descriptor)
     doc["artifacts"].update(json_value(nodes))
     doc["revision"] += 1
-    doc[PUBLICATION] = reference.artifact_id
+    doc[PUBLICATION] = assembly_id
     doc["exports"]["scene"] = {
-        "inputs": {"scene_assembly": json_value(reference)},
+        "inputs": {node: json_value(reference)},
         "files": {
             role: {"path": str(path.relative_to(root)), "sha256": dual_sha256(path)}
             for role, path in (
@@ -326,7 +369,7 @@ def _stage_publication(
         "validity_statistics": scene.metadata["validity_statistics"],
         "publication_identity_sha256": identity_digest,
         "media_sha256": dict(clip.media_sha256),
-        PUBLICATION: reference.artifact_id,
+        PUBLICATION: assembly_id,
     }
     return PublicationReceipt(
         before, ScenePointers(_encode(doc), _encode(annotation)), identity, statistics

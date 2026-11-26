@@ -65,7 +65,7 @@ def compose_default(repo: Path, report: Path, device: str) -> Any:
     overrides = [f"paths.project_root={CONFIG_DIR.parents[2]}", f"paths.data_root={repo / 'data'}",
         f"paths.checkpoint_root={repo / 'ckpt'}", f"paths.external_asset_root={repo / 'third_party'}",
         f"paths.artifact_root={report}", f"paths.output_root={report}", f"paths.cache_root={report / 'cache'}",
-        f"device={device}", "output_directory=run", "execution.ball_detection=load"]
+        f"device={device}", "output_directory=run", "event_detection.method=rule", "execution.ball_detection=load"]
     with initialize_config_dir(version_base="1.3", config_dir=str(CONFIG_DIR)):
         return compose(config_name="pipeline", overrides=overrides), overrides
 
