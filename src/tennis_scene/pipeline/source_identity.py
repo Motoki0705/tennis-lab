@@ -27,6 +27,7 @@ def compatible_source_digests(
 ) -> dict[str, str]:
     """Keep the baseline identity for exact, compatible source changes."""
     sources = _compatible_patch(sources, "pose_comparison_cache_compatibility.json")
+    sources = _compatible_patch(sources, "multiview_tracking_cache_compatibility.json")
     sources = _compatible_patch(sources, "multiview_pose_cache_compatibility.json")
     if standard_recipe or standard_people:
         sources = _compatible_patch(sources, "ecpose_recipe_cache_compatibility.json")
