@@ -10,10 +10,7 @@ from src.tasks.ball_refiner_3d.configuration.model import ModelConfig
 from src.tasks.ball_refiner_3d.configuration.training import PhysicsLossConfig
 from src.tasks.ball_refiner_3d.inference.clip import predict_normalized
 from src.tasks.ball_refiner_3d.inference.segmentation import predicted_segments
-from src.tasks.ball_refiner_3d.model_io.checkpoint import (
-    checkpoint_flight_clock,
-    upgrade_model_config,
-)
+from src.tasks.ball_refiner_3d.model_io.checkpoint import checkpoint_flight_clock
 from src.tasks.ball_refiner_3d.model_io.factory import bind_refiner, build_refiner
 from src.tasks.ball_refiner_3d.models.components.embeddings import coordinate_features
 from src.tasks.ball_refiner_3d.models.components.temporal_transformer import MAX_FRAMES
@@ -71,10 +68,10 @@ def test_segments_open_at_frame_zero_and_each_event() -> None:
     ]  # fmt: skip
     assert segments_from_events(np.array([0]), 3).tolist() == [0, 0, 0]
     assert local_segments(np.array([4, 4, 5, 5, 5, 7])).tolist() == [0, 0, 1, 1, 1, 2]
-    probability = np.zeros(12)
-    probability[[5, 6, 9]] = [0.9, 0.7, 0.8]
-    # 6 is not a peak, so flights open at 0, 5 and 9.
-    assert predicted_segments(probability).tolist() == [0] * 5 + [1] * 4 + [2] * 3
+    probability = np.zeros((12, 3))
+    probability[[5, 6, 9], 0] = [0.9, 0.7, 0.8]
+    probability[6, 2] = 0.95
+    assert predicted_segments(probability).tolist() == [0] * 5 + [1] + [2] * 3 + [3] * 3
     with pytest.raises(ValueError):
         segment_layout(torch.tensor([[0, 1, 0]]))
 
@@ -221,28 +218,9 @@ def test_whole_clip_physics_prediction_uses_given_or_predicted_segments() -> Non
     )
 
 
-def test_legacy_model_configs_upgrade_explicitly_and_clock_is_required() -> None:
-    legacy = {
-        "dimensions": 3,
-        "architecture": "regression",
-        "width": 16,
-        "layers": 1,
-        "heads": 2,
-        "dropout": 0.0,
-        "window_length": 128,
-        "flow_steps": 2,
-        "ffn_dim": 64,
-        "rope_dim": 8,
-        "rope_theta": 10000.0,
-        "ffn_type": "swiglu",
-    }
-    upgraded = upgrade_model_config(legacy)
-    assert "window_length" not in upgraded and upgraded["physics_heads"] is False
-    assert upgrade_model_config(upgraded) is upgraded
-    with pytest.raises(ValueError, match="Unrecognized"):
-        upgrade_model_config({k: v for k, v in legacy.items() if k != "window_length"})
+def test_physics_checkpoint_requires_a_flight_clock() -> None:
     with pytest.raises(ValueError, match="no flight clock"):
-        checkpoint_flight_clock({"schema": "ball_refiner_3d.events.v1"})
+        checkpoint_flight_clock({"schema": "ball_refiner_3d.events.v3"})
 
 
 def test_sequences_beyond_the_rope_table_are_rejected() -> None:

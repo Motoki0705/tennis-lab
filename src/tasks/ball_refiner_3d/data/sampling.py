@@ -11,6 +11,7 @@ from torch import Tensor
 
 from src.tasks.ball_refiner_3d.configuration.data import WindowConfig
 from src.tasks.ball_refiner_3d.data.schema import PreparedRally
+from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
 from src.tasks.ball_refiner_3d.physics.targets import local_segments
 from src.tasks.ball_refiner_3d.physics.units import FIELD_CHANNELS, STATE_CHANNELS
 
@@ -22,7 +23,7 @@ def window_length(frames: int, config: WindowConfig, rng: np.random.Generator) -
     longest = min(frames, config.max_length)
     if rng.random() < config.long_probability:
         return int(rng.integers(config.length, longest + 1))
-    return config.length
+    return int(config.length)
 
 
 def sample_batch(
@@ -57,7 +58,7 @@ def sample_batch(
         "missing": np.ones((batch_size, longest), bool),
         "padding": np.ones((batch_size, longest), bool),
         "target": np.zeros((batch_size, longest, 3), np.float32),
-        "event_target": np.zeros((batch_size, longest), np.float32),
+        "event_target": np.zeros((batch_size, longest, len(EVENT_CLASSES)), np.float32),
         "segment": np.full((batch_size, longest), -1, np.int64),
         "segment_target": np.zeros((batch_size, count, STATE_CHANNELS), np.float32),
         "field_target": np.zeros((batch_size, FIELD_CHANNELS), np.float32),

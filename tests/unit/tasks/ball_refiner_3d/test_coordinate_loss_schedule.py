@@ -51,8 +51,8 @@ def configuration(overrides=()):
         (4000, 0.0, 1.0),
     ],
 )
-def test_requested_update_boundaries(step, position, adversarial):
-    raw = training_config(configuration()).raw
+def test_requested_update_boundaries(step, position, adversarial, tmp_path):
+    raw = training_config(configuration([f"paths.data_root={tmp_path}"])).raw
     reconstruction = parse_section(ReconstructionConfig, raw["loss"]["reconstruction"])
     gan, _ = parse_gan(raw["training"]["gan"])
     assert reconstruction_weight_at(step - 1, reconstruction) == pytest.approx(position)

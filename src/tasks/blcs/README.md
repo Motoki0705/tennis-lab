@@ -86,5 +86,8 @@ checkpointは `val/trajectory_rmse_m` 最小で選択します。新schemaは
 checkpointからaxialを復元し、single_objectシーンのGTと予測を比較します。
 
 力・バウンド・積分は[共有物理](../../utils/README.md#physics)を使い、ネット／フェンス衝突、ラリー連鎖、着地点サンプリングは`generate_dataset/simulation/`が所有します。
+通常の着地点サンプラーはネットに触れる候補の打ち出し角を上げます。
+3D Ball Refinerのネット接触生成では指定した打球について飛行を試算し、白帯または網へ照準を合わせます。
+240 Hzの積分stepをまたぐ接触点は、軌道線分と白帯の断面または網面の交点から求めます。
 物理proposalの再試行には`generation.maximum_physics_attempts_per_scene`の有限budgetを使用します。
 `generate_dataset/api_server/`と`webui/`は物理シミュレータの操作・確認用です。
