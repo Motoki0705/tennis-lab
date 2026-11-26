@@ -55,6 +55,7 @@ class RuleThresholds:
     net_max_y_retention: float = 0.55
     net_max_tape_speed_retention: float = 0.70
     net_min_tape_turn_deg: float = 15.0
+    net_min_local_change_fraction: float = 1 / 3
 
     def __post_init__(self) -> None:
         values = (getattr(self, field.name) for field in fields(self))
@@ -220,7 +221,9 @@ def _turn_deg(incoming: NDArray[np.float64], outgoing: NDArray[np.float64]) -> f
     )
 
 
-def _net(motion: _Motion, fps: float, rules: RuleThresholds) -> BallEvent | None:
+def _net(
+    motion: _Motion, xyz: NDArray[np.float64], fps: float, rules: RuleThresholds
+) -> BallEvent | None:
     x, y, z = map(float, motion.position)
     if (
         abs(y) > rules.net_plane_tolerance_m
@@ -254,6 +257,27 @@ def _net(motion: _Motion, fps: float, rules: RuleThresholds) -> BallEvent | None
         response = "tape_deflection"
     else:
         return None
+
+    local_change_fraction = None
+    far_side_reach_m = None
+    if not motion.gap_frames:
+        # An impulse can be split across adjacent samples. A portion of the
+        # longer-window change must be present here, at the net candidate.
+        frame = motion.frame
+        change = motion.outgoing - motion.incoming
+        departing_step = xyz[frame + 1] - xyz[frame]
+        local_change = (departing_step - (xyz[frame] - xyz[frame - 1])) * fps
+        local_change_fraction = float((local_change @ change) / (change @ change))
+        if local_change_fraction < rules.net_min_local_change_fraction:
+            return None
+        if y * vy_in > 0:
+            # On the far side, the ball could only have traveled for one
+            # sample since contact. Allow half the plane tolerance for 3D error.
+            departure_y = float(departing_step[1] * np.sign(vy_in))
+            far_side_reach_m = rules.net_plane_tolerance_m / 2 + max(0.0, departure_y)
+            if abs(y) > far_side_reach_m:
+                return None
+
     impulse = abs(vy_out - vy_in) / rules.net_min_incoming_y_mps
     proximity = 1 + (1 - abs(y) / rules.net_plane_tolerance_m)
     return _event(
@@ -268,6 +292,8 @@ def _net(motion: _Motion, fps: float, rules: RuleThresholds) -> BallEvent | None
             "y_speed_retention": y_retention,
             "speed_retention": speed_retention,
             "turn_deg": turn,
+            "local_change_fraction": local_change_fraction,
+            "far_side_reach_m": far_side_reach_m,
             "net_response": response,
         },
     )
@@ -416,7 +442,7 @@ def detect_ball_events(
         )
         event = (
             event
-            or _net(motion, fps, thresholds)
+            or _net(motion, xyz, fps, thresholds)
             or _shot(motion, fps, players, thresholds)
         )
         if event is not None:

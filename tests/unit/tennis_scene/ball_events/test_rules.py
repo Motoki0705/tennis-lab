@@ -7,6 +7,7 @@ import pytest
 from numpy.typing import NDArray
 
 from src.tennis_scene.ball_events import detect_ball_events
+from src.tennis_scene.ball_events.rules import PlayerEvidence
 
 FPS = 60.0
 CONTACT = 12
@@ -61,6 +62,7 @@ def test_short_ball_gap_preserves_frame_numbers_and_marks_inference() -> None:
         ((0, -0.03, 0.65), (0, 16, -1), (0, -4, -1), "reflection"),
         ((0, 0.03, 0.65), (0, -16, -1), (0, -2, -1), "slowdown"),
         ((5.0, 0, 1.08), (1, 16, -1), (0, 4, 3), "tape_deflection"),
+        ((0, 0, 0.93), (0, 12, 1), (0, -0.5, -4), "tape_deflection"),
     ],
 )
 def test_net_contact_detects_mesh_and_tape_responses(
@@ -83,6 +85,33 @@ def test_net_clearance_and_off_net_discontinuity_do_not_count_as_contact() -> No
     valid: NDArray[np.bool_] = np.ones(len(near_tape_crossing), bool)
     for xyz in (near_tape_crossing, high_crossing, outside_net):
         assert all(e.kind != "net" for e in detect_ball_events(xyz, valid, FPS))
+
+
+@pytest.mark.parametrize(
+    "incoming_y",
+    [12, 20],
+    ids=["crossed_before_impact_step", "crossed_within_impact_step"],
+)
+def test_volley_just_after_clearing_the_tape_is_a_shot(incoming_y: int) -> None:
+    frames, strike = 31, 15
+    time = (np.arange(frames) - strike)[:, None] / FPS
+    xyz = np.asarray(
+        [0, 0.26, 0.90] + time * np.where(time < 0, [0, incoming_y, -6], [5, 0.3, 3]),
+        dtype=np.float32,
+    )
+    xyz[:, 2] -= 0.5 * 9.81 * time[:, 0] ** 2
+    # The flights cross y=0 about 11 cm or 6 cm above the tape, then change
+    # velocity only at the wrist on the far side.
+    wrists: NDArray[np.float32] = np.zeros((1, frames, 3, 3), np.float32)
+    wrists[0, strike, 1] = xyz[strike] + [0.1, 0, 0]
+    wrist_valid: NDArray[np.bool_] = np.zeros((1, frames, 3), bool)
+    wrist_valid[0, strike, 1] = True
+    players = PlayerEvidence(wrists, wrist_valid, np.array([1], np.int32))
+
+    [event] = detect_ball_events(xyz, np.ones(frames, bool), FPS, players=players)
+    assert (event.kind, event.frame, event.flags) == ("shot", strike, ())
+    assert event.features["player_track_id"] == 1
+    assert event.features["player_distance_m"] == pytest.approx(0.1)
 
 
 def test_toss_to_serve_uses_speed_gain_with_ball_only_evidence() -> None:
