@@ -29,7 +29,8 @@ runtimeの終了は作業の成功ではない。失敗や不足を成功とし�
 
 ## CI・ローカルqueue・長時間コマンドの受け渡し
 
-このターンで実行できる短時間（目安数十秒以内）の検証を済ませる。PRの作成・push、training queueの `add`、または長時間ローカルコマンドの起動が済んだら、待機対象を宣言して終了する。
+ローカル検証とpre-commitを通してcommit・pushする。通常の実装PRはreadyで作成し、major修正は同じready PRへpushする。workerの後続作業がなければ、PR番号・完全なHEAD・検証結果を報告し、PR CIの完了前に `state: "done"` を返す。CI待機と失敗時の修正は親のレビュー進行CLIが扱う。
+このターンで実行できる短時間（目安数十秒以内）の検証を済ませる。外部の結果を受けてworkerが続ける作業は、投入・起動まで済ませて待機対象を宣言する。[CI待機を宣言する条件と具体例](../../skills/parent-session/references/workers.md#ciローカルqueueの待機)を参照する。
 手動委任ではparent CLIが監視と結果の受け渡しを担当する。自律親への委任では宣言を親へ返し、継続指示を受ける。
 CI・queue job・長時間ローカルコマンドの結果待ちに `clock.sleep`、シェルの `sleep`、状態の照会ループ、PTYの `write_stdin` 反復、`gh run watch`、`gh pr checks --watch` を使わない。短時間でも同じ。
 Issue本文や親の指示にある「成功まで確認」は担当全体の完了条件として扱い、CLIから結果を受けたターンで確かめる。
@@ -44,7 +45,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent.local_jobs start --name <label
 
 - 待機なし `PARENT_RESULT {"schema_version":1,"state":"done","wait":null}`
 - 親の判断が必要 `PARENT_RESULT {"schema_version":1,"state":"needs_parent","wait":null}`。理由と依頼を自由文に書く。
-- CI `PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"ci","pr":123,"head":"0123456789abcdef0123456789abcdef01234567","resume_on_success":false}}`。実際のPR番号と完全なHEADを使う。成功後にも担当作業がある場合は `resume_on_success` を `true` にし、同じオブジェクトに `next_step` を書く。
+- CI `PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"ci","pr":123,"head":"0123456789abcdef0123456789abcdef01234567","resume_on_success":true,"next_step":"追加実験を開始する"}}`。実際のPR番号・完全なHEAD・成功後の担当作業を指定する。
 - ローカルqueue `PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"queue","job_ids":["0-8204867199999999999_2026-11-20T00-00-00-000000000Z_12345_eval.job"]}}`。複数jobは `job_ids` にまとめる。
 - ローカル長時間コマンド `PARENT_RESULT {"schema_version":1,"state":"waiting","wait":{"kind":"local","job_ids":["20261124T000000Z_0123456789ab_pytest"]}}`。複数jobは `job_ids` にまとめる。
 

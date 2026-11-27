@@ -18,9 +18,15 @@ from tests.e2e.agents_ops.test_parent_session import (
     ParentEnv,
     evidence_number,
     make_review_env,
+    run_git,
 )
 from tests.e2e.agents_ops.test_parent_session import parent_env as parent_env
-from tests.e2e.agents_ops.test_progression_cli import prepared, request
+from tests.e2e.agents_ops.test_progression_cli import (
+    complete_pending_python,
+    pending_python,
+    prepared,
+    request,
+)
 from tests.support.agents_ops.model_pins import (
     CONFIG,
     OLD_SOL,
@@ -504,7 +510,28 @@ def test_manual_major_continuation_checks_ended_creator_session(
             gh, gh._store, 1, "claude:" + p.env["CLAUDE_CODE_SESSION_ID"]
         )
     path = major_progression(session, 42, {})
-    run(p, "--resume")
+    worktree = p.repo / ".claude/worktrees/worker"
+    (worktree / "fix.txt").write_text("Corrected behavior\n")
+    run_git(worktree, "add", "fix.txt")
+    run_git(worktree, "commit", "-m", "Fix reviewed behavior")
+    fixed_head = run_git(worktree, "rev-parse", "HEAD")
+    turn = json.loads(
+        run(
+            p,
+            "--resume",
+            MANUAL_PR_UPDATES_SEQUENCE=json.dumps(
+                {
+                    "2": {
+                        "number": 42,
+                        "head": {**remote["prs"][0]["head"], "sha": fixed_head},
+                        "statusCheckRollup": [pending_python()],
+                    }
+                }
+            ),
+        ).stdout
+    )
+    parse_report = importlib.import_module("parent.worker_result").parse_report
+    assert parse_report(Path(turn["final_file"]).read_text())["state"] == "done"
     if changed_session:
         record_path = latest(p) / "result.json"
         record = json.loads(record_path.read_text())
@@ -520,12 +547,22 @@ def test_manual_major_continuation_checks_ended_creator_session(
         "--wait",
         AGENT_AUTO_MERGE="1",
         ok=not changed_session,
+        **complete_pending_python(p),
     )
     if changed_session:
         assert "session" in response.stderr
         assert not any(c[:2] == ["pr", "merge"] for c in p.calls())
     else:
-        assert json.loads(response.stdout)["status"] == "completed", response.stdout
+        result = json.loads(response.stdout)
+        assert result["status"] == "completed", result
+        waiting = json.loads(path.with_name("pending-ci.json").read_text())
+        assert waiting["review"]["result"]["verdict"] == "major"
+        assert waiting["review"]["major_repaired"]
+        target = waiting["targets"]["42"]
+        assert target["stage"] == "ci_wait"
+        assert target["ci"]["status"] == "pending"
+        assert target["ci_head"] == fixed_head != target["head_sha"]
+        assert result["prs"][0]["merge_head"] == fixed_head
         assert (
             task(p)["preflight"]["accepted_turn_id"]
             == task(p)["preflight"]["turns"][-1]["snapshot"]["turn_id"]
