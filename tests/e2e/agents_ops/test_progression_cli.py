@@ -5,6 +5,7 @@ from __future__ import annotations
 import fcntl
 import importlib
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -90,6 +91,52 @@ def progression_path(p: ParentEnv, value: dict[str, Any]) -> Path:
     )
 
 
+def pending_python() -> dict[str, Any]:
+    return {
+        "__typename": "CheckRun",
+        "name": "Python",
+        "status": "IN_PROGRESS",
+        "conclusion": None,
+    }
+
+
+def complete_pending_python(p: ParentEnv) -> dict[str, str]:
+    hook = p.root / "ci-clock"
+    hook.mkdir()
+    # Advance the fake check at the real controller's poll boundary. Saving the
+    # state first lets callers verify what was persisted while CI was pending.
+    (hook / "sitecustomize.py").write_text("""\
+import json
+import os
+import sys
+from pathlib import Path
+
+if Path(sys.argv[0]).name == "merge_gate.py":
+    from lib.ops_review import merge_gate_impl
+
+    class EngineWithCIClock(merge_gate_impl.Engine):
+        def __init__(self, path, backend, *, state):
+            self.now = 1000.0
+            super().__init__(path, backend, state=state, clock=lambda: self.now,
+                             sleep=self.advance)
+
+        def advance(self, delay):
+            with self.path.with_name("pending-ci.json").open("xb") as record:
+                record.write(self.path.read_bytes())
+            remote = Path(os.environ["PARENT_GH_STATE"])
+            state = json.loads(remote.read_text())
+            (pr,) = state["prs"]
+            (check,) = pr["statusCheckRollup"]
+            assert check["status"] == "IN_PROGRESS"
+            check.update(status="COMPLETED", conclusion="SUCCESS")
+            remote.write_text(json.dumps(state))
+            self.now += delay
+
+    merge_gate_impl.Engine = EngineWithCIClock
+""")
+    return {"PYTHONPATH": os.pathsep.join((str(hook), p.env["PYTHONPATH"]))}
+
+
 def join_controller(state_file: Path) -> None:
     with state_file.with_suffix(".lock").open("a") as lock:
         fcntl.flock(lock, fcntl.LOCK_EX)
@@ -166,6 +213,86 @@ def test_public_request_detached_review_merge_completion(
     assert len([c for c in p.comments(100) if "broad_review" in c["body"]]) == 1
 
 
+def test_ready_request_launches_review_while_python_ci_is_pending(
+    parent_env: ParentEnv,
+) -> None:
+    p = parent_env
+    numbers, fake, calls = prepared(p)
+    remote = p.state()
+    (pr,) = remote["prs"]
+    pr["statusCheckRollup"] = [pending_python()]
+    p.save(remote)
+    head = pr["head"]["sha"]
+    inspected = json.loads(p.cli("review-inspect", "--prs", str(numbers[0])).stdout)
+    assert inspected["review_candidates"] == numbers
+    assert inspected["prs"][0]["draft"] is False
+    assert "excluded_reason" not in inspected["prs"][0]
+
+    result = request(p, numbers, fake, **complete_pending_python(p))
+    assert result["status"] == "completed", result
+    (line,) = calls.read_text().splitlines()
+    launched = json.loads(line)
+    assert launched["args"][launched["args"].index("--mode") + 1] == "read-only"
+    assert launched["context"]["prs"][0]["pr"]["statusCheckRollup"] == [
+        pending_python()
+    ]
+    assert launched["context"]["prs"][0]["pr"]["head"]["sha"] == head
+    assert "change-0.txt" in launched["files"][str(numbers[0])]
+    assert "+new 0" in launched["diffs"][str(numbers[0])]
+
+    waiting = json.loads(
+        progression_path(p, result).with_name("pending-ci.json").read_text()
+    )
+    assert waiting["review"]["stage"] == "accepted"
+    target = waiting["targets"][str(numbers[0])]
+    assert target["stage"] == "ci_wait"
+    assert target["ci"]["status"] == "pending"
+    assert target["ci_head"] == head and not target["attempts"]
+    (merged,) = result["prs"]
+    assert merged["stage"] == "completed" and merged["merge_head"] == head
+
+
+@pytest.mark.parametrize(
+    ("draft", "reason", "message"),
+    [
+        (True, "draft", "Mark it ready for review"),
+        (None, "draft_status_unknown", "draft status is unavailable"),
+    ],
+)
+def test_review_inspect_and_request_explain_draft_exclusion(
+    parent_env: ParentEnv, draft: bool | None, reason: str, message: str
+) -> None:
+    p = parent_env
+    (number,), fake, calls = prepared(p)
+    remote = p.state()
+    remote["prs"][0]["draft"] = draft
+    p.save(remote)
+    inspected = json.loads(p.cli("review-inspect", "--prs", str(number)).stdout)
+    assert inspected["review_candidates"] == []
+    (item,) = inspected["prs"]
+    assert item["draft"] is draft
+    assert item["excluded_reason"] == reason
+
+    rejected = p.cli(
+        "review-request",
+        "--prs",
+        str(number),
+        *p.review_flags(),
+        "--instruction",
+        "受入条件を確認する。",
+        "--evidence-file",
+        p.note(),
+        "--agent-exec",
+        str(fake),
+        ok=False,
+    )
+    assert rejected.returncode == 2
+    assert f"PR #{number}" in rejected.stderr and message in rejected.stderr
+    assert calls.read_text() == ""
+    assert p.state()["prs"][0]["draft"] is draft
+    assert p.state()["issues"]["10"]["body"] == remote["issues"]["10"]["body"]
+
+
 def test_public_major_continue_and_history_display(parent_env: ParentEnv) -> None:
     p = parent_env
     numbers, fake, calls = prepared(p)
@@ -214,6 +341,7 @@ def test_public_major_continue_and_history_display(parent_env: ParentEnv) -> Non
     assert result["status"] == "completed", result
     assert len(calls.read_text().splitlines()) == 1
     inspected = json.loads(p.cli("review-inspect", "--prs", "100").stdout)
+    assert inspected["prs"][0]["excluded_reason"] == "not_open"
     assert inspected["prs"][0]["history"][0]["changes"]["100"]["files"] == 0
 
 
@@ -226,7 +354,7 @@ def test_partial_continue_reports_a_sibling_pr_lease_conflict(
     first, peer = numbers
     remote = p.state()
     for pr in remote["prs"]:
-        pr["draft"] = True
+        pr["mergeable"] = False  # Reviewable, but parked at the merge gate.
     p.save(remote)
     requested = request(p, numbers, fake)
     directory = Path(p.env["XDG_STATE_HOME"]) / "tennis-lab-agents/parent-sessions"

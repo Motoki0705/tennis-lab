@@ -220,12 +220,16 @@ def test_ci_and_conflict_repairs_change_head_without_rereview_or_resolve(
     tmp_path: Path,
 ) -> None:
     path, backend, clock = setup(tmp_path)
-    backend.checks[11] = ["failure", "success"]
+    head = backend.heads[11]
+    backend.checks[11] = ["pending", "failure", "success"]
     backend.gates[11] = ["conflict", None]
     assert run(path, backend, clock)["status"] == "completed"
     assert backend.review_count == 1
     assert backend.repair_count[11] == 2
+    relevant = [c for c in backend.calls if c[0] in {"review", "ci", "repair"}]
+    assert relevant[:3] == [("review",), ("ci", 11, head), ("ci", 11, head)]
     repairs = [c for c in backend.calls if c[0] == "repair"]
+    assert repairs[0][3]["reason"] == "ci_failure" and repairs[0][3]["head"] == head
     assert repairs[0][3]["failed_jobs"][0]["log"] == "assertion failed"
     assert repairs[1][3]["reason"] == "conflict"
     assert [c for c in backend.calls if c[0] == "merge"] == [
@@ -284,18 +288,40 @@ def test_worker_can_return_parent_request(tmp_path: Path) -> None:
     assert not backend.merged
 
 
+@pytest.mark.parametrize("ci_outcome", ["success", "failure"])
 def test_major_requires_explicit_continue_without_restarting_review(
-    tmp_path: Path,
+    tmp_path: Path, ci_outcome: str
 ) -> None:
     path, backend, clock = setup(tmp_path)
     backend.reviews = ["major", "approve"]
     assert run(path, backend, clock)["status"] == "parent_wait"
     assert not backend.merged
     assert run(path, backend, clock)["status"] == "parent_wait"
+    assert not any(c[0] == "ci" for c in backend.calls)
+    fixed_head = "b" * 40
+    backend.heads[11] = fixed_head
+    backend.checks[11] = ["pending", ci_outcome, "success"]
     engine = Engine(path, backend, clock=clock, sleep=clock.sleep)
     engine.continue_run("major repaired")
     assert engine.run()["status"] == "completed"
     assert backend.review_count == 1
+    ci_and_effects = [c for c in backend.calls if c[0] in {"ci", "repair", "merge"}]
+    assert ci_and_effects[:2] == [("ci", 11, fixed_head), ("ci", 11, fixed_head)]
+    if ci_outcome == "failure":
+        effect, pr, _, details = ci_and_effects[2]
+        assert (effect, pr, details["reason"], details["head"]) == (
+            "repair",
+            11,
+            "ci_failure",
+            fixed_head,
+        )
+        assert backend.heads[11] != fixed_head
+        assert ci_and_effects[3:] == [
+            ("ci", 11, backend.heads[11]),
+            ("merge", 11, backend.heads[11]),
+        ]
+    else:
+        assert ci_and_effects[2:] == [("merge", 11, fixed_head)]
     assert read(path)["decisions"][-1]["changes"]["11"]["files"] == 2
 
 
