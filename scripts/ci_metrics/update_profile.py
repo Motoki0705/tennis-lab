@@ -15,6 +15,7 @@ import zipfile
 from collections import defaultdict
 from collections.abc import Iterator
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import contextmanager
 from dataclasses import dataclass
 from pathlib import Path
 from tempfile import TemporaryDirectory
@@ -36,6 +37,25 @@ class IneligibleRun(ValueError):
     """The run lacks eligible evidence. Transport and local I/O errors propagate."""
 
 
+@contextmanager
+def _candidate_evidence(description: str) -> Iterator[None]:
+    try:
+        yield
+    except IneligibleRun:
+        raise
+    except (
+        ValueError,
+        KeyError,
+        TypeError,
+        AttributeError,
+        IndexError,
+        zipfile.BadZipFile,
+    ) as error:
+        raise IneligibleRun(
+            f"{description}: {type(error).__name__}: {error}"
+        ) from error
+
+
 @dataclass(frozen=True)
 class RunMeasurements:
     audit: dict[str, Any]
@@ -48,7 +68,9 @@ class RunMeasurements:
 
 def _validate_run(run: dict[str, Any], repo: str, run_id: int) -> None:
     if (
-        run["id"] != run_id
+        type(run["id"]) is not int
+        or run["id"] <= 0
+        or run["id"] != run_id
         or run["path"] != ".github/workflows/ci.yml"
         or run["event"] != "push"
         or run["head_branch"] != "main"
@@ -182,11 +204,14 @@ def _measure_run(repo: str, run: dict[str, Any], root: Path) -> RunMeasurements:
     run_id = str(run["id"])
     sha = run["head_sha"]
     attempt = str(run["run_attempt"])
-    artifacts = fetch_artifacts(repo, run_id)
     coverage_name = f"cpu-test-coverage-{run_id}-{attempt}"
-    coverage_rows = [
-        a for a in artifacts if a["name"] == coverage_name and a["expired"] is not True
-    ]
+    with _candidate_evidence("run artifact inventory"):
+        artifacts = fetch_artifacts(repo, run_id)
+        coverage_rows = [
+            a
+            for a in artifacts
+            if a["name"] == coverage_name and a["expired"] is not True
+        ]
     if len(coverage_rows) != 1:
         raise IneligibleRun(
             f"expected exactly one live {coverage_name} artifact, found {len(coverage_rows)}"
@@ -194,11 +219,12 @@ def _measure_run(repo: str, run: dict[str, Any], root: Path) -> RunMeasurements:
     coverage_row = coverage_rows[0]
     aggregate_dir = root / "aggregate"
     _download(repo, run, coverage_row, aggregate_dir)
-    coverage = json.loads((aggregate_dir / "coverage.json").read_text())
-    _validate_coverage(coverage, run)
-    count = coverage["shard_count"]
-    if type(count) is not int or not 1 <= count <= 32:
-        raise IneligibleRun("invalid coverage shard count")
+    with _candidate_evidence("coverage.json"):
+        coverage = json.loads((aggregate_dir / "coverage.json").read_text())
+        _validate_coverage(coverage, run)
+        count = coverage["shard_count"]
+        if type(count) is not int or not 1 <= count <= 32:
+            raise IneligibleRun("invalid coverage shard count")
     manifest = inspect_artifacts(artifacts, run_id, count)
     if not manifest["success"]:
         raise IneligibleRun("; ".join(manifest["issues"]))
@@ -220,7 +246,8 @@ def _measure_run(repo: str, run: dict[str, Any], root: Path) -> RunMeasurements:
     }
     plan_row, *shard_rows = pinned
     _download(repo, run, by_id[plan_row["id"]], root / "plan")
-    lane_plan = read_plan(root / "plan/plan.json")
+    with _candidate_evidence("plan.json"):
+        lane_plan = read_plan(root / "plan/plan.json")
     if any(
         lane_plan[key] != coverage[field]
         for key, field in (
@@ -245,12 +272,30 @@ def _measure_run(repo: str, run: dict[str, Any], root: Path) -> RunMeasurements:
                 f"artifact {row['id']} does not contain its named shard {index}"
             )
 
+    rejected_shards = []
     with ThreadPoolExecutor(max_workers=4) as pool:
-        for _ in pool.map(download_shard, enumerate(shard_rows)):
-            pass
+        downloads = [
+            pool.submit(download_shard, item) for item in enumerate(shard_rows)
+        ]
+        for index, future in enumerate(downloads):
+            try:
+                with _candidate_evidence(f"shard {index} evidence"):
+                    future.result()
+            except IneligibleRun as error:
+                # Read the other futures so a concurrent transport or I/O failure
+                # still stops the search.
+                rejected_shards.append(str(error))
+    if rejected_shards:
+        raise IneligibleRun("; ".join(rejected_shards))
 
     audit = inspect_shards(
-        root, count, sha=sha, run_id=run_id, attempt=attempt, lane_plan=lane_plan
+        root,
+        count,
+        sha=sha,
+        run_id=run_id,
+        attempt=attempt,
+        lane_plan=lane_plan,
+        raise_io_errors=True,
     )
     if not audit["full_cpu_success"]:
         raise IneligibleRun(
@@ -286,12 +331,16 @@ def _select_run(
     for run in runs:
         ident = run["id"] if run_id is None else run_id
         try:
-            _validate_run(run, repo, ident)
+            with _candidate_evidence("run metadata"):
+                _validate_run(run, repo, ident)
             if attempt is not None and str(run["run_attempt"]) != attempt:
                 raise IneligibleRun(
                     "requested attempt is no longer the live run attempt"
                 )
-            with TemporaryDirectory(prefix="cpu-profile-evidence-") as stage:
+            with (
+                TemporaryDirectory(prefix="cpu-profile-evidence-") as stage,
+                _candidate_evidence("run evidence"),
+            ):
                 measurements = _measure_run(repo, run, Path(stage))
         except IneligibleRun as error:
             if run_id is not None:

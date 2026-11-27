@@ -121,6 +121,7 @@ def inspect_shards(
     attempt: str,
     lane_plan: dict[str, Any] | None = None,
     source_root: Path | None = None,
+    raise_io_errors: bool = False,
 ) -> dict[str, Any]:
     """Audit latest shards for one run/plan; attempt is the aggregate job attempt."""
     issues: list[str] = []
@@ -155,6 +156,8 @@ def inspect_shards(
                 raise ValueError("lane plan attempt is newer than aggregate attempt")
             plan_attempt = lane_plan["attempt"]
         except (OSError, ValueError, KeyError, TypeError) as error:
+            if raise_io_errors and isinstance(error, OSError):
+                raise
             issues.append(f"invalid fixed lane plan: {error}")
     for directory in directories:
         try:
@@ -277,7 +280,7 @@ def inspect_shards(
                 or plan["profile_sha256"] != profile
             ):
                 raise ValueError("shards disagree on full inventory or timing profile")
-            summary = summarize(directory)
+            summary = summarize(directory, raise_io_errors=raise_io_errors)
             inventory = json.loads((directory / "inventory.json").read_text())
             if (
                 summary["issues"]
@@ -308,6 +311,8 @@ def inspect_shards(
                 }
             )
         except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+            if raise_io_errors and isinstance(error, OSError):
+                raise
             issues.append(f"{directory.parent.name}: {error}")
     expected_count = count + int(schema == 3)
     if len(directories) != expected_count:
