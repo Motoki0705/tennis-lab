@@ -12,12 +12,10 @@ DPT型の高密度デコーダ\cite{dpt}をつないだ\ev{ball-x3d}{32}フレ�
 Meiji 4camのclip\_000からcam1〜cam3を使い、X3Dで得たカメラ幾何を両方式に固定して診断した。
 有効な球3Dはi935で\ev{ball-x3d}{113/356}、X3Dで\ev{ball-x3d}{123/356}元フレームだった。
 校正と向き判定を含む同じ視点の通常実行では、i935はコート向きが決まらず停止した。
-固定幾何で球観測を比べた結果と、校正・向き判定を含む処理の成立は別の評価となる。
 
 保存済み注釈を固定の幾何へ渡す経路もある。
 Meiji 4camの外部座標初版\ev{ball-origin}{69} JSONは、
 Chromeが\ev{ball-origin}{2026年11月24日 01:50:43 UTC}に \texttt{chatgpt.com} から取得した記録のあるZIPと全件バイト一致した。
-これは取得経路の来歴であり、初版を生成したモデルと実行IDは保存記録からは確定できなかった。
 後続の再注釈は同日\ev{ball-origin}{20:27 JST}にCodex CLIのGPT-6.2 Sol（effort max）で開始し、
 clip\_012、clip\_015、clip\_026の出力が公開rev1の対応ファイルと一致した。
 初版を以下の球像と可視性の診断に用い、rev1の\ev{ball-origin}{3}本はベンチマークの注釈更新に対応する。
@@ -29,9 +27,8 @@ Meiji 4camの\ev{ball-footprint}{69}クリップでは元画像が\ev{ball-footp
 注釈の周辺にある同符号の残差成分から、短軸分散で円盤相当径を、長短軸の分散差で見かけの伸び（ブラー指標）を求めた。
 同じ時点を縮小して測定し、成分の面積やコントラストが足りない場合は欠測とした。
 元画像では\ev{ball-footprint}{2,121/2,208}件が測れ、径の中央値は\ev{ball-footprint}{4.00} pxだった。
-\ev{ball-footprint}{512×288}では\ev{ball-footprint}{360/2,208}件が測れ、
-径の中央値は\ev{ball-footprint}{1.76} pxだった。全サイズで測れた\ev{ball-footprint}{339}件を揃えた比較でも、
-縮小に伴って径が小さくなった（図\ref{fig:ball-footprints}）。表\ref{tab:ball-cameras}で視点ごとの差を示す。
+\ev{ball-footprint}{512×288}では\ev{ball-footprint}{360/2,208}件が測れ、径の中央値は\ev{ball-footprint}{1.76} pxだった。
+全サイズの共通集合でも縮小に伴って径が小さくなった（図\ref{fig:ball-footprints}）。視点別の内訳は表\ref{tab:ball-cameras}に示す。
 
 \begin{figure}[tbp]
 \centering
@@ -50,14 +47,12 @@ Meiji 4camの\ev{ball-footprint}{69}クリップでは元画像が\ev{ball-footp
 \input{tables/ball_cameras}
 \end{table}
 
-初版の視点・フレーム別外部座標で、画像境界の外に中心があるのは
-\ev{ball-visibility}{4,136/184,912}件（\ev{ball-visibility}{2.24\%}）だった。
-うち\ev{ball-visibility}{4,125}件には推定座標の区分が付いていた。
+初版の視点・フレーム別外部座標のうち、中心が画像境界の外にあるのは
+\ev{ball-visibility}{4,136/184,912}件（\ev{ball-visibility}{2.24\%}）で、うち\ev{ball-visibility}{4,125}件が推定座標だった（図\ref{fig:ball-visibility}）。
 画像内の観測、その他の画像内、範囲外座標から層化した目視監査では、
 \ev{ball-visibility}{64}件のうち可視\ev{ball-visibility}{27}件、遮蔽\ev{ball-visibility}{2}件、
 画面内で識別不能\ev{ball-visibility}{11}件、退出を視認した画面外\ev{ball-visibility}{1}件だった。
 範囲外座標の\ev{ball-visibility}{16}件中\ev{ball-visibility}{15}件は退出を視認できなかった。
-図\ref{fig:ball-visibility}の目視件数は層化した標本に対する値で、座標範囲外の比率とも評価対象が異なる。
 
 \begin{figure}[tbp]
 \centering
@@ -68,14 +63,12 @@ Meiji 4camの\ev{ball-footprint}{69}クリップでは元画像が\ev{ball-footp
 
 \subsection{既存の容量・系列長と人工カメラ変動}
 
-球像が縮小で識別しにくくなると、増やしたパラメータがどの程度位置精度に寄与するかは、同じ採点集合で調べる必要がある。
 表\ref{tab:ball-history}の容量比較では、共通の長系列validationで最小の約\ev{ball-capacity}{8.0}百万パラメータの条件でも
 平均\ev{ball-capacity}{35.38} px、P95 \ev{ball-capacity}{169.69} pxの誤差が残った。
 容量を増やした条件で平均は下がったが、誤差分布の裾は大きい。
 別の逐次学習のDPT系列では、\ev{ball-length}{32→64}フレームで位置誤差は下がり、更新数は増加した。
-また、合成のカメラ変動を加えたConvNeXt＋queryの診断では平均位置誤差が
-\ev{ball-camera-stress}{15.4→32.2}元画像pxへ増えた。これは元画像と座標に同じ画像変換を適用し、
-変換後の画面外を採点から外した実験であり、撮影機材だけを入れ替えた測定とは条件が異なる。
+人工カメラ変動では、元画像と座標に同じ変換を適用して画面内に残った点を採点した。
+ConvNeXt＋queryの平均位置誤差は\ev{ball-camera-stress}{15.4→32.2}元画像pxへ増えた。
 
 \begin{table}[tbp]
 \centering
@@ -88,21 +81,19 @@ Meiji 4camの\ev{ball-footprint}{69}クリップでは元画像が\ev{ball-footp
 
 \subsection{学習済みモデルへの時間文脈の介入}
 
-固定validationから\ev{ball-intervention}{144}アンカーを選び、球を観測した\ev{ball-intervention}{88}件で位置精度を測った。
-同じチェックポイント・アンカー・存在閾値で、通常の時系列、アンカー画像の反復、周辺画像をシャッフルする条件を比較した。
-RGBからMDDを作る処理は全条件で同じで、アンカーの位置も固定した。
+固定validationから\ev{ball-intervention}{144}アンカーを選び、通常の時系列、アンカー画像の反復、周辺画像の順序入替えを比較した。
+チェックポイント、アンカーの位置、存在閾値、RGBからMDDを計算する手順を固定した。
 形状ベースの対照では局所コントラスト、丸さ、白・黄の色、背景差分を使い、別収録群で存在閾値を選んだ。
 
 表\ref{tab:ball-intervention}では、位置が\ev{ball-intervention}{20}元画像px以内の件数が、
 X3D T32で通常\ev{ball-intervention}{76/88（86.36\%）}から反復\ev{ball-intervention}{2/88（2.27\%）}へ、
 i935 T8で通常\ev{ball-intervention}{73/88（82.95\%）}から反復\ev{ball-intervention}{0/88}へ落ちた。
-周辺の順序を変えた場合も、全体では両モデルで命中数が減った。形状対照は\ev{ball-intervention}{7/88（7.95\%）}で、
-欠測や背景の紛らわしい像も含めたこの集合では、形状と短い背景差分の組合せから球を分けるのが難しかった。
+周辺フレームの順序入替えでも両モデルの命中数が減った。形状対照の命中は\ev{ball-intervention}{7/88（7.95\%）}だった。
 
 \begin{table}[tbp]
 \centering
-\caption{固定アンカーに対する推論時の介入。位置は存在閾値を適用する前の予測で採点し、
-存在の偽陽性は確認不在\ev{ball-intervention}{56}件、偽陰性は観測\ev{ball-intervention}{88}件を分母とする。
+\caption{固定アンカーに対する推論時の介入。観測\ev{ball-intervention}{88}件で閾値適用前の位置予測と存在の偽陰性を、
+確認不在\ev{ball-intervention}{56}件で存在の偽陽性を採点する。
 X3Dと形状対照は\ev{ball-intervention}{1280×720}、i935は\ev{ball-intervention}{512×288}。}
 \label{tab:ball-intervention}
 \small
@@ -111,24 +102,19 @@ X3Dと形状対照は\ev{ball-intervention}{1280×720}、i935は\ev{ball-interve
 
 \subsection{同一予算での単フレーム学習と時系列学習}
 
-推論時の反復に加え、各入力で最初から学習し直した。同じX3D／CSN＋DPTを
-\ev{ball-train-plan}{512×288}、seed \ev{ball-train-plan}{42}、
-\ev{ball-train-plan}{30,478}学習パックで比較し、初期重みの共通部分と抽出順を揃えた。
+入力条件ごとに同じX3D／CSN＋DPTを初期状態から学習した。
+解像度を\ev{ball-train-plan}{512×288}に固定し、単一seed \ev{ball-train-plan}{42}を用いた。
+学習には\ev{ball-train-plan}{30,478}パックを使い、初期重みの共通部分と抽出順を揃えた。
 各条件は\ev{ball-train-plan}{4,700}更新、更新当たり\ev{ball-train-plan}{128}枚、計\ev{ball-train-plan}{601,600}入力フレームだった。
-単フレームにはRGBを、時系列にはRGBと各窓から計算したMDDを入力した。
+単フレームの入力はRGBで、\ev{ball-train-plan}{T=8とT=32}ではRGBに各窓から計算したMDDを加えた。
+全validationの\ev{ball-train-val}{117,358}件（observed \ev{ball-train-val}{85,473}件）を採点した。
+存在F1には条件ごとにvalidation上のFPRとFNRの平均を最小にする閾値を使い、位置には閾値適用前の予測を使った。
 
-全validationの\ev{ball-train-val}{117,358}件（observed \ev{ball-train-val}{85,473}件）では、
-\ev{ball-train-val}{20} px以内率が単フレームRGBの\ev{ball-train-val}{1.66\%}から、
+全validationの\ev{ball-train-val}{20} px以内率は単フレームの\ev{ball-train-val}{1.66\%}から、
 \ev{ball-train-plan}{T=8}で\ev{ball-train-val}{40.90\%}、\ev{ball-train-plan}{T=32}で\ev{ball-train-val}{44.23\%}に上がった。
 Chat、Meiji 3cam、TrackNet game9のすべてで上がり、同じ\ev{ball-train-anchor}{144}アンカーでも
 \ev{ball-train-anchor}{2/88→40/88→45/88}と増えた（表\ref{tab:ball-training}、図\ref{fig:ball-training}）。
-存在F1は各条件のvalidationでFPRとFNRの平均が最小となる閾値で集計した。位置採点にはこの閾値を適用しない。
-
-単フレームからの差にはMDDの有無が含まれる。
-両方でRGB＋MDDを使う\ev{ball-train-plan}{T=8とT=32}の比較では、
-窓の延長に伴う改善は全validationで\ev{ball-train-val}{3.33}ポイント、アンカーで\ev{ball-train-anchor}{5.68}ポイントだった。
-単一seed・固定解像度での結果で、独立testは今後の評価に含める。
-この学習比較と前節のチェックポイント比較では、学習履歴と入力解像度が異なる。
+時系列条件で窓を延ばすと、全validationで\ev{ball-train-val}{3.33}ポイント、アンカーで\ev{ball-train-anchor}{5.68}ポイント改善した。
 
 \begin{table}[tbp]
 \centering
