@@ -31,7 +31,7 @@
     },
     "submodules/models/rtmpose/pose2d.py": {
       "before": null,
-      "after": "8aad7c479f440f0ec7ed2e89eb9d3868d4aa2abcd395ca690a5c59951c28339d"
+      "after": "7ab977a343682e33a2fa8df1ce7d486117144edb5daa62ed06b7a096d36cd8d7"
     },
     "submodules/people_model_assets.py": {
       "before": null,

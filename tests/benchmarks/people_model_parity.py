@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import argparse
+from functools import partial
 from importlib import import_module
 from pathlib import Path
 from typing import Any
@@ -149,7 +150,7 @@ def _rtm_delta(args: argparse.Namespace, reference: Any, recipe: Any, device: to
             "plan_sha256": None if engine is None else engine.engine.plan_sha256}
 
 
-def _gpu(args: argparse.Namespace, reference: Any, recipe: Any) -> dict[str, Any]:
+def _gpu(args: argparse.Namespace, reference: Any, recipe: Any) -> tuple[dict[str, Any], bool]:
     cameras = ("cam0", "cam1", "cam2", "cam3")
     frames, boxes = _rows(args, cameras)
     device = torch.device("cuda:0")
@@ -158,14 +159,25 @@ def _gpu(args: argparse.Namespace, reference: Any, recipe: Any) -> dict[str, Any
     torch.backends.cudnn.conv.fp32_precision = "ieee"
     rf = EngineBundle.read(args.rfdetr_engine)
     rtm = EngineBundle.read(args.rtmpose_engine)
-    return {
-        "RF-DETR-L PT16": _rf_delta(args, frames, Backend.PT16, None, device),
-        "RF-DETR-L TRT16": _rf_delta(args, frames, Backend.TRT16, rf, device),
-        "RTMPose-X PT16": _rtm_delta(args, reference, recipe, device, Backend.PT16, None, frames, boxes),
-        "RTMPose-X TRT16": _rtm_delta(args, reference, recipe, device, Backend.TRT16, rtm, frames, boxes),
+    checks = {
+        "RF-DETR-L PT16": partial(_rf_delta, args, frames, Backend.PT16, None, device),
+        "RF-DETR-L TRT16": partial(_rf_delta, args, frames, Backend.TRT16, rf, device),
+        "RTMPose-X PT16": partial(_rtm_delta, args, reference, recipe, device, Backend.PT16, None, frames, boxes),
+        "RTMPose-X TRT16": partial(_rtm_delta, args, reference, recipe, device, Backend.TRT16, rtm, frames, boxes),
+    }
+    results: dict[str, Any] = {
         "cameras": list(cameras), "device": torch.cuda.get_device_name(device),
         "rfdetr_sha256": dual_sha256(args.rfdetr_checkpoint),
     }
+    failed = False
+    for name, check in checks.items():
+        try:
+            results[name] = check()
+        except (AssertionError, RuntimeError, ValueError) as exc:
+            results[name] = {"error": str(exc)}
+            failed = True
+        print(name, results[name], flush=True)
+    return results, failed
 
 
 def main() -> None:
@@ -182,7 +194,10 @@ def main() -> None:
     # The pinned comparison directory is supplied on PYTHONPATH.
     reference = import_module("rtmpose")
     recipe = reference.load_recipe(POSE_MODEL, args.rtmpose_checkpoint, args.mmpose_source)
-    results = _cpu(args, reference, recipe) if args.mode == "cpu" else _gpu(args, reference, recipe)
+    if args.mode == "cpu":
+        results, failed = _cpu(args, reference, recipe), False
+    else:
+        results, failed = _gpu(args, reference, recipe)
     report = {
         "head": source_commit(), "bundle_sha256": BUNDLE_SHA256, "clip": CLIP, "source_frame": FRAME,
         "rtmpose_sha256": dual_sha256(args.rtmpose_checkpoint), "mmpose_commit": reference.SOURCE_COMMIT,
@@ -190,6 +205,8 @@ def main() -> None:
     }
     write_json_atomic(args.report, report)
     print(results, flush=True)
+    if failed:
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

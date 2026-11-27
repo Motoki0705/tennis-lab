@@ -106,7 +106,7 @@ def prepare_rtmpose_crop(frame: NDArray[np.uint8], box: NDArray[np.float32]) -> 
     src[2] = src[1] + np.array([-delta[1], delta[0]], np.float32)
     warp = cv2.getAffineTransform(src, _DST_POINTS)
     crop = cv2.warpAffine(frame, warp, (WIDTH, HEIGHT), flags=cv2.INTER_LINEAR)
-    rgb = crop[..., ::-1].transpose(2, 0, 1).astype(np.float32)
+    rgb = np.ascontiguousarray(crop[..., ::-1].transpose(2, 0, 1), dtype=np.float32)
     return (rgb - _RGB_MEAN) / _RGB_STD, np.concatenate((center, scale))
 
 
@@ -228,7 +228,8 @@ class RTMPoseXPose2D(BaseInferenceModel[Pose2DRequest | Pose2DFrameSequenceReque
             or not bool(torch.isfinite(geometry).all()) or bool((geometry[:, 2:] <= 0).any()) or len(images) == 0):
             raise ValueError("Invalid prepared RTMPose-X pixel batch or crop geometry")
         with span("transfer", model="RTMPose-X", operation="input_to_device"):
-            pixels = images.to(device=self.device, dtype=self.dtype)
+            # Match the reference NCHW layout so FP16 selects the same convolution kernels.
+            pixels = images.to(device=self.device, dtype=self.dtype, memory_format=torch.contiguous_format)
         with span("inference", model="RTMPose-X", batch_shape=list(pixels.shape), flip_test=self.flip_test):
             x, y = self._forward(pixels)
             if self.flip_test:

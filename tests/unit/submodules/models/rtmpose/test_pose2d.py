@@ -19,6 +19,7 @@ def test_native_box_rows_and_flip_preserve_raw_coco17_scores(tmp_path: Path, mon
     def forward(pixels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
         flip = len(sizes) % 2 == 1
         sizes.append(len(pixels))
+        assert pixels.is_contiguous()
         np.testing.assert_allclose(pixels[0, :, 192, 144].numpy(),
                                    [2.1632845, -1.8606442, -1.71730], atol=1e-5)
         x = torch.full((len(pixels), 26, 576), -.25)
@@ -42,6 +43,21 @@ def test_native_box_rows_and_flip_preserve_raw_coco17_scores(tmp_path: Path, mon
     assert keypoints.shape == (3, 17, 3) and keypoints.dtype == np.float32
     np.testing.assert_allclose(keypoints[:, 1], [[20.3125, 30, 1.4], [50.3125, 40, 1.4], [30.3125, 40, 1.4]], atol=1e-6)
     np.testing.assert_allclose(keypoints[:, 2], np.tile([-1, -1, -.4], (3, 1)), atol=1e-6)
+
+
+def test_prepared_crops_use_reference_layout(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    model = RTMPoseXPose2D(tmp_path / "model.pth", device="cpu", batch_size=1, flip_test=False)
+    monkeypatch.setattr(model, "load", lambda: None)
+    channels_last = torch.zeros((1, 3, 384, 288)).contiguous(memory_format=torch.channels_last)
+
+    def forward(pixels: torch.Tensor) -> tuple[torch.Tensor, torch.Tensor]:
+        assert pixels.is_contiguous()
+        torch.testing.assert_close(pixels, channels_last)
+        return torch.ones((1, 26, 576)), torch.ones((1, 26, 768))
+
+    monkeypatch.setattr(model, "_forward", forward)
+    result = model.predict_crops(channels_last, torch.tensor([[15., 20., 12., 16.]]))
+    torch.testing.assert_close(result.keypoints[0, 0], torch.tensor([9., 12., 1.]))
 
 
 def test_rectangular_crop_rejects_missing_frame_instead_of_reordering(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
