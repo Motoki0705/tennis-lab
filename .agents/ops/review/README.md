@@ -23,6 +23,12 @@
 
 記録専用マージは、同じ親レジストリを使うcontrollerのマージ送信をリポジトリ単位で排他し、送信直前にmainのtipを照合する。GitHubの同期マージAPIではPRのHEADを固定できる。同時に外部操作でmainが進んだ場合は、観測されたマージコミットの両親を照合し、不一致を受入保留にする。 [GitHubの同期マージAPI](https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request)
 
+## GitHub の再観測とマージ後 CI
+
+- 通常 PR と記録専用 PR は、`mergeability_unknown` を 5、10、15、30、30、60 秒の間隔で最大6回再観測する。記録専用 PR の最終照合にも同じ上限を使う。再観測後も判定不能なら `mergeability_unknown` で親待ちに入り、`ci_wait` から再開できる。
+- GitHub の HTTP 500・502・503・504 と接続障害は、CI・依存・マージ後の読み取りとレビュー起動前の照合で 10、20、40、60、60 秒の間隔で最大5回再観測する。正常な観測で回数をリセットし、再観測後も障害が続けばエラーを記録して親へ返す。`merge_pending` と `repair_pending` の過渡エラーは `recovery_required` で親へ返し、保存済みの実行意図を照合する。
+- merge commit の最新の `.github/workflows/ci.yml` の push run がジョブ開始前にキャンセルされた場合は、run ID・試行番号・時刻を保存してから最大2回自動で再実行する。同じ試行のキャンセルが2分後も続く場合、API が失敗した場合、または再実行枠を使い切った場合は `main_ci_cancelled_before_start` で親へ返す。ジョブが作成済みで当該試行の `Python` が成功していなければ、`main_ci_failed` で親へ返す。 [GitHub の workflow 再実行 API](https://docs.github.com/en/rest/actions/workflow-runs#re-run-a-workflow)
+
 ## 正式レビューの障害復旧
 
 有効な `approve` または `major` を得たrunの正式レビューは1回で確定する。`review-request` を再送すると既存runを返す。通常の `merge-continue` は元のラウンドを継続し、完了済みのrunner出力から保存結果を回収する。

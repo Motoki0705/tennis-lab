@@ -242,7 +242,14 @@ if checks:
 if path == "repos/o/r/actions/runs":
     head = parse_qs(query).get("head_sha", [None])[0]
     prs = [p for p in state["prs"] if head in {p["head"]["sha"], p.get("merge_commit_sha")}]
-    rows = [{"id": p["number"], "check_suite_id": p["number"], "head_sha": head, "event": "push" if p.get("merged") else "pull_request", "run_attempt": 1} for p in prs]
+    rows = [
+        {"id": p["number"], "check_suite_id": p["number"], "head_sha": head,
+         "head_branch": p["base"]["ref"] if p.get("merged") else p["head"]["ref"],
+         "event": "push" if p.get("merged") else "pull_request",
+         "path": ".github/workflows/ci.yml", "run_number": p["number"], "run_attempt": 1,
+         "status": "completed", "conclusion": None}
+        for p in prs
+    ]
     response({"total_count": len(rows), "workflow_runs": rows})
 ci_jobs = re.fullmatch(r"repos/o/r/actions/runs/(\d+)/attempts/1/jobs", path)
 if ci_jobs:
