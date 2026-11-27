@@ -21,13 +21,17 @@ def source_digests(source: Path) -> dict[str, str]:
     return {str(path.relative_to(source)): dual_sha256(path) for path in sorted(source.rglob("*.py"))}
 
 
+def compatible_people_model_source_digests(sources: dict[str, str], *, prefix: str = "") -> dict[str, str]:
+    return _compatible_patch(sources, "people_models_cache_compatibility.json", prefix=prefix)
+
+
 def compatible_source_digests(
     sources: dict[str, str], *, ball_court_side: bool = False, tensorrt: bool = False,
     standard_recipe: bool = False, standard_people: bool = False, alternative_people: bool = False,
 ) -> dict[str, str]:
     """Keep the baseline identity for exact, compatible source changes."""
     if not alternative_people:
-        sources = _compatible_patch(sources, "people_models_cache_compatibility.json")
+        sources = compatible_people_model_source_digests(sources)
     sources = _compatible_patch(sources, "multiview_scene_cache_compatibility.json")
     sources = _compatible_patch(sources, "event_detection_cache_compatibility.json")
     sources = _compatible_patch(sources, "pose_comparison_cache_compatibility.json")
@@ -45,9 +49,11 @@ def compatible_source_digests(
     return _compatible_patch(sources, "fp32_cache_compatibility.json")
 
 
-def _compatible_patch(sources: dict[str, str], filename: str) -> dict[str, str]:
+def _compatible_patch(sources: dict[str, str], filename: str, *, prefix: str = "") -> dict[str, str]:
     manifest = Path(__file__).with_name(filename)
-    files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
+    files = {path.removeprefix(prefix): versions
+             for path, versions in json.loads(manifest.read_text(encoding="utf-8"))["files"].items()
+             if path.startswith(prefix)}
     if any(sources.get(path) != versions["after"] for path, versions in files.items()):
         return sources
 

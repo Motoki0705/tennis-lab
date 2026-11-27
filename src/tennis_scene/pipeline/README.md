@@ -624,8 +624,11 @@ side・alignment・三角測量へ渡す`uv_px/confidence`は欠損をゼロ、m
 
 ## 成果物
 
-構造化clipでは`<clip>/annotations/tennis_scene/`をstoreとし、呼び出し側が`store_root`で明示する。
-単独動画の入口（`store_root=None`）は`cache.directory/<source digest>`を使う。
+構造化clipのstoreの基点は`<clip>/annotations/tennis_scene/`で、呼び出し側が`store_root`で明示する。
+単独動画の入口（`store_root=None`）の基点は`cache.directory/<source digest>`。
+DINO＋ViTPose-H はこの基点に保存する。RF-DETR-L または RTMPose-X を選ぶ場合は、
+基点の `people-models/<detector>+<pose>/` に `scene.json`、export、公開マーカー、失敗記録を保存する。
+単一clip CLI の出力ディレクトリと、一括実行の既定の進捗ディレクトリにも同じ組合せ名を使う。
 storeの場所を動画パスの形から推測しない。`cache.directory`はrun IDを含まないARTIFACT pathで、`cache.source=load`で再開できる。
 
 ```text

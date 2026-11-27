@@ -18,6 +18,7 @@ from src.tennis_scene.pipeline.components.event_detection import (
     EventDetectionModule,
 )
 from src.tennis_scene.pipeline.components.person_features import (
+    PersonPoseFeaturesModule,
     appearance_feature_settings,
 )
 from src.tennis_scene.pipeline.definition import (
@@ -25,6 +26,8 @@ from src.tennis_scene.pipeline.definition import (
     check_shared_side_execution,
     component_override_identity,
     enabled_model_assets,
+    person_detection_settings,
+    person_pose_feature_settings,
     publication_model_identities,
     standard_definition,
     validate_override_names,
@@ -152,7 +155,7 @@ class TennisSceneOrchestrator:
             "models": publication_model_identities(cfg),
             "component_overrides": overrides,
             **({"people_models": {"detector": cfg.people.detector, "pose": cfg.people.pose}}
-               if cfg.people.uses_alternative_models and cfg.enabled["person_observations"] else {}),
+               if cfg.people.uses_alternative_models else {}),
             **({"recipe": cfg.recipe} if cfg.recipe != STANDARD_RECIPE else {}),
             **({"appearance_preprocessing": appearance_feature_settings(cfg.tracking.features)}
                if cfg.enabled["person_observations"] else {}),
@@ -167,6 +170,12 @@ class TennisSceneOrchestrator:
             **({'video_court_cameras': shared.manifest['cameras'],
                 'video_court_unobservable_policy': cfg.video_court_unobservable_policy,
                 'video_court_drift_cameras': drift_identity(shared).get('camera_digests', {})} if shared is not None else {})}
+        if cfg.people.uses_alternative_models and cfg.enabled["person_observations"]:
+            pose = PersonPoseFeaturesModule(cfg.people, cfg.tracking.features)
+            identity["people_component_settings"] = json_value({
+                "person_detection": person_detection_settings(cfg),
+                "person_pose_features": person_pose_feature_settings(cfg, pose),
+            })
         self._publication_assets = ModelAssetSnapshot.capture(identity)
         self._publication_assets.assert_unchanged()
         return identity
@@ -244,8 +253,8 @@ class TennisSceneOrchestrator:
         ``store_root`` is the clip-owned store (structured datasets keep it at
         ``<clip>/annotations/tennis_scene``); ``None`` selects
         ``cache.directory/<source digest>``. The store is never inferred from
-        the shape of the video paths. Alternate recipes scope their own store
-        under that root.
+        the shape of the video paths. The recipe and people models determine
+        the store within that root.
         """
         event_config = self.config.require_event_detection()
         self._scene_export = None
@@ -256,7 +265,7 @@ class TennisSceneOrchestrator:
             raise ValueError("Reference camera is not a source camera")
         source_document = json_value(source)
         root = self.config.cache_directory / document_digest(source_document)[:20] if store_root is None else store_root
-        store = ClipStore(recipe_directory(root, self.config.recipe), source_document)
+        store = ClipStore(recipe_directory(root, self.config.recipe, people_models=self.config.people.selection), source_document)
         runner = None
         self.last_runner, self.last_store = None, store
         self.last_receipt = {"schema": "tennis_scene_run_v3", "status": "running", "clip_id": source.clip_id,

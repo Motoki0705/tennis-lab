@@ -24,6 +24,7 @@ from src.tennis_scene.pipeline.components.event_detection import (
     annotation_digests,
 )
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
+from src.tennis_scene.pipeline.model_assets import people_model_names
 from src.tennis_scene.pipeline.recipes import (
     ECPOSE_RECIPE,
     FASTHMR_RECIPE,
@@ -65,8 +66,13 @@ def _publication_recipe(identity: Mapping[str, object]) -> RecipeName:
 
 
 def annotation_root(clip_dir: Path, identity: Mapping[str, object]) -> Path:
-    root: Path = recipe_directory(clip_dir / ANNOTATION_RELATIVE_DIR, _publication_recipe(identity))
-    return root
+    selection = None
+    if identity.get("schema") == "declared_component_pipeline_v1" and "people_models" in identity:
+        models = identity["people_models"]
+        if not isinstance(models, Mapping) or set(models) != {"detector", "pose"}:
+            raise ValueError("Publication requires the declared detector and pose models")
+        selection = people_model_names(models)
+    return recipe_directory(clip_dir / ANNOTATION_RELATIVE_DIR, _publication_recipe(identity), people_models=selection)
 
 
 def scene_array_manifest(result: SceneResult) -> dict[str, dict[str, object]]:
@@ -199,7 +205,12 @@ def _required_publication_components(inputs: DatasetClipInputs, identity: Mappin
             require_current_people_artifacts,
         )
 
-        required.update(require_current_people_artifacts(root.resolve(), document, inputs.camera_ids, identity))
+        settings = identity.get("settings")
+        observations = settings.get("person_observations") if isinstance(settings, Mapping) else None
+        if not isinstance(observations, Mapping) or type(observations.get("enabled")) is not bool:
+            raise ValueError("Publication requires the people observation setting")
+        if observations["enabled"]:
+            required.update(require_current_people_artifacts(root.resolve(), document, inputs.camera_ids, identity))
     if APPEARANCE_MEDIA in identity:
         node = "player_association"
         reference = document["artifacts"][node]
@@ -326,9 +337,10 @@ def publish_annotation(inputs: DatasetClipInputs, result: SceneResult, *, pipeli
 
 
 def _failure_path(clip_dir: Path, identity: Mapping[str, object]) -> Path:
-    if _publication_recipe(identity) == STANDARD_RECIPE:
+    root = annotation_root(clip_dir, identity)
+    if root == clip_dir / ANNOTATION_RELATIVE_DIR:
         return clip_dir / "annotations" / "tennis_scene.failure.json"
-    return annotation_root(clip_dir, identity) / "failure.json"
+    return root / "failure.json"
 
 
 def record_annotation_failure(clip_dir: Path, clip_id: str, error: Exception, *,

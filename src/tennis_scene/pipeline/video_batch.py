@@ -178,7 +178,8 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
         raise ValueError("Video batches require complete clips and the model pipeline")
     cfg.resolver.validate(PathRole.DATA, dataset_directory)
     validate_id_component(video_id, field_name="video_id")
-    directory = (recipe_directory(dataset_directory / "videos" / video_id / "annotations" / "tennis_scene", cfg.recipe) / "batch"
+    directory = (recipe_directory(dataset_directory / "videos" / video_id / "annotations" / "tennis_scene", cfg.recipe,
+                                  people_models=cfg.people.selection) / "batch"
                  if progress_directory is None else progress_directory)
     progress = VideoBatchProgress(directory, video_id, pipeline_config_yaml,
         overwrite=overwrite, continue_on_error=continue_on_error, recording_devices=recording_devices, batching=batching,

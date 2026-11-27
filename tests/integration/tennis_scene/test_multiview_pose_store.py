@@ -2,13 +2,18 @@ import json
 from dataclasses import replace
 from pathlib import Path
 from sys import argv
+from typing import Any
 
 import numpy as np
 import pytest
 from numpy.typing import NDArray
 
 from src.tennis_scene.multiview_pose.__main__ import main
-from src.tennis_scene.multiview_pose.inputs import PinnedCourtSide, read_saved_inputs
+from src.tennis_scene.multiview_pose.inputs import (
+    PinnedCourtSide,
+    SavedPoseInputs,
+    read_saved_inputs,
+)
 from src.tennis_scene.multiview_pose.reconstruct import DEFAULT_CONFIG, reconstruct
 from src.tennis_scene.multiview_pose.storage import publish_candidates, read_candidates
 from src.tennis_scene.multiview_tracking.__main__ import main as tracking_main
@@ -17,7 +22,11 @@ from src.tennis_scene.multiview_tracking.schema import (
     TrackEnd,
     TrackingConfig,
 )
-from src.tennis_scene.multiview_tracking.storage import read_tracks, track_store
+from src.tennis_scene.multiview_tracking.storage import (
+    read_candidate_store,
+    read_tracks,
+    track_store,
+)
 from src.tennis_scene.pipeline.artifacts import json_value
 from src.tennis_scene.pipeline.components.court_calibration import (
     CourtCalibrationOutput,
@@ -38,7 +47,11 @@ from src.tennis_scene.pipeline.storage.codec import ArtifactCodec, unpack_value
 from src.tennis_scene.pipeline.video_artifact import publish_document
 from src.utils.configuration import PathContractError
 from tests.integration.tennis_scene.test_video_court_side import build, prefix_stores
-from tests.unit.tennis_scene.multiview_pose.test_reconstruct import person
+from tests.unit.tennis_scene.multiview_pose.test_reconstruct import (
+    cameras,
+    observed_inputs,
+    person,
+)
 
 
 @pytest.fixture
@@ -88,10 +101,7 @@ def saved_inputs(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     nodes = tuple(
         replace(
             node,
-            settings={
-                **node.settings,
-                **observation_settings.get(node.name.split("/", 1)[0], {}),
-            },
+            settings=observation_settings.get(node.name.split("/", 1)[0], node.settings),
         )
         for node in nodes
     )
@@ -230,6 +240,25 @@ def test_tracking_cli_pins_candidates_and_preserves_their_source_timeline(
         track_store(upstream, output, TrackingConfig(1), expected_artifact_id="0" * 64)
     assert tracking.index_path.read_bytes() == before
     assert (upstream / "scene.json").read_bytes() == input_index
+
+
+def test_republishing_legacy_candidates_preserves_the_pinned_identity(tmp_path: Path) -> None:
+    # Outputs of publish_candidates at the pre-integration main commit 329dc6880f94.
+    artifact_id = "f38f15795f89961aad6413e0c5cb787f3ec684e6b8a9cec7e435ba07c149e10a"
+    execution_key = "1a23770335514e82b3aa10c02cc64ac29d4c3aa89953c84c901e3f3772d12dc3"
+    observations = observed_inputs(cameras(), [[np.empty((0, 17, 3))]] * 3)
+    refs = {"person_detection/cam0": ArtifactRef(
+        "1" * 64, "components/person_detection/cam0/fixture.json", "2" * 64, "person_detections", 2, "3" * 64
+    )}
+    inputs = SavedPoseInputs(observations, refs, {"digest": "a" * 64, "evidence": "ball"}, ("dino", "vitpose-h"))
+    destination, origin = tmp_path / "candidates", tmp_path / "observations"
+    candidates = reconstruct(observations)
+    for _ in range(2):
+        ref = publish_candidates(destination, origin, inputs, candidates, DEFAULT_CONFIG)
+        assert (ref.artifact_id, ref.execution_key) == (artifact_id, execution_key)
+    source, recorded, result = read_candidate_store(destination, expected_artifact_id=artifact_id)
+    assert (source, recorded) == (observations.source, ref)
+    np.testing.assert_array_equal(result.frame_offsets, [0, 0])
 
 
 @pytest.mark.parametrize(
@@ -429,46 +458,131 @@ def test_original_detection_rows_must_match_saved_pose(saved_inputs):
         read_saved_inputs(store.root, side)
 
 
+def _people_observation_settings(detector: str, pose: str) -> tuple[dict[str, Any], dict[str, Any]]:
+    detection = {
+        "detector": detector, "scope": "full_frame", "enabled": True, "merge_duplicates": False,
+        "runtime": {"confidence": .30},
+        "models": {"detector": {
+            "architecture": "dino_4scale_swin_l" if detector == "dino" else detector,
+            "assets": {"checkpoint": {"sha256": "d" * 64}},
+            "settings": {"backend": "tensorrt", "engines": [{"plan_sha256": "e" * 64}], "runtime": {"confidence": .30}},
+        }},
+    }
+    feature_model: dict[str, Any] = {"architecture": "vitpose_huge_coco17" if pose == "vitpose-h" else pose}
+    features = {"enabled": True, "models": {"pose": feature_model}}
+    if pose == "rtmpose-x":
+        features.update(pose=pose, joint_confidence="raw_simcc_peak")
+        feature_model["settings"] = {"joint_confidence": "raw_simcc_peak"}
+    return detection, features
+
+
+def _publish_people_observations(store: ClipStore, camera: str, detection: dict[str, Any], pose: dict[str, Any]) -> None:
+    refs = store.references()
+    dependencies: dict[str, ArtifactRef] = {}
+    for component, output, settings in (
+        (PersonDetectionModule, PersonDetectionOutput, detection),
+        (PersonPoseFeaturesModule, PersonPoseFeaturesOutput, pose),
+    ):
+        node = f"{component.io.name}/{camera}"
+        reference = refs[node]
+        codec = ArtifactCodec(output)
+        identity = store.descriptor(reference)["identity"]
+        published = store.publish(
+            node, store.load(reference, codec), codec, schema=reference.schema, version=reference.version,
+            identity={**identity, "component_class": f"{component.__module__}.{component.__qualname__}", "settings": settings},
+            dependencies=dependencies, provenance={"origin": "component"},
+        )
+        dependencies = {"detections": published}
+
+
 @pytest.mark.parametrize(("detector", "pose"), [
     ("rfdetr-l", "rtmpose-x"), ("rfdetr-l", "vitpose-h"), ("dino", "rtmpose-x"),
 ])
 def test_alternative_people_artifacts_preserve_the_3d_input_and_publication_contract(saved_inputs, detector, pose):
     store, source, _, _, _, side = saved_inputs
-    refs = store.references()
-    code = store.descriptor(refs["person_detection/cam0"])["identity"]["implementation"]
-    det_models = {"detector": {"architecture": detector if detector == "rfdetr-l" else "dino_4scale_swin_l"}}
-    pose_models = {"pose": {"architecture": pose if pose == "rtmpose-x" else "vitpose_huge_coco17"}}
+    code = store.descriptor(store.references()["person_detection/cam0"])["identity"]["implementation"]
+    detection, features = _people_observation_settings(detector, pose)
     for camera in source.camera_ids:
-        dependencies: dict[str, ArtifactRef] = {}
-        for component, output, model, markers in (
-            (PersonDetectionModule, PersonDetectionOutput, det_models, {"detector": detector}),
-            (PersonPoseFeaturesModule, PersonPoseFeaturesOutput, pose_models,
-             {"pose": pose, "joint_confidence": "raw_simcc_peak"} if pose == "rtmpose-x" else {}),
-        ):
-            node = f"{component.io.name}/{camera}"
-            reference = refs[node]
-            codec = ArtifactCodec(output)
-            descriptor = store.descriptor(reference)
-            identity = descriptor["identity"]
-            published = store.publish(
-                node, store.load(reference, codec), codec, schema=reference.schema, version=reference.version,
-                identity={**identity, "component_class": f"{component.__module__}.{component.__qualname__}",
-                          "settings": {**identity["settings"], "models": model, **markers}},
-                dependencies=dependencies, provenance={"origin": "component"},
-            )
-            dependencies = {"detections": published}
+        _publish_people_observations(store, camera, detection, features)
     adopted = read_saved_inputs(store.root, side)
     assert len(adopted.observations.poses) == len(source.camera_ids)
     result = reconstruct(adopted.observations)
     assert result.joint_valid.any()
     document = json.loads(store.index_path.read_text())
     publication = {"code_sha256": code, "people_models": {"detector": detector, "pose": pose},
-                   "models": {"person_detection": det_models, "person_pose_features": pose_models}}
+                   "settings": {"people_models": {"merge_duplicate_person_boxes": False}},
+                   "models": {"person_detection": detection["models"], "person_pose_features": features["models"]},
+                   "people_component_settings": {
+                       stage: {key: value for key, value in settings.items() if key != "models"}
+                       for stage, settings in (("person_detection", detection), ("person_pose_features", features))
+                   }}
     required = require_current_people_artifacts(store.root, document, source.camera_ids, publication)
     assert len(required) == 2 * len(source.camera_ids)
     different = {**publication, "people_models": {"detector": "dino" if detector == "rfdetr-l" else "rfdetr-l", "pose": pose}}
     with pytest.raises(ValueError, match="differ from the configured selection"):
         require_current_people_artifacts(store.root, document, source.camera_ids, different)
+
+    _publish_people_observations(store, "cam0", {**detection, "merge_duplicates": True}, features)
+    document = json.loads(store.index_path.read_text())
+    with pytest.raises(ValueError, match="differs from its declared people settings"):
+        require_current_people_artifacts(store.root, document, source.camera_ids, publication)
+
+
+@pytest.mark.parametrize("conflict", [
+    "detector-selector", "pose-selector", "missing-detector-selector", "missing-pose-selector",
+    "legacy-raw-score", "model-score",
+])
+def test_saved_inputs_reject_contradictory_people_declarations(saved_inputs, conflict):
+    store, source, _, _, _, side = saved_inputs
+    detection, pose = _people_observation_settings("rfdetr-l", "rtmpose-x")
+    if conflict == "detector-selector":
+        detection["detector"] = "dino"
+    elif conflict == "pose-selector":
+        pose["pose"] = "vitpose-h"
+    elif conflict == "missing-detector-selector":
+        del detection["detector"]
+    elif conflict == "missing-pose-selector":
+        del pose["pose"]
+    elif conflict == "legacy-raw-score":
+        pose = {**_people_observation_settings("dino", "vitpose-h")[1], "joint_confidence": "raw_simcc_peak"}
+    else:
+        pose["models"]["pose"]["settings"]["joint_confidence"] = "heatmap_peak"
+    for camera in source.camera_ids:
+        _publish_people_observations(store, camera, detection, pose)
+    with pytest.raises(ValueError, match=r"model declaration|raw SimCC"):
+        read_saved_inputs(store.root, side)
+
+
+@pytest.mark.parametrize("changed", ["threshold", "backend", "checkpoint", "engine"])
+def test_saved_inputs_reject_mixed_people_settings_across_cameras(saved_inputs, changed):
+    store, source, _, _, _, side = saved_inputs
+    for camera in source.camera_ids:
+        detection, pose = _people_observation_settings("rfdetr-l", "rtmpose-x")
+        if camera == "cam1":
+            model = detection["models"]["detector"]
+            if changed == "threshold":
+                detection["runtime"]["confidence"] = .25
+                model["settings"]["runtime"]["confidence"] = .25
+            elif changed == "backend":
+                model["settings"]["backend"] = "pytorch"
+                del model["settings"]["engines"]
+            elif changed == "checkpoint":
+                model["assets"]["checkpoint"]["sha256"] = "c" * 64
+            else:
+                model["settings"]["engines"][0]["plan_sha256"] = "f" * 64
+        _publish_people_observations(store, camera, detection, pose)
+    with pytest.raises(ValueError, match="People observation settings differ between cameras: cam1"):
+        read_saved_inputs(store.root, side)
+
+
+def test_saved_inputs_accept_legacy_model_declarations_without_selectors(saved_inputs):
+    store, source, _, _, _, side = saved_inputs
+    detection, features = _people_observation_settings("dino", "vitpose-h")
+    del detection["detector"]
+    for camera in source.camera_ids:
+        _publish_people_observations(store, camera, detection, features)
+    assert len(read_saved_inputs(store.root, side).observations.poses) == len(source.camera_ids)
+
 
 def test_side_rejects_missing_video_wrong_digest_player_evidence_and_changed_camera_or_media(
     saved_inputs,

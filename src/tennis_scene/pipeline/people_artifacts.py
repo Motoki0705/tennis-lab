@@ -20,6 +20,22 @@ from src.tennis_scene.pipeline.model_assets import (
 from src.tennis_scene.pipeline.storage.scene_index import read_component_descriptor
 
 
+def _declared_model_settings(
+    observation: Mapping[str, Any], role: str, architecture: str, *, legacy: bool, camera: str,
+) -> Mapping[str, Any]:
+    models = observation.get("models", {})
+    if models == {} and legacy:
+        # Observations saved before model declarations still have a legacy selector contract.
+        return {}
+    model = models[role] if isinstance(models, Mapping) and set(models) == {role} else None
+    if not isinstance(model, Mapping) or model.get("architecture") != architecture:
+        raise ValueError(f"Saved {role} model declaration must match {architecture}: {camera}")
+    settings = model.get("settings", {})
+    if not isinstance(settings, Mapping):
+        raise ValueError(f"Invalid {role} model declaration settings: {camera}")
+    return settings
+
+
 def stored_people_models(detection: Any, pose: Any, *, camera: str,
                          require_unmerged: bool) -> tuple[DetectorName, PoseName]:
     if not isinstance(detection, Mapping) or detection.get("enabled") is not True:
@@ -30,22 +46,24 @@ def stored_people_models(detection: Any, pose: Any, *, camera: str,
         or require_unmerged and detection["merge_duplicates"]):
         raise ValueError(f"Person observations require unmerged full-frame detections: {camera}" if require_unmerged
                          else f"Person observations require full-frame detections: {camera}")
-    # Legacy ViTPose v2 settings have no pose selector.
-    values = {"detector": detection.get("detector")}
+    # Legacy observations may omit selectors, but any available model declaration must agree.
+    values = {}
+    if "detector" in detection:
+        values["detector"] = detection["detector"]
     if "pose" in pose:
         values["pose"] = pose["pose"]
     detector, pose_model = people_model_names(values)
-    if detector == "rfdetr-l":
-        models = detection.get("models")
-        spec = models.get("detector") if isinstance(models, Mapping) else None
-        if not isinstance(spec, Mapping) or spec.get("architecture") != detector:
-            raise ValueError(f"RF-DETR-L observation is missing its model declaration: {camera}")
+    legacy_detector, legacy_pose = detector == "dino", pose_model == "vitpose-h"
+    _declared_model_settings(detection, "detector", "dino_4scale_swin_l" if legacy_detector else detector,
+                             legacy=legacy_detector, camera=camera)
+    pose_settings = _declared_model_settings(pose, "pose", "vitpose_huge_coco17" if legacy_pose else pose_model,
+                                             legacy=legacy_pose, camera=camera)
+    confidence = pose.get("joint_confidence"), pose_settings.get("joint_confidence")
     if pose_model == "rtmpose-x":
-        models = pose.get("models")
-        spec = models.get("pose") if isinstance(models, Mapping) else None
-        if (not isinstance(spec, Mapping) or spec.get("architecture") != pose_model
-            or pose.get("joint_confidence") != SCORE_KIND):
+        if confidence != (SCORE_KIND, SCORE_KIND):
             raise ValueError(f"RTMPose-X observation requires declared raw SimCC confidence: {camera}")
+    elif SCORE_KIND in confidence:
+        raise ValueError(f"ViTPose-H observation cannot declare raw SimCC confidence: {camera}")
     return detector, pose_model
 
 
@@ -57,6 +75,9 @@ def require_current_people_artifacts(
     if not isinstance(choices, Mapping) or set(choices) != {"detector", "pose"} or not isinstance(models, Mapping):
         raise ValueError("Publication requires the declared detector and pose models")
     selected = people_model_names(choices)
+    component_settings = publication.get("people_component_settings")
+    if not isinstance(component_settings, Mapping):
+        raise ValueError("Publication requires the declared people component settings")
     required: dict[str, Any] = {}
     for camera in camera_ids:
         descriptors = []
@@ -77,9 +98,13 @@ def require_current_people_artifacts(
                 or identity.get("scope") != camera
                 or identity.get("component_class") != f"{component.__module__}.{component.__qualname__}"
                 or reference["execution_key"] != document_digest(identity)
-                or not isinstance(settings, Mapping) or settings.get("models") != models[io.name]
+                or not isinstance(settings, Mapping)
                 or descriptor["dependencies"] != dependencies):
                 raise ValueError(f"Published {node} differs from its declared people model or dependencies")
+            expected, declared_models = component_settings.get(io.name), models.get(io.name)
+            if (not isinstance(expected, Mapping) or not isinstance(declared_models, Mapping)
+                or settings != {**expected, "models": declared_models}):
+                raise ValueError(f"Published {node} differs from its declared people settings")
             descriptors.append(settings)
             required[node] = reference
             dependencies = {"detections": reference}

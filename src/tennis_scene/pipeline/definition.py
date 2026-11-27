@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from src.submodules.models.ecpose.inference import require_weight
@@ -299,6 +300,29 @@ def _person_runtime_identity(
     return {key: options, "device": device}
 
 
+def _bound_assets(cfg: PipelineRuntimeConfig, enabled: bool, paths: Mapping[str, Path]) -> dict[str, Any]:
+    return {name: cfg.court_kp.asset_catalog.file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
+
+
+def person_detection_settings(cfg: PipelineRuntimeConfig) -> dict[str, Any]:
+    enabled = cfg.enabled["person_observations"]
+    return {
+        "detector": cfg.people.detector,
+        "assets": _bound_assets(cfg, enabled, cfg.people.detection_assets()),
+        **_person_runtime_identity(cfg.people.detector_runtime, cfg.people.runtime.device),
+        "scope": "full_frame", "enabled": enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
+        "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc",
+    }
+
+
+def person_pose_feature_settings(cfg: PipelineRuntimeConfig, component: PersonPoseFeaturesModule) -> dict[str, Any]:
+    return {
+        **component.cache_identity(),
+        **_person_runtime_identity(cfg.people.pose_runtime, cfg.people.runtime.device),
+        "assets": _bound_assets(cfg, cfg.enabled["person_observations"], cfg.people.pose_assets()),
+    }
+
+
 def check_shared_side_execution(cfg: PipelineRuntimeConfig, overrides: Mapping[str, Any] | None) -> None:
     if cfg.video_court_side is None:
         return
@@ -347,8 +371,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     appearance_media = appearance_media_identity(ids, source.paths) if binds_appearance_media(cfg, overrides) else None
     decoders = {} if appearance_media is None else appearance_media["decoders"]
 
-    def bound_assets(enabled: bool, paths: dict[str, Any]) -> dict[str, Any]:
-        return {name: cfg.court_kp.asset_catalog.file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
+    bound_assets = partial(_bound_assets, cfg)
 
     def add(name: str, component: Any, assembler: Any, bindings: dict[str, str], settings: Callable[[], Any],
             *, camera: str | None = None, require_component: Callable[[], None] | None = None,
@@ -381,10 +404,6 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     body_enabled = cfg.enabled["gvhmr"]
     tracking_encoder = components["person_appearance_features"].encoder
     encoder_assets = {} if encoder is None else {"encoder" if name == "checkpoint" else name: path for name, path in encoder.weights.items()}
-
-    runtime = cfg.people.runtime
-    detector_runtime = _person_runtime_identity(cfg.people.detector_runtime, runtime.device)
-    pose_runtime = _person_runtime_identity(cfg.people.pose_runtime, runtime.device)
 
     def body_assets() -> dict[str, Any]:
         if body_enabled:
@@ -456,16 +475,11 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         detection_node = f"person_detection/{camera}"
         if cfg.ecpose is None:
             add(detection_node, components["person_detection"], PersonDetectionInputAssembler(),
-                {}, lambda: {"detector": cfg.people.detector,
-                 "assets": bound_assets(people_enabled, cfg.people.detection_assets()),
-                 **detector_runtime,
-                 "scope": "full_frame", "enabled": people_enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
-                 "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera,
+                {}, partial(person_detection_settings, cfg), camera=camera,
                 component_origin_only=cfg.people.uses_alternative_models)
             add(f"person_pose_features/{camera}", components["person_pose_features"],
                 PersonPoseFeaturesInputAssembler(), {"detections": detection_node},
-                lambda: {**components['person_pose_features'].cache_identity(), **pose_runtime,
-                    "assets": bound_assets(people_enabled, cfg.people.pose_assets())}, camera=camera,
+                partial(person_pose_feature_settings, cfg, components['person_pose_features']), camera=camera,
                 after_components=('person_detection',), component_origin_only=cfg.people.uses_alternative_models)
         else:
             joint_node = f"{ECPOSE_RECIPE}/{camera}"

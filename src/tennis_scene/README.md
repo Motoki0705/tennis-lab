@@ -131,7 +131,7 @@ meiji_4camでは、同じoverridesへ`people_models.runtime.dino_detector.precis
 実行中に登録されたclipは次回の対象になります。
 
 clipの全nodeが完成すると、共通のexportとdataset publisherがそのclipの
-`annotations/tennis_scene/annotation.json`を公開します。`continue_on_error=true`では、
+`annotation.json`を[人物モデルの組合せに対応するstore](pipeline/README.md#成果物)に公開します。`continue_on_error=true`では、
 `clip_too_long`などの入力・再構成失敗を記録し、そのclipの未完了nodeをblockedにして
 他のclipを続けます。共有モデルの読込・解放失敗、CUDA/deviceエラー、中断は実行を停止します。
 失敗が残ると終了コードは非0です。`continue_on_error=false`で最初の失敗時に停止できます。

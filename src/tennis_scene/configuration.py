@@ -524,7 +524,6 @@ class PipelineRuntimeConfig:
         video_paths = tuple(resolver.resolve(PathRole.DATA, cast(str, x)) for x in raw_videos)
         output_name = _single_component(cast(str, value["output_name"]), name="output_name")
         output_directory = resolver.resolve(PathRole.OUTPUT, cast(str, value["output_directory"]))
-        output_path = resolver.validate(PathRole.OUTPUT, recipe_directory(output_directory, recipe) / f"{output_name}.npz")
         device = cast(str, value["device"])
         if not device.strip():
             raise SemanticConfigurationError("Pipeline device must be explicit")
@@ -572,6 +571,9 @@ class PipelineRuntimeConfig:
         )
         models = _mapping(value["people_models"], name="people_models")
         detector, pose = people_model_names(models)
+        output_path = resolver.validate(
+            PathRole.OUTPUT, recipe_directory(output_directory, recipe, people_models=(detector, pose)) / f"{output_name}.npz",
+        )
         runtime = SubmoduleRuntimeConfig.from_mapping(
             _mapping(models["runtime"], name="people_models.runtime"), resolver=resolver)
         if runtime.device != device:

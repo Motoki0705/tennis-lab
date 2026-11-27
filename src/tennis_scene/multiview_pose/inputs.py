@@ -19,6 +19,7 @@ from src.tennis_scene.pipeline.components.person_features import (
     require_alignment,
 )
 from src.tennis_scene.pipeline.contracts import ClipSource
+from src.tennis_scene.pipeline.model_assets import DetectorName, PoseName
 from src.tennis_scene.pipeline.people_artifacts import stored_people_models
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec, restore_type
@@ -158,6 +159,7 @@ class SavedPoseInputs:
     observations: PoseInputs
     references: dict[str, ArtifactRef]
     court_side: dict[str, Any]
+    people_models: tuple[DetectorName, PoseName]
 
 
 def _descriptor(
@@ -205,6 +207,7 @@ def read_saved_inputs(directory: Path, side: PinnedCourtSide) -> SavedPoseInputs
     detections = []
     poses = []
     model_selection = None
+    observation_settings_digest = None
     for camera in source.camera_ids:
         court_observation = f"court_detection/{camera}"
         detection = f"person_detection/{camera}"
@@ -222,11 +225,16 @@ def read_saved_inputs(directory: Path, side: PinnedCourtSide) -> SavedPoseInputs
             raise ValueError(
                 f"Unexpected raw detection, pose or court dependencies: {camera}"
             )
-        models = stored_people_models(d_doc["identity"].get("settings"), p_doc["identity"].get("settings"),
-                                      camera=camera, require_unmerged=True)
-        if model_selection is not None and model_selection != models:
-            raise ValueError(f"People model selection changes between cameras: {camera}")
-        model_selection = models
+        detector_settings, pose_settings = d_doc["identity"].get("settings"), p_doc["identity"].get("settings")
+        model_selection = stored_people_models(detector_settings, pose_settings, camera=camera, require_unmerged=True)
+        settings_digest = document_digest({
+            "selection": model_selection,
+            "detection": {key: value for key, value in detector_settings.items() if key != "detector"},
+            "pose": {key: value for key, value in pose_settings.items() if key != "pose"},
+        })
+        if observation_settings_digest is not None and observation_settings_digest != settings_digest:
+            raise ValueError(f"People observation settings differ between cameras: {camera}")
+        observation_settings_digest = settings_digest
         refs.update({court_observation: c_ref, detection: d_ref, pose: p_ref})
         court_dependencies[camera] = index["artifacts"][court_observation]
         detections.append(_value(root, d_ref, d_doc, PersonDetectionOutput))
@@ -235,6 +243,7 @@ def read_saved_inputs(directory: Path, side: PinnedCourtSide) -> SavedPoseInputs
         raise ValueError("Unexpected court calibration dependencies")
     calibration = _value(root, court_ref, court_doc, CourtCalibrationOutput)
     cameras, provenance = side.bind(source, calibration)
+    assert model_selection is not None
     return SavedPoseInputs(
-        PoseInputs(source, cameras, tuple(detections), tuple(poses)), refs, provenance
+        PoseInputs(source, cameras, tuple(detections), tuple(poses)), refs, provenance, model_selection
     )

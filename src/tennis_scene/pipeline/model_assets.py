@@ -21,6 +21,7 @@ from src.utils.checksum import dual_sha256
 
 DetectorName = Literal["dino", "rfdetr-l"]
 PoseName = Literal["vitpose-h", "rtmpose-x"]
+LEGACY_PEOPLE_MODELS: tuple[DetectorName, PoseName] = ("dino", "vitpose-h")
 
 
 def people_model_names(values: Mapping[str, object]) -> tuple[DetectorName, PoseName]:
@@ -147,7 +148,11 @@ class PeopleModelConfig:
 
     @property
     def uses_alternative_models(self) -> bool:
-        return (self.detector, self.pose) != ("dino", "vitpose-h")
+        return self.selection != LEGACY_PEOPLE_MODELS
+
+    @property
+    def selection(self) -> tuple[DetectorName, PoseName]:
+        return self.detector, self.pose
 
     def detection_assets(self) -> dict[str, Path]:
         return {"checkpoint": self.dino_checkpoint if self.detector == "dino" else self.rfdetr_settings()[0]}

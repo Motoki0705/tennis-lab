@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 import json
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 from dataclasses import fields, replace
 from pathlib import Path
 from typing import Any
@@ -16,10 +16,14 @@ from src.tennis_scene.generate_dataset.manifest import register_exported_clip
 from src.tennis_scene.generate_dataset.pseudo_annotation import (
     generate_pseudo_annotations,
 )
-from src.tennis_scene.pipeline.artifacts import json_value
+from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.clip_inputs import (
     resolve_dataset_clip,
     select_dataset_clips,
+)
+from src.tennis_scene.pipeline.components.person_detection import PersonDetectionModule
+from src.tennis_scene.pipeline.components.person_features import (
+    PersonPoseFeaturesModule,
 )
 from src.tennis_scene.pipeline.contracts import AssemblyContext, ComponentIO
 from src.tennis_scene.pipeline.dataset_publication import (
@@ -40,6 +44,7 @@ from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
 from src.tennis_scene.pipeline.runner import PlanExecutor
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
 from src.tennis_scene.pipeline.storage.scene_index import annotation_scene_path
+from src.tennis_scene.pipeline.video_batch import run_video_batch
 from src.tennis_scene.schema import SceneResult
 from src.utils.configuration import PathRole
 from src.utils.inference_recording import InferenceRecorder
@@ -142,6 +147,82 @@ def test_existing_entries_and_multi_clip_plan_publish_the_same_scene(tmp_path: P
     assert all(stage.calls == 1 for stage in stages.values())
     second = generate_pseudo_annotations(dataset, run, pipeline_config_yaml="device: cpu\n", publication_identity={"fixture": "fixed"})
     assert second[0].status == "skipped" and calls == [1]
+
+
+@pytest.mark.parametrize("entry", ["single", "batch"])
+def test_alternative_people_publication_preserves_legacy_scene(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, entry: str,
+) -> None:
+    fixture, paths, stages = setup_pipeline(tmp_path, monkeypatch)
+    dataset, clip, _ = _register_clip(tmp_path, paths)
+    record, = select_dataset_clips(dataset)
+    bound = resolve_dataset_clip(dataset, record)
+    root = clip / "annotations/tennis_scene"
+    scoped = root / "people-models/rfdetr-l+rtmpose-x"
+    alternate_config = runtime(tmp_path, overrides=("people_models.detector=rfdetr-l", "people_models.pose=rtmpose-x"))
+    for config in (fixture.config, alternate_config):
+        materialize_assets(enabled_model_assets(config).values(), tmp_path, court=config.court_kp)
+    monkeypatch.setattr("src.tennis_scene.pipeline.model_resources.require_people_checkpoint", lambda *_: None)
+    monkeypatch.setattr("src.submodules.models.rfdetr.person_detector.require_rf_detr_version", lambda: None)
+
+    def detect(component: PersonDetectionModule, request: Any, models: Any) -> Any:
+        value = stages[f"person_detection/{request.video.camera_id}"].result
+        if component.config.detector == "rfdetr-l":
+            return replace(value, confidence=value.confidence * np.float32(.75))
+        return value
+
+    def pose(component: PersonPoseFeaturesModule, request: Any, models: Any) -> Any:
+        value = stages[f"person_pose_features/{request.video.camera_id}"].result
+        return replace(value, model_identity=models.identity("pose"),
+                       preprocessing_identity=document_digest(component.cache_identity()))
+
+    monkeypatch.setattr(PersonDetectionModule, "process_with_models", detect)
+    monkeypatch.setattr(PersonPoseFeaturesModule, "process_with_models", pose)
+    overrides = {name: stage for name, stage in stages.items()
+                 if name.split("/", 1)[0] not in {"person_detection", "person_pose_features"}}
+
+    def run_single(pipeline: TennisSceneOrchestrator, identity: Mapping[str, object]) -> Path:
+        def run(videos: Sequence[Path], cameras: Sequence[str], directory: Path) -> SceneResult:
+            return pipeline.run(videos, video_role=PathRole.DATA, camera_ids=cameras,
+                                store_root=directory / "annotations/tennis_scene", clip_id=record.clip_id)
+        outcome, = generate_pseudo_annotations(
+            dataset, run, pipeline_config_yaml="fixture: true\n", publication_identity=identity,
+            continue_on_error=False, scene_export=pipeline.completed_scene_export,
+        )
+        marker = outcome.annotation_path
+        assert outcome.status == "generated" and isinstance(marker, Path)
+        return marker
+
+    legacy = TennisSceneOrchestrator(fixture.config, components=overrides)
+    legacy_identity = legacy.publication_identity()
+    legacy_marker = run_single(legacy, legacy_identity)
+    assert legacy_marker == root / "annotation.json"
+    old_marker, old_index = legacy_marker.read_bytes(), (root / "scene.json").read_bytes()
+    old_archive = annotation_scene_path(root, json.loads(old_marker))
+
+    alternate = TennisSceneOrchestrator(alternate_config, components=overrides)
+    alternate_identity = alternate.publication_identity()
+    if entry == "batch":
+        batch = run_video_batch(dataset, "video_000", alternate, pipeline_config_yaml="fixture: true\n",
+                                continue_on_error=False, synchronize_cuda=False)
+        assert batch.exit_code == 0
+        alternate_marker = scoped / "annotation.json"
+    else:
+        alternate_marker = run_single(alternate, alternate_identity)
+        alternate.run(bound.video_paths, video_role=PathRole.DATA, camera_ids=bound.camera_ids,
+                      store_root=None, clip_id=record.clip_id)
+        assert legacy.last_store is not None and alternate.last_store is not None
+        cache = alternate_config.cache_directory / legacy.last_store.source_key[:20]
+        assert alternate.last_store.root == cache / "people-models/rfdetr-l+rtmpose-x"
+        assert alternate.completed_scene_export().is_relative_to(alternate.last_store.root)
+    assert alternate_config.output_path.parent == tmp_path / "run/people-models/rfdetr-l+rtmpose-x"
+    assert alternate_marker == scoped / "annotation.json"
+    assert completed_annotation(bound, alternate_identity) == alternate_marker
+    assert completed_annotation(bound, legacy_identity) == legacy_marker
+    assert legacy_marker.read_bytes() == old_marker
+    assert (root / "scene.json").read_bytes() == old_index
+    assert annotation_scene_path(root, json.loads(old_marker)) == old_archive
+    assert annotation_scene_path(scoped, json.loads(alternate_marker.read_bytes())) != old_archive
 
 
 def test_recording_preserves_dataset_publication_identity_and_scene_bytes(
