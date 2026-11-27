@@ -8,8 +8,9 @@ import shutil
 import stat
 import uuid
 from collections.abc import Mapping
+from dataclasses import dataclass
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from herdr_labels.coordination import Guard, locked, owner_token
 from herdr_labels.service import registry, target
@@ -19,8 +20,25 @@ from parent.state import Store as ParentStore
 
 from .access import ownership_fence, parent_state
 from .errors import BoardError
-from .names import for_parent
+from .names import Assignment, for_parent
 from .storage import Store, directory
+
+if TYPE_CHECKING:
+    from .delivery import Notification
+
+
+@dataclass(frozen=True)
+class ReceiverBell:
+    """A bell for a bound receiver without a board post."""
+
+    repo: str
+    parent: int
+    assignment_id: int
+    engine: str
+    owner_session: str
+    owner_generation: int
+    idempotency_key: str
+    bell: str
 
 
 def root(env: Mapping[str, str]) -> Path:
@@ -94,6 +112,19 @@ def hook_process(env: Mapping[str, str]) -> dict[str, Any]:
     return process(ancestors[0])
 
 
+def active_assignment(
+    env: Mapping[str, str], repo: str, parent: int
+) -> Assignment | None:
+    store = Store(directory(env))
+    if not store.path.exists():
+        return None
+    with store.read() as connection:
+        assignment = for_parent(connection, repo, parent)
+    return (
+        assignment if assignment is not None and assignment.retired_at is None else None
+    )
+
+
 def _binding(
     env: Mapping[str, str], identity: str, parents: Mapping[str, Any]
 ) -> dict[str, Any] | None:
@@ -108,19 +139,15 @@ def _binding(
         return None
     key, row = owned[0]
     repo, _, number = key.rpartition("#")
-    store = Store(directory(env))
-    if not store.path.exists():
+    assignment = active_assignment(env, repo, int(number))
+    if assignment is None:
         return None
-    with store.read() as connection:
-        assignment = for_parent(connection, repo, int(number))
-        if assignment is None or assignment.retired_at is not None:
-            return None
-        return {
-            "repo": repo,
-            "parent": int(number),
-            "assignment_id": assignment.id,
-            "generation": row["generation"],
-        }
+    return {
+        "repo": repo,
+        "parent": int(number),
+        "assignment_id": assignment.id,
+        "generation": row["generation"],
+    }
 
 
 def capture_claude(env: Mapping[str, str], source: str, native: dict[str, Any]) -> None:
@@ -269,7 +296,9 @@ def _check_claude(env: Mapping[str, str], record: dict[str, Any]) -> None:
         raise BoardError("Claude receiver conversation was replaced")
 
 
-def resolve(env: Mapping[str, str], notification: Any) -> dict[str, Any]:
+def resolve(
+    env: Mapping[str, str], notification: Notification | ReceiverBell
+) -> dict[str, Any]:
     """Caller holds routes.lock; dispatch holds the common ownership fence.
 
     Read the atomic ownership index without acquiring registry.lock under

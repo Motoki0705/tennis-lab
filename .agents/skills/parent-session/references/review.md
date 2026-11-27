@@ -39,6 +39,8 @@ CLIは本文の閉鎖指定とGitHubが認識する閉鎖対象を照合し、�
 
 ## 通知を受けたら
 
+手動親には、登録済みのClaude socketまたはCodex queueへ自動進行の呼び鈴が届く。Claudeとagyではhookにも未確認件数が出る。通知のrun IDを使い `merge-status --run-id RUN` でイベントと配送状態を確認する。 [手動親への通知](../../../ops/review/README.md#手動親への通知)
+
 | 観測 | 次の操作 |
 |---|---|
 | approve、`ci_wait`、`dependency_wait` | CLIが現HEADのPython CI・先行Issue/PRを確認する。待ちの間は独立作業を進め、次の通知を `wait-merge --run-id RUN --after 通知ID` で受ける。 |

@@ -313,6 +313,23 @@ def test_public_major_continue_and_history_display(parent_env: ParentEnv) -> Non
     )
     result = request(p, numbers, fake)
     assert result["status"] == "parent_wait"
+    path = progression_path(p, result)
+    join_controller(path)
+    run = result["review_run_id"]
+    registry = path.parents[2] / "registry.json"
+    before = registry.read_bytes(), path.read_bytes()
+    status = json.loads(p.cli("merge-status", "--run-id", run).stdout)
+    (major,) = status["progression_notifications"]
+    assert major["kind"] == "major" and major["acknowledged"] is False
+    assert major["delivery"]["state"] == "route_unavailable"
+    assert json.loads(p.cli("status").stdout)["progression_notifications"] == [major]
+    assert (
+        json.loads(p.cli("wait-merge", "--run-id", run, "--after", "0").stdout)[
+            "events"
+        ][0]["kind"]
+        == "major"
+    )
+    assert (registry.read_bytes(), path.read_bytes()) == before
     finding = result["review"]["result"]["major"][0]
     assert finding["prs"] == numbers and finding["related_prs"] == [999]
     saved = json.loads(
@@ -339,6 +356,17 @@ def test_public_major_continue_and_history_display(parent_env: ParentEnv) -> Non
         ).stdout
     )
     assert result["status"] == "completed", result
+    join_controller(path)
+    notices = json.loads(p.cli("merge-status", "--run-id", run).stdout)[
+        "progression_notifications"
+    ]
+    assert [(record["kind"], record["acknowledged"]) for record in notices] == [
+        ("major", True),
+        ("completed", False),
+    ]
+    assert (
+        json.loads(p.cli("status").stdout)["progression_notifications"] == notices[1:]
+    )
     assert len(calls.read_text().splitlines()) == 1
     inspected = json.loads(p.cli("review-inspect", "--prs", "100").stdout)
     assert inspected["prs"][0]["excluded_reason"] == "not_open"

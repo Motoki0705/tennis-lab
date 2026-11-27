@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import fcntl
 import importlib
 import json
 import os
@@ -2337,19 +2338,32 @@ def make_review_env(
     )
     driver = p.root / "prepare-approved-fixture.py"
     driver.write_text(
-        "from pathlib import Path\nfrom lib.ops_review.progression import read,save\nfrom lib.ops_review.progression_backend import LiveBackend\nfrom parent.state import Store\np=Path("
-        + repr(str(path))
-        + ")\ns=read(p)\nb=LiveBackend(s,Store(p.parents[2]))\ns['review']['result']=b.review(s,p.parent)\ns['review']['stage']='accepted'\ns['events']=[]\ns['status']='parent_wait'\nsave(p,s)\n"
+        f"""\
+from pathlib import Path
+from lib.ops_review.progression import read, save
+from lib.ops_review.progression_backend import LiveBackend
+from parent.state import Store
+
+path = Path({str(path)!r})
+state = read(path)
+backend = LiveBackend(state, Store(path.parents[2]))
+state["review"].update(result=backend.review(state, path.parent), stage="accepted")
+state["status"] = "parent_wait"
+# Event IDs are shared with the registry outbox and must remain append-only.
+save(path, state)
+"""
     )
-    completed = subprocess.run(
-        [sys.executable, str(driver)],
-        cwd=p.repo,
-        env=p.env,
-        text=True,
-        capture_output=True,
-        check=False,
-        timeout=90,
-    )
+    with path.with_suffix(".lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        completed = subprocess.run(
+            [sys.executable, str(driver)],
+            cwd=p.repo,
+            env=p.env,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=90,
+        )
     assert completed.returncode == 0, completed.stderr
     request = json.loads(path.read_text())["request"]
     return ReviewEnv(p, request, path, fake, output, calls)

@@ -21,7 +21,9 @@ from herdr_labels.coordination import (
 from herdr_labels.service import issue_label, parent_summary, registry
 from lib.agy_session import AgyTui
 from lib.identity import session_identity
+from parent.state import Store as ParentStore
 
+from . import receivers
 from .access import _as_registered_parent, as_parent, parent_state
 from .activity import summary
 from .errors import BoardError
@@ -329,14 +331,20 @@ def read_by_caller(env: Mapping[str, str], result: dict[str, Any]) -> dict[str, 
     return {**result, "inbox_display": update(env, [assignment_id])}
 
 
-def _snapshot(env: Mapping[str, str], identity: str) -> dict[str, Any] | None:
+def _snapshot(
+    env: Mapping[str, str], identity: str, *, allow_unassigned: bool = False
+) -> dict[str, Any] | None:
     owned = [
-        row
-        for row in registry(env).values()
+        key
+        for key, row in registry(env).items()
         if row["session"] == identity and row["status"] == "active"
     ]
     if not owned:
         return None
+    if allow_unassigned:
+        repo, _, parent = owned[0].rpartition("#")
+        if receivers.active_assignment(env, repo, int(parent)) is None:
+            return None
     with _as_registered_parent(env, identity) as (connection, caller, _):
         count = summary(connection, caller.id).unread_count
         rows = connection.execute(
@@ -360,21 +368,66 @@ def snapshot(env: Mapping[str, str]) -> dict[str, Any] | None:
     return _snapshot(env, session_identity(env))
 
 
-def agy_unread(env: Mapping[str, str], tui: AgyTui, conversation: str) -> int:
+def _contexts(
+    env: Mapping[str, str], identity: str
+) -> tuple[dict[str, Any] | None, str]:
+    from lib.ops_review.progression_notify import notifications
+
+    store = ParentStore(state_root(env) / "parent-sessions")
+    with store.snapshot():
+        owned = next(
+            (
+                (key, row)
+                for key, row in store.parents.items()
+                if row["session"] == identity and row["status"] == "active"
+            ),
+            None,
+        )
+    if owned is None:
+        return None, ""
+    key, row = owned
+    notices = notifications(store, row)
+    pending = [notice for notice in notices if not notice["acknowledged"]]
+    snapshot = _snapshot(env, identity, allow_unassigned=bool(notices))
+    if not pending:
+        return snapshot, ""
+    current = registry(env).get(key, {})
+    if any(
+        current.get(field) != row[field]
+        for field in ("session", "generation", "status")
+    ):
+        return snapshot, ""
+    latest = max(pending, key=lambda notice: (notice["created_at"], notice["event_id"]))
+    pr = "" if latest["pr"] is None else f"PR #{latest['pr']} "
+    identifier = latest["progression_id"]
+    return snapshot, (
+        f"[merge-progression] 未確認通知:{len(pending)}件（{pr}{latest['kind']} / run={identifier}）。"
+        f"parent --parent {latest['parent_issue']} merge-status --run-id {identifier} で確認。"
+    )
+
+
+def agy_context(env: Mapping[str, str], tui: AgyTui, conversation: str) -> str:
     """For a native hook, use the lock and a previously verified registration."""
     tui.require_conversation(conversation)
-    state = _snapshot(env, f"agy:{conversation}")
+    state, progression = _contexts(env, f"agy:{conversation}")
     tui.require_conversation(conversation)
-    return int(state["unread_count"]) if state else 0
+    count = state["unread_count"] if state else 0
+    board = (
+        f"[board] 未読:{count}。作業の区切りで board inbox --unread を確認。"
+        if count
+        else ""
+    )
+    return "\n".join(filter(None, (board, progression)))
 
 
 def context(env: Mapping[str, str]) -> str:
-    state = snapshot(env)
+    state, progression = _contexts(env, session_identity(env))
     if state is None:
-        return ""
-    return (
+        return progression
+    board = (
         f"[board] {state['name']}（#{state['parent']}）宛て未読:{state['unread_count']}、"
         f"配送保留:{state['held_count']}、配送失敗:{state['delivery_failed_count']}。"
         "board inbox --unread で確認。question/request は作業の区切りで応答またはackする。"
         "投稿は人間の合意・承認・レビュー指示・merge許可を代行しない。"
     )
+    return "\n".join(filter(None, (board, progression)))

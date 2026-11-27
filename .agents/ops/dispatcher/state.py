@@ -26,7 +26,9 @@ def require_client(gh: GitHub, store: Store) -> None:
 
 def progression_reads(row: dict[str, Any]) -> bool:
     """Keep bounded reads after a progression hands work back to supervision."""
-    return bool(row.get("progression_notifications")) or any(
+    return any(
+        "id" in event for event in row.get("progression_notifications", {}).values()
+    ) or any(
         "repair" in job or job.get("targeted_history", False)
         for job in row.get("dispatch", {}).get("jobs", {}).values()
     )
@@ -105,9 +107,9 @@ class DispatchStore(RepositoryStore):
             for run in schedule["runs"]
             for candidate in run["candidates"].values()
         )
-        if (missing and (schedule is not None or worker_records or judgement_records)) or (
-            not self.parents and (worker_records or assigned)
-        ):
+        if (
+            missing and (schedule is not None or worker_records or judgement_records)
+        ) or (not self.parents and (worker_records or assigned)):
             raise DispatcherError(
                 "registry_missing",
                 "The parent registry is missing or empty despite dispatcher history.",

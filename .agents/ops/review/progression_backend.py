@@ -792,6 +792,7 @@ class LiveBackend:
     def notify(self, state: dict[str, Any], event: dict[str, Any]) -> None:
         from decision_logs.review_capture import progression_event
         from dispatcher.supervisor import event as dispatch_event
+        from lib.ops_review import progression_notify
 
         progression_event(self.store.directory, state, event)
         with self.store.locked():
@@ -802,23 +803,45 @@ class LiveBackend:
             ):
                 return  # The durable private event remains visible to the new owner.
             dispatch = row.get("dispatch")
-            if not dispatch:
+            if not dispatch and (
+                row["status"] != "active"
+                or event["kind"] not in progression_notify.KINDS
+            ):
                 return
             delivered = row.setdefault("progression_notifications", {})
             token = f"{state['id']}:{event['id']}"
             if token in delivered:
                 return
-            delivered[token] = dict(event)
-            dispatch["wake_requested"] = True
-            if dispatch["phase"] == "waiting":
-                dispatch.update(
-                    phase="resume_pending", reason="レビュー・merge自動進行からの通知"
+            if dispatch:
+                delivered[token] = dict(event)
+                dispatch["wake_requested"] = True
+                if dispatch["phase"] == "waiting":
+                    dispatch.update(
+                        phase="resume_pending",
+                        reason="レビュー・merge自動進行からの通知",
+                    )
+                dispatch_event(
+                    dispatch,
+                    "merge_progression",
+                    progression_id=state["id"],
+                    notification_id=event["id"],
+                    kind_detail=event["kind"],
                 )
-            dispatch_event(
-                dispatch,
-                "merge_progression",
-                progression_id=state["id"],
-                notification_id=event["id"],
-                kind_detail=event["kind"],
-            )
+                self.store.save()
+                return
+            notice = progression_notify.record(state, event, self.clock())
+            delivered[token] = notice
             self.store.save()
+
+        outcome = progression_notify.deliver_bell(
+            os.environ, self.store, notice, state["owner"]
+        )
+        with self.store.locked():
+            saved = self.store.parents.get(self.key, {}).get(
+                "progression_notifications", {}
+            )
+            if saved.get(token) == notice:
+                saved[token]["delivery"] = progression_notify.delivery(
+                    outcome, notice["delivery"]["engine"], self.clock()
+                )
+                self.store.save()

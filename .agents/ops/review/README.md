@@ -42,3 +42,9 @@
 ランナーの終了理由が `runtime_error`、`usage_limit`、`startup_failed` のいずれかで、プロセス終了・回収とレビュー用worktreeの回収を確認できた場合に再試行できる。最初のruntime結果を保存する前の中断も対象となる。ランナーが継承する起動ロックの解放、worktreeとGit登録の回収、AI起動前の初期化で生成されるファイルだけが残っていることを確認する。一時結果が残る場合はrunと指示への一致、ランナー終了とAI未起動も照合する。起動痕跡がある場合や照合できない場合は親待ちを維持する。保存済み結果または完了済みrunner出力があれば通常の `merge-continue` から継続する。CI・依存・停止・マージ後確認は通常どおり照合する。
 
 `merge-status` の `review_history` に次のラウンドを予約した時点の失敗理由が残る。`review_usage` では同じラウンド内の容量不足も個別の起動試行として表示し、試行ごとの終了理由とAI起動を確認できた回数を確認できる。
+
+## 手動親への通知
+
+`major`、`parent_wait`、`completed`、`publication_warning` は、手動親のローカル担当記録にrunとイベントIDごとに保存する。ClaudeとCodexには、担当と世代が一致する登録済み経路へ [呼び鈴](../board/README.md#呼び鈴の実経路と受信hook) を送る。Claudeとagyのhookは、掲示板に名前がない担当にも未確認件数を表示する。
+
+`merge-status` の `progression_notifications` で呼び鈴の受理、経路不明、受信拒否、配送結果不明、agyのhook待ちを確認できる。`status` には現在の担当世代で未対応の通知を表示する。`merge-status` と `wait-merge` は読み取り専用で、`merge-continue` が再開対象とrun全体の確認済みイベントIDを進行状態と同時に保存する。
