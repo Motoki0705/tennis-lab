@@ -23,6 +23,9 @@ def test_models_root_owns_the_documented_public_symbols() -> None:
         "Pose2DFrameSequenceRequest",
         "Pose2DRequest",
         "Pose2DResult",
+        "RFDetrPersonDetector",
+        "RTMPoseBoxSequenceRequest",
+        "RTMPoseXPose2D",
         "SmplCoco17Reconstructor",
         "SmplVertexReconstructor",
         "TrackRequest",
@@ -32,6 +35,7 @@ def test_models_root_owns_the_documented_public_symbols() -> None:
         "dino_source_assets",
         "filter_detections_by_footpoint",
         "iter_frame_person_crops",
+        "iter_rtmpose_crops",
         "select_and_complete_tracks",
         "validate_dino_extension",
     }
@@ -51,6 +55,12 @@ def test_nested_packages_do_not_reexport_root_api() -> None:
         ),
         "src.submodules.models.gvhmr": ("GvhmrMeshRecovery", "GvhmrRequest"),
         "src.submodules.models.hmr2": ("Hmr2FeatureExtractor", "ImageFeatureRequest"),
+        "src.submodules.models.rfdetr": ("RFDetrPersonDetector",),
+        "src.submodules.models.rtmpose": (
+            "RTMPoseBoxSequenceRequest",
+            "RTMPoseXPose2D",
+            "iter_rtmpose_crops",
+        ),
         "src.submodules.models.tracker": (
             "TrackRequest",
             "TrackResult",
