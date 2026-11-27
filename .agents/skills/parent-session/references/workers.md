@@ -46,6 +46,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 run-worker --chi
 - 初回の手動起動を待つには `wait-worker --child 1217 --worker quality --after-run none --timeout 900` を使う。再開時は起動前に `inspect-worker` などで直前の `run_dir` を控え、`--after-run RUN_DIR` を指定する。指定後の最初のrunが記録されるまで待つ。オプションを省略すると記録済みの最新runを待つ。
 - `--after-run` は選んだrunの自動再開系列を追い、後続の手動起動後もその系列の結果を返す。正式レビューの手動修正ターンも、修正予約からrunnerの記録が作られるまで待てる。
 - `wait_state=ended` は、宣言を受けた監視と自動再開がある場合はその一連の終了まで含む。最後のrunの成否は `runner_summary`、成果は `final_file`、監視の成否・親の判断・再開回数は `followup` で確認する。終了コード124は読取側の時間満了。同じ指定で再待機できる。終了コード2は理由を読んで [復旧](recovery.md) へ進む。
+- 通常PRの実装やmajor修正の依頼には、[CI・ローカルqueueの待機](#ciローカルqueueの待機) に沿って引き渡し条件を書く。親は `done` のターンの終了・回収とローカル検証の結果を照合し、[レビューとマージ](review.md) に進む。
 - 調査だけを任せるターンは `--planning`。結果から次の方針を決め、必要に応じて `decide-worker-plan` で回答を結び付ける。同じ担当に続きやmajor修正を頼むときは、終了・回収を照合して手動の `run-worker --resume` または自律の `continue-worker` を使う。
 - 補助担当はcommitまたは測定結果を返す。統合担当が競合を解消して統合HEADを検証し、担当Issueを閉じるPRに `Closes #1217` を書く。親はPRのbranch・HEADと条件ごとの証拠を確かめ、[レビューとマージ](review.md) の手順に進む。個別に受入だけを記録する場合は `record-result`。
 - 複数担当の一人を止めるには `stop-worker --worker 名前`。Issue全体の保留は `stop` を使う。自律親で担当が一人のときの `stop-worker` は、対象Issueを保留し、依存して保留されたjobにも停止を要求する。影響先は `launch_plan` で確認する。停止要求だけでは終了・枠解放は確定しない。[終了が不明な場合](recovery.md)
@@ -78,8 +79,8 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent --parent 1216 run-worker --chi
 
 [共通のワーカー指示](../../../ops/parent/worker_prompt.md) が、最終メッセージ末尾の `PARENT_RESULT` の形式を定める。親が書く具体指示も、投入／push／長時間ローカルコマンド起動までの作業と、結果を受け取ってからの作業に区切る。
 
-- 良い例「検証してcommit・pushし、PR番号と完全なHEADを宣言して終了。Python成功後にドラフトを解除するよう後続作業に指定する」
-- 悪い例「pushしたら、このターンでPython成功を確認してドラフトを解除する」
+- 通常PR・major修正の例「必要なローカル検証とpre-commitを通してcommit・pushする。ready PRの番号・完全なHEAD・検証結果を報告して、PR CI完了前に `state: "done"` を返す」。CI待機と失敗時の自動修復は [レビュー進行](review.md) が担当する。
+- `wait.kind: "ci"` は、正式レビュー前の中間段階でPython CI成功後に同じworkerが追加実験などを続ける場合や、記録専用PRで `Knowledge library` の完了後に後続作業を行う場合に限る。例えば「追加実験の前提となるCIをドラフトPRで走らせ、成功後に実験を開始する」と具体指示に書く。
 - 計測の例「条件AとBを共有queueに投入し、両方のjob IDを宣言して終了。結果を受け取ったターンで集計して記録する」
 - 長時間ローカル検証の例「`parent.local_jobs start` で全体pytestとmypyを起動し、両方の `job_id` を `kind: "local"` で宣言して終了。結果を受け取ったターンで成否を確認し、問題なければcommit・pushする」
 
