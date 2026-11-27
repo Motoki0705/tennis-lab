@@ -21,6 +21,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[3] / ".agents/ops"))
 module: Any = importlib.import_module("lib.ops_review.progression")
+github = importlib.import_module("issues.cli")
 Engine, RateWait, new_state, read, save = (
     module.Engine,
     module.RateWait,
@@ -57,6 +58,7 @@ class Backend:
         self.reviews: list[str] = ["approve"]
         self.dependencies: list[bool] = [True]
         self.main_ci = "success"
+        self.main_observations: list[dict[str, Any]] = []
         self.closed = True
         self.local_error: str | None = None
         self.rate_once = False
@@ -100,11 +102,18 @@ class Backend:
         if self.rate_once:
             self.rate_once = False
             raise RateWait(1180.0, "primary")
-        return {
+        result = {
             "status": self.main_ci if main else self.next(self.checks[number]),
             "head": head,
             "checks": [],
         }
+        if main and self.main_observations:
+            observation = self.next(self.main_observations)
+            result.update(observation)
+        return result
+
+    def rerun_workflow(self, run_id: int) -> None:
+        self.calls.append(("rerun", run_id))
 
     def shape(self, target: dict[str, Any], pr: dict[str, Any]) -> str | None:
         self.calls.append(("shape", target["number"]))
@@ -299,6 +308,11 @@ def test_post_merge_failure_notifies_parent(tmp_path: Path, failure: str) -> Non
         backend.main_ci = "failure"
     result = run(path, backend, clock)
     assert result["status"] == "parent_wait"
+    assert result["targets"]["11"]["reason"] == (
+        "main_ci_failed" if failure == "main" else "issue_not_completed"
+    )
+    assert not any(c[0] == "rerun" for c in backend.calls)
+    assert clock.sleeps == []
     assert backend.merged == {11}
     assert backend.repair_count[11] == 0
 
@@ -314,6 +328,225 @@ def test_conditional_rate_limit_wait_and_ci_timeout(tmp_path: Path) -> None:
     assert result["targets"]["11"]["reason"] == "ci_timeout"
     assert sum(clock.sleeps) == 6 * 3600
     assert backend.review_count == 1 and backend.repair_count[11] == 0
+
+
+def test_observation_retries_reset_after_a_successful_poll(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path, backend, clock = setup(tmp_path)
+    outcomes = iter(
+        [
+            github.GitHubHTTPError("checks", 502, "bad gateway"),
+            github.GitHubHTTPError("checks", 503, "unavailable"),
+            github.GitHubTransportError("checks", 1, "disconnect", "connection reset"),
+            "pending",
+            github.GitHubHTTPError("checks", 500, "internal error"),
+            github.GitHubHTTPError("checks", 504, "gateway timeout"),
+            "success",
+        ]
+    )
+    observe_ci = backend.ci
+
+    def ci(number: int, head: str, *, main: bool = False) -> dict[str, Any]:
+        if main:
+            return observe_ci(number, head, main=True)
+        outcome = next(outcomes)
+        if isinstance(outcome, Exception):
+            raise outcome
+        return {"status": outcome, "head": head, "checks": []}
+
+    monkeypatch.setattr(backend, "ci", ci)
+    assert run(path, backend, clock)["status"] == "completed"
+    assert clock.sleeps == [10, 20, 40, 60, 10, 20]
+    assert "transient_error" not in read(path)["targets"]["11"]
+    assert backend.repair_count[11] == 0
+
+
+@pytest.mark.parametrize("stage", ["ci_wait", "dependency_wait", "post_merge_wait"])
+def test_observation_retains_retry_budget_across_restart_and_pauses_at_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stage: str
+) -> None:
+    path, backend, clock = setup(tmp_path)
+    state = read(path)
+    state["targets"]["11"]["stage"] = stage
+    if stage == "post_merge_wait":
+        state["targets"]["11"].update(merge_commit="a" * 40, merged_at=clock())
+    save(path, state)
+    error = github.GitHubHTTPError("observation", 503, "unavailable")
+
+    def unavailable(*args: Any, **kwargs: Any) -> Any:
+        raise error
+
+    monkeypatch.setattr(
+        backend, "dependency" if stage == "dependency_wait" else "ci", unavailable
+    )
+
+    def interrupt_poll(delay: float) -> None:
+        target = read(path)["targets"]["11"]
+        assert target["transient_error"]["retries"] == 1
+        assert target["next_poll"] == clock() + 10
+        clock.sleep(delay)
+        raise InterruptedError("restart during backoff")
+
+    with pytest.raises(InterruptedError, match="restart during backoff"):
+        Engine(path, backend, clock=clock, sleep=interrupt_poll).run()
+    result = run(path, backend, clock)
+    target = read(path)["targets"]["11"]
+    assert target["reason"] == "observation_failed"
+    assert target["resume_stage"] == stage
+    assert target["error"] == str(error)
+    assert clock.sleeps == [10, 20, 40, 60, 60]
+    assert result["events"][-1]["reason"] == "observation_failed"
+    assert not backend.merged and backend.repair_count[11] == 0
+
+
+@pytest.mark.parametrize(
+    ("stage", "reason"),
+    [
+        ("ci_wait", "observation_failed"),
+        ("merge_pending", "recovery_required"),
+        ("repair_pending", "recovery_required"),
+    ],
+)
+def test_permanent_read_and_pending_effect_failures_pause_immediately(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, stage: str, reason: str
+) -> None:
+    path, backend, clock = setup(tmp_path)
+    state = read(path)
+    target = state["targets"]["11"]
+    target["stage"] = stage
+    if stage == "merge_pending":
+        target["merge_head"] = backend.heads[11]
+    elif stage == "repair_pending":
+        target["attempts"] = [{"id": "saved-intent"}]
+    save(path, state)
+    error = github.GitHubHTTPError(
+        "observation", 404 if stage == "ci_wait" else 502, "unavailable"
+    )
+    observations = []
+
+    def unavailable(*args: Any) -> Any:
+        observations.append(clock())
+        raise error
+
+    method = "recover_repair" if stage == "repair_pending" else "pr"
+    monkeypatch.setattr(backend, method, unavailable)
+    for _ in range(2):
+        result = run(path, backend, clock)
+        assert result["targets"]["11"]["reason"] == reason
+        assert result["targets"]["11"]["error"] == str(error)
+    assert observations == [1000]
+    assert clock.sleeps == []
+    assert not backend.merged and backend.repair_count[11] == 0
+
+
+@pytest.mark.parametrize("when", ["before_review", "during_review", "during_merge"])
+def test_transient_failure_only_retries_before_external_effect(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, when: str
+) -> None:
+    path, backend, clock = setup(tmp_path)
+    effect = {
+        "before_review": "human",
+        "during_review": "review",
+        "during_merge": "merge",
+    }[when]
+    original = getattr(backend, effect)
+    failed = False
+
+    def once(*args: Any) -> Any:
+        nonlocal failed
+        if not failed:
+            failed = True
+            if when == "during_merge":
+                original(*args)  # The server applied the write before the error.
+            raise github.GitHubHTTPError(effect, 502, "bad gateway")
+        return original(*args)
+
+    monkeypatch.setattr(backend, effect, once)
+    result = run(path, backend, clock)
+    if when == "before_review":
+        assert result["status"] == "completed"
+        assert backend.review_count == 1
+        assert clock.sleeps == [10]
+    else:
+        assert result["status"] == "parent_wait"
+        assert clock.sleeps == []
+        if when == "during_review":
+            assert result["events"][-1]["reason"].startswith("review_failed:")
+        else:
+            assert result["targets"]["11"]["reason"] == "recovery_required"
+            assert [call[0] for call in backend.calls].count("merge") == 1
+            assert not any(call[0] == "main_ci" for call in backend.calls)
+
+
+def cancelled_main(attempt: int) -> dict[str, Any]:
+    return {
+        "status": "cancelled_before_start",
+        "run": {"id": 41, "run_attempt": attempt},
+    }
+
+
+def test_main_ci_rerun_intent_precedes_write_and_prevents_resend_on_restart(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    path, backend, clock = setup(tmp_path)
+    backend.main_observations = [
+        cancelled_main(2),
+        cancelled_main(2),
+        {"status": "pending", "run": {"id": 41, "run_attempt": 3}},
+        {"status": "success", "run": {"id": 41, "run_attempt": 3}},
+    ]
+    rerun = backend.rerun_workflow
+
+    def request_rerun(run_id: int) -> None:
+        assert read(path)["targets"]["11"]["main_ci_reruns"] == [
+            {"run_id": 41, "run_attempt": 2, "at": 1000}
+        ]
+        rerun(run_id)
+
+    def interrupt(delay: float) -> None:
+        clock.sleep(delay)
+        raise InterruptedError("restart after requesting rerun")
+
+    monkeypatch.setattr(backend, "rerun_workflow", request_rerun)
+    with pytest.raises(InterruptedError, match="restart after requesting rerun"):
+        Engine(path, backend, clock=clock, sleep=interrupt).run()
+    assert run(path, backend, clock)["status"] == "completed"
+    assert clock.sleeps == [60, 60, 60]
+    assert [call for call in backend.calls if call[0] == "rerun"] == [("rerun", 41)]
+
+
+@pytest.mark.parametrize(
+    "scenario", ["run_cancelled_again", "unchanged_attempt", "api_error"]
+)
+def test_main_ci_rerun_stops_without_waiting_for_ci_timeout(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, scenario: str
+) -> None:
+    path, backend, clock = setup(tmp_path)
+    backend.main_observations = [cancelled_main(1)]
+    if scenario == "run_cancelled_again":
+        backend.main_observations.extend([cancelled_main(2), cancelled_main(3)])
+    rerun = backend.rerun_workflow
+
+    def request_rerun(run_id: int) -> None:
+        rerun(run_id)
+        if scenario == "api_error":
+            raise github.GitHubHTTPError("rerun", 503, "unavailable")
+
+    monkeypatch.setattr(backend, "rerun_workflow", request_rerun)
+    result = run(path, backend, clock)
+    target = result["targets"]["11"]
+    assert target["reason"] == "main_ci_cancelled_before_start"
+    assert target["resume_stage"] == "post_merge_wait"
+    assert result["events"][-1]["reason"] == target["reason"]
+    attempts = [1, 2] if scenario == "run_cancelled_again" else [1]
+    assert [row["run_attempt"] for row in target["main_ci_reruns"]] == attempts
+    assert [call[0] for call in backend.calls].count("rerun") == len(attempts)
+    if scenario == "api_error":
+        assert "HTTP 503" in target["error"]
+        assert clock.sleeps == []
+    else:
+        assert clock.sleeps == [60, 60]
 
 
 @pytest.mark.parametrize("effect", [False, True])
@@ -604,6 +837,66 @@ def knowledge_setup(tmp_path: Path) -> tuple[Path, KnowledgeBackend, Clock]:
     request["prs"][0]["related_issues"] = [111]
     save(path, new_state(request, owner="codex:test", generation=1))
     return path, KnowledgeBackend(), clock
+
+
+@pytest.mark.parametrize("point", ["regular", "knowledge", "knowledge_final"])
+@pytest.mark.parametrize("resolves", [False, True])
+def test_unknown_mergeability_retries_without_starting_repair(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, point: str, resolves: bool
+) -> None:
+    path, backend, clock = (
+        setup(tmp_path) if point == "regular" else knowledge_setup(tmp_path)
+    )
+    unknown = "mergeability_unknown"
+    if point == "knowledge_final":
+        assert isinstance(backend, KnowledgeBackend)
+        merge = backend.merge_knowledge
+        reasons: list[str | None] = [unknown, None] if resolves else [unknown]
+
+        def final_check(*args: Any) -> None:
+            if backend.next(reasons) == unknown:
+                raise module.MergeHold(unknown, retry=True)
+            merge(*args)
+
+        monkeypatch.setattr(backend, "merge_knowledge", final_check)
+    else:
+        backend.gates[11] = [unknown, None] if resolves else [unknown]
+    result = run(path, backend, clock)
+    target = read(path)["targets"]["11"]
+    assert backend.repair_count[11] == 0 and target["attempts"] == []
+    if resolves:
+        assert result["status"] == "completed"
+        assert clock.sleeps == [5]
+        assert "mergeability_retries" not in target
+    else:
+        assert target["reason"] == unknown and target["resume_stage"] == "ci_wait"
+        assert result["events"][-1]["reason"] == unknown
+        assert clock.sleeps == [5, 10, 15, 30, 30, 60]
+        assert target["mergeability_retries"] == 6
+        assert not backend.merged
+
+
+def test_mergeability_retry_survives_restart_and_resets_for_a_new_unknown(
+    tmp_path: Path,
+) -> None:
+    path, backend, clock = setup(tmp_path)
+    backend.gates[11] = ["mergeability_unknown", None, "mergeability_unknown", None]
+    backend.dependencies = [False, True]
+
+    def interrupt(delay: float) -> None:
+        target = read(path)["targets"]["11"]
+        assert target["stage"] == "ci_wait" and target["mergeability_retries"] == 1
+        assert target["next_poll"] == clock() + 5
+        clock.sleep(delay)
+        raise InterruptedError("restart during mergeability calculation")
+
+    with pytest.raises(
+        InterruptedError, match="restart during mergeability calculation"
+    ):
+        Engine(path, backend, clock=clock, sleep=interrupt).run()
+    assert run(path, backend, clock)["status"] == "completed"
+    assert clock.sleeps == [5, 60, 5]
+    assert backend.repair_count[11] == 0
 
 
 @pytest.mark.parametrize(

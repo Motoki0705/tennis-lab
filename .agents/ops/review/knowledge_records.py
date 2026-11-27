@@ -15,6 +15,7 @@ from urllib.parse import quote
 
 from issues.format import visible_lines
 from lib import knowledge_ci
+from lib.ops_review.progression import is_transient_read
 from parent.policy import closing_references, nonempty, number, object_value
 from parent.snapshot import git
 
@@ -381,6 +382,8 @@ def observe_ci(
             current_main=current_main,
         )
     except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        if is_transient_read(exc):
+            raise
         return {**result, "status": "failure", "reasons": [str(exc)]}
     return {
         **result,

@@ -201,6 +201,20 @@ def test_both_comparison_bases_must_match_main_on_watched_paths(
         )
 
 
+def test_knowledge_artifact_http_outage_reaches_controller_retry(
+    tmp_path: Path, records: Any, pr: dict[str, Any], workflow_run: dict[str, Any]
+) -> None:
+    GitHubHTTPError = importlib.import_module("issues.cli").GitHubHTTPError
+    run = {**workflow_run, "run_number": 42, "head_branch": pr["head"]["ref"]}
+    gh = SimpleNamespace(
+        repo="o/r", get=Mock(return_value={"name": "main", "commit": {"sha": BASE}})
+    )
+    error = GitHubHTTPError("artifacts", 502, "bad gateway")
+    backend = SimpleNamespace(repo="o/r", gh=gh, paged=Mock(side_effect=[[run], error]))
+    with pytest.raises(GitHubHTTPError, match="HTTP 502"):
+        records.observe_ci(backend, pr, records.Comparison.from_pr(pr), root=tmp_path)
+
+
 @pytest.mark.parametrize("fault", ["missing", "expired", "ambiguous", "corrupt_zip"])
 def test_knowledge_artifact_must_be_live_unique_and_readable(
     records: Any,
@@ -237,6 +251,8 @@ def test_knowledge_artifact_must_be_live_unique_and_readable(
         ("base", "cannot verify knowledge paths"),
         ("attempt", "attempt changed"),
         ("stop", "needs-human"),
+        ("mergeability_first", "mergeability_unknown"),
+        ("mergeability_final", "mergeability_unknown"),
     ],
 )
 def test_merge_rechecks_the_last_observation_before_recording_intent(
@@ -268,7 +284,9 @@ def test_merge_rechecks_the_last_observation_before_recording_intent(
         tip = "d" * 40
     elif fault == "attempt":
         run.update(run_attempt=3, status="queued", conclusion=None)
-    monkeypatch.setattr(backend, "pr", Mock(return_value=pr))
+    first = {**pr, "mergeable": None} if fault == "mergeability_first" else pr
+    final = {**pr, "mergeable": None} if fault == "mergeability_final" else pr
+    monkeypatch.setattr(backend, "pr", Mock(side_effect=[first, final]))
     monkeypatch.setattr(backend, "local", Mock(return_value=None))
     monkeypatch.setattr(
         backend, "human", Mock(return_value="needs-human" if fault == "stop" else None)
@@ -282,7 +300,7 @@ def test_merge_rechecks_the_last_observation_before_recording_intent(
     intent = Mock()
     with pytest.raises(live.MergeHold, match=reason) as exc:
         backend.merge_knowledge(backend.state, target, ci, intent)
-    assert exc.value.retry is (fault == "attempt")
+    assert exc.value.retry is (fault == "attempt" or fault.startswith("mergeability_"))
     write.assert_not_called()
     intent.assert_not_called()
 
