@@ -13,6 +13,29 @@ from pathlib import Path
 
 WORKFLOW_PATH = ".github/workflows/knowledge.yml"
 RESULT_FILENAME = "knowledge-records.json"
+# Kept in sync with the pull_request paths in knowledge.yml by test_knowledge_ci.py.
+KNOWLEDGE_CI_PATHS = (
+    "knowledge/**",
+    ".agents/skills/knowledge-control/**",
+    "tests/e2e/skills/test_knowledge*.py",
+    "tests/unit/skills/test_knowledge_citation_schema.py",
+    "tests/unit/skills/test_citation_literature.py",
+    "tests/unit/skills/test_citation_openalex.py",
+    "tests/integration/skills/test_citation_explore.py",
+    ".agents/ops/lib/agy_headless.py",
+    ".agents/ops/lib/agents.conf",
+    ".agents/ops/lib/knowledge_ci.py",
+    "tests/fixtures/knowledge/**",
+    WORKFLOW_PATH,
+    ".github/workflows/ci.yml",
+    "src/tennis_scene/configs/**",
+    "LICENSES.md",
+)
+# The workflow uses * within a path component and /** for recursive paths.
+_KNOWLEDGE_PATH_PATTERNS = tuple(
+    re.compile(re.escape(path).replace(r"\*\*", ".*").replace(r"\*", "[^/]*"), re.S)
+    for path in KNOWLEDGE_CI_PATHS
+)
 RECORD_DIRECTORIES = (
     "knowledge/nodes/",
     "knowledge/runs/",
@@ -55,6 +78,82 @@ def _git(root: Path, *args: str) -> bytes:
         check=True,
         timeout=30,
     ).stdout
+
+
+def ensure_commits(root: Path, *shas: str) -> None:
+    """Obtain the exact commit objects without updating refs or FETCH_HEAD."""
+    missing = []
+    for value in dict.fromkeys(shas):
+        sha = _sha(value, "pinned commit")
+        try:
+            kind = _git(root, "cat-file", "-t", sha)
+        except subprocess.CalledProcessError:
+            missing.append(sha)
+        else:
+            if kind.strip() != b"commit":
+                raise ValueError(f"{sha} is not a commit")
+    if missing:
+        _git(
+            root,
+            "fetch",
+            "--no-tags",
+            "--no-write-fetch-head",
+            "--refmap=",
+            "--no-prune",
+            "--no-prune-tags",
+            "--no-recurse-submodules",
+            "--no-auto-maintenance",
+            "origin",
+            *missing,
+        )
+        for sha in missing:
+            if _git(root, "cat-file", "-t", sha).strip() != b"commit":
+                raise ValueError(f"{sha} is not a commit")
+
+
+def require_unchanged_base(root: Path, old_base: str, new_base: str) -> None:
+    """Raise ValueError unless the base advanced only outside Knowledge CI paths."""
+    old = _sha(old_base, "previous base")
+    new = _sha(new_base, "current base")
+    if old == new:
+        return
+    try:
+        ensure_commits(root, old, new)
+        try:
+            _git(root, "merge-base", "--is-ancestor", old, new)
+        except subprocess.CalledProcessError as exc:
+            if exc.returncode == 1:
+                raise ValueError(f"{old} is not an ancestor of {new}") from exc
+            raise
+        diff = _git(
+            root,
+            "diff",
+            "--name-only",
+            "-z",
+            "--no-renames",
+            "--no-relative",
+            "--ignore-submodules=none",
+            old,
+            new,
+            "--",
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise ValueError(
+            f"cannot verify knowledge paths from {old} to {new}: {exc}"
+        ) from exc
+    if diff and not diff.endswith(b"\0"):
+        raise ValueError("incomplete Git diff for knowledge paths")
+    paths = [os.fsdecode(name) for name in diff.split(b"\0")[:-1]]
+    changed = [
+        path
+        for path in paths
+        if any(pattern.fullmatch(path) for pattern in _KNOWLEDGE_PATH_PATTERNS)
+    ]
+    if changed:
+        summary = ", ".join(repr(path) for path in changed[:3])
+        if len(changed) > 3:
+            summary += f", and {len(changed) - 3} more"
+        raise ValueError(f"main changed knowledge paths since verified CI ({summary})")
 
 
 def _require_record_diff(root: Path, start: str, end: str, comparison: str) -> None:

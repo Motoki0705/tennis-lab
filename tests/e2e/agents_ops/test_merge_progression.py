@@ -844,7 +844,7 @@ class KnowledgeBackend(Backend):
         ci: dict[str, Any],
         record_intent: Any,
     ) -> None:
-        record_intent()
+        record_intent(ci["base_sha"], ci["base_sha"])
         self.merge(target, ci["head"])
 
     def confirm_knowledge(self, target: dict[str, Any], pr: dict[str, Any]) -> None:
@@ -956,6 +956,7 @@ def test_knowledge_merge_recovers_main_ci_wait_without_another_submission(
     saved = read(path)["targets"]["11"]
     assert saved["stage"] == "post_merge_wait"
     assert saved["main_ci"]["status"] == "pending"
+    assert ("main_ci", 11, saved["merge_commit"]) in backend.calls
     assert not saved.get("issues_confirmed")
     backend.main_ci = "success"
     verified = Engine(path, backend, clock=clock, sleep=clock.sleep).run()

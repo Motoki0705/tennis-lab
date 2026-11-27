@@ -33,7 +33,9 @@ controllerと標準review runnerは固定した版を使い、保存済みの `c
 
 レビュー資料の取得範囲は [review_tools](../lib/review_tools/README.md)、過去事例での検証は [比較harness](evaluation/README.ja.md) を参照。
 
-記録専用マージは、同じ親レジストリを使うcontrollerのマージ送信をリポジトリ単位で排他し、送信直前にmainのtipを照合する。GitHubの同期マージAPIではPRのHEADを固定できる。同時に外部操作でmainが進んだ場合は、観測されたマージコミットの両親を照合し、不一致を受入保留にする。 [GitHubの同期マージAPI](https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request)
+記録専用マージは、`Knowledge library` の成果物が示すbaseとテスト用マージを現HEADに結び付けて検証する。検証済みbaseと現在のPR比較のbaseがともに `main` の祖先で、両baseから `main` への差分がワークフローの監視パス外だけなら、現HEADの成功結果を使ってマージできる。監視パスが変わった場合や祖先関係・差分を確認できない場合は `parent_wait` に移る。マージ送信前なら、`main` を取り込み、新HEADの実行証拠を更新して `merge-continue` する。
+
+同じ親レジストリを使うcontrollerのマージ送信はリポジトリ単位で排他し、送信直前に `main` のtipと検証済みbaseを再照合する。同期マージAPIでPRのHEADを固定し、マージコミットの第2親をそのHEADと照合する。第1親が送信時のtipから変わった場合は、検証済みbaseからの監視パスの差分と祖先関係を照合し、条件を外れたマージは受入保留にする。マージ後の完了には、merge commitに対する `main` pushのフル `Python` CIの成功が必要。 [GitHubの同期マージAPI](https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request)
 
 ## GitHub の再観測とマージ後 CI
 

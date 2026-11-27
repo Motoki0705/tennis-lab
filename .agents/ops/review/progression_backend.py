@@ -13,6 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from issues.cli import GitHubHTTPError
+from lib import knowledge_ci
 from lib.d_capacity import CapacityError
 from lib.ops_review import knowledge_evidence, knowledge_records
 from lib.ops_review.merge_gate_policy import (
@@ -560,9 +561,8 @@ class LiveBackend:
             raise ValueError("gh pr merge failed: " + result.stderr.strip())
 
     def knowledge_ci(self, pr: dict[str, Any]) -> dict[str, Any]:
-        scope, comparison = knowledge_records.assess(
-            Path(self.state["checkout"]), self.repo, pr
-        )
+        root = Path(self.state["checkout"])
+        scope, comparison = knowledge_records.assess(root, self.repo, pr)
         if comparison is None:
             return {
                 "status": "failure",
@@ -570,14 +570,14 @@ class LiveBackend:
                 "workflow": knowledge_records.WORKFLOW,
                 "reasons": [f"knowledge records scope unavailable: {scope.reason}"],
             }
-        return knowledge_records.observe_ci(self, pr, comparison)
+        return knowledge_records.observe_ci(self, pr, comparison, root=root)
 
     def merge_knowledge(
         self,
         state: dict[str, Any],
         target: dict[str, Any],
         ci: dict[str, Any],
-        record_intent: Callable[[], None],
+        record_intent: Callable[[str, str], None],
     ) -> None:
         with self.merge_slot():
             pr = self.pr(target["number"])
@@ -596,9 +596,6 @@ class LiveBackend:
                     implementation.get("body") or "", self.repo
                 ):
                     raise MergeHold("knowledge PR references changed")
-            comparison = knowledge_records.Comparison.from_pr(pr)
-            if (comparison.base, comparison.merge) != (ci["base_sha"], ci["merge_sha"]):
-                raise MergeHold("knowledge PR comparison changed", retry=True)
             if reason := self.local(state) or self.human(state, target):
                 raise MergeHold(reason)
             current = self.pr(target["number"])
@@ -606,11 +603,20 @@ class LiveBackend:
                 raise MergeHold(reason, retry=reason == MERGEABILITY_UNKNOWN)
             if "needs-human" in {label["name"] for label in current["labels"]}:
                 raise MergeHold(f"needs-human: pulls/{target['number']}")
-            if knowledge_records.Comparison.from_pr(
-                current
-            ) != comparison or current.get("body") != pr.get("body"):
+            if current["head"]["sha"] != ci["head"]:
+                raise MergeHold("knowledge PR HEAD changed; confirm new evidence")
+            if current.get("body") != pr.get("body"):
                 raise MergeHold("knowledge PR changed while checking merge", retry=True)
             root = Path(state["checkout"])
+            comparison = knowledge_records.Comparison.from_pr(current)
+            if (comparison.base, comparison.merge) != (ci["base_sha"], ci["merge_sha"]):
+                # GitHub can regenerate the test merge on the same HEAD.
+                scope, refreshed = knowledge_records.assess(root, self.repo, current)
+                if refreshed is None:
+                    raise MergeHold(
+                        f"knowledge records scope unavailable: {scope.reason}"
+                    )
+                comparison = refreshed
             try:
                 closing = knowledge_records.closing_targets(
                     self.gh, root, current, comparison
@@ -624,9 +630,6 @@ class LiveBackend:
                 raise MergeHold(str(exc)) from exc
             if closing != set(target["issues"]):
                 raise MergeHold("GitHub closing targets changed")
-            if knowledge_records.base_tip(self.gh, "main") != comparison.base:
-                raise MergeHold("main advanced after knowledge CI", retry=True)
-            # Last remote observation before recording intent and submitting.
             run = knowledge_records.latest_run(self, current, comparison.head)
             if (
                 run is None
@@ -635,7 +638,19 @@ class LiveBackend:
                 or any(run.get(key) != ci["run"][key] for key in ("id", "run_attempt"))
             ):
                 raise MergeHold("Knowledge library run or attempt changed", retry=True)
-            record_intent()
+            current_main = knowledge_records.base_tip(self.gh, "main")
+            verified_base = ci.get("verified_base_sha", ci["base_sha"])
+            try:
+                knowledge_records.require_current_comparison(
+                    root,
+                    comparison,
+                    checked_base=verified_base,
+                    checked_merge=ci.get("verified_merge_sha", ci["merge_sha"]),
+                    current_main=current_main,
+                )
+            except ValueError as exc:
+                raise MergeHold(str(exc)) from exc
+            record_intent(current_main, verified_base)
             # Submit a synchronous merge. The request fixes HEAD and cannot
             # enqueue a later merge against a different comparison.
             result = self.gh.write(
@@ -657,12 +672,26 @@ class LiveBackend:
             pr.get("merge_commit_sha"), "merge commit"
         )
         actual = object_value(self.gh.get(f"repos/{self.repo}/commits/{commit}"))
-        if actual.get("sha") != commit or [
-            parent.get("sha") for parent in actual.get("parents", [])
-        ] != [target["merge_base"], target["merge_head"]]:
-            raise ValueError(
-                "knowledge merge parents differ from the verified comparison"
-            )
+        parents = actual.get("parents")
+        mismatch = "knowledge merge parents differ from the verified comparison"
+        if (
+            actual.get("sha") != commit
+            or not isinstance(parents, list)
+            or len(parents) != 2
+            or not all(isinstance(parent, dict) for parent in parents)
+            or parents[1].get("sha") != target["merge_head"]
+        ):
+            raise ValueError(mismatch)
+        actual_base = parents[0].get("sha")
+        if actual_base != target["merge_base"]:
+            # In older intents merge_base was also the base verified by CI.
+            verified_base = target.get("verified_base", target["merge_base"])
+            try:
+                knowledge_ci.require_unchanged_base(
+                    Path(self.state["checkout"]), verified_base, actual_base
+                )
+            except ValueError as exc:
+                raise ValueError(mismatch) from exc
         main = knowledge_records.base_tip(self.gh, "main")
         if commit != main:
             comparison = object_value(

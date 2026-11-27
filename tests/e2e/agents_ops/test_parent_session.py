@@ -182,6 +182,13 @@ if path == "repos/o/r":
 if path == "repos/o/r/branches/main":
     import subprocess
     tip = subprocess.check_output(["git", "rev-parse", "main"], text=True).strip()
+    advance = state.pop("knowledge_advance_after_base_read", None)
+    if advance:
+        subprocess.run(["git", "merge", "--ff-only", advance["sha"]], check=True, capture_output=True)
+        pr = next(p for p in state["prs"] if p["number"] == advance["pr"])
+        pr["base"]["sha"] = advance["sha"]
+        pr["merge_commit_sha"] = advance["test_merge"]
+        save()
     response({"name": "main", "commit": {"sha": tip}})
 if path == "repos/o/r/actions/workflows/knowledge.yml/runs":
     head = parse_qs(query)["head_sha"][0]
@@ -206,6 +213,9 @@ if knowledge_merge:
         fail()
     if pr["state"] != "open" or pr["head"]["sha"] != payload["sha"]:
         response({"message": "HEAD changed"}, 409)
+    advance = state.pop("knowledge_advance_on_merge", None)
+    if advance:
+        subprocess.run(["git", "merge", "--ff-only", advance], check=True, capture_output=True)
     subprocess.run(["git", "merge", "--no-edit", "--no-ff", payload["sha"]], check=True, capture_output=True)
     merge = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     pr.update(state="closed", merged=True, merged_at="2026-11-22T00:00:00Z", merge_commit_sha=merge)

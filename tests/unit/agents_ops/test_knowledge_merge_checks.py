@@ -11,7 +11,8 @@ from unittest.mock import Mock
 
 import pytest
 
-from tests.unit.agents_ops.test_knowledge_ci import BASE, HEAD, OPS
+from tests.unit.agents_ops.test_knowledge_ci import BASE, HEAD, OPS, commit_path, git
+from tests.unit.agents_ops.test_knowledge_ci import git_repo as git_repo
 from tests.unit.agents_ops.test_knowledge_ci import record as record
 from tests.unit.agents_ops.test_knowledge_ci import workflow_run as workflow_run
 
@@ -103,7 +104,7 @@ def test_closing_issue_pages_must_describe_the_same_pr(
     [
         ("queued", "pending", "PR run is pending"),
         ("failed", "failure", "conclusion: failure"),
-        ("old_base", "pending", "earlier comparison"),
+        ("invalid_comparison", "failure", "PR test merge parents do not match"),
         ("head", "failure", "result head_sha does not match"),
         ("test_merge", "failure", "result merge_sha does not match"),
         ("attempt", "failure", "result run_attempt does not match"),
@@ -111,6 +112,7 @@ def test_closing_issue_pages_must_describe_the_same_pr(
     ],
 )
 def test_actions_observation_uses_only_latest_run_and_its_attempt(
+    tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
     records: Any,
     pr: dict[str, Any],
@@ -126,7 +128,7 @@ def test_actions_observation_uses_only_latest_run_and_its_attempt(
         newest.update(status="queued", conclusion=None)
     elif fault == "failed":
         newest.update(conclusion="failure")
-    elif fault == "old_base":
+    elif fault == "invalid_comparison":
         record["base_sha"] = "d" * 40
     elif fault == "head":
         record["head_sha"] = "d" * 40
@@ -137,24 +139,70 @@ def test_actions_observation_uses_only_latest_run_and_its_attempt(
     body = b"!" if fault == "corrupt" else json.dumps(record).encode()
     download = Mock(return_value=body)
     monkeypatch.setattr(records, "result_bytes", download)
+    classify = Mock(
+        return_value=records.knowledge_ci.Scope(
+            fault != "invalid_comparison", "PR test merge parents do not match"
+        )
+    )
+    monkeypatch.setattr(records.knowledge_ci, "ensure_commits", Mock())
+    monkeypatch.setattr(records.knowledge_ci, "classify_pr", classify)
+    main = "e" * 40 if fault in {"queued", "failed"} else BASE
     gh = SimpleNamespace(
-        repo="o/r", get=Mock(return_value={"name": "main", "commit": {"sha": BASE}})
+        repo="o/r", get=Mock(return_value={"name": "main", "commit": {"sha": main}})
     )
     backend = SimpleNamespace(
         repo="o/r", gh=gh, paged=Mock(return_value=[older, newest])
     )
-    result = records.observe_ci(backend, pr, records.Comparison.from_pr(pr))
+    result = records.observe_ci(
+        backend, pr, records.Comparison.from_pr(pr), root=tmp_path
+    )
     assert result["status"] == status, result
     assert reason in result["reasons"][0]
     assert result["run"]["id"] == 141
+    assert result["observed_main_sha"] == main
     if fault in {"queued", "failed"}:
         download.assert_not_called()
     else:
         download.assert_called_once_with(backend, newest)
+    if fault in {"invalid_comparison", "test_merge"}:
+        classify.assert_called_once_with(
+            tmp_path,
+            head_sha=HEAD,
+            base_sha=record["base_sha"],
+            merge_sha=record["merge_sha"],
+        )
+    else:
+        classify.assert_not_called()
+
+
+@pytest.mark.parametrize("fault", ["divergent_comparison", "reverted_knowledge_change"])
+def test_both_comparison_bases_must_match_main_on_watched_paths(
+    records: Any, git_repo: Path, fault: str
+) -> None:
+    checked_base = git(git_repo, "rev-parse", "HEAD")
+    if fault == "divergent_comparison":
+        comparison_base = commit_path(git_repo, "unrelated.txt")
+        git(git_repo, "switch", "-qc", "current-main", checked_base)
+        current_main = commit_path(git_repo, "other.txt")
+        reason = "is not an ancestor"
+    else:
+        comparison_base = commit_path(git_repo, "knowledge/summary.md")
+        git(git_repo, "revert", "--no-edit", comparison_base)
+        current_main = git(git_repo, "rev-parse", "HEAD")
+        reason = "main changed knowledge paths"
+    records.knowledge_ci.require_unchanged_base(git_repo, checked_base, current_main)
+    with pytest.raises(ValueError, match=reason):
+        records.require_current_comparison(
+            git_repo,
+            records.Comparison(HEAD, comparison_base, "c" * 40),
+            checked_base=checked_base,
+            checked_merge="d" * 40,
+            current_main=current_main,
+        )
 
 
 def test_knowledge_artifact_http_outage_reaches_controller_retry(
-    records: Any, pr: dict[str, Any], workflow_run: dict[str, Any]
+    tmp_path: Path, records: Any, pr: dict[str, Any], workflow_run: dict[str, Any]
 ) -> None:
     GitHubHTTPError = importlib.import_module("issues.cli").GitHubHTTPError
     run = {**workflow_run, "run_number": 42, "head_branch": pr["head"]["ref"]}
@@ -164,7 +212,7 @@ def test_knowledge_artifact_http_outage_reaches_controller_retry(
     error = GitHubHTTPError("artifacts", 502, "bad gateway")
     backend = SimpleNamespace(repo="o/r", gh=gh, paged=Mock(side_effect=[[run], error]))
     with pytest.raises(GitHubHTTPError, match="HTTP 502"):
-        records.observe_ci(backend, pr, records.Comparison.from_pr(pr))
+        records.observe_ci(backend, pr, records.Comparison.from_pr(pr), root=tmp_path)
 
 
 @pytest.mark.parametrize("fault", ["missing", "expired", "ambiguous", "corrupt_zip"])
@@ -200,7 +248,7 @@ def test_knowledge_artifact_must_be_live_unique_and_readable(
     ("fault", "reason"),
     [
         ("head", "HEAD changed"),
-        ("base", "main advanced"),
+        ("base", "cannot verify knowledge paths"),
         ("attempt", "attempt changed"),
         ("stop", "needs-human"),
         ("mergeability_first", "mergeability_unknown"),
@@ -250,10 +298,9 @@ def test_merge_rechecks_the_last_observation_before_recording_intent(
     write = Mock()
     monkeypatch.setattr(backend.gh, "write", write)
     intent = Mock()
-    with pytest.raises(live.MergeHold, match=reason) as failure:
+    with pytest.raises(live.MergeHold, match=reason) as exc:
         backend.merge_knowledge(backend.state, target, ci, intent)
-    if fault.startswith("mergeability_"):
-        assert failure.value.retry is True
+    assert exc.value.retry is (fault == "attempt" or fault.startswith("mergeability_"))
     write.assert_not_called()
     intent.assert_not_called()
 
@@ -361,6 +408,9 @@ def test_worker_ci_preserves_python_and_recognizes_knowledge_results(
             "reasons": [],
             "workflow": "Knowledge library",
             "base_sha": BASE,
+            "verified_base_sha": "d" * 40,
+            "verified_merge_sha": "e" * 40,
+            "observed_main_sha": "f" * 40,
         }
     )
     monkeypatch.setattr(records, "observe_ci", knowledge_ci)
@@ -373,7 +423,12 @@ def test_worker_ci_preserves_python_and_recognizes_knowledge_results(
         knowledge_ci.assert_not_called()
     else:
         assert (result["workflow"], result["base_sha"]) == ("Knowledge library", BASE)
-        knowledge_ci.assert_called_once()
+        assert result["verified_base_sha"] == "d" * 40
+        assert result["verified_merge_sha"] == "e" * 40
+        assert result["observed_main_sha"] == "f" * 40
+        knowledge_ci.assert_called_once_with(
+            backend, pr, records.Comparison.from_pr(pr), root=tmp_path
+        )
 
 
 def test_continuing_premerge_on_same_head_requires_current_evidence(

@@ -75,7 +75,7 @@ class Backend(Protocol):
         state: dict[str, Any],
         target: dict[str, Any],
         ci: dict[str, Any],
-        record_intent: Callable[[], None],
+        record_intent: Callable[[str, str], None],
     ) -> None: ...
     def confirm_knowledge(self, target: dict[str, Any], pr: dict[str, Any]) -> None: ...
     def issue_states(self, issues: list[int]) -> dict[str, Any]: ...
@@ -693,9 +693,12 @@ class Engine:
             self.later(target)
             return
 
-        def record_intent() -> None:
+        def record_intent(current_main: str, verified_base: str) -> None:
             target.update(
-                stage="merge_pending", merge_head=head, merge_base=ci["base_sha"]
+                stage="merge_pending",
+                merge_head=head,
+                merge_base=current_main,
+                verified_base=verified_base,
             )
             self.save()
 
