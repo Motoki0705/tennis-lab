@@ -1,0 +1,2122 @@
+{
+  "schema_version": 1,
+  "conditions": {
+    "A": {
+      "commit": "299b5c07a4a6153234cf4cbddc66f1c7a7b74e70",
+      "profile_sha256": "90b9098db32feba84a6ead204a1e386d4214223cff076a18c9538673944e60bd"
+    },
+    "C": {
+      "commit": "3e9e0b7380b050f205f20372dd31f298dbe4a483",
+      "profile_sha256": "b8ddb58425051970d74db145f6c4f59f7d026884930f1534732c49e34a548077"
+    }
+  },
+  "configuration": {
+    "ordinary_shards": 10,
+    "system_deps_shard_index": 10,
+    "workers_per_shard": 2,
+    "vcpus_per_shard": 4,
+    "native_threads": 1,
+    "uv_cache_hits": 66,
+    "uv_cache_observations": 66,
+    "scoped_pr_probe_file": "src/tasks/ball_refiner_3d/__init__.py"
+  },
+  "runs": [
+    {
+      "label": "full-a-1",
+      "run_id": 46045996862,
+      "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/46045996862",
+      "event": "workflow_dispatch",
+      "attempt": 1,
+      "conclusion": "success",
+      "workflow_head_sha": "299b5c07a4a6153234cf4cbddc66f1c7a7b74e70",
+      "checkout_sha": "299b5c07a4a6153234cf4cbddc66f1c7a7b74e70",
+      "checkout_tree": "d9e83789935e3aa7bf1dc97b020405e7fc7f5bf8",
+      "plan_id": "d5cb55e1b94e13d2766845395874fdb45e0e14cb3f4ece5fe88aa755f1f5d335",
+      "policy_sha256": "beb76c6735c3a67bc0dd545d90791d21f81db99e19927671fd28a5375c58ef8a",
+      "profile_sha256": "90b9098db32feba84a6ead204a1e386d4214223cff076a18c9538673944e60bd",
+      "coverage_artifact_id": 15224560510,
+      "plan_artifact_id": 15223055451,
+      "coverage": {
+        "scope": "full",
+        "observations_complete": true,
+        "full_cpu_success": true,
+        "scoped_cpu_success": true,
+        "universe_count": 26208,
+        "requested_count": 26208,
+        "deferred_count": 0,
+        "selected_count": 26208,
+        "counts": {
+          "passed": 26089,
+          "skipped": 119
+        },
+        "issues": [],
+        "system_deps_counts": {
+          "passed": 17
+        },
+        "universe_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "requested_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "deferred_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "executed_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "missing_nodeids": 0,
+        "duplicate_nodeids": 0,
+        "unexpected_nodeids": 0
+      },
+      "freshness": {
+        "observed_file_count": 1160,
+        "unmeasured_file_count": 282,
+        "observed_split_case_count": 284,
+        "unmeasured_split_case_count": 28
+      },
+      "timing": {
+        "ordinary_longest_test_shard": 8,
+        "ordinary_longest_test_step_wall_s": 1755.0,
+        "ordinary_longest_job_shard": 8,
+        "ordinary_longest_job_wall_s": 1834.0,
+        "python_check_completion_s": 1941.0,
+        "workflow_elapsed_s": 1941.0,
+        "all_jobs_runner_s": 9082.0,
+        "dispatch_to_first_job_s": 3.0,
+        "max_job_queue_s": 3.0,
+        "ordinary_preparation_s": {
+          "min": 51.0,
+          "max": 72.0,
+          "mean": 60.5,
+          "max_over_mean": 1.1900826446280992
+        },
+        "ordinary_launch_through_collection_s": {
+          "min": 82.843557,
+          "max": 131.022876,
+          "mean": 109.0797826,
+          "max_over_mean": 1.2011655402767552
+        },
+        "ordinary_measured_phase_s": {
+          "min": 683.0196010590038,
+          "max": 3264.667025420008,
+          "mean": 1355.2183338722011,
+          "max_over_mean": 2.4089601976472896
+        }
+      },
+      "shards": [
+        {
+          "index": 0,
+          "artifact_id": 15222897857,
+          "job_id": 140665550685,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5789996953562,
+          "measured_phase_s": 1171.974182,
+          "test_step_wall_s": 805.0,
+          "job_wall_s": 869.0,
+          "job_preparation_s": 57.0,
+          "launch_through_collection_s": 127.098086,
+          "worker_collection_s": {
+            "gw0": 123.295241,
+            "gw1": 122.897819
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1457,
+            "skipped": 3
+          }
+        },
+        {
+          "index": 1,
+          "artifact_id": 15222453186,
+          "job_id": 140665550703,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5795045818192,
+          "measured_phase_s": 873.332166,
+          "test_step_wall_s": 537.0,
+          "job_wall_s": 618.0,
+          "job_preparation_s": 70.0,
+          "launch_through_collection_s": 92.765431,
+          "worker_collection_s": {
+            "gw0": 89.665555,
+            "gw1": 89.937355
+          },
+          "job_queue_s": 3.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) 6975P-C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1774,
+            "skipped": 6
+          }
+        },
+        {
+          "index": 2,
+          "artifact_id": 15222941931,
+          "job_id": 140665550688,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5794635818186,
+          "measured_phase_s": 683.019601,
+          "test_step_wall_s": 458.0,
+          "job_wall_s": 520.0,
+          "job_preparation_s": 55.0,
+          "launch_through_collection_s": 106.870491,
+          "worker_collection_s": {
+            "gw0": 103.509384,
+            "gw1": 103.865191
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1875,
+            "skipped": 35
+          }
+        },
+        {
+          "index": 3,
+          "artifact_id": 15222458489,
+          "job_id": 140665550820,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5793576953554,
+          "measured_phase_s": 1107.025644,
+          "test_step_wall_s": 655.0,
+          "job_wall_s": 714.0,
+          "job_preparation_s": 51.0,
+          "launch_through_collection_s": 89.299033,
+          "worker_collection_s": {
+            "gw0": 86.65796,
+            "gw1": 86.172856
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2328,
+            "skipped": 39
+          }
+        },
+        {
+          "index": 4,
+          "artifact_id": 15222318586,
+          "job_id": 140665550816,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5793096953561,
+          "measured_phase_s": 935.698465,
+          "test_step_wall_s": 595.0,
+          "job_wall_s": 672.0,
+          "job_preparation_s": 70.0,
+          "launch_through_collection_s": 115.905648,
+          "worker_collection_s": {
+            "gw0": 112.304465,
+            "gw1": 112.627004
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1877,
+            "skipped": 3
+          }
+        },
+        {
+          "index": 5,
+          "artifact_id": 15222434526,
+          "job_id": 140665550726,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5777858088934,
+          "measured_phase_s": 1622.756631,
+          "test_step_wall_s": 961.0,
+          "job_wall_s": 1033.0,
+          "job_preparation_s": 63.0,
+          "launch_through_collection_s": 131.022876,
+          "worker_collection_s": {
+            "gw0": 127.248708,
+            "gw1": 127.202575
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2343
+          }
+        },
+        {
+          "index": 6,
+          "artifact_id": 15223307941,
+          "job_id": 140665550746,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5793815818188,
+          "measured_phase_s": 1776.614566,
+          "test_step_wall_s": 1011.0,
+          "job_wall_s": 1078.0,
+          "job_preparation_s": 58.0,
+          "launch_through_collection_s": 109.230034,
+          "worker_collection_s": {
+            "gw0": 106.259214,
+            "gw1": 106.251155
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 3173,
+            "skipped": 14
+          }
+        },
+        {
+          "index": 7,
+          "artifact_id": 15222961998,
+          "job_id": 140665550748,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5796976953562,
+          "measured_phase_s": 853.617261,
+          "test_step_wall_s": 521.0,
+          "job_wall_s": 580.0,
+          "job_preparation_s": 51.0,
+          "launch_through_collection_s": 82.843557,
+          "worker_collection_s": {
+            "gw0": 79.962742,
+            "gw1": 80.538138
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2192
+          }
+        },
+        {
+          "index": 8,
+          "artifact_id": 15224540439,
+          "job_id": 140665550706,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5776246953551,
+          "measured_phase_s": 3264.667025,
+          "test_step_wall_s": 1755.0,
+          "job_wall_s": 1834.0,
+          "job_preparation_s": 72.0,
+          "launch_through_collection_s": 106.668534,
+          "worker_collection_s": {
+            "gw0": 103.721567,
+            "gw1": 103.563583
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 6847
+          }
+        },
+        {
+          "index": 9,
+          "artifact_id": 15222698638,
+          "job_id": 140665550735,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5775996953553,
+          "measured_phase_s": 1263.477798,
+          "test_step_wall_s": 773.0,
+          "job_wall_s": 838.0,
+          "job_preparation_s": 58.0,
+          "launch_through_collection_s": 129.094136,
+          "worker_collection_s": {
+            "gw0": 125.382053,
+            "gw1": 125.442981
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2206,
+            "skipped": 19
+          }
+        },
+        {
+          "index": 10,
+          "artifact_id": 15222106966,
+          "job_id": 140665550462,
+          "job_conclusion": "success",
+          "estimated_phase_s": null,
+          "measured_phase_s": 19.465259,
+          "test_step_wall_s": 147.0,
+          "job_wall_s": 198.0,
+          "job_preparation_s": 45.0,
+          "launch_through_collection_s": 130.332068,
+          "worker_collection_s": {
+            "gw0": 126.700583,
+            "gw1": 126.647611
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 17
+          }
+        }
+      ]
+    },
+    {
+      "label": "full-c-1",
+      "run_id": 46050353999,
+      "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/46050353999",
+      "event": "workflow_dispatch",
+      "attempt": 1,
+      "conclusion": "success",
+      "workflow_head_sha": "3e9e0b7380b050f205f20372dd31f298dbe4a483",
+      "checkout_sha": "3e9e0b7380b050f205f20372dd31f298dbe4a483",
+      "checkout_tree": "7462e8bb78feaae7178a95692ace3707f84a62ff",
+      "plan_id": "08f26c8a1376530091121f1875c1317004ed0f44e5cd94a8cb5610afcd2146c3",
+      "policy_sha256": "beb76c6735c3a67bc0dd545d90791d21f81db99e19927671fd28a5375c58ef8a",
+      "profile_sha256": "b8ddb58425051970d74db145f6c4f59f7d026884930f1534732c49e34a548077",
+      "coverage_artifact_id": 15225455962,
+      "plan_artifact_id": 15224875492,
+      "coverage": {
+        "scope": "full",
+        "observations_complete": true,
+        "full_cpu_success": true,
+        "scoped_cpu_success": true,
+        "universe_count": 26208,
+        "requested_count": 26208,
+        "deferred_count": 0,
+        "selected_count": 26208,
+        "counts": {
+          "passed": 26089,
+          "skipped": 119
+        },
+        "issues": [],
+        "system_deps_counts": {
+          "passed": 17
+        },
+        "universe_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "requested_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "deferred_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "executed_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "missing_nodeids": 0,
+        "duplicate_nodeids": 0,
+        "unexpected_nodeids": 0
+      },
+      "freshness": {
+        "observed_file_count": 1160,
+        "unmeasured_file_count": 0,
+        "observed_split_case_count": 6539,
+        "unmeasured_split_case_count": 0
+      },
+      "timing": {
+        "ordinary_longest_test_shard": 5,
+        "ordinary_longest_test_step_wall_s": 933.0,
+        "ordinary_longest_job_shard": 5,
+        "ordinary_longest_job_wall_s": 1006.0,
+        "python_check_completion_s": 1088.0,
+        "workflow_elapsed_s": 1089.0,
+        "all_jobs_runner_s": 8792.0,
+        "dispatch_to_first_job_s": 4.0,
+        "max_job_queue_s": 2.0,
+        "ordinary_preparation_s": {
+          "min": 52.0,
+          "max": 70.0,
+          "mean": 59.9,
+          "max_over_mean": 1.1686143572621035
+        },
+        "ordinary_launch_through_collection_s": {
+          "min": 87.145404,
+          "max": 139.083023,
+          "mean": 109.8764495,
+          "max_over_mean": 1.2658128619272502
+        },
+        "ordinary_measured_phase_s": {
+          "min": 958.0923781769992,
+          "max": 1552.3805503379936,
+          "mean": 1317.8341568591993,
+          "max_over_mean": 1.1779786874228468
+        }
+      },
+      "shards": [
+        {
+          "index": 0,
+          "artifact_id": 15225172604,
+          "job_id": 140680100877,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6074790000005,
+          "measured_phase_s": 1493.789794,
+          "test_step_wall_s": 885.0,
+          "job_wall_s": 952.0,
+          "job_preparation_s": 59.0,
+          "launch_through_collection_s": 128.525696,
+          "worker_collection_s": {
+            "gw0": 124.831896,
+            "gw1": 124.80165
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2241,
+            "skipped": 43
+          }
+        },
+        {
+          "index": 1,
+          "artifact_id": 15225390890,
+          "job_id": 140680100875,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6092819999994,
+          "measured_phase_s": 1499.514508,
+          "test_step_wall_s": 906.0,
+          "job_wall_s": 973.0,
+          "job_preparation_s": 60.0,
+          "launch_through_collection_s": 135.386231,
+          "worker_collection_s": {
+            "gw0": 131.613048,
+            "gw1": 131.584319
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2796,
+            "skipped": 8
+          }
+        },
+        {
+          "index": 2,
+          "artifact_id": 15224752349,
+          "job_id": 140680100951,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6076539999997,
+          "measured_phase_s": 1083.454125,
+          "test_step_wall_s": 645.0,
+          "job_wall_s": 705.0,
+          "job_preparation_s": 52.0,
+          "launch_through_collection_s": 87.955234,
+          "worker_collection_s": {
+            "gw0": 85.427839,
+            "gw1": 85.400883
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) 6973P-C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2423,
+            "skipped": 5
+          }
+        },
+        {
+          "index": 3,
+          "artifact_id": 15223884607,
+          "job_id": 140680100849,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.609176000001,
+          "measured_phase_s": 1359.151692,
+          "test_step_wall_s": 813.0,
+          "job_wall_s": 892.0,
+          "job_preparation_s": 70.0,
+          "launch_through_collection_s": 115.339303,
+          "worker_collection_s": {
+            "gw0": 112.039735,
+            "gw1": 112.020511
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2794,
+            "skipped": 12
+          }
+        },
+        {
+          "index": 4,
+          "artifact_id": 15224552381,
+          "job_id": 140680100970,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.607638999999,
+          "measured_phase_s": 958.092378,
+          "test_step_wall_s": 584.0,
+          "job_wall_s": 650.0,
+          "job_preparation_s": 58.0,
+          "launch_through_collection_s": 94.985642,
+          "worker_collection_s": {
+            "gw0": 92.275411,
+            "gw1": 92.266514
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) 6975P-C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2352
+          }
+        },
+        {
+          "index": 5,
+          "artifact_id": 15225222472,
+          "job_id": 140680100958,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6074680000013,
+          "measured_phase_s": 1552.38055,
+          "test_step_wall_s": 933.0,
+          "job_wall_s": 1006.0,
+          "job_preparation_s": 64.0,
+          "launch_through_collection_s": 139.083023,
+          "worker_collection_s": {
+            "gw0": 135.065471,
+            "gw1": 135.146665
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2831,
+            "skipped": 5
+          }
+        },
+        {
+          "index": 6,
+          "artifact_id": 15223904369,
+          "job_id": 140680100883,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6079480000021,
+          "measured_phase_s": 1315.354922,
+          "test_step_wall_s": 755.0,
+          "job_wall_s": 824.0,
+          "job_preparation_s": 61.0,
+          "launch_through_collection_s": 87.145404,
+          "worker_collection_s": {
+            "gw0": 84.642508,
+            "gw1": 84.112744
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2523,
+            "skipped": 9
+          }
+        },
+        {
+          "index": 7,
+          "artifact_id": 15223954646,
+          "job_id": 140680101104,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6087389999998,
+          "measured_phase_s": 1477.478022,
+          "test_step_wall_s": 872.0,
+          "job_wall_s": 941.0,
+          "job_preparation_s": 61.0,
+          "launch_through_collection_s": 112.743718,
+          "worker_collection_s": {
+            "gw0": 109.29223,
+            "gw1": 108.902769
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2433,
+            "skipped": 34
+          }
+        },
+        {
+          "index": 8,
+          "artifact_id": 15224034414,
+          "job_id": 140680100982,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.607692999998,
+          "measured_phase_s": 1373.362155,
+          "test_step_wall_s": 811.0,
+          "job_wall_s": 880.0,
+          "job_preparation_s": 61.0,
+          "launch_through_collection_s": 110.265212,
+          "worker_collection_s": {
+            "gw0": 106.89452,
+            "gw1": 106.921064
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 3071,
+            "skipped": 3
+          }
+        },
+        {
+          "index": 9,
+          "artifact_id": 15224667288,
+          "job_id": 140680100954,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6091450000029,
+          "measured_phase_s": 1065.763422,
+          "test_step_wall_s": 633.0,
+          "job_wall_s": 693.0,
+          "job_preparation_s": 53.0,
+          "launch_through_collection_s": 87.335032,
+          "worker_collection_s": {
+            "gw0": 84.848075,
+            "gw1": 84.80939
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2608
+          }
+        },
+        {
+          "index": 10,
+          "artifact_id": 15223922741,
+          "job_id": 140680100839,
+          "job_conclusion": "success",
+          "estimated_phase_s": null,
+          "measured_phase_s": 15.445849,
+          "test_step_wall_s": 119.0,
+          "job_wall_s": 169.0,
+          "job_preparation_s": 44.0,
+          "launch_through_collection_s": 104.160475,
+          "worker_collection_s": {
+            "gw0": 101.314006,
+            "gw1": 100.973873
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 17
+          }
+        }
+      ]
+    },
+    {
+      "label": "full-a-2",
+      "run_id": 46052765632,
+      "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/46052765632",
+      "event": "workflow_dispatch",
+      "attempt": 1,
+      "conclusion": "success",
+      "workflow_head_sha": "299b5c07a4a6153234cf4cbddc66f1c7a7b74e70",
+      "checkout_sha": "299b5c07a4a6153234cf4cbddc66f1c7a7b74e70",
+      "checkout_tree": "d9e83789935e3aa7bf1dc97b020405e7fc7f5bf8",
+      "plan_id": "2d0255716a3d62c6657f6ba17a77ac7449cddfe4a2c399f86eac855003b203a9",
+      "policy_sha256": "beb76c6735c3a67bc0dd545d90791d21f81db99e19927671fd28a5375c58ef8a",
+      "profile_sha256": "90b9098db32feba84a6ead204a1e386d4214223cff076a18c9538673944e60bd",
+      "coverage_artifact_id": 15226347714,
+      "plan_artifact_id": 15225555566,
+      "coverage": {
+        "scope": "full",
+        "observations_complete": true,
+        "full_cpu_success": true,
+        "scoped_cpu_success": true,
+        "universe_count": 26208,
+        "requested_count": 26208,
+        "deferred_count": 0,
+        "selected_count": 26208,
+        "counts": {
+          "passed": 26089,
+          "skipped": 119
+        },
+        "issues": [],
+        "system_deps_counts": {
+          "passed": 17
+        },
+        "universe_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "requested_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "deferred_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "executed_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "missing_nodeids": 0,
+        "duplicate_nodeids": 0,
+        "unexpected_nodeids": 0
+      },
+      "freshness": {
+        "observed_file_count": 1160,
+        "unmeasured_file_count": 282,
+        "observed_split_case_count": 284,
+        "unmeasured_split_case_count": 28
+      },
+      "timing": {
+        "ordinary_longest_test_shard": 8,
+        "ordinary_longest_test_step_wall_s": 1467.0,
+        "ordinary_longest_job_shard": 8,
+        "ordinary_longest_job_wall_s": 1535.0,
+        "python_check_completion_s": 1607.0,
+        "workflow_elapsed_s": 1608.0,
+        "all_jobs_runner_s": 8502.0,
+        "dispatch_to_first_job_s": 3.0,
+        "max_job_queue_s": 3.0,
+        "ordinary_preparation_s": {
+          "min": 56.0,
+          "max": 68.0,
+          "mean": 60.8,
+          "max_over_mean": 1.118421052631579
+        },
+        "ordinary_launch_through_collection_s": {
+          "min": 91.331371,
+          "max": 128.281964,
+          "mean": 107.4032168,
+          "max_over_mean": 1.1943959205512362
+        },
+        "ordinary_measured_phase_s": {
+          "min": 642.3025609860023,
+          "max": 2672.37637520002,
+          "mean": 1249.5229540449036,
+          "max_over_mean": 2.138717313314745
+        }
+      },
+      "shards": [
+        {
+          "index": 0,
+          "artifact_id": 15226016780,
+          "job_id": 140688080451,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5789996953562,
+          "measured_phase_s": 759.236885,
+          "test_step_wall_s": 545.0,
+          "job_wall_s": 612.0,
+          "job_preparation_s": 60.0,
+          "launch_through_collection_s": 93.689453,
+          "worker_collection_s": {
+            "gw0": 90.934681,
+            "gw1": 90.904341
+          },
+          "job_queue_s": 1.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) 6975P-C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1457,
+            "skipped": 3
+          }
+        },
+        {
+          "index": 1,
+          "artifact_id": 15225927319,
+          "job_id": 140688080537,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5795045818192,
+          "measured_phase_s": 1241.335898,
+          "test_step_wall_s": 761.0,
+          "job_wall_s": 839.0,
+          "job_preparation_s": 68.0,
+          "launch_through_collection_s": 126.963795,
+          "worker_collection_s": {
+            "gw0": 122.932499,
+            "gw1": 123.330435
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1774,
+            "skipped": 6
+          }
+        },
+        {
+          "index": 2,
+          "artifact_id": 15224909575,
+          "job_id": 140688080423,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5794635818186,
+          "measured_phase_s": 642.302561,
+          "test_step_wall_s": 441.0,
+          "job_wall_s": 512.0,
+          "job_preparation_s": 62.0,
+          "launch_through_collection_s": 103.021645,
+          "worker_collection_s": {
+            "gw0": 99.961802,
+            "gw1": 99.951385
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1875,
+            "skipped": 35
+          }
+        },
+        {
+          "index": 3,
+          "artifact_id": 15225987705,
+          "job_id": 140688080425,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5793576953554,
+          "measured_phase_s": 1407.578816,
+          "test_step_wall_s": 822.0,
+          "job_wall_s": 894.0,
+          "job_preparation_s": 62.0,
+          "launch_through_collection_s": 106.847554,
+          "worker_collection_s": {
+            "gw0": 103.992624,
+            "gw1": 103.970911
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2328,
+            "skipped": 39
+          }
+        },
+        {
+          "index": 4,
+          "artifact_id": 15225477588,
+          "job_id": 140688080413,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5793096953561,
+          "measured_phase_s": 976.819069,
+          "test_step_wall_s": 610.0,
+          "job_wall_s": 677.0,
+          "job_preparation_s": 60.0,
+          "launch_through_collection_s": 111.571609,
+          "worker_collection_s": {
+            "gw0": 108.455925,
+            "gw1": 108.271063
+          },
+          "job_queue_s": 1.0,
+          "uv_cache_hit": true,
+          "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1877,
+            "skipped": 3
+          }
+        },
+        {
+          "index": 5,
+          "artifact_id": 15226765115,
+          "job_id": 140688080389,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5777858088934,
+          "measured_phase_s": 1227.592718,
+          "test_step_wall_s": 733.0,
+          "job_wall_s": 795.0,
+          "job_preparation_s": 56.0,
+          "launch_through_collection_s": 104.005989,
+          "worker_collection_s": {
+            "gw0": 101.154444,
+            "gw1": 101.141558
+          },
+          "job_queue_s": 1.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2343
+          }
+        },
+        {
+          "index": 6,
+          "artifact_id": 15226027158,
+          "job_id": 140688080491,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5793815818188,
+          "measured_phase_s": 1417.976918,
+          "test_step_wall_s": 810.0,
+          "job_wall_s": 875.0,
+          "job_preparation_s": 57.0,
+          "launch_through_collection_s": 91.331371,
+          "worker_collection_s": {
+            "gw0": 88.241161,
+            "gw1": 88.550816
+          },
+          "job_queue_s": 1.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) 6975P-C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 3173,
+            "skipped": 14
+          }
+        },
+        {
+          "index": 7,
+          "artifact_id": 15225422817,
+          "job_id": 140688080415,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5796976953562,
+          "measured_phase_s": 867.389887,
+          "test_step_wall_s": 539.0,
+          "job_wall_s": 613.0,
+          "job_preparation_s": 64.0,
+          "launch_through_collection_s": 91.735792,
+          "worker_collection_s": {
+            "gw0": 88.982996,
+            "gw1": 88.916313
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) 6975P-C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2192
+          }
+        },
+        {
+          "index": 8,
+          "artifact_id": 15226826974,
+          "job_id": 140688080377,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5776246953551,
+          "measured_phase_s": 2672.376375,
+          "test_step_wall_s": 1467.0,
+          "job_wall_s": 1535.0,
+          "job_preparation_s": 58.0,
+          "launch_through_collection_s": 116.582996,
+          "worker_collection_s": {
+            "gw0": 112.961124,
+            "gw1": 113.050354
+          },
+          "job_queue_s": 1.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 6847
+          }
+        },
+        {
+          "index": 9,
+          "artifact_id": 15226185535,
+          "job_id": 140688080367,
+          "job_conclusion": "success",
+          "estimated_phase_s": 610.5775996953553,
+          "measured_phase_s": 1282.620412,
+          "test_step_wall_s": 781.0,
+          "job_wall_s": 850.0,
+          "job_preparation_s": 61.0,
+          "launch_through_collection_s": 128.281964,
+          "worker_collection_s": {
+            "gw0": 124.535383,
+            "gw1": 124.010009
+          },
+          "job_queue_s": 1.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2206,
+            "skipped": 19
+          }
+        },
+        {
+          "index": 10,
+          "artifact_id": 15224369092,
+          "job_id": 140688080197,
+          "job_conclusion": "success",
+          "estimated_phase_s": null,
+          "measured_phase_s": 19.069884,
+          "test_step_wall_s": 139.0,
+          "job_wall_s": 200.0,
+          "job_preparation_s": 52.0,
+          "launch_through_collection_s": 123.339383,
+          "worker_collection_s": {
+            "gw0": 119.649793,
+            "gw1": 119.574124
+          },
+          "job_queue_s": 1.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) Platinum 8370C CPU @ 2.80GHz",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 17
+          }
+        }
+      ]
+    },
+    {
+      "label": "full-c-2",
+      "run_id": 46056231956,
+      "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/46056231956",
+      "event": "workflow_dispatch",
+      "attempt": 1,
+      "conclusion": "success",
+      "workflow_head_sha": "3e9e0b7380b050f205f20372dd31f298dbe4a483",
+      "checkout_sha": "3e9e0b7380b050f205f20372dd31f298dbe4a483",
+      "checkout_tree": "7462e8bb78feaae7178a95692ace3707f84a62ff",
+      "plan_id": "f4aec63634a80f06e9a0ef0e58d50955248ed515a6b510907bb36b02744d247c",
+      "policy_sha256": "beb76c6735c3a67bc0dd545d90791d21f81db99e19927671fd28a5375c58ef8a",
+      "profile_sha256": "b8ddb58425051970d74db145f6c4f59f7d026884930f1534732c49e34a548077",
+      "coverage_artifact_id": 15227388165,
+      "plan_artifact_id": 15227510039,
+      "coverage": {
+        "scope": "full",
+        "observations_complete": true,
+        "full_cpu_success": true,
+        "scoped_cpu_success": true,
+        "universe_count": 26208,
+        "requested_count": 26208,
+        "deferred_count": 0,
+        "selected_count": 26208,
+        "counts": {
+          "passed": 26089,
+          "skipped": 119
+        },
+        "issues": [],
+        "system_deps_counts": {
+          "passed": 17
+        },
+        "universe_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "requested_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "deferred_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "executed_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "missing_nodeids": 0,
+        "duplicate_nodeids": 0,
+        "unexpected_nodeids": 0
+      },
+      "freshness": {
+        "observed_file_count": 1160,
+        "unmeasured_file_count": 0,
+        "observed_split_case_count": 6539,
+        "unmeasured_split_case_count": 0
+      },
+      "timing": {
+        "ordinary_longest_test_shard": 1,
+        "ordinary_longest_test_step_wall_s": 991.0,
+        "ordinary_longest_job_shard": 1,
+        "ordinary_longest_job_wall_s": 1061.0,
+        "python_check_completion_s": 1141.0,
+        "workflow_elapsed_s": 1141.0,
+        "all_jobs_runner_s": 9476.0,
+        "dispatch_to_first_job_s": 5.0,
+        "max_job_queue_s": 3.0,
+        "ordinary_preparation_s": {
+          "min": 54.0,
+          "max": 67.0,
+          "mean": 62.3,
+          "max_over_mean": 1.0754414125200642
+        },
+        "ordinary_launch_through_collection_s": {
+          "min": 93.160048,
+          "max": 145.912924,
+          "mean": 118.51841,
+          "max_over_mean": 1.231141423513866
+        },
+        "ordinary_measured_phase_s": {
+          "min": 1070.7827654370012,
+          "max": 1645.171345857009,
+          "mean": 1424.2617683155993,
+          "max_over_mean": 1.1551046180244438
+        }
+      },
+      "shards": [
+        {
+          "index": 0,
+          "artifact_id": 15227422644,
+          "job_id": 140699533273,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6074790000005,
+          "measured_phase_s": 1543.038538,
+          "test_step_wall_s": 922.0,
+          "job_wall_s": 987.0,
+          "job_preparation_s": 58.0,
+          "launch_through_collection_s": 133.429782,
+          "worker_collection_s": {
+            "gw0": 129.370483,
+            "gw1": 129.481263
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2241,
+            "skipped": 43
+          }
+        },
+        {
+          "index": 1,
+          "artifact_id": 15226334929,
+          "job_id": 140699533340,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6092819999994,
+          "measured_phase_s": 1645.171346,
+          "test_step_wall_s": 991.0,
+          "job_wall_s": 1061.0,
+          "job_preparation_s": 63.0,
+          "launch_through_collection_s": 145.912924,
+          "worker_collection_s": {
+            "gw0": 141.828487,
+            "gw1": 141.837481
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2796,
+            "skipped": 8
+          }
+        },
+        {
+          "index": 2,
+          "artifact_id": 15226937901,
+          "job_id": 140699533253,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6076539999997,
+          "measured_phase_s": 1070.782765,
+          "test_step_wall_s": 650.0,
+          "job_wall_s": 729.0,
+          "job_preparation_s": 67.0,
+          "launch_through_collection_s": 93.160048,
+          "worker_collection_s": {
+            "gw0": 90.474315,
+            "gw1": 90.452851
+          },
+          "job_queue_s": 3.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) 6975P-C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2423,
+            "skipped": 5
+          }
+        },
+        {
+          "index": 3,
+          "artifact_id": 15226888231,
+          "job_id": 140699533159,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.609176000001,
+          "measured_phase_s": 1280.706788,
+          "test_step_wall_s": 763.0,
+          "job_wall_s": 838.0,
+          "job_preparation_s": 65.0,
+          "launch_through_collection_s": 103.807784,
+          "worker_collection_s": {
+            "gw0": 100.710898,
+            "gw1": 100.277108
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2794,
+            "skipped": 12
+          }
+        },
+        {
+          "index": 4,
+          "artifact_id": 15227612145,
+          "job_id": 140699533189,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.607638999999,
+          "measured_phase_s": 1359.635135,
+          "test_step_wall_s": 812.0,
+          "job_wall_s": 885.0,
+          "job_preparation_s": 65.0,
+          "launch_through_collection_s": 120.242435,
+          "worker_collection_s": {
+            "gw0": 116.165264,
+            "gw1": 116.645576
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2352
+          }
+        },
+        {
+          "index": 5,
+          "artifact_id": 15226739603,
+          "job_id": 140699533225,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6074680000013,
+          "measured_phase_s": 1514.683718,
+          "test_step_wall_s": 900.0,
+          "job_wall_s": 970.0,
+          "job_preparation_s": 62.0,
+          "launch_through_collection_s": 127.624896,
+          "worker_collection_s": {
+            "gw0": 123.447482,
+            "gw1": 123.936697
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2831,
+            "skipped": 5
+          }
+        },
+        {
+          "index": 6,
+          "artifact_id": 15227212570,
+          "job_id": 140699533262,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6079480000021,
+          "measured_phase_s": 1424.740221,
+          "test_step_wall_s": 837.0,
+          "job_wall_s": 912.0,
+          "job_preparation_s": 66.0,
+          "launch_through_collection_s": 112.82599,
+          "worker_collection_s": {
+            "gw0": 109.318208,
+            "gw1": 109.335069
+          },
+          "job_queue_s": 3.0,
+          "uv_cache_hit": true,
+          "cpu_model": "INTEL(R) XEON(R) PLATINUM 8573C",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2523,
+            "skipped": 9
+          }
+        },
+        {
+          "index": 7,
+          "artifact_id": 15227088225,
+          "job_id": 140699533297,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6087389999998,
+          "measured_phase_s": 1608.786837,
+          "test_step_wall_s": 933.0,
+          "job_wall_s": 1009.0,
+          "job_preparation_s": 64.0,
+          "launch_through_collection_s": 115.152021,
+          "worker_collection_s": {
+            "gw0": 111.964863,
+            "gw1": 111.942106
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2433,
+            "skipped": 34
+          }
+        },
+        {
+          "index": 8,
+          "artifact_id": 15227432216,
+          "job_id": 140699533238,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.607692999998,
+          "measured_phase_s": 1284.397558,
+          "test_step_wall_s": 760.0,
+          "job_wall_s": 821.0,
+          "job_preparation_s": 54.0,
+          "launch_through_collection_s": 103.56602,
+          "worker_collection_s": {
+            "gw0": 100.636647,
+            "gw1": 100.290768
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 3071,
+            "skipped": 3
+          }
+        },
+        {
+          "index": 9,
+          "artifact_id": 15227078049,
+          "job_id": 140699533274,
+          "job_conclusion": "success",
+          "estimated_phase_s": 1360.6091450000029,
+          "measured_phase_s": 1510.674777,
+          "test_step_wall_s": 898.0,
+          "job_wall_s": 965.0,
+          "job_preparation_s": 59.0,
+          "launch_through_collection_s": 129.4622,
+          "worker_collection_s": {
+            "gw0": 125.725609,
+            "gw1": 125.559453
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2608
+          }
+        },
+        {
+          "index": 10,
+          "artifact_id": 15227046417,
+          "job_id": 140699533041,
+          "job_conclusion": "success",
+          "estimated_phase_s": null,
+          "measured_phase_s": 19.895941,
+          "test_step_wall_s": 142.0,
+          "job_wall_s": 201.0,
+          "job_preparation_s": 50.0,
+          "launch_through_collection_s": 125.06397,
+          "worker_collection_s": {
+            "gw0": 121.46051,
+            "gw1": 121.322666
+          },
+          "job_queue_s": 3.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 17
+          }
+        }
+      ]
+    },
+    {
+      "label": "scoped-a-1",
+      "run_id": 46058668606,
+      "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/46058668606",
+      "event": "pull_request",
+      "attempt": 1,
+      "conclusion": "success",
+      "workflow_head_sha": "57fee4b32b5f8f79db1e31aba7bc2b8d1a89815f",
+      "checkout_sha": "50a6c0f0795678410d1f2323dcf5e1ed5c7a5918",
+      "checkout_tree": "33e51d570ce3fd40f3e04b514ea1f88a0470d27c",
+      "plan_id": "cffbef24895f4c0cc3b134eb15ae20e98102d19b323d6c851879eb9e19e0f69a",
+      "policy_sha256": "beb76c6735c3a67bc0dd545d90791d21f81db99e19927671fd28a5375c58ef8a",
+      "profile_sha256": "90b9098db32feba84a6ead204a1e386d4214223cff076a18c9538673944e60bd",
+      "coverage_artifact_id": 15229191408,
+      "plan_artifact_id": 15227686790,
+      "coverage": {
+        "scope": "pr",
+        "observations_complete": true,
+        "full_cpu_success": false,
+        "scoped_cpu_success": true,
+        "universe_count": 26208,
+        "requested_count": 23334,
+        "deferred_count": 2874,
+        "selected_count": 23334,
+        "counts": {
+          "passed": 23219,
+          "skipped": 115
+        },
+        "issues": [],
+        "system_deps_counts": {
+          "passed": 17
+        },
+        "universe_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "requested_sha256": "ccbfc3f992a87d3967054e3e3627be4f4b70bd65f454b1b9e07547872d806ca7",
+        "deferred_sha256": "0fa787a507f7d2729d33923a457e3791fbd9ba30c4da11787ea72612ca48c5c9",
+        "executed_sha256": "ccbfc3f992a87d3967054e3e3627be4f4b70bd65f454b1b9e07547872d806ca7",
+        "missing_nodeids": 0,
+        "duplicate_nodeids": 0,
+        "unexpected_nodeids": 0
+      },
+      "freshness": {
+        "observed_file_count": 1088,
+        "unmeasured_file_count": 279,
+        "observed_split_case_count": 0,
+        "unmeasured_split_case_count": 0
+      },
+      "timing": {
+        "ordinary_longest_test_shard": 3,
+        "ordinary_longest_test_step_wall_s": 1069.0,
+        "ordinary_longest_job_shard": 0,
+        "ordinary_longest_job_wall_s": 1125.0,
+        "python_check_completion_s": 1208.0,
+        "workflow_elapsed_s": 1209.0,
+        "all_jobs_runner_s": 6496.0,
+        "dispatch_to_first_job_s": 3.0,
+        "max_job_queue_s": 3.0,
+        "ordinary_preparation_s": {
+          "min": 33.0,
+          "max": 51.0,
+          "mean": 39.4,
+          "max_over_mean": 1.2944162436548223
+        },
+        "ordinary_launch_through_collection_s": {
+          "min": 81.315268,
+          "max": 136.951963,
+          "mean": 110.7801832,
+          "max_over_mean": 1.2362496526364295
+        },
+        "ordinary_measured_phase_s": {
+          "min": 426.2190057600013,
+          "max": 1945.171126633008,
+          "mean": 905.2262696152998,
+          "max_over_mean": 2.1488231085689335
+        }
+      },
+      "shards": [
+        {
+          "index": 0,
+          "artifact_id": 15228631631,
+          "job_id": 140707545278,
+          "job_conclusion": "success",
+          "estimated_phase_s": 271.34206500000056,
+          "measured_phase_s": 1846.902265,
+          "test_step_wall_s": 1065.0,
+          "job_wall_s": 1125.0,
+          "job_preparation_s": 51.0,
+          "launch_through_collection_s": 131.338358,
+          "worker_collection_s": {
+            "gw0": 127.299839,
+            "gw1": 127.478421
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 3046,
+            "skipped": 11
+          }
+        },
+        {
+          "index": 1,
+          "artifact_id": 15228540832,
+          "job_id": 140707545192,
+          "job_conclusion": "success",
+          "estimated_phase_s": 271.34163100000075,
+          "measured_phase_s": 780.272059,
+          "test_step_wall_s": 523.0,
+          "job_wall_s": 568.0,
+          "job_preparation_s": 38.0,
+          "launch_through_collection_s": 122.199264,
+          "worker_collection_s": {
+            "gw0": 118.141304,
+            "gw1": 118.725333
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1633,
+            "skipped": 8
+          }
+        },
+        {
+          "index": 2,
+          "artifact_id": 15227069946,
+          "job_id": 140707545217,
+          "job_conclusion": "success",
+          "estimated_phase_s": 271.3413400000008,
+          "measured_phase_s": 651.71181,
+          "test_step_wall_s": 440.0,
+          "job_wall_s": 489.0,
+          "job_preparation_s": 40.0,
+          "launch_through_collection_s": 105.580825,
+          "worker_collection_s": {
+            "gw0": 102.307624,
+            "gw1": 102.571695
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1210,
+            "skipped": 40
+          }
+        },
+        {
+          "index": 3,
+          "artifact_id": 15228671581,
+          "job_id": 140707545220,
+          "job_conclusion": "success",
+          "estimated_phase_s": 271.34095100000104,
+          "measured_phase_s": 1945.171127,
+          "test_step_wall_s": 1069.0,
+          "job_wall_s": 1109.0,
+          "job_preparation_s": 33.0,
+          "launch_through_collection_s": 81.315268,
+          "worker_collection_s": {
+            "gw0": 78.73342,
+            "gw1": 79.03079
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 6287
+          }
+        },
+        {
+          "index": 4,
+          "artifact_id": 15227359577,
+          "job_id": 140707545144,
+          "job_conclusion": "success",
+          "estimated_phase_s": 271.3413180000006,
+          "measured_phase_s": 426.219006,
+          "test_step_wall_s": 353.0,
+          "job_wall_s": 395.0,
+          "job_preparation_s": 35.0,
+          "launch_through_collection_s": 128.322342,
+          "worker_collection_s": {
+            "gw0": 124.624214,
+            "gw1": 124.589398
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1514,
+            "skipped": 4
+          }
+        },
+        {
+          "index": 5,
+          "artifact_id": 15228705881,
+          "job_id": 140707545251,
+          "job_conclusion": "success",
+          "estimated_phase_s": 271.3414550000006,
+          "measured_phase_s": 988.272227,
+          "test_step_wall_s": 643.0,
+          "job_wall_s": 700.0,
+          "job_preparation_s": 48.0,
+          "launch_through_collection_s": 136.951963,
+          "worker_collection_s": {
+            "gw0": 132.911367,
+            "gw1": 132.842894
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1989,
+            "skipped": 10
+          }
+        },
+        {
+          "index": 6,
+          "artifact_id": 15227878087,
+          "job_id": 140707545238,
+          "job_conclusion": "success",
+          "estimated_phase_s": 271.34222900000066,
+          "measured_phase_s": 1052.29807,
+          "test_step_wall_s": 666.0,
+          "job_wall_s": 707.0,
+          "job_preparation_s": 34.0,
+          "launch_through_collection_s": 128.391336,
+          "worker_collection_s": {
+            "gw0": 124.736113,
+            "gw1": 124.123505
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2008
+          }
+        },
+        {
+          "index": 7,
+          "artifact_id": 15227952066,
+          "job_id": 140707545296,
+          "job_conclusion": "success",
+          "estimated_phase_s": 271.3416450000008,
+          "measured_phase_s": 453.160064,
+          "test_step_wall_s": 333.0,
+          "job_wall_s": 375.0,
+          "job_preparation_s": 35.0,
+          "launch_through_collection_s": 92.390575,
+          "worker_collection_s": {
+            "gw0": 89.452664,
+            "gw1": 88.975211
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1846,
+            "skipped": 1
+          }
+        },
+        {
+          "index": 8,
+          "artifact_id": 15227484384,
+          "job_id": 140707545244,
+          "job_conclusion": "success",
+          "estimated_phase_s": 271.341467000001,
+          "measured_phase_s": 478.281948,
+          "test_step_wall_s": 339.0,
+          "job_wall_s": 380.0,
+          "job_preparation_s": 34.0,
+          "launch_through_collection_s": 91.388719,
+          "worker_collection_s": {
+            "gw0": 88.595162,
+            "gw1": 88.476598
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) 6975P-C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2114,
+            "skipped": 1
+          }
+        },
+        {
+          "index": 9,
+          "artifact_id": 15227757422,
+          "job_id": 140707545167,
+          "job_conclusion": "success",
+          "estimated_phase_s": 271.34127900000067,
+          "measured_phase_s": 429.974121,
+          "test_step_wall_s": 322.0,
+          "job_wall_s": 379.0,
+          "job_preparation_s": 46.0,
+          "launch_through_collection_s": 89.923182,
+          "worker_collection_s": {
+            "gw0": 87.236157,
+            "gw1": 87.225945
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) 6975P-C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1555,
+            "skipped": 40
+          }
+        },
+        {
+          "index": 10,
+          "artifact_id": 15227673329,
+          "job_id": 140707545006,
+          "job_conclusion": "success",
+          "estimated_phase_s": null,
+          "measured_phase_s": 14.75804,
+          "test_step_wall_s": 106.0,
+          "job_wall_s": 159.0,
+          "job_preparation_s": 46.0,
+          "launch_through_collection_s": 92.726601,
+          "worker_collection_s": {
+            "gw0": 90.017782,
+            "gw1": 90.004245
+          },
+          "job_queue_s": 1.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) 6973P-C",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 17
+          }
+        }
+      ]
+    },
+    {
+      "label": "scoped-c-1",
+      "run_id": 46061213080,
+      "url": "https://github.com/Motoki0705/tennis-lab/actions/runs/46061213080",
+      "event": "pull_request",
+      "attempt": 1,
+      "conclusion": "success",
+      "workflow_head_sha": "9ffd2a4a69ca79f57635b4a8a3f9bae8b3416cb2",
+      "checkout_sha": "a027ee0501a834a531cbc6f3a8464a1926553088",
+      "checkout_tree": "c15267f983109e9abfa078587dc1432a3031b2f7",
+      "plan_id": "a48f0ff61f20678b034e19a560b734e03d6a524ea3c9ba87f89a2bd1f48a3463",
+      "policy_sha256": "beb76c6735c3a67bc0dd545d90791d21f81db99e19927671fd28a5375c58ef8a",
+      "profile_sha256": "b8ddb58425051970d74db145f6c4f59f7d026884930f1534732c49e34a548077",
+      "coverage_artifact_id": 15228324867,
+      "plan_artifact_id": 15228562172,
+      "coverage": {
+        "scope": "pr",
+        "observations_complete": true,
+        "full_cpu_success": false,
+        "scoped_cpu_success": true,
+        "universe_count": 26208,
+        "requested_count": 23334,
+        "deferred_count": 2874,
+        "selected_count": 23334,
+        "counts": {
+          "passed": 23219,
+          "skipped": 115
+        },
+        "issues": [],
+        "system_deps_counts": {
+          "passed": 17
+        },
+        "universe_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+        "requested_sha256": "ccbfc3f992a87d3967054e3e3627be4f4b70bd65f454b1b9e07547872d806ca7",
+        "deferred_sha256": "0fa787a507f7d2729d33923a457e3791fbd9ba30c4da11787ea72612ca48c5c9",
+        "executed_sha256": "ccbfc3f992a87d3967054e3e3627be4f4b70bd65f454b1b9e07547872d806ca7",
+        "missing_nodeids": 0,
+        "duplicate_nodeids": 0,
+        "unexpected_nodeids": 0
+      },
+      "freshness": {
+        "observed_file_count": 1088,
+        "unmeasured_file_count": 0,
+        "observed_split_case_count": 6255,
+        "unmeasured_split_case_count": 0
+      },
+      "timing": {
+        "ordinary_longest_test_shard": 2,
+        "ordinary_longest_test_step_wall_s": 706.0,
+        "ordinary_longest_job_shard": 2,
+        "ordinary_longest_job_wall_s": 749.0,
+        "python_check_completion_s": 823.0,
+        "workflow_elapsed_s": 824.0,
+        "all_jobs_runner_s": 6328.0,
+        "dispatch_to_first_job_s": 2.0,
+        "max_job_queue_s": 3.0,
+        "ordinary_preparation_s": {
+          "min": 32.0,
+          "max": 55.0,
+          "mean": 40.6,
+          "max_over_mean": 1.354679802955665
+        },
+        "ordinary_launch_through_collection_s": {
+          "min": 85.3808,
+          "max": 135.524416,
+          "mean": 106.8259842,
+          "max_over_mean": 1.2686465471384818
+        },
+        "ordinary_measured_phase_s": {
+          "min": 707.3899132009997,
+          "max": 1117.2012887190008,
+          "mean": 872.5462442805002,
+          "max_over_mean": 1.2803920663714994
+        }
+      },
+      "shards": [
+        {
+          "index": 0,
+          "artifact_id": 15228912981,
+          "job_id": 140715841848,
+          "job_conclusion": "success",
+          "estimated_phase_s": 924.0230339999999,
+          "measured_phase_s": 765.554145,
+          "test_step_wall_s": 484.0,
+          "job_wall_s": 527.0,
+          "job_preparation_s": 35.0,
+          "launch_through_collection_s": 93.694161,
+          "worker_collection_s": {
+            "gw0": 90.800609,
+            "gw1": 90.763014
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "Intel(R) Xeon(R) 6975P-C",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2077,
+            "skipped": 51
+          }
+        },
+        {
+          "index": 1,
+          "artifact_id": 15229242976,
+          "job_id": 140715841819,
+          "job_conclusion": "success",
+          "estimated_phase_s": 924.0222689999996,
+          "measured_phase_s": 1067.186203,
+          "test_step_wall_s": 678.0,
+          "job_wall_s": 735.0,
+          "job_preparation_s": 48.0,
+          "launch_through_collection_s": 131.874713,
+          "worker_collection_s": {
+            "gw0": 128.115728,
+            "gw1": 128.102503
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2201,
+            "skipped": 2
+          }
+        },
+        {
+          "index": 2,
+          "artifact_id": 15228988576,
+          "job_id": 140715841784,
+          "job_conclusion": "success",
+          "estimated_phase_s": 924.0223110000017,
+          "measured_phase_s": 1117.201289,
+          "test_step_wall_s": 706.0,
+          "job_wall_s": 749.0,
+          "job_preparation_s": 37.0,
+          "launch_through_collection_s": 135.524416,
+          "worker_collection_s": {
+            "gw0": 131.739722,
+            "gw1": 131.488343
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 1922
+          }
+        },
+        {
+          "index": 3,
+          "artifact_id": 15228513740,
+          "job_id": 140715841814,
+          "job_conclusion": "success",
+          "estimated_phase_s": 924.0223499999995,
+          "measured_phase_s": 914.068876,
+          "test_step_wall_s": 573.0,
+          "job_wall_s": 635.0,
+          "job_preparation_s": 53.0,
+          "launch_through_collection_s": 106.392878,
+          "worker_collection_s": {
+            "gw0": 103.253419,
+            "gw1": 103.415119
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2188,
+            "skipped": 6
+          }
+        },
+        {
+          "index": 4,
+          "artifact_id": 15228234697,
+          "job_id": 140715841879,
+          "job_conclusion": "success",
+          "estimated_phase_s": 924.0222879999994,
+          "measured_phase_s": 813.06536,
+          "test_step_wall_s": 521.0,
+          "job_wall_s": 561.0,
+          "job_preparation_s": 34.0,
+          "launch_through_collection_s": 102.426659,
+          "worker_collection_s": {
+            "gw0": 99.202993,
+            "gw1": 99.479481
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261116.202.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2600,
+            "skipped": 3
+          }
+        },
+        {
+          "index": 5,
+          "artifact_id": 15229496495,
+          "job_id": 140715841788,
+          "job_conclusion": "success",
+          "estimated_phase_s": 924.0218869999999,
+          "measured_phase_s": 944.031757,
+          "test_step_wall_s": 609.0,
+          "job_wall_s": 654.0,
+          "job_preparation_s": 37.0,
+          "launch_through_collection_s": 126.520987,
+          "worker_collection_s": {
+            "gw0": 122.938615,
+            "gw1": 122.808548
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2629
+          }
+        },
+        {
+          "index": 6,
+          "artifact_id": 15228883908,
+          "job_id": 140715841844,
+          "job_conclusion": "success",
+          "estimated_phase_s": 924.0220430000004,
+          "measured_phase_s": 725.072148,
+          "test_step_wall_s": 461.0,
+          "job_wall_s": 524.0,
+          "job_preparation_s": 55.0,
+          "launch_through_collection_s": 87.724577,
+          "worker_collection_s": {
+            "gw0": 84.640267,
+            "gw1": 85.252895
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2675,
+            "skipped": 44
+          }
+        },
+        {
+          "index": 7,
+          "artifact_id": 15229386400,
+          "job_id": 140715841838,
+          "job_conclusion": "success",
+          "estimated_phase_s": 924.0222439999989,
+          "measured_phase_s": 935.772731,
+          "test_step_wall_s": 592.0,
+          "job_wall_s": 641.0,
+          "job_preparation_s": 40.0,
+          "launch_through_collection_s": 106.270181,
+          "worker_collection_s": {
+            "gw0": 102.980233,
+            "gw1": 103.406203
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V74 80-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2506,
+            "skipped": 8
+          }
+        },
+        {
+          "index": 8,
+          "artifact_id": 15228544584,
+          "job_id": 140715841860,
+          "job_conclusion": "success",
+          "estimated_phase_s": 924.0223329999997,
+          "measured_phase_s": 736.12002,
+          "test_step_wall_s": 475.0,
+          "job_wall_s": 516.0,
+          "job_preparation_s": 35.0,
+          "launch_through_collection_s": 92.45047,
+          "worker_collection_s": {
+            "gw0": 89.814061,
+            "gw1": 89.807417
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2341,
+            "skipped": 1
+          }
+        },
+        {
+          "index": 9,
+          "artifact_id": 15229630786,
+          "job_id": 140715841799,
+          "job_conclusion": "success",
+          "estimated_phase_s": 924.0222390000002,
+          "measured_phase_s": 707.389913,
+          "test_step_wall_s": 448.0,
+          "job_wall_s": 487.0,
+          "job_preparation_s": 32.0,
+          "launch_through_collection_s": 85.3808,
+          "worker_collection_s": {
+            "gw0": 82.786463,
+            "gw1": 82.998842
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 9V45 96-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 2063
+          }
+        },
+        {
+          "index": 10,
+          "artifact_id": 15228448208,
+          "job_id": 140715841658,
+          "job_conclusion": "success",
+          "estimated_phase_s": null,
+          "measured_phase_s": 20.22746,
+          "test_step_wall_s": 143.0,
+          "job_wall_s": 196.0,
+          "job_preparation_s": 46.0,
+          "launch_through_collection_s": 125.878408,
+          "worker_collection_s": {
+            "gw0": 122.058645,
+            "gw1": 121.912981
+          },
+          "job_queue_s": 2.0,
+          "uv_cache_hit": true,
+          "cpu_model": "AMD EPYC 7763 64-Core Processor",
+          "runner_image_version": "20261122.9.1",
+          "runner_image_os": "ubuntu26",
+          "counts": {
+            "passed": 17
+          }
+        }
+      ]
+    }
+  ]
+}

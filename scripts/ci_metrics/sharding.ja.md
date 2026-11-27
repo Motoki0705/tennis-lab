@@ -111,7 +111,7 @@ git show 8d629a35289f475e514291167435c333876afdd2:scripts/ci_metrics/cpu-file-ti
 ローカルファイルです。
 
 過去の計測や失敗回の診断には、取得済みshardディレクトリから再計算する
-`profile --root /absolute/artifacts --output /absolute/diagnostic.json` を使えます。
+`profile --root artifacts --output diagnostic.json` を使えます。
 完全に観測された失敗を `source.counts` と `unsuccessful_cases` に保持します。
 attemptが混在する場合は最大のshard attemptを使い、deferredがある場合は拒否します。
 
@@ -155,7 +155,7 @@ B/C推定には同じ観測を使います。専用jobの18.578 phase秒は通�
 未分割fileは `test_parent_development.py` の423.166秒（A/B/Cのshardは1/2/0）、
 `test_parent_completion_resume.py` の373.922秒（8/3/1）、`test_court_dataset.py` の
 355.775秒（0/4/2）です。実測caseコストをCの割当に載せ替えた最大は1360.609秒で、Aの
-実測最大より58.9%小さくなります。Testステップとrunner消費への効果は同一条件のActionsで比較します。
+実測最大より58.9%小さくなります。
 
 停止・復旧境界ではfunction scopeの `tmp_path`・`monkeypatch` と全体のcase別seed fixtureを
 使います。pytestのsession scopeの一時ディレクトリ割当はcaseに個別のrootを渡します。
@@ -163,6 +163,60 @@ B/C推定には同じ観測を使います。専用jobの18.578 phase秒は通�
 forkした子だけで動き、子はjoinまたはkillで回収し、pytestがteardownでpath変更を復元します。
 実際のshard pluginの収集guardを境界6,255件が通過し、全件が1回ずつ割り当てられ、未計測
 分割caseは0件でした。
+
+## 同一条件のActions比較
+
+Aは旧重み、Cは採用した重みを使いました。全件dispatchのソース差分は
+`cpu-file-times.json` だけです。scoped PR はそれぞれの基準から
+`src/tasks/ball_refiner_3d/__init__.py` に同じコメントを追加しました。
+各runは4 vCPUの通常10 shardと専用runtime job 1つで、各 shard 2 pytest worker、
+native thread 1です。全66テストjobでuv cache hitを記録しました。ホストの
+CPU型番とUbuntu imageの版にはばらつきがあり、以下はこの6回の観測結果です。
+
+6 runはすべて初回attemptで成功しました。全件4 runは26,208件を要求し、
+26,089件がpassed、119件がskip、`full_cpu_success=true` でした。scoped PRの
+2 runは26,208件のうち同じ23,334件を要求し、23,219件がpassed、115件がskip、
+2,874件がdeferredで、`scoped_cpu_success=true` でした。worker manifest、
+event、JUnitから監査を再計算し、各runの固定profileとlane planを照合しました。
+要求と実行のnodeidに欠落・重複・余分な実行は0件で、各scope内のskip対象も一致しました。
+専用jobは毎回17件すべてpassedです。
+
+表の単位は秒です。Testとjobには通常shardの各最大値と該当indexを示します。
+Pythonはworkflow作成から必須checkの完了まで、全体経過は作成からActionsの
+最終更新までです。runner合計は全15 jobの実行時間の和です。
+
+| 条件 | Actions run | 最長Test (shard) | 最長job (shard) | Python | 全体経過 | runner合計 |
+|---|---|---:|---:|---:|---:|---:|
+| Full A1 | [46045996862](https://github.com/Motoki0705/tennis-lab/actions/runs/46045996862) | 1755 (8) | 1834 (8) | 1941 | 1941 | 9082 |
+| Full C1 | [46050353999](https://github.com/Motoki0705/tennis-lab/actions/runs/46050353999) | 933 (5) | 1006 (5) | 1088 | 1089 | 8792 |
+| Full A2 | [46052765632](https://github.com/Motoki0705/tennis-lab/actions/runs/46052765632) | 1467 (8) | 1535 (8) | 1607 | 1608 | 8502 |
+| Full C2 | [46056231956](https://github.com/Motoki0705/tennis-lab/actions/runs/46056231956) | 991 (1) | 1061 (1) | 1141 | 1141 | 9476 |
+| Scoped A | [46058668606](https://github.com/Motoki0705/tennis-lab/actions/runs/46058668606) | 1069 (3) | 1125 (0) | 1208 | 1209 | 6496 |
+| Scoped C | [46061213080](https://github.com/Motoki0705/tennis-lab/actions/runs/46061213080) | 706 (2) | 749 (2) | 823 | 824 | 6328 |
+
+準備は通常jobの開始からTestステップ開始まで、収集はテストコマンドの起動から
+全workerの収集完了までで、いずれも通常shardの平均です。待ち時間はdispatchから
+最初のjob開始までと、job作成から開始までの全job中の最大を示します。
+実測phase秒はworkerのsetup・call・teardownの和です。
+
+| 条件 | 準備 | 起動から収集完了 | 最初のjobまで | 最大job待ち | 最大実測phase | phase最大 / 平均 |
+|---|---:|---:|---:|---:|---:|---:|
+| Full A1 | 60.5 | 109.1 | 3 | 3 | 3264.667 | 2.409 |
+| Full C1 | 59.9 | 109.9 | 4 | 2 | 1552.381 | 1.178 |
+| Full A2 | 60.8 | 107.4 | 3 | 3 | 2672.376 | 2.139 |
+| Full C2 | 62.3 | 118.5 | 5 | 3 | 1645.171 | 1.155 |
+| Scoped A | 39.4 | 110.8 | 3 | 3 | 1945.171 | 2.149 |
+| Scoped C | 40.6 | 106.8 | 2 | 3 | 1117.201 | 1.280 |
+
+全件は2回ずつの平均で最長Testが1611→962秒（40.3%短縮）、Python完了が
+1774→1114.5秒（37.2%短縮）でした。各組の最長Test短縮は46.8%と32.4%で、
+どちらも30%の目標を達成しました。runner合計の平均は8792→9134秒で、
+全件1 runあたり342秒（3.9%）増えました。scopedの1組は最長Testが
+1069→706秒（34.0%短縮）、Python完了が385秒早まり、runner合計は
+6496→6328秒（2.6%減）でした。
+
+全shardの推定・実測phase秒、wall time、runner情報、監査に使った識別子は
+[比較データ](sharding-comparison.json)に記録しています。
 
 ## 既定値の選定
 

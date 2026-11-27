@@ -100,8 +100,8 @@ checkout中的 `cpu-file-times.json`。省略拆分选项会沿用测量来源�
 JSON报告包含来源、固定的复现命令、文件差异，以及完整的分组分配和负载。若未测文件或
 用例明显增多，或实测负载持续失衡，比较候选并通过常规评审PR发布。命令只写本地文件。
 
-对于历史记录或失败诊断，仍可用 `profile --root /absolute/artifacts
---output /absolute/diagnostic.json` 从已下载的shard目录重建权重。完整记录的失败保存在
+对于历史记录或失败诊断，仍可用 `profile --root artifacts
+--output diagnostic.json` 从已下载的shard目录重建权重。完整记录的失败保存在
 `source.counts` 和 `unsuccessful_cases` 中。混合attempt时使用最高shard attempt，
 有延期用例时拒绝生成。
 
@@ -144,13 +144,67 @@ B/C用同一批观测值估计重新分配的负载。独立job的18.578 phase�
 整文件是 `test_parent_development.py`（423.166秒，A/B/C分别为1/2/0）、
 `test_parent_completion_resume.py`（373.922秒，8/3/1）和 `test_court_dataset.py`
 （355.775秒，0/4/2）。按C重新分配实测用例成本的最大累计值为1360.609秒，比A的
-实测最大值低58.9%。Test步骤耗时与runner用量的变化需在同条件Actions中比较。
+实测最大值低58.9%。
 
 两个边界文件使用function scope的 `tmp_path`、`monkeypatch` 与全局的逐用例随机种子
 fixture。pytest的session scope临时目录分配器为各用例提供独立根目录。`make_lab` 在
 该根目录中存放repo、镜像、模拟 `/proc`、journal和锁。trace hook仅在fork的子进程内
 运行，子进程会被join或kill，pytest在teardown时恢复路径改动。实际shard plugin的收集
 guard接受了全部6,255个边界用例，每例恰好分配一次，未测拆分用例为0。
+
+## 同条件Actions比较
+
+A使用旧权重，C使用采用的新权重。完整dispatch的源码差异仅为
+`cpu-file-times.json`。两个scoped PR分别在各自基准上向
+`src/tasks/ball_refiner_3d/__init__.py` 加入同一条注释。
+每次运行使用十个4 vCPU普通shard和一个独立runtime job，每个shard有两个
+pytest worker和一个native thread。66个测试job均命中uv缓存。
+托管runner的CPU型号和Ubuntu镜像版本有所不同，以下为这六次运行的观测结果。
+
+六次首轮attempt全部成功。四次完整运行均请求26,208例，26,089例通过、
+119例跳过，`full_cpu_success=true`。两次scoped PR均从26,208例中请求
+相同的23,334例，23,219例通过、115例跳过、2,874例延期，
+`scoped_cpu_success=true`。根据worker manifest、event和JUnit重跑覆盖审计，
+核对了每次运行固定的profile和lane plan。请求与执行的nodeid完全一致，
+没有缺失、重复或额外用例，同一scope内的跳过用例也一致。
+独立runtime job的17例每次均通过。
+
+下表单位为秒。Test和job分别为普通shard中的最大值，括号内为shard index。
+Python从workflow创建计时至必需检查完成。整体耗时从创建计时至Actions最终更新。
+Runner合计为全部15个job的执行时间之和。
+
+| 条件 | Actions run | 最长Test (shard) | 最长job (shard) | Python | 整体耗时 | Runner合计 |
+|---|---|---:|---:|---:|---:|---:|
+| Full A1 | [46045996862](https://github.com/Motoki0705/tennis-lab/actions/runs/46045996862) | 1755 (8) | 1834 (8) | 1941 | 1941 | 9082 |
+| Full C1 | [46050353999](https://github.com/Motoki0705/tennis-lab/actions/runs/46050353999) | 933 (5) | 1006 (5) | 1088 | 1089 | 8792 |
+| Full A2 | [46052765632](https://github.com/Motoki0705/tennis-lab/actions/runs/46052765632) | 1467 (8) | 1535 (8) | 1607 | 1608 | 8502 |
+| Full C2 | [46056231956](https://github.com/Motoki0705/tennis-lab/actions/runs/46056231956) | 991 (1) | 1061 (1) | 1141 | 1141 | 9476 |
+| Scoped A | [46058668606](https://github.com/Motoki0705/tennis-lab/actions/runs/46058668606) | 1069 (3) | 1125 (0) | 1208 | 1209 | 6496 |
+| Scoped C | [46061213080](https://github.com/Motoki0705/tennis-lab/actions/runs/46061213080) | 706 (2) | 749 (2) | 823 | 824 | 6328 |
+
+准备时间从普通job启动计至Test步骤启动，收集时间从测试命令启动计至所有worker
+完成收集，两列均为普通shard的平均值。等待时间分别为dispatch至首个job启动，
+以及所有job中从创建到启动的最大值。实测phase秒数是worker的setup、call
+和teardown时间之和。
+
+| 条件 | 准备 | 启动至收集完成 | 首个job等待 | 最大job等待 | 最大实测phase | Phase最大值 / 平均值 |
+|---|---:|---:|---:|---:|---:|---:|
+| Full A1 | 60.5 | 109.1 | 3 | 3 | 3264.667 | 2.409 |
+| Full C1 | 59.9 | 109.9 | 4 | 2 | 1552.381 | 1.178 |
+| Full A2 | 60.8 | 107.4 | 3 | 3 | 2672.376 | 2.139 |
+| Full C2 | 62.3 | 118.5 | 5 | 3 | 1645.171 | 1.155 |
+| Scoped A | 39.4 | 110.8 | 3 | 3 | 1945.171 | 2.149 |
+| Scoped C | 40.6 | 106.8 | 2 | 3 | 1117.201 | 1.280 |
+
+完整运行每种条件各两次，最长Test的平均值从1611降到962秒（缩短40.3%），
+Python检查完成时间从1774降到1114.5秒（缩短37.2%）。两组最长Test分别缩短
+46.8%和32.4%，均达到30%目标。Runner总时间平均从8792增到9134秒，
+每次完整运行增加342秒（3.9%）。一次scoped对照中，最长Test从1069降到706秒
+（缩短34.0%），Python检查提前385秒完成，runner总时间从6496降到6328秒
+（减少2.6%）。
+
+每个shard的估计与实测phase时间、实际耗时、runner信息和审计标识见
+[比较数据](sharding-comparison.json)。
 
 ## 默认配置选择
 

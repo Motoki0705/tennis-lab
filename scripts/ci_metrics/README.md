@@ -327,4 +327,7 @@ The implementation uses [pytest hooks](https://docs.pytest.org/en/stable/referen
 [Actions attempt APIs](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt),
 and [`setup-uv` cache outputs](https://github.com/astral-sh/setup-uv#outputs).
 
-Regenerate scheduling weights from a run's latest complete shard artifacts with the [`profile` command](sharding.md#regenerate-measured-weights). Valid mixed attempts retain their provenance; failed cases remain visible and incomplete observations are rejected.
+Refresh scheduling weights from audited successful main CI with the
+[`update-profile` command](sharding.md#regenerate-measured-weights). The same
+guide describes the diagnostic `profile` command and the matched Actions
+comparison.

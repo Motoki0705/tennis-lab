@@ -33,7 +33,7 @@ hints, never selection rules; invalid profiles fail explicitly.
 Run one local partition from a fixed checkout:
 
 ```bash
-.venv/bin/python -m scripts.ci_metrics run --workers 2 --output /absolute/new/shard-0/tests \
+.venv/bin/python -m scripts.ci_metrics run --workers 2 --output .ci-metrics/shard-0/tests \
   --shard-index 0 --shard-count 10 --shard-weights scripts/ci_metrics/cpu-file-times.json
 ```
 
@@ -148,8 +148,8 @@ assignments and loads. When growth reports show a material increase in unmeasure
 files or cases, or persistent load imbalance, review a candidate and publish it
 through a normal reviewed PR. The command writes only local files.
 
-For historical or failed-run diagnostics, `profile --root /absolute/artifacts
---output /absolute/diagnostic.json` still rebuilds weights from downloaded
+For historical or failed-run diagnostics, `profile --root artifacts
+--output diagnostic.json` still rebuilds weights from downloaded
 shard directories. It can represent complete failing observations in
 `source.counts` and `unsuccessful_cases`. For mixed attempts it uses the highest
 shard attempt. It rejects deferred cases.
@@ -202,8 +202,7 @@ C spreads both files across all ten jobs. The next-largest whole files cost
 423.166 s (`test_parent_development.py`, A/B/C shards 1/2/0), 373.922 s
 (`test_parent_completion_resume.py`, 8/3/1), and 355.775 s
 (`test_court_dataset.py`, 0/4/2). With C, replaying measured ordinary case costs
-gives a maximum of 1360.609 s, 58.9% below A's observed maximum. The effect on
-the Test step and runner consumption requires a matched Actions comparison.
+gives a maximum of 1360.609 s, 58.9% below A's observed maximum.
 
 The two boundary files use function-scoped `tmp_path` and `monkeypatch` and
 the global per-case seed fixture. The session-scoped pytest temp allocator
@@ -212,6 +211,67 @@ gives each case its own root. `make_lab` puts the repository, mirror, synthetic
 children that are joined or killed, and pytest restores the path prepend
 during teardown. Collection with the real shard plugin accepted all 6,255
 boundary cases, assigned each once, and reported zero unmeasured split cases.
+
+## Matched Actions comparison
+
+A used the old weights and C used the adopted weights. Their full-dispatch
+source trees differed only in `cpu-file-times.json`. The two scoped PRs added
+the same comment to `src/tasks/ball_refiner_3d/__init__.py` on their respective
+bases. Each run used ten ordinary four-vCPU shards and one system-runtime job,
+with two pytest workers per shard and one native thread. All 66 test jobs
+recorded a uv cache hit. Hosted runners varied in CPU model and Ubuntu image
+revision, so these results describe the six observed runs.
+
+All six first attempts succeeded. The four full runs requested all 26,208
+cases (26,089 passed and 119 skipped) and had `full_cpu_success=true`. Each
+scoped PR requested the same 23,334 of 26,208 cases (23,219 passed, 115 skipped
+and 2,874 deferred) and had `scoped_cpu_success=true`. Replaying the coverage
+audit from the worker manifests, raw events and JUnit confirmed the fixed
+profile and lane plan in each run. Requested and executed nodeids matched
+exactly, including the same skip outcomes within each scope. The isolated
+system job passed all 17 cases every time.
+
+Times are in seconds. `Test` and `Job` show the longest ordinary shard for
+each metric and its index. `Python` runs from workflow creation to completion
+of the required check. Workflow elapsed uses the Actions run's final update
+timestamp. Runner seconds sum the wall time of all 15 jobs.
+
+| Condition | Actions run | Max Test (shard) | Max job (shard) | Python | Workflow elapsed | All runner s |
+|---|---|---:|---:|---:|---:|---:|
+| Full A1 | [46045996862](https://github.com/Motoki0705/tennis-lab/actions/runs/46045996862) | 1755 (8) | 1834 (8) | 1941 | 1941 | 9082 |
+| Full C1 | [46050353999](https://github.com/Motoki0705/tennis-lab/actions/runs/46050353999) | 933 (5) | 1006 (5) | 1088 | 1089 | 8792 |
+| Full A2 | [46052765632](https://github.com/Motoki0705/tennis-lab/actions/runs/46052765632) | 1467 (8) | 1535 (8) | 1607 | 1608 | 8502 |
+| Full C2 | [46056231956](https://github.com/Motoki0705/tennis-lab/actions/runs/46056231956) | 991 (1) | 1061 (1) | 1141 | 1141 | 9476 |
+| Scoped A | [46058668606](https://github.com/Motoki0705/tennis-lab/actions/runs/46058668606) | 1069 (3) | 1125 (0) | 1208 | 1209 | 6496 |
+| Scoped C | [46061213080](https://github.com/Motoki0705/tennis-lab/actions/runs/46061213080) | 706 (2) | 749 (2) | 823 | 824 | 6328 |
+
+Preparation is the ordinary job start to the Test step start. Collection
+includes startup from the test command launch until all workers finish
+collecting. Both columns are means across ordinary shards. Queue columns
+show elapsed time from dispatch to the first job start and the longest time
+from an individual job's creation to its start, respectively. Measured phase
+seconds sum setup, call and teardown across workers.
+
+| Condition | Preparation s | Launch through collection s | Dispatch to first job s | Max job queue s | Max measured phase s | Phase max / mean |
+|---|---:|---:|---:|---:|---:|---:|
+| Full A1 | 60.5 | 109.1 | 3 | 3 | 3264.667 | 2.409 |
+| Full C1 | 59.9 | 109.9 | 4 | 2 | 1552.381 | 1.178 |
+| Full A2 | 60.8 | 107.4 | 3 | 3 | 2672.376 | 2.139 |
+| Full C2 | 62.3 | 118.5 | 5 | 3 | 1645.171 | 1.155 |
+| Scoped A | 39.4 | 110.8 | 3 | 3 | 1945.171 | 2.149 |
+| Scoped C | 40.6 | 106.8 | 2 | 3 | 1117.201 | 1.280 |
+
+Across the two full runs per condition, the mean longest Test step fell from
+1611 to 962 s (40.3%) and the mean Python check completion fell from 1774 to
+1114.5 s (37.2%). The longest Test step shortened in both pairs by 46.8% and
+32.4%, meeting the 30% target. Mean all-job runner time rose from 8792 to 9134 s
+(+3.9%, or 5 min 42 s per full run). In the single scoped pair the longest Test
+step fell from 1069 to 706 s (34.0%), Python finished 385 s earlier, and runner
+time fell from 6496 to 6328 s (2.6%).
+
+The estimates, measured phase costs, wall times, runner metadata and audit
+identities for each shard are recorded in the
+[comparison data](sharding-comparison.json).
 
 ## Default selection
 

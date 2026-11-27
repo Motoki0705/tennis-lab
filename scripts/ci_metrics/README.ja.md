@@ -269,4 +269,6 @@ APIの正本は [pytest hooks](https://docs.pytest.org/en/stable/reference/refer
 [Actions attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)、
 [`setup-uv`出力](https://github.com/astral-sh/setup-uv#outputs)です。
 
-同じrunの最新の完全なshard成果物からの重み再生成は[`profile`コマンド](sharding.ja.md#実測profileの再生成)を使います。妥当なattempt混在は出典を残して受理し、失敗caseを保持して、不完全な観測は拒否します。
+監査済みの成功main CIから分割重みを更新するには
+[`update-profile` コマンド](sharding.ja.md#実測profileの再生成)を使います。
+同じガイドに診断用の `profile` と同一条件のActions比較も記載しています。

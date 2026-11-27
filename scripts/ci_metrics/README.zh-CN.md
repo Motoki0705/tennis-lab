@@ -252,4 +252,6 @@ API 依据：[pytest hooks](https://docs.pytest.org/en/stable/reference/referenc
 [Actions attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)、
 [`setup-uv` outputs](https://github.com/astral-sh/setup-uv#outputs)。
 
-使用[`profile`命令](sharding.zh-CN.md#重新生成实测profile)从同一run的最新完整shard成果物重新生成权重。合法的attempt混用保留来源；失败用例保持可见，不完整观测会被拒绝。
+使用[`update-profile` 命令](sharding.zh-CN.md#重新生成实测profile)从经审计的
+成功main CI更新调度权重。同一指南也记录了诊断用的 `profile` 命令以及
+同条件Actions比较。
