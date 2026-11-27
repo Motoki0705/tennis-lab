@@ -430,6 +430,7 @@ def test_dispatcher_major_continuation_rebinds_same_worker_then_merges(
                 "CODEX_SESSION_ID": "",
                 "CODEX_THREAD_ID": "",
                 "AGENT_AUTO_MERGE": "1",
+                "AGENTS_TEST_DIRECT_MERGE_GATE": "1",
                 "PYTHONPATH": str(Path(__file__).resolve().parents[3] / ".agents/ops"),
             },
             state_file,

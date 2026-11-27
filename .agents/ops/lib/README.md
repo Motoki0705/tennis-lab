@@ -146,7 +146,7 @@ Gitメタデータの読取とlock操作に留めるための判断である。
 | 親CLIの `wait-merge` と `review-request`・`merge-knowledge`・`merge-confirm`・`merge-continue` の `--wait` | `lib.ops_review.merge_gate_impl` | 進行イベントの観測間隔（0.25秒）は解放。保存状態の読取は保持 |
 | `python -m parent` / `python -m parent.cli` のその他の操作 | `parent.cli_impl` | 起動、公開、復旧などは終了まで保持。通常の `run-worker` は活動中のrunnerとの契約・結果の照合と回収を保護する。手動workerの修正は次の `merge_gate.py` と同じ上限。`improvement-expire` は有限launcherも必須 |
 | `python -m parent.worker_monitor` | `parent.worker_monitor` | 専用のdetached worktreeを起動元に要求し、照合してからclaimする。CI・queue・local job・空き枠の観測ではレジストリ処理の区間だけ共有lockを保持 |
-| `review/merge_gate.py` | `lib.ops_review.merge_gate_impl` | PR/main CI・依存・修正結果・rate limitの観測間隔で解放。判定・merge・公開と活動中のrunnerの契約を保護する。正式レビューは `--agent-timeout`（既定1800秒）と回収で区切る。手動workerの修正はrunner内部1800秒、同期終了待ち1810秒、終了要求8秒と強制停止の回収2秒で区切る。強制停止時は保存済みの起動記録から終了証拠を照合する |
+| `review/merge_gate.py` | `lib.ops_review.merge_gate_impl` | [通常起動は専用worktree](../review/README.md#実行と保存)。メインcheckoutから直接起動した場合は判定・merge・公開と活動中のrunnerを保護し、PR/main CI・依存・修正結果・rate limitの観測間隔で解放する。正式レビューは `--agent-timeout`（既定1800秒）と回収で区切る。手動workerの修正はrunner内部1800秒、同期終了待ち1810秒、終了要求8秒と強制停止の回収2秒で区切る。強制停止時は保存済みの起動記録から終了証拠を照合する |
 | `lib/agent_exec.sh` / `lib/agent_runtime.py` | `lib.agent_runtime_impl` | 実行中のrunner契約、出力解析、回収を保護し、runnerの終了まで保持。`--timeout` 指定時はその実行時間と終了回収で区切る |
 | `python -m explain_html` | `explain_html.cli_impl` | リクエスト・生成・公開を一貫した版で扱うため、メイン由来の `serve` は待受中も保持。起動時の初期化から3600秒で終了を要求し、終了処理を含め3615秒でプロセスを打ち切る。背景serveも自身で取得し、同じ上限を使う |
 | `python -m ci_watch` | `ci_watch.cli` | GitHubのページ取得・複数対象の収集が終わるまで |
