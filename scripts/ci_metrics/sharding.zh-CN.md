@@ -36,6 +36,10 @@ schema-3的 `shard-gw*.json` 保存 `system_deps_nodeids` 以及 `universe_nodei
 - marker清单与独立event及全部shard一致，普通分片不混入标记case，独立job全部case均passed（skip/xfail为0）。
 - plan、lint、全部matrix和独立runtime job成功，不能把skip/cancel视为成功。
 
+Phase审计接受pytest记录的 `passed`、`failed` 和 `skipped`。每例必须各有一次setup
+和teardown。setup成功时必须有一次call，失败或跳过时直接进入teardown。
+xfail和xpass沿用pytest的 `wasxfail` 分类。未知的phase、outcome或不完整序列会导致审计失败。
+
 从所有manifest删除同一个case也会被独立的选择前event检出。D不计入skip或成功。
 汇总报告 `scoped_cpu_success`，而 `full_cpu_success` 还要求D为空。
 U是既有marker与明确排除后的CPU集合，不代表所有环境的全部测试。
@@ -74,6 +78,8 @@ phase 合计不是 runner 实际时间；增加 job 会重复环境准备和收�
 在checkout中使用已认证且能读取Actions产物的 `gh` 运行 `update-profile`。
 `--latest-main` 按从新到旧的顺序检查成功的main push，并报告不合格run的原因。
 产物仍可用时，可用 `--run-id` 和 `--attempt` 复现指定更新。
+候选产物内容无效时，记录run ID和原因，再检查下一个候选。指定run的证据无效、
+API通信失败或本地I/O出错时停止更新并保留原输出profile。
 
 命令固定run和HEAD，按artifact ID下载lane plan、最新coverage和所有shard，核对
 汇总的下载清单，并重建worker与JUnit审计。仅接受完整成功的main push，要求延期
@@ -119,8 +125,9 @@ A使用旧权重，B用新权重并在实测inventory上沿用原拆分策略，
 文件，C有四个。A为普通shard的281个文件和28个拆分用例使用未测估值。B和C均无未测普通
 文件或拆分用例。
 
-下表为所有worker的setup、call和teardown累计秒数。A实测为来源run按A分配的实测负载。
-B/C用同一批观测值估计重新分配的负载。独立job的18.578 phase秒不计入普通shard合计。
+下表为所有worker的setup、call和teardown累计秒数。A实测为来源run按A分配26,189例
+的实测负载。估计列适用于来源inventory和下述两批完整inventory。
+独立job实测的18.578 phase秒单独统计。
 
 | Shard | A估计 | A实测 | B估计 | C估计 |
 |---|---:|---:|---:|---:|
@@ -151,6 +158,24 @@ fixture。pytest的session scope临时目录分配器为各用例提供独立根
 该根目录中存放repo、镜像、模拟 `/proc`、journal和锁。trace hook仅在fork的子进程内
 运行，子进程会被join或kill，pytest在teardown时恢复路径改动。实际shard plugin的收集
 guard接受了全部6,255个边界用例，每例恰好分配一次，未测拆分用例为0。
+
+#### 后续完整inventory的比较
+
+在Actions比较的26,208个固定nodeid上重新计算了A/B/C。随后用锁定的pytest 9.2.0和
+`spin test` 的CPU选择完整收集修订代码 `1e139b9aecd44fc7b9e157c5ebe360d62117a07e`。
+26,218个nodeid与原Actions集合加上十个新用例完全一致，三批inventory均包含相同的
+17个 `system_deps` 用例。数据记录各条件下每个普通shard的估计负载、分组数、用例数以及
+inventory和分配哈希。 [Actions完整运行](https://github.com/Motoki0705/tennis-lab/actions/runs/46056231956) · [离线比较数据](sharding-comparison.json)
+
+从来源到Actions比较新增的19例以及评审修订新增的十例都进入已有实测权重的整文件分组。
+沿用分组的固定权重，因此同一条件在三批inventory上的分配、估计负载和未测数量一致。
+A和B各有1,440个普通分组，C有7,693个。
+
+| 现有文件分组 | Actions比较前新增 | 评审修订新增 | Shard A / B / C | 固定估计 A / B / C (秒) |
+|---|---:|---:|---|---|
+| `test_ci_growth.py` | 1 | 0 | 0 / 9 / 4 | 0.084556 / 0.054511 / 0.054511 |
+| `test_ci_shards.py` | 18 | 6 | 5 / 3 / 1 | 4.998372 / 8.766644 / 8.766644 |
+| `test_ci_metrics.py` | 0 | 4 | 1 / 8 / 6 | 3.595444 / 5.535053 / 5.535053 |
 
 ## 同条件Actions比较
 

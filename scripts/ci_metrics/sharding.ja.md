@@ -39,6 +39,11 @@ schema-3の各 `shard-gw*.json` に `system_deps_nodeids` と `universe_nodeids`
 - marker一覧が独立eventと全shardで一致し、通常群に混入せず、専用群で全件がpassedであること（skip/xfail 0）。
 - plan・lint・全matrix job・専用runtime jobが成功すること。skip/cancelは成功へ変換しないこと。
 
+phase監査はpytestが記録する `passed`・`failed`・`skipped` を受理します。
+setup・teardownは各1件が必要です。setup成功時はcallが1件必要で、setupの失敗・skip時は
+callを経ずにteardownへ進みます。xfailとxpassはpytestの `wasxfail` に従って分類します。
+未知のphase・outcomeや不完全なphase列は監査で拒否します。
+
 全manifestから同じcaseを消しても、独立した選別前eventとの照合で検出します。Dはskipにも成功にも数えません。
 集約は `scoped_cpu_success` を表示し、`full_cpu_success` はさらにDが空であることを要求します。
 Uは既存のmarker・明示除外後のCPU対象であり、全環境の全テストを表しません。
@@ -81,6 +86,9 @@ Actionsの成果物を読み取れる認証済みの `gh` を用意し、checkou
 `update-profile` を実行します。`--latest-main` は成功したmain pushを新しい順に
 調べ、採用条件を満たさないrunは理由を表示します。`--run-id` と `--attempt` を指定
 すると、成果物が有効な間は特定の更新を再現できます。
+成果物の内容が不正ならrun IDと理由を記録して次候補へ進みます。
+明示指定したrunの証拠が不正な場合や、API通信・ローカルI/Oが失敗した場合は、
+その時点で終了して出力profileを保全します。
 
 runとHEADを固定してlane plan、最新coverage、全shardをartifact IDで取得します。
 集約の取得一覧を照合し、workerとJUnitの監査を再計算します。完全なmain push成功回の
@@ -130,8 +138,9 @@ Aは旧重み、Bは観測inventoryに対して分割方針を維持した重み
 有効な分割はBが2 file、Cが4 fileです。Aで未計測値を使ったのは通常shardの281 fileと分割case
 28件です。B/Cでは通常fileと分割caseに未計測がありません。
 
-表はworkerのsetup・call・teardownの合計秒です。A実測は計測元runのA割当で観測した負荷です。
-B/C推定には同じ観測を使います。専用jobの18.578 phase秒は通常shardの集計から外します。
+表はworkerのsetup・call・teardownの合計秒です。A実測は計測元runの26,189件を
+A割当で観測した負荷です。推定列は計測元と下記2つの全件inventoryに共通です。
+専用jobの実測18.578 phase秒は別集計です。
 
 | Shard | A推定 | A実測 | B推定 | C推定 |
 |---|---:|---:|---:|---:|
@@ -163,6 +172,25 @@ B/C推定には同じ観測を使います。専用jobの18.578 phase秒は通�
 forkした子だけで動き、子はjoinまたはkillで回収し、pytestがteardownでpath変更を復元します。
 実際のshard pluginの収集guardを境界6,255件が通過し、全件が1回ずつ割り当てられ、未計測
 分割caseは0件でした。
+
+#### 後続の全件inventoryに対する比較
+
+実Actions比較の26,208 nodeidを固定し、A/B/Cの割当を再計算しました。続いて
+修正コード `1e139b9aecd44fc7b9e157c5ebe360d62117a07e` を、
+lockのpytest 9.2.0と `spin test` のCPU選別で全件収集しました。26,218件のnodeidは
+Actionsの集合に新規10件を加えたものと一致し、各inventoryに共通の専用17件を確認しました。
+各条件・各通常shardの推定負荷、group数、case数、およびinventoryと割当のハッシュを
+記録しています。 [実Actionsの全件run](https://github.com/Motoki0705/tennis-lab/actions/runs/46056231956) · [オフライン比較データ](sharding-comparison.json)
+
+計測元からActions比較までの19件と、レビュー修正で追加した10件は計測済みの
+file単位groupに入ります。既存groupの固定重みを使うため、3つのinventoryで各条件の
+割当・推定負荷・未計測件数は同じ値でした。通常groupはA/Bが各1,440、Cが7,693です。
+
+| 既存file group | Actions比較までの追加 | レビュー修正の追加 | Shard A / B / C | 固定推定 A / B / C (秒) |
+|---|---:|---:|---|---|
+| `test_ci_growth.py` | 1 | 0 | 0 / 9 / 4 | 0.084556 / 0.054511 / 0.054511 |
+| `test_ci_shards.py` | 18 | 6 | 5 / 3 / 1 | 4.998372 / 8.766644 / 8.766644 |
+| `test_ci_metrics.py` | 0 | 4 | 1 / 8 / 6 | 3.595444 / 5.535053 / 5.535053 |
 
 ## 同一条件のActions比較
 

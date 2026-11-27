@@ -62,6 +62,12 @@ recomputes the per-shard report from those events and requires:
 - system marker inventories matching independent pre-selection events and every other shard; ordinary shards contain no marked cases, the runtime job contains every marked case exactly once, and all runtime outcomes are passed (zero skip/xfail);
 - successful plan, lint, every matrix job and the system-runtime job; skipped/cancelled jobs are not successes.
 
+The phase audit accepts pytest's `passed`, `failed` and `skipped` outcomes.
+Every case needs exactly one setup and teardown. A passing setup requires one
+call, while a failed or skipped setup proceeds directly to teardown. Expected
+failures and unexpected passes retain their pytest `wasxfail` classification.
+Unknown phase labels or outcomes and incomplete sequences fail the audit.
+
 Deleting the same case from every manifest is detected against the independent
 pre-selection events. Deferred cases are neither skips nor successes. The aggregate
 reports `scoped_cpu_success`; `full_cpu_success` additionally requires D to be empty.
@@ -114,6 +120,9 @@ Actions artifacts. Use `--latest-main` to search successful main pushes from
 newest to oldest. Ineligible runs are reported with reasons. Use `--run-id`
 and `--attempt` to reproduce a particular update while its artifact set is
 still live.
+The search records a run's invalid artifact data and checks the next candidate.
+A pinned run with invalid evidence, an API request failure or a local I/O
+failure ends the update and preserves the output profile.
 
 The command pins the run and HEAD, downloads the lane plan and the latest
 coverage and shard archives by artifact ID, checks the aggregate's download
@@ -175,9 +184,10 @@ and four in C. A estimates 281 ordinary files and 28 split cases using
 unmeasured defaults. B and C have zero unmeasured ordinary files or split cases.
 
 All values below are summed setup, call and teardown seconds across workers.
-A observed is the actual phase cost under A on the source run. B and C estimates
-reassign the same observations. This comparison leaves the 18.578 phase seconds
-of the system job outside the ordinary shard totals.
+A observed is the actual phase cost under A on the 26,189-case source run.
+The estimate columns apply to that inventory and the two later full inventories
+described below. The system job's 18.578 observed phase seconds are separate
+from the ordinary shard totals.
 
 | Shard | A estimated | A observed | B estimated | C estimated |
 |---|---:|---:|---:|---:|
@@ -211,6 +221,29 @@ gives each case its own root. `make_lab` puts the repository, mirror, synthetic
 children that are joined or killed, and pytest restores the path prepend
 during teardown. Collection with the real shard plugin accepted all 6,255
 boundary cases, assigned each once, and reported zero unmeasured split cases.
+
+#### Later full inventories
+
+We replayed A, B and C on the same 26,208-nodeid inventory from the full Actions
+comparison, then on the 26,218-nodeid collection of the review fixes at
+`1e139b9aecd44fc7b9e157c5ebe360d62117a07e`. The latter uses the `spin test`
+CPU selection with the locked pytest 9.2.0 and matches the Actions inventory
+plus the ten new cases exactly. Each snapshot includes the same 17
+`system_deps` nodeids. The comparison data records the inventory and assignment
+hashes, group and case counts and estimated loads for all ten ordinary shards
+under each condition. [Full run inventory](https://github.com/Motoki0705/tennis-lab/actions/runs/46056231956) · [Offline data](sharding-comparison.json)
+
+The 19 cases added between the profile source and the Actions comparison
+and the ten later regressions enter existing measured whole-file groups.
+The three inventories therefore give identical group assignments, estimates
+and unmeasured counts for each condition. A and B assign 1,440 ordinary groups
+each and C assigns 7,693.
+
+| Existing file group | Added for Actions | Added in review | Shard A / B / C | Fixed estimate A / B / C (s) |
+|---|---:|---:|---|---|
+| `test_ci_growth.py` | 1 | 0 | 0 / 9 / 4 | 0.084556 / 0.054511 / 0.054511 |
+| `test_ci_shards.py` | 18 | 6 | 5 / 3 / 1 | 4.998372 / 8.766644 / 8.766644 |
+| `test_ci_metrics.py` | 0 | 4 | 1 / 8 / 6 | 3.595444 / 5.535053 / 5.535053 |
 
 ## Matched Actions comparison
 

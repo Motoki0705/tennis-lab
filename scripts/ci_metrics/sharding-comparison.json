@@ -2118,5 +2118,872 @@
         }
       ]
     }
+  ],
+  "offline_comparisons": [
+    {
+      "inventory": "profile-source",
+      "source_commit": "8d629a35289f475e514291167435c333876afdd2",
+      "actions_run_id": 45955929416,
+      "cpu_cases": 26189,
+      "ordinary_cases": 26172,
+      "ordinary_files": 1158,
+      "system_deps_cases": 17,
+      "inventory_sha256": "2a9249b30aacb46f810eb8cf10a54cec0ad7c7031d63e213821f5e10fb66663f",
+      "added_cases_by_file": {},
+      "removed_cases_by_file": {},
+      "conditions": {
+        "A": {
+          "split_files": [
+            "tests/e2e/agents_ops/test_board_messages.py",
+            "tests/e2e/agents_ops/test_merge_gate.py",
+            "tests/e2e/agents_ops/test_parent_session.py"
+          ],
+          "effective_split_file_count": 2,
+          "assignment_sha256": "13c38985bebde68cafc9961dfcfa97649c9c935be198753882180f18d31c8f2a",
+          "ordinary_assignment_groups": 1440,
+          "unmeasured_file_count": 281,
+          "unmeasured_split_case_count": 28,
+          "load": {
+            "min": 610.5775996953553,
+            "max": 610.5796976953562,
+            "mean": 610.5788724726484,
+            "max_over_mean": 1.0000013515415371
+          },
+          "shards": [
+            {
+              "index": 0,
+              "estimated_phase_s": 610.5789996953562,
+              "assignment_groups": 141,
+              "cases": 1459
+            },
+            {
+              "index": 1,
+              "estimated_phase_s": 610.5795045818192,
+              "assignment_groups": 143,
+              "cases": 1780
+            },
+            {
+              "index": 2,
+              "estimated_phase_s": 610.5794635818186,
+              "assignment_groups": 144,
+              "cases": 1910
+            },
+            {
+              "index": 3,
+              "estimated_phase_s": 610.5793576953554,
+              "assignment_groups": 145,
+              "cases": 2367
+            },
+            {
+              "index": 4,
+              "estimated_phase_s": 610.5793096953561,
+              "assignment_groups": 145,
+              "cases": 1880
+            },
+            {
+              "index": 5,
+              "estimated_phase_s": 610.5777858088934,
+              "assignment_groups": 144,
+              "cases": 2325
+            },
+            {
+              "index": 6,
+              "estimated_phase_s": 610.5793815818188,
+              "assignment_groups": 145,
+              "cases": 3187
+            },
+            {
+              "index": 7,
+              "estimated_phase_s": 610.5796976953562,
+              "assignment_groups": 145,
+              "cases": 2192
+            },
+            {
+              "index": 8,
+              "estimated_phase_s": 610.5776246953551,
+              "assignment_groups": 144,
+              "cases": 6847
+            },
+            {
+              "index": 9,
+              "estimated_phase_s": 610.5775996953553,
+              "assignment_groups": 144,
+              "cases": 2225
+            }
+          ],
+          "added_case_groups": {}
+        },
+        "B": {
+          "split_files": [
+            "tests/e2e/agents_ops/test_board_messages.py",
+            "tests/e2e/agents_ops/test_parent_session.py"
+          ],
+          "effective_split_file_count": 2,
+          "assignment_sha256": "f63d4d25ec4acbcc46eb30748196e43159de543d548bd5356620ae2adfb8648d",
+          "ordinary_assignment_groups": 1440,
+          "unmeasured_file_count": 0,
+          "unmeasured_split_case_count": 0,
+          "load": {
+            "min": 1310.7757949999998,
+            "max": 1809.091013,
+            "mean": 1360.6082230999996,
+            "max_over_mean": 1.3296193439711694
+          },
+          "shards": [
+            {
+              "index": 0,
+              "estimated_phase_s": 1809.091013,
+              "assignment_groups": 1,
+              "cases": 4606
+            },
+            {
+              "index": 1,
+              "estimated_phase_s": 1310.7757949999998,
+              "assignment_groups": 158,
+              "cases": 3827
+            },
+            {
+              "index": 2,
+              "estimated_phase_s": 1310.7759719999992,
+              "assignment_groups": 159,
+              "cases": 2154
+            },
+            {
+              "index": 3,
+              "estimated_phase_s": 1310.7762729999993,
+              "assignment_groups": 160,
+              "cases": 1715
+            },
+            {
+              "index": 4,
+              "estimated_phase_s": 1310.7774569999997,
+              "assignment_groups": 160,
+              "cases": 2281
+            },
+            {
+              "index": 5,
+              "estimated_phase_s": 1310.7774490000004,
+              "assignment_groups": 160,
+              "cases": 2446
+            },
+            {
+              "index": 6,
+              "estimated_phase_s": 1310.7759359999995,
+              "assignment_groups": 159,
+              "cases": 2305
+            },
+            {
+              "index": 7,
+              "estimated_phase_s": 1310.7777169999988,
+              "assignment_groups": 161,
+              "cases": 2707
+            },
+            {
+              "index": 8,
+              "estimated_phase_s": 1310.7770600000003,
+              "assignment_groups": 161,
+              "cases": 2322
+            },
+            {
+              "index": 9,
+              "estimated_phase_s": 1310.7775589999997,
+              "assignment_groups": 161,
+              "cases": 1809
+            }
+          ],
+          "added_case_groups": {}
+        },
+        "C": {
+          "split_files": [
+            "tests/e2e/agents_ops/test_board_messages.py",
+            "tests/e2e/agents_ops/test_parent_session.py",
+            "tests/integration/agents_ops/test_storage_tier_crash_boundaries.py",
+            "tests/integration/agents_ops/test_storage_tier_recovery_boundaries.py"
+          ],
+          "effective_split_file_count": 4,
+          "assignment_sha256": "b9f753690b8cdc4e53189859a0eb62010174546f050441b78c7f0d7a031dab5b",
+          "ordinary_assignment_groups": 7693,
+          "unmeasured_file_count": 0,
+          "unmeasured_split_case_count": 0,
+          "load": {
+            "min": 1360.6074680000013,
+            "max": 1360.6092819999994,
+            "mean": 1360.6082223000003,
+            "max_over_mean": 1.00000077884286
+          },
+          "shards": [
+            {
+              "index": 0,
+              "estimated_phase_s": 1360.6074790000005,
+              "assignment_groups": 768,
+              "cases": 2284
+            },
+            {
+              "index": 1,
+              "estimated_phase_s": 1360.6092819999994,
+              "assignment_groups": 769,
+              "cases": 2786
+            },
+            {
+              "index": 2,
+              "estimated_phase_s": 1360.6076539999997,
+              "assignment_groups": 769,
+              "cases": 2428
+            },
+            {
+              "index": 3,
+              "estimated_phase_s": 1360.609176000001,
+              "assignment_groups": 770,
+              "cases": 2806
+            },
+            {
+              "index": 4,
+              "estimated_phase_s": 1360.607638999999,
+              "assignment_groups": 769,
+              "cases": 2351
+            },
+            {
+              "index": 5,
+              "estimated_phase_s": 1360.6074680000013,
+              "assignment_groups": 769,
+              "cases": 2836
+            },
+            {
+              "index": 6,
+              "estimated_phase_s": 1360.6079480000021,
+              "assignment_groups": 770,
+              "cases": 2532
+            },
+            {
+              "index": 7,
+              "estimated_phase_s": 1360.6087389999998,
+              "assignment_groups": 770,
+              "cases": 2467
+            },
+            {
+              "index": 8,
+              "estimated_phase_s": 1360.607692999998,
+              "assignment_groups": 769,
+              "cases": 3074
+            },
+            {
+              "index": 9,
+              "estimated_phase_s": 1360.6091450000029,
+              "assignment_groups": 770,
+              "cases": 2608
+            }
+          ],
+          "added_case_groups": {}
+        }
+      },
+      "a_measured_phase_s_by_shard": [
+        725.3598982160005,
+        1322.6238778949973,
+        611.4403946370005,
+        1304.9613161420014,
+        1185.037706938001,
+        1397.8663647779972,
+        1650.7123366689927,
+        844.6348890649986,
+        3311.545267926009,
+        1235.0235649840015
+      ]
+    },
+    {
+      "inventory": "actions-full",
+      "source_commit": "3e9e0b7380b050f205f20372dd31f298dbe4a483",
+      "actions_run_id": 46056231956,
+      "cpu_cases": 26208,
+      "ordinary_cases": 26191,
+      "ordinary_files": 1158,
+      "system_deps_cases": 17,
+      "inventory_sha256": "40de80e443dc9641221d2290737de08a0dd3efe55241af0eb2ace5050c1b96fe",
+      "added_cases_by_file": {
+        "tests/e2e/development/test_ci_growth.py": 1,
+        "tests/e2e/development/test_ci_shards.py": 18
+      },
+      "removed_cases_by_file": {},
+      "conditions": {
+        "A": {
+          "split_files": [
+            "tests/e2e/agents_ops/test_board_messages.py",
+            "tests/e2e/agents_ops/test_merge_gate.py",
+            "tests/e2e/agents_ops/test_parent_session.py"
+          ],
+          "effective_split_file_count": 2,
+          "assignment_sha256": "13c38985bebde68cafc9961dfcfa97649c9c935be198753882180f18d31c8f2a",
+          "ordinary_assignment_groups": 1440,
+          "unmeasured_file_count": 281,
+          "unmeasured_split_case_count": 28,
+          "load": {
+            "min": 610.5775996953553,
+            "max": 610.5796976953562,
+            "mean": 610.5788724726484,
+            "max_over_mean": 1.0000013515415371
+          },
+          "shards": [
+            {
+              "index": 0,
+              "estimated_phase_s": 610.5789996953562,
+              "assignment_groups": 141,
+              "cases": 1460
+            },
+            {
+              "index": 1,
+              "estimated_phase_s": 610.5795045818192,
+              "assignment_groups": 143,
+              "cases": 1780
+            },
+            {
+              "index": 2,
+              "estimated_phase_s": 610.5794635818186,
+              "assignment_groups": 144,
+              "cases": 1910
+            },
+            {
+              "index": 3,
+              "estimated_phase_s": 610.5793576953554,
+              "assignment_groups": 145,
+              "cases": 2367
+            },
+            {
+              "index": 4,
+              "estimated_phase_s": 610.5793096953561,
+              "assignment_groups": 145,
+              "cases": 1880
+            },
+            {
+              "index": 5,
+              "estimated_phase_s": 610.5777858088934,
+              "assignment_groups": 144,
+              "cases": 2343
+            },
+            {
+              "index": 6,
+              "estimated_phase_s": 610.5793815818188,
+              "assignment_groups": 145,
+              "cases": 3187
+            },
+            {
+              "index": 7,
+              "estimated_phase_s": 610.5796976953562,
+              "assignment_groups": 145,
+              "cases": 2192
+            },
+            {
+              "index": 8,
+              "estimated_phase_s": 610.5776246953551,
+              "assignment_groups": 144,
+              "cases": 6847
+            },
+            {
+              "index": 9,
+              "estimated_phase_s": 610.5775996953553,
+              "assignment_groups": 144,
+              "cases": 2225
+            }
+          ],
+          "added_case_groups": {
+            "tests/e2e/development/test_ci_growth.py": {
+              "new_cases": 1,
+              "shard": 0,
+              "estimated_file_phase_s": 0.084556
+            },
+            "tests/e2e/development/test_ci_shards.py": {
+              "new_cases": 18,
+              "shard": 5,
+              "estimated_file_phase_s": 4.998372
+            }
+          }
+        },
+        "B": {
+          "split_files": [
+            "tests/e2e/agents_ops/test_board_messages.py",
+            "tests/e2e/agents_ops/test_parent_session.py"
+          ],
+          "effective_split_file_count": 2,
+          "assignment_sha256": "f63d4d25ec4acbcc46eb30748196e43159de543d548bd5356620ae2adfb8648d",
+          "ordinary_assignment_groups": 1440,
+          "unmeasured_file_count": 0,
+          "unmeasured_split_case_count": 0,
+          "load": {
+            "min": 1310.7757949999998,
+            "max": 1809.091013,
+            "mean": 1360.6082230999996,
+            "max_over_mean": 1.3296193439711694
+          },
+          "shards": [
+            {
+              "index": 0,
+              "estimated_phase_s": 1809.091013,
+              "assignment_groups": 1,
+              "cases": 4606
+            },
+            {
+              "index": 1,
+              "estimated_phase_s": 1310.7757949999998,
+              "assignment_groups": 158,
+              "cases": 3827
+            },
+            {
+              "index": 2,
+              "estimated_phase_s": 1310.7759719999992,
+              "assignment_groups": 159,
+              "cases": 2154
+            },
+            {
+              "index": 3,
+              "estimated_phase_s": 1310.7762729999993,
+              "assignment_groups": 160,
+              "cases": 1733
+            },
+            {
+              "index": 4,
+              "estimated_phase_s": 1310.7774569999997,
+              "assignment_groups": 160,
+              "cases": 2281
+            },
+            {
+              "index": 5,
+              "estimated_phase_s": 1310.7774490000004,
+              "assignment_groups": 160,
+              "cases": 2446
+            },
+            {
+              "index": 6,
+              "estimated_phase_s": 1310.7759359999995,
+              "assignment_groups": 159,
+              "cases": 2305
+            },
+            {
+              "index": 7,
+              "estimated_phase_s": 1310.7777169999988,
+              "assignment_groups": 161,
+              "cases": 2707
+            },
+            {
+              "index": 8,
+              "estimated_phase_s": 1310.7770600000003,
+              "assignment_groups": 161,
+              "cases": 2322
+            },
+            {
+              "index": 9,
+              "estimated_phase_s": 1310.7775589999997,
+              "assignment_groups": 161,
+              "cases": 1810
+            }
+          ],
+          "added_case_groups": {
+            "tests/e2e/development/test_ci_growth.py": {
+              "new_cases": 1,
+              "shard": 9,
+              "estimated_file_phase_s": 0.054511
+            },
+            "tests/e2e/development/test_ci_shards.py": {
+              "new_cases": 18,
+              "shard": 3,
+              "estimated_file_phase_s": 8.766644
+            }
+          }
+        },
+        "C": {
+          "split_files": [
+            "tests/e2e/agents_ops/test_board_messages.py",
+            "tests/e2e/agents_ops/test_parent_session.py",
+            "tests/integration/agents_ops/test_storage_tier_crash_boundaries.py",
+            "tests/integration/agents_ops/test_storage_tier_recovery_boundaries.py"
+          ],
+          "effective_split_file_count": 4,
+          "assignment_sha256": "b9f753690b8cdc4e53189859a0eb62010174546f050441b78c7f0d7a031dab5b",
+          "ordinary_assignment_groups": 7693,
+          "unmeasured_file_count": 0,
+          "unmeasured_split_case_count": 0,
+          "load": {
+            "min": 1360.6074680000013,
+            "max": 1360.6092819999994,
+            "mean": 1360.6082223000003,
+            "max_over_mean": 1.00000077884286
+          },
+          "shards": [
+            {
+              "index": 0,
+              "estimated_phase_s": 1360.6074790000005,
+              "assignment_groups": 768,
+              "cases": 2284
+            },
+            {
+              "index": 1,
+              "estimated_phase_s": 1360.6092819999994,
+              "assignment_groups": 769,
+              "cases": 2804
+            },
+            {
+              "index": 2,
+              "estimated_phase_s": 1360.6076539999997,
+              "assignment_groups": 769,
+              "cases": 2428
+            },
+            {
+              "index": 3,
+              "estimated_phase_s": 1360.609176000001,
+              "assignment_groups": 770,
+              "cases": 2806
+            },
+            {
+              "index": 4,
+              "estimated_phase_s": 1360.607638999999,
+              "assignment_groups": 769,
+              "cases": 2352
+            },
+            {
+              "index": 5,
+              "estimated_phase_s": 1360.6074680000013,
+              "assignment_groups": 769,
+              "cases": 2836
+            },
+            {
+              "index": 6,
+              "estimated_phase_s": 1360.6079480000021,
+              "assignment_groups": 770,
+              "cases": 2532
+            },
+            {
+              "index": 7,
+              "estimated_phase_s": 1360.6087389999998,
+              "assignment_groups": 770,
+              "cases": 2467
+            },
+            {
+              "index": 8,
+              "estimated_phase_s": 1360.607692999998,
+              "assignment_groups": 769,
+              "cases": 3074
+            },
+            {
+              "index": 9,
+              "estimated_phase_s": 1360.6091450000029,
+              "assignment_groups": 770,
+              "cases": 2608
+            }
+          ],
+          "added_case_groups": {
+            "tests/e2e/development/test_ci_growth.py": {
+              "new_cases": 1,
+              "shard": 4,
+              "estimated_file_phase_s": 0.054511
+            },
+            "tests/e2e/development/test_ci_shards.py": {
+              "new_cases": 18,
+              "shard": 1,
+              "estimated_file_phase_s": 8.766644
+            }
+          }
+        }
+      }
+    },
+    {
+      "inventory": "final-code",
+      "source_commit": "1e139b9aecd44fc7b9e157c5ebe360d62117a07e",
+      "actions_run_id": null,
+      "cpu_cases": 26218,
+      "ordinary_cases": 26201,
+      "ordinary_files": 1158,
+      "system_deps_cases": 17,
+      "inventory_sha256": "440e079aafcb7e1945de2b907ac831169f2ec81d8cf2b068eec7973c26b61952",
+      "added_cases_by_file": {
+        "tests/e2e/development/test_ci_metrics.py": 4,
+        "tests/e2e/development/test_ci_shards.py": 6
+      },
+      "removed_cases_by_file": {},
+      "conditions": {
+        "A": {
+          "split_files": [
+            "tests/e2e/agents_ops/test_board_messages.py",
+            "tests/e2e/agents_ops/test_merge_gate.py",
+            "tests/e2e/agents_ops/test_parent_session.py"
+          ],
+          "effective_split_file_count": 2,
+          "assignment_sha256": "13c38985bebde68cafc9961dfcfa97649c9c935be198753882180f18d31c8f2a",
+          "ordinary_assignment_groups": 1440,
+          "unmeasured_file_count": 281,
+          "unmeasured_split_case_count": 28,
+          "load": {
+            "min": 610.5775996953553,
+            "max": 610.5796976953562,
+            "mean": 610.5788724726484,
+            "max_over_mean": 1.0000013515415371
+          },
+          "shards": [
+            {
+              "index": 0,
+              "estimated_phase_s": 610.5789996953562,
+              "assignment_groups": 141,
+              "cases": 1460
+            },
+            {
+              "index": 1,
+              "estimated_phase_s": 610.5795045818192,
+              "assignment_groups": 143,
+              "cases": 1784
+            },
+            {
+              "index": 2,
+              "estimated_phase_s": 610.5794635818186,
+              "assignment_groups": 144,
+              "cases": 1910
+            },
+            {
+              "index": 3,
+              "estimated_phase_s": 610.5793576953554,
+              "assignment_groups": 145,
+              "cases": 2367
+            },
+            {
+              "index": 4,
+              "estimated_phase_s": 610.5793096953561,
+              "assignment_groups": 145,
+              "cases": 1880
+            },
+            {
+              "index": 5,
+              "estimated_phase_s": 610.5777858088934,
+              "assignment_groups": 144,
+              "cases": 2349
+            },
+            {
+              "index": 6,
+              "estimated_phase_s": 610.5793815818188,
+              "assignment_groups": 145,
+              "cases": 3187
+            },
+            {
+              "index": 7,
+              "estimated_phase_s": 610.5796976953562,
+              "assignment_groups": 145,
+              "cases": 2192
+            },
+            {
+              "index": 8,
+              "estimated_phase_s": 610.5776246953551,
+              "assignment_groups": 144,
+              "cases": 6847
+            },
+            {
+              "index": 9,
+              "estimated_phase_s": 610.5775996953553,
+              "assignment_groups": 144,
+              "cases": 2225
+            }
+          ],
+          "added_case_groups": {
+            "tests/e2e/development/test_ci_metrics.py": {
+              "new_cases": 4,
+              "shard": 1,
+              "estimated_file_phase_s": 3.595444
+            },
+            "tests/e2e/development/test_ci_shards.py": {
+              "new_cases": 6,
+              "shard": 5,
+              "estimated_file_phase_s": 4.998372
+            }
+          }
+        },
+        "B": {
+          "split_files": [
+            "tests/e2e/agents_ops/test_board_messages.py",
+            "tests/e2e/agents_ops/test_parent_session.py"
+          ],
+          "effective_split_file_count": 2,
+          "assignment_sha256": "f63d4d25ec4acbcc46eb30748196e43159de543d548bd5356620ae2adfb8648d",
+          "ordinary_assignment_groups": 1440,
+          "unmeasured_file_count": 0,
+          "unmeasured_split_case_count": 0,
+          "load": {
+            "min": 1310.7757949999998,
+            "max": 1809.091013,
+            "mean": 1360.6082230999996,
+            "max_over_mean": 1.3296193439711694
+          },
+          "shards": [
+            {
+              "index": 0,
+              "estimated_phase_s": 1809.091013,
+              "assignment_groups": 1,
+              "cases": 4606
+            },
+            {
+              "index": 1,
+              "estimated_phase_s": 1310.7757949999998,
+              "assignment_groups": 158,
+              "cases": 3827
+            },
+            {
+              "index": 2,
+              "estimated_phase_s": 1310.7759719999992,
+              "assignment_groups": 159,
+              "cases": 2154
+            },
+            {
+              "index": 3,
+              "estimated_phase_s": 1310.7762729999993,
+              "assignment_groups": 160,
+              "cases": 1739
+            },
+            {
+              "index": 4,
+              "estimated_phase_s": 1310.7774569999997,
+              "assignment_groups": 160,
+              "cases": 2281
+            },
+            {
+              "index": 5,
+              "estimated_phase_s": 1310.7774490000004,
+              "assignment_groups": 160,
+              "cases": 2446
+            },
+            {
+              "index": 6,
+              "estimated_phase_s": 1310.7759359999995,
+              "assignment_groups": 159,
+              "cases": 2305
+            },
+            {
+              "index": 7,
+              "estimated_phase_s": 1310.7777169999988,
+              "assignment_groups": 161,
+              "cases": 2707
+            },
+            {
+              "index": 8,
+              "estimated_phase_s": 1310.7770600000003,
+              "assignment_groups": 161,
+              "cases": 2326
+            },
+            {
+              "index": 9,
+              "estimated_phase_s": 1310.7775589999997,
+              "assignment_groups": 161,
+              "cases": 1810
+            }
+          ],
+          "added_case_groups": {
+            "tests/e2e/development/test_ci_metrics.py": {
+              "new_cases": 4,
+              "shard": 8,
+              "estimated_file_phase_s": 5.535053
+            },
+            "tests/e2e/development/test_ci_shards.py": {
+              "new_cases": 6,
+              "shard": 3,
+              "estimated_file_phase_s": 8.766644
+            }
+          }
+        },
+        "C": {
+          "split_files": [
+            "tests/e2e/agents_ops/test_board_messages.py",
+            "tests/e2e/agents_ops/test_parent_session.py",
+            "tests/integration/agents_ops/test_storage_tier_crash_boundaries.py",
+            "tests/integration/agents_ops/test_storage_tier_recovery_boundaries.py"
+          ],
+          "effective_split_file_count": 4,
+          "assignment_sha256": "b9f753690b8cdc4e53189859a0eb62010174546f050441b78c7f0d7a031dab5b",
+          "ordinary_assignment_groups": 7693,
+          "unmeasured_file_count": 0,
+          "unmeasured_split_case_count": 0,
+          "load": {
+            "min": 1360.6074680000013,
+            "max": 1360.6092819999994,
+            "mean": 1360.6082223000003,
+            "max_over_mean": 1.00000077884286
+          },
+          "shards": [
+            {
+              "index": 0,
+              "estimated_phase_s": 1360.6074790000005,
+              "assignment_groups": 768,
+              "cases": 2284
+            },
+            {
+              "index": 1,
+              "estimated_phase_s": 1360.6092819999994,
+              "assignment_groups": 769,
+              "cases": 2810
+            },
+            {
+              "index": 2,
+              "estimated_phase_s": 1360.6076539999997,
+              "assignment_groups": 769,
+              "cases": 2428
+            },
+            {
+              "index": 3,
+              "estimated_phase_s": 1360.609176000001,
+              "assignment_groups": 770,
+              "cases": 2806
+            },
+            {
+              "index": 4,
+              "estimated_phase_s": 1360.607638999999,
+              "assignment_groups": 769,
+              "cases": 2352
+            },
+            {
+              "index": 5,
+              "estimated_phase_s": 1360.6074680000013,
+              "assignment_groups": 769,
+              "cases": 2836
+            },
+            {
+              "index": 6,
+              "estimated_phase_s": 1360.6079480000021,
+              "assignment_groups": 770,
+              "cases": 2536
+            },
+            {
+              "index": 7,
+              "estimated_phase_s": 1360.6087389999998,
+              "assignment_groups": 770,
+              "cases": 2467
+            },
+            {
+              "index": 8,
+              "estimated_phase_s": 1360.607692999998,
+              "assignment_groups": 769,
+              "cases": 3074
+            },
+            {
+              "index": 9,
+              "estimated_phase_s": 1360.6091450000029,
+              "assignment_groups": 770,
+              "cases": 2608
+            }
+          ],
+          "added_case_groups": {
+            "tests/e2e/development/test_ci_metrics.py": {
+              "new_cases": 4,
+              "shard": 6,
+              "estimated_file_phase_s": 5.535053
+            },
+            "tests/e2e/development/test_ci_shards.py": {
+              "new_cases": 6,
+              "shard": 1,
+              "estimated_file_phase_s": 8.766644
+            }
+          }
+        }
+      },
+      "collection": {
+        "entrypoint": "spin test --serial --collect-only",
+        "cpu_marker_expression": "not local_data and not cuda",
+        "matches_prior_actions_inventory_plus_collected_changes": true,
+        "pytest_version": "9.2.0",
+        "changed_test_files": [
+          "tests/e2e/development/test_ci_metrics.py",
+          "tests/e2e/development/test_ci_shards.py"
+        ]
+      }
+    }
   ]
 }
