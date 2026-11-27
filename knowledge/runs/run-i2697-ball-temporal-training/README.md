@@ -32,15 +32,18 @@ out=outputs/ball-temporal-training
 bash "$run/reproduce.sh" audit --dataset-root "$DATASET_ROOT"
 bash "$run/reproduce.sh" probe --dataset-root "$DATASET_ROOT" --output "$out/probe"
 bash "$run/reproduce.sh" budget --probe "$out/probe/probe.json" --output "$out/plan.json"
-bash "$run/reproduce.sh" train --dataset-root "$DATASET_ROOT" --output "$out/s42" --plan "$out/plan.json"
+bash "$run/reproduce.sh" train --dataset-root "$DATASET_ROOT" --output "$out/s42" --plan "$run/plan.json"
+bash "$run/reproduce.sh" verify --dataset-root "$DATASET_ROOT" --training "$out/s42" --output "$out/training-verification.json"
 bash "$run/reproduce.sh" collect --training "$out/s42" --output "$out/record"
 bash "$run/reproduce.sh" plot --table "$out/record/comparison.csv" --output "$out/record"
 ```
 
 本学習が中断した場合は同じ出力とplanを指定し `train --resume` で再開する。保存済みの更新・抽出位置と
 optimizer/RNGを厳密に復元する。全フレームの予測、重み、更新ログは実行出力先で保存する。
-集計は固定マスク・採点ID・アンカー教師座標と予測のSHA-256を照合し、[既存比較CSV](../run-i2637-ball-temporal-context/comparison.csv)から
-#2637の元閾値での数値も取り込む。図にはNoto Sans CJK JPを使用する。
+集計は固定マスク・採点ID・アンカー教師座標と予測のSHA-256を照合し、#2637の元閾値での数値も取り込む。
+検証コマンドは3条件の保存recipe、全更新のpack・教師とLR、終端重みのSHA-256とテンソルを確認する。
+図にはNoto Sans CJK JPを使用し、PDFにはベクトルの字形を埋め込む。
+[#2637の比較CSV](../run-i2637-ball-temporal-context/comparison.csv)
 
 ## 軽量検証
 

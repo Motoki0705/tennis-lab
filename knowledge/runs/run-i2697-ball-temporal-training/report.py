@@ -338,7 +338,7 @@ def plot(table: Path, output: Path) -> None:
             "font.family": font,
             "font.size": 10,
             "axes.unicode_minus": False,
-            "pdf.fonttype": 42,
+            "pdf.fonttype": 3,  # Embed the CFF Japanese glyphs as vector outlines.
             "axes.spines.top": False,
             "axes.spines.right": False,
         }
