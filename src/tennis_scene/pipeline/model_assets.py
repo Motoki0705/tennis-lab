@@ -107,10 +107,10 @@ class PeopleModelConfig:
     body_models_dir: Path
     smpl_assets: SmplAssetPaths
     runtime: SubmoduleRuntimeConfig
-    detector: DetectorName = "dino"
-    pose: PoseName = "vitpose-h"
-    rfdetr_checkpoint: Path | None = None
-    rtmpose_checkpoint: Path | None = None
+    detector: DetectorName
+    pose: PoseName
+    rfdetr_checkpoint: Path | None
+    rtmpose_checkpoint: Path | None
 
     def __post_init__(self) -> None:
         people_model_names({"detector": self.detector, "pose": self.pose})

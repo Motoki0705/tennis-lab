@@ -100,6 +100,8 @@ def make_submodule_runtime(
         clip_reid=BatchedRuntimeConfig(batch_size=64, backend=backend),
         gvhmr=BatchedRuntimeConfig(batch_size=1, backend=backend),
         static_cam=True,
+        rfdetr_l=None,
+        rtmpose_x=None,
     )
 
 
@@ -166,7 +168,12 @@ def make_people_config(root: Path, *, dino_confidence: float = .35) -> PeopleMod
             smpl_coco17_regressor=resolver.resolve(PathRole.CHECKPOINT, "smpl_coco17.npy"),
             smplx_verts437=resolver.resolve(PathRole.CHECKPOINT, "smplx_verts437.npy"),
             smpl_neutral_joint_regressor=resolver.resolve(PathRole.CHECKPOINT, "smplx_neutral_joints.npy")),
-        runtime=make_submodule_runtime(dino_confidence=dino_confidence))
+        runtime=make_submodule_runtime(dino_confidence=dino_confidence),
+        detector="dino",
+        pose="vitpose-h",
+        rfdetr_checkpoint=None,
+        rtmpose_checkpoint=None,
+    )
 
 
 def materialize_model_weights(component: ComponentT) -> ComponentT:
