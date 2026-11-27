@@ -1,0 +1,20 @@
+\usepackage{luatexja-fontspec}
+\setsansfont{DejaVu Sans}
+\setsansjfont{Noto Sans CJK JP}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,calc}
+\definecolor{ink}{HTML}{183046}
+\definecolor{edge}{HTML}{537089}
+\definecolor{observation}{HTML}{EDF4F9}
+\definecolor{geometry}{HTML}{E5F2EC}
+\definecolor{artifact}{HTML}{FFF1D9}
+\tikzset{
+  font=\sffamily\gtfamily\small,
+  processing/.style={draw=edge, line width=.5pt, rounded corners=2pt, text=ink,
+    fill=observation, align=center, minimum width=40mm, minimum height=9.5mm,
+    inner xsep=2mm, inner ysep=1.6mm},
+  geom/.style={processing,fill=geometry},
+  stored/.style={processing,fill=artifact},
+  flow/.style={draw=edge,-{Stealth[length=2mm]},line width=.65pt,rounded corners=2pt},
+  optional/.style={flow,dashed}
+}
