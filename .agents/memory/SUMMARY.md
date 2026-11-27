@@ -28,6 +28,7 @@
 - 親CLIのE2Eで識別子の曖昧さが出たら、pytestから実セッションIDを外して同じテストを比べる。
 - 親の合意をagreeで改訂すると、改訂前に始めたレビュー進行は権限変更で続行できず、同じPRのmerge-confirmも拒否される。改訂前にマージ後確認まで終える。
 - 実行中のbashスクリプトを同じinodeに上書きすると、途中から変更後の処理を実行する場合がある。一時ファイルから置き換える。
+- 互換表は対象ファイルの after ハッシュを固定する。別PRがその対象ファイル（例 inventory.py）を変えると、PR CIは古いmainで通り、マージ後にmainの互換テストが落ちる。
 - Claude Codeの会話を再開したら監視プロセスの生存とjobの状態を確かめる。以前の会話が終わると監視も止まった例がある。
 - codex-followupのtimerは作成時のスクリプトを絶対パスで参照する。timerが動いている間はそのcheckoutの変更や削除に注意する。
 - Codex注釈workerに曖昧な途中終了条件を渡すと短時間で止まった例がある。作業範囲・時間上限・終了条件を具体化する。
@@ -35,6 +36,7 @@
 - 汎用のignore規則で新しいlib・runs・JSONが一括stageから抜けることがある。git check-ignoreで確認する。
 - mainが進んだ記録専用PRは、PRを開き直すとCIが古いtest merge SHAを使い照合で止まる。mainを取り込み、新HEADで実行証拠を結び直す。
 - NHTのgitlinkと実checkoutのずれは実行版に影響する。submodule内の未追跡設定を整理する前にsceneの参照を確かめる。
+- 後続pushでmerge commitのmain CIがジョブ開始前にcancelledになると、Pythonのcheck runが無くci_python_missingのまま待ち続ける。gh run rerunで同じSHAのCIを走らせる。
 - pre-commitのmypyは対象のstagedファイルをfollow-imports=skipで検査する。全体検査と違う型エラーは同じ対象で再現する。
 - spin setup-nhtは実行したcheckoutのNHTに共通コマンドを結び付ける。作業用worktreeでは専用の実行パスで試す。
 - 共有.venvの依存はgit-syncでは更新されない。統合レビューの起動前に共有環境でjsonschemaをimportできるか確かめる。

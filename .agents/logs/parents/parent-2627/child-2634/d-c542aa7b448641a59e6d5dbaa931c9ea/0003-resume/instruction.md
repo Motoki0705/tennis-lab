@@ -1,0 +1,1 @@
+記録専用PR #2660 が main と競合している（mergeable=CONFLICTING）。最新の origin/main を取り込み、競合（knowledge/summary.md や knowledge/nodes/person_tracking/.sequence・ノード番号の衝突が見込まれる）を解消する。ノード番号が衝突した場合は採番し直し、リンクを更新する。knowledge の構造検査（kg_validate --check-summary、kg_repro_paths）を通し、PR本文の実行証拠の head_sha を新HEADに更新して push する。新HEADのCIを PARENT_RESULT の wait で宣言して終了する。記録の数値は変えない。
