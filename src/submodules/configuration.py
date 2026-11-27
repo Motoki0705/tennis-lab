@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal, cast, get_args
 
@@ -437,18 +437,8 @@ class SubmoduleRuntimeConfig:
     static_cam: bool
     clip_reid: BatchedRuntimeConfig
     gvhmr: BatchedRuntimeConfig
-    rfdetr_l: RFDetrRuntimeConfig | None = field(
-        metadata={
-            "configuration_required": False,
-            "configuration_absence_policy": "optional-input-omitted-as-none",
-        }
-    )
-    rtmpose_x: RTMPoseRuntimeConfig | None = field(
-        metadata={
-            "configuration_required": False,
-            "configuration_absence_policy": "optional-input-omitted-as-none",
-        }
-    )
+    rfdetr_l: RFDetrRuntimeConfig | None
+    rtmpose_x: RTMPoseRuntimeConfig | None
 
     @property
     def uses_tensorrt(self) -> bool:
