@@ -1,4 +1,4 @@
-"""ViTPose on declared track boxes; no detection or association side effects."""
+"""COCO17 observations for declared track boxes."""
 
 from __future__ import annotations
 
@@ -9,7 +9,12 @@ import numpy as np
 import torch
 from numpy.typing import NDArray
 
-from src.submodules.models import Pose2DRequest, TrackResult, ViTPosePose2D
+from src.submodules.models import (
+    Pose2DRequest,
+    RTMPoseXPose2D,
+    TrackResult,
+    ViTPosePose2D,
+)
 from src.tennis_scene.pipeline.components.person_tracking import PersonTrackingOutput
 from src.tennis_scene.pipeline.contracts import ComponentIO, InputPort, SourceVideo
 from src.tennis_scene.pipeline.inference_runtime import (
@@ -18,7 +23,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelSpec,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
-from src.tennis_scene.pipeline.model_resources import vitpose_model
+from src.tennis_scene.pipeline.model_resources import rtmpose_model, vitpose_model
 from src.tennis_scene.pipeline.observation_types import ObjectObservations
 
 
@@ -37,8 +42,12 @@ class PoseEstimationModule(InferenceComponent[PoseEstimationInput, ObjectObserva
         self.require_evidence = require_evidence
         self.enabled = enabled
 
-    def model_specs(self) -> dict[str, ModelSpec[ViTPosePose2D]]:
-        return {} if self.require_evidence or not self.enabled else {"pose": vitpose_model(self.config, factory=ViTPosePose2D, show_progress=True)}
+    def model_specs(self) -> dict[str, ModelSpec[Any]]:
+        if self.require_evidence or not self.enabled:
+            return {}
+        if self.config.pose == "rtmpose-x":
+            return {"pose": rtmpose_model(self.config, factory=RTMPoseXPose2D, show_progress=True)}
+        return {"pose": vitpose_model(self.config, factory=ViTPosePose2D, show_progress=True)}
 
     def cache_identity(self) -> dict[str, Any]:
         return {'bbox_enlarge': self.config.runtime.tracking.bbox_enlarge,
@@ -67,7 +76,7 @@ class PoseEstimationModule(InferenceComponent[PoseEstimationInput, ObjectObserva
                 uv, confidence, tracks.observed.T[None], tracks.track_ids[None], boxes)
         if self.require_evidence:
             raise ValueError('Feature tracker lost per-detection pose evidence; regenerate upstream artifacts')
-        pose: ViTPosePose2D | None = None
+        pose: ViTPosePose2D | RTMPoseXPose2D | None = None
         for p, track_id in enumerate(ids):
             indices = tracked.observed_mask(track_id).nonzero().flatten()
             track_boxes = tracked.bbx_xys(track_id, base_enlarge=config.runtime.tracking.bbox_enlarge)
@@ -79,7 +88,7 @@ class PoseEstimationModule(InferenceComponent[PoseEstimationInput, ObjectObserva
             assert pose is not None
             result = pose.predict(Pose2DRequest(video.path, track_boxes[indices], frame_indices=indices))
             if result.keypoints.shape != (len(indices), 17, 3) or not bool(torch.isfinite(result.keypoints).all()):
-                raise ValueError("ViTPose output does not preserve observed frame IDs")
+                raise ValueError("Pose output does not preserve observed frame IDs")
             uv[0, indices.numpy(), p] = result.keypoints[..., :2].numpy()
             confidence[0, indices.numpy(), p] = result.keypoints[..., 2].numpy()
         return ObjectObservations((video.camera_id,), (video.width, video.height), video.fps,

@@ -21,6 +21,7 @@ class TensorRTModel:
     inputs: dict[str, TensorSpec]
     outputs: dict[str, TensorSpec]
     batch_multiplier: int = 1
+    fixed_batch: bool = False
 
     def bind(self, root: Path, *, device: str, batch_size: int) -> EngineBundle:
         def digest(path: Path) -> str:
@@ -34,7 +35,8 @@ class TensorRTModel:
             outputs=self.outputs,
         )
         for name, profile in bundle.engine.profiles.items():
-            profile.require((self.batch_multiplier, *profile.optimum[1:]), tensor=name)
+            if not self.fixed_batch:
+                profile.require((self.batch_multiplier, *profile.optimum[1:]), tensor=name)
             profile.require(
                 (self.batch_multiplier * batch_size, *profile.optimum[1:]), tensor=name
             )

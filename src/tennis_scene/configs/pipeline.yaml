@@ -122,12 +122,16 @@ court_kp:
     boundary_margin_cells: 1.0
     duplicate_distance_cells: 1.0
 people_models:
+  detector: dino  # dino | rfdetr-l
+  pose: vitpose-h  # vitpose-h | rtmpose-x
   # Explicit trial only; comparison pending. Keep the higher score at IoU >= .8.
   merge_duplicate_person_boxes: false
   # COCO full-frame source (#964). #937 is available through an explicit checkpoint override.
   dino_checkpoint: dino/checkpoint0029_4scale_swin.pth
   dino_repository: DINO
   vitpose_checkpoint: vitpose/vitpose-h-multi-coco.pth
+  rfdetr_checkpoint: rfdetr/rf-detr-large-2026.pth
+  rtmpose_checkpoint: rtmpose/rtmpose-x_simcc-body7_pt-body7-halpe26_700e-384x288-7fb6e239_20230606.pth
   hmr2_checkpoint: hmr2/epoch=10-step=25000.ckpt
   gvhmr_checkpoint: gvhmr/gvhmr_siga24_release.ckpt
   body_models_dir: body_models
@@ -149,6 +153,18 @@ people_models:
       backend: pytorch
       engines: []
       batch_size: 1
+    rfdetr_l:
+      confidence: 0.30
+      batch_size: 1
+      precision: fp32
+      backend: pytorch
+      engines: []
+    rtmpose_x:
+      flip_test: true
+      batch_size: 8
+      precision: fp32
+      backend: pytorch
+      engines: []
     vitpose:
       flip_test: true
       batch_size: 16

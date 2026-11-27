@@ -52,6 +52,7 @@ def _runtime_mapping() -> dict[str, object]:
 def test_vitpose_released_head_is_complete_and_typed() -> None:
     runtime = SubmoduleRuntimeConfig.from_mapping(_runtime_mapping())
 
+    assert runtime.rfdetr_l is None and runtime.rtmpose_x is None
     assert runtime.vitpose.head == ViTPoseHeadConfig(
         in_channels=1280,
         out_channels=17,

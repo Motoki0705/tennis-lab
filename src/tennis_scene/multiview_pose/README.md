@@ -1,10 +1,10 @@
 # 全人物のフレーム別3D骨格と観測割当
 
-保存済みの全画面DINOと全検出行のViTPoseから、同じ元フレームの観測をコート座標へ復元するCPU入口です。出力はフレームごとの骨格候補と観測行の対応で、人物IDの有効範囲はそのフレームです。
+保存済みの全画面検出と全検出行の COCO17 pose から、同じ元フレームの観測をコート座標へ復元するCPU入口です。出力はフレームごとの骨格候補と観測行の対応で、人物IDの有効範囲はそのフレームです。
 
 ## 実行
 
-入力clip storeの `scene.json` が指す `person_detections` v2、`person_pose_features` v2と `local_court_calibration` v1を使います。全カメラでDINOとViTPoseの保存設定に `enabled=true` が必要です。有効な観測の結果が空の場合は候補ゼロとして扱います。DINOは全画面・元行をすべて保持した版を使い、poseのcamera・`frame_offsets`・`source_rows` を検出と照合します。poseは同じ版の検出、校正は共有 `court_observations` v3から生成したものに限定します。上流に指定外の依存がある実行は停止します。
+入力clip storeの `scene.json` が指す `person_detections` v2、`person_pose_features` v2と `local_court_calibration` v1を使います。全カメラで `enabled=true` と、同じ人物モデル・backend・重み・engine・score設定が必要です。セレクターが省略されている旧成果は、保存済みの宣言が DINO／ViTPose-H と整合する場合に読み込みます。有効な観測の結果が空の場合は候補ゼロとして扱います。検出は全画面・元行をすべて保持した版を使い、poseのcamera・`frame_offsets`・`source_rows` を検出と照合します。poseは同じ版の検出、校正は共有 `court_observations` v3から生成したものに限定します。上流に指定外の依存がある実行は停止します。 [人物モデルの設定](../pipeline/README.md#人物モデルの選択)
 
 `--side-digest` でボール由来の動画共有判定を指定します。判定からコート・driftのdigestを解決し、判定済みclipの集合・カメラ順・レイの基準となるカメラ行列・元動画の実ファイルSHA-256を照合します。検証済み動画内で単独判定が未決のclipは警告を残して進み、共有判定との矛盾、判定なし、digest・映像・校正の不一致では停止します。meiji_4cam の各storeは #2241 の記録から取得できます。 [保存済み共有判定とコートの配置](../../../knowledge/runs/run-court-side-video-shared-20261118/reproduce.md)
 
@@ -33,7 +33,7 @@
 | 配列 | 軸と意味 |
 |---|---|
 | `frame_offsets` | 元 `T+1`。空フレームは同じoffsetが続き、候補IDはこのslice内の位置 |
-| `source_rows` | `M × V`。採用したカメラごとの元DINO行。未使用は `-1` |
+| `source_rows` | `M × V`。採用したカメラごとの元検出行。未使用は `-1` |
 | `positions_m`, `joint_valid`, `joint_rejection_codes` | `M × 17` 関節のコート座標(m)と実測の有効性。無効座標は0。骨長による無効化は `OUTSIDE_BOUNDS`、残差による無効化は `REPROJECTION` |
 | `inlier_mask` | `M × V × 17`。各関節の復元を支持した観測。各有効関節に2視点以上 |
 | `reprojection_px`, `reprojection_valid` | `M × V × 17`。有効な3Dと観測の残差(px)。支持外でも残差を測れた観測を含む |

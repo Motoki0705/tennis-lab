@@ -1,4 +1,4 @@
-"""Full-frame DINO person detection before tracking and pose estimation."""
+"""Full-frame person detection before tracking and pose estimation."""
 
 from __future__ import annotations
 
@@ -16,9 +16,11 @@ from src.submodules.models import (
     DinoPersonDetector,
     PersonDetectionRequest,
     PersonDetectionResult,
+    RFDetrPersonDetector,
     dino_batch_item_requirements,
     dino_source_assets,
 )
+from src.submodules.models.rfdetr.person_detector import RESOLUTION as RFDETR_RESOLUTION
 from src.tasks.person_tracking.duplicate_boxes import DuplicateMerge, merge_person_boxes
 from src.tennis_scene.pipeline.batching import (
     BatchAdapter,
@@ -34,7 +36,7 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelSpec,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
-from src.tennis_scene.pipeline.model_resources import dino_tensorrt
+from src.tennis_scene.pipeline.model_resources import dino_tensorrt, rfdetr_model
 from src.tennis_scene.pipeline.tensorrt_assets import tensorrt_identity
 from src.utils.inference_recording import span
 from src.utils.io import json_value
@@ -86,10 +88,12 @@ class PersonDetectionModule(InferenceComponent[PersonDetectionInput, PersonDetec
     def cache_identity(self) -> dict[str, bool]:
         return {'enabled': self.enabled, 'merge_duplicates': self.merge_duplicates}
 
-    def model_specs(self) -> dict[str, ModelSpec[DinoPersonDetector]]:
+    def model_specs(self) -> dict[str, ModelSpec[Any]]:
         config = self.config
         if not self.enabled:
             return {}
+        if config.detector == "rfdetr-l":
+            return {"detector": rfdetr_model(config)}
         runtime = config.runtime.dino_detector
         extension = None if runtime.engines else os.environ.get("TENNIS_LAB_DINO_EXTENSION")
         native = {} if extension is None else {"extension": Path(extension)}
@@ -137,10 +141,10 @@ class PersonDetectionModule(InferenceComponent[PersonDetectionInput, PersonDetec
         if not self.enabled:
             return PersonDetectionOutput(inputs.video.camera_id, np.zeros(inputs.video.num_frames + 1, np.int64),
                 np.zeros((0, 4), np.float32), np.zeros(0, np.float32), np.empty(0, np.int64))
-        detector: DinoPersonDetector = models.borrow("detector")
-        output = _DetectionRows(inputs.video, self.merge_duplicates)
+        detector: DinoPersonDetector | RFDetrPersonDetector = models.borrow("detector")
+        output = _DetectionRows(inputs.video, self.merge_duplicates, self.config.detector)
         packets = iter(OpenCVVideoFrameReader(inputs.video.path, max_frames=inputs.video.num_frames))
-        batch_size = self.config.runtime.dino_detector.batch_size
+        batch_size = self.config.detector_runtime.batch_size
         if batch_size == 1:
             for packet in packets:
                 output.write(packet.index, detector.predict(PersonDetectionRequest(packet.frame)))
@@ -158,13 +162,17 @@ class PersonDetectionModule(InferenceComponent[PersonDetectionInput, PersonDetec
     def open_batch(self, clip_id: str, inputs: PersonDetectionInput, models: ModelBorrower,
                    memory: SourceMemory) -> BatchSource:
         video = inputs.video
-        config = self.config.runtime.dino_detector
-        shape, item_bytes = dino_batch_item_requirements(
-            video.height, video.width, short_side=config.short_side, max_long_side=config.max_long_side)
         original_pixels = video.height * video.width
+        if self.config.detector == "rfdetr-l":
+            shape = (3, RFDETR_RESOLUTION, RFDETR_RESOLUTION)
+            item_bytes = original_pixels * 18 + 3 * RFDETR_RESOLUTION ** 2 * 20
+        else:
+            config = self.config.runtime.dino_detector
+            shape, item_bytes = dino_batch_item_requirements(
+                video.height, video.width, short_side=config.short_side, max_long_side=config.max_long_side)
         # A reader can retain one decoded frame and a replacement.
         memory.reserve(original_pixels * 6 + (video.num_frames + 1) * 416)
-        output = _DetectionRows(video, self.merge_duplicates)
+        output = _DetectionRows(video, self.merge_duplicates, self.config.detector)
 
         def units() -> Generator[BatchUnit, None, None]:
             for packet in OpenCVVideoFrameReader(video.path, max_frames=video.num_frames):
@@ -181,15 +189,15 @@ class PersonDetectionModule(InferenceComponent[PersonDetectionInput, PersonDetec
         return BatchSource(units(), write, output.finish)
 
     def infer_batch(self, units: Sequence[BatchUnit], models: ModelBorrower) -> Sequence[Any]:
-        detector: DinoPersonDetector = models.borrow(self.batch_alias)
+        detector: DinoPersonDetector | RFDetrPersonDetector = models.borrow(self.batch_alias)
         detections: list[PersonDetectionResult] = detector.predict_batch(
             [unit.payload for unit in units], batch_size=len(units))
         return detections
 
 
 class _DetectionRows:
-    def __init__(self, video: SourceVideo, merge_duplicates: bool) -> None:
-        self.video, self.merge_duplicates = video, merge_duplicates
+    def __init__(self, video: SourceVideo, merge_duplicates: bool, detector: str = "dino") -> None:
+        self.video, self.merge_duplicates, self.detector = video, merge_duplicates, detector
         self.offsets = [0]
         self.boxes: list[NDArray[np.float32]] = []
         self.scores: list[NDArray[np.float32]] = []
@@ -199,10 +207,10 @@ class _DetectionRows:
 
     def write(self, frame: int, detections: PersonDetectionResult) -> None:
         if frame + 1 != len(self.offsets):
-            raise ValueError("DINO frame order changed")
+            raise ValueError("Person detector frame order changed")
         rows: NDArray[np.int64] = np.arange(self.source_offset, self.source_offset + len(detections.scores), dtype=np.int64)
         self.source_offset += len(rows)
-        with span("postprocess", operation="merge_person_boxes", model="DINO"):
+        with span("postprocess", operation="merge_person_boxes", model=self.detector.upper()):
             keep, dropped = merge_person_boxes(frame, rows, detections.boxes_xyxy,
                                                 detections.scores, enabled=self.merge_duplicates)
         self.source_rows.append(rows[keep])
