@@ -427,6 +427,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "ball_refiner_3d.predict",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tasks.ball_refiner_3d.scripts.post_train": (
+        "ball_refiner_3d.post_train",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.player_detection.annotation.pose.__main__": (
         "player_detection.annotation.pose",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -666,6 +670,7 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.evaluate", "main", domain="ball_refiner_3d", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.predict", "main", domain="ball_refiner_3d", executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.post_train", "main", domain="ball_refiner_3d", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.review_dataset", "main", domain="ball_refiner_3d", executable_module=True),
     _runtime_boundary("ball_refiner_3d", "src.tasks.ball_refiner_3d.scripts.train"),
     _runtime_boundary("ball_refiner_3d", "src.tasks.ball_refiner_3d.scripts.generate_dataset"),

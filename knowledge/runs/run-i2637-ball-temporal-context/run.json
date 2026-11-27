@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8204305540952854139_2026-11-26T12-00-59-047145860Z_363728_ball-paper-temporal-x3d-i935",
+  "name": "ball-paper-temporal-x3d-i935",
+  "command": "bash knowledge/runs/run-i2637-ball-temporal-context/reproduce.sh gpu '/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/ball-query-desktop/ball_detection/train/query_controls/desktop-resume-20261112/dataset' '/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/ball-query-desktop/ball_detection/train/query_controls/desktop-resume-20261112/prepared/evaluation_manifest.json' outputs/ball-paper/context",
+  "provider": "codex",
+  "session": "01a21796-0065-7040-91b3-20885883a394",
+  "issue": "2637",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "0864dce25c4f3d2322994408ff5eacf1b1a80421",
+  "branch": "codex/parent-2627-issue-2637-primary",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2627-issue-2637-primary",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2627-issue-2637-primary",
+  "captured_at": "2026-11-27T03:33:58+09:00"
+}

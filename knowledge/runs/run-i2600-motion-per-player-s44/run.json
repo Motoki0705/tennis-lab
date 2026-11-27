@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8204322876538090976_2026-11-26T07-12-03-461909023Z_3231698_i2600-motion-per-player-s44",
+  "name": "i2600-motion-per-player-s44",
+  "command": "test \"$(git rev-parse HEAD)\" = 976a71056e562a19f6a646c8004c4f081282246a && test -z \"$(git status --porcelain -- src)\" && exec env OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 CUBLAS_WORKSPACE_CONFIG=:4096:8 .venv/bin/python -u -m src.tasks.ball_refiner_3d.scripts.post_train run --dataset /home/kamimura/projects/tennis-lab/.claude/worktrees/parent-1722-issue-2600-primary/outputs/ball_refiner_3d/post_training/prepared-e456f07c --manifest-sha256 e456f07c510b25ef4730336b18ae850090146c15cb1407c78d120ca53f4edea3 --prepared-sha256 2d4b16b9a2f38d7097759b763ae3b7c81018233168afffef06a2c06a7bdf2bd4 --checkpoint /home/kamimura/projects/tennis-lab/.worktree-outputs/parent-1722-issue-2567-primary/ball_refiner_3d/train/regression/net-contacts-s42-v1/logs/version_0/checkpoints/best.ckpt --checkpoint-sha256 b0d4399c23bf77bac115f46027cee545f99a41e9957c4e605f0eeb73ed16bde0 --mode per-player --seed 44 --epochs 12 --learning-rate 0.0003 --device cuda --output /home/kamimura/projects/tennis-lab/.claude/worktrees/parent-1722-issue-2600-primary/outputs/ball_refiner_3d/post_training/runs/per-player-s44",
+  "provider": "codex",
+  "session": "01a21693-b9ec-7a42-b1bf-819187f06309",
+  "issue": "2600",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "976a71056e562a19f6a646c8004c4f081282246a",
+  "branch": "codex/parent-1722-issue-2600-primary",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-1722-issue-2600-primary",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-1722-issue-2600-primary",
+  "captured_at": "2026-11-26T16:17:39+09:00"
+}
