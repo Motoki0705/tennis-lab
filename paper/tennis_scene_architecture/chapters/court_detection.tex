@@ -41,8 +41,8 @@ B02 & B03
 \label{fig:court-alignment}
 \end{figure}
 
-既存のコート報告で照合した版は\ev{court-corpus}{4}シーン・\ev{court-corpus}{8,415}枚・\ev{court-corpus}{141}軌道群だった。
-生成時に記録した\ev{court-corpus}{8,433}枚と区別し、以下では各比較に使った分割と枚数を示す。
+合成画像は生成時の記録で\ev{court-corpus}{8,433}枚、既存のコート報告で照合した版で
+\ev{court-corpus}{4}シーン、\ev{court-corpus}{8,415}枚、\ev{court-corpus}{141}軌道群だった。
 DINOv3\cite{dinov3}の凍結特徴を用いたコート検出器では、複数の幾何教師を画像の共通特徴から予測する。
 
 \subsection{合成シーン構成と実画像への転移}
@@ -53,7 +53,6 @@ B00から順にシーンを加えて、旧TennisCourtDetectorの実画像validat
 \ev{court-scenes}{4}シーンの\ev{court-scenes}{23.6} pxへ下がった。B01を加えた\ev{court-scenes}{2}シーンは
 B00単独より誤差が大きかった。シーン対を入れ替えた比較でも、撮影・描画特性で分けた
 異群ペアのKP平均\ev{court-pairs}{33.93} pxに対し、同群ペアは\ev{court-pairs}{83.34} pxだった。
-この実験は、同じ学習予算でも採用するシーンの組合せで実画像への転移が変わることを示す。
 
 \begin{table}[tbp]
 \centering
@@ -68,9 +67,8 @@ B00単独より誤差が大きかった。シーン対を入れ替えた比較�
 狭分布は撮影カメラの位置・向き・画角に近い画像から選び、広分布は方位・高さ・画角の区画から撮影近傍の外を含めて選んだ。
 収録動画で分けた実画像testの結果を表\ref{tab:court-viewpoints}と図\ref{fig:court-viewpoints}に示す。
 広分布では全体のKP平均誤差が\ev{court-views}{103.50→111.07} px、H成立率が\ev{court-views}{32.41→22.19\%}となった。
-図の動画再標本化区間に加え、seed別の点からは、片方の学習でKP誤差が改善してもH成立率が下がることが分かる。
-この小規模な設定では広分布の一貫した改善を観測できず、H成立後の再投影が厳しい基準を満たした画像も少なかった。
-シーン多様性の比較と視点分布だけの比較を踏まえ、スケールを上げた検証を第\ref{sec:limitations}章で述べる。
+seed別では、広分布でKP誤差が下がった学習でもH成立率は下がった。
+厳しい再投影基準に達した画像も少なかった。
 
 \begin{table}[tbp]
 \centering
@@ -91,12 +89,10 @@ B00単独より誤差が大きかった。シーン対を入れ替えた比較�
 
 推論ではKPの対応からホモグラフィ候補を作り、画像内で投影線に沿うLINEの支持を調べて候補を選ぶ。
 共同最適化では線の位置と信頼できるKPを使い、交点が部分的に隠れていても線の観測を活用する。
-図\ref{fig:court-real}の保存結果では、線の支持率はKPのみから共同最適化へ進むと、
-たとえばlocal01で順方向・逆方向が\ev{court-h}{73.9/81.8\%}から\ev{court-h}{99.4/99.8\%}へ上がった。
-この支持率は観測したLINEと投影された規格線の整合を測る。
-固定カメラでは、動画単位の共有ホモグラフィを各クリップへ渡し、別フレームで線の変位を点検できる。
-Meijiでは\ev{court-shared}{69}クリップ・\ev{court-shared}{276}カメラ区間で共有写像を利用でき、
-証拠不足などに対する警告は\ev{court-shared}{159}区間に残した。
+観測LINEと投影した規格線の順方向・逆方向の支持率は、local01でKPのみの\ev{court-h}{73.9/81.8\%}から、
+共同最適化の\ev{court-h}{99.4/99.8\%}へ上がった（図\ref{fig:court-real}）。
+Meijiでは動画単位の共有写像を\ev{court-shared}{69}クリップ・\ev{court-shared}{276}カメラ区間で利用できた。
+別フレームの線の変位を診断し、証拠不足などの警告を\ev{court-shared}{159}区間に残した。
 
 \newcommand{\courtcomparison}[1]{%
   \includegraphics[width=.321\linewidth,height=.17\textheight,keepaspectratio]{figures/court/#1.jpg}&
@@ -118,10 +114,8 @@ Meijiでは\ev{court-shared}{69}クリップ・\ev{court-shared}{276}カメラ�
 \label{fig:court-real}
 \end{figure}
 
-合成教師にはSfMのアライメント誤差も入る。図\ref{fig:court-drift}では、各シーンで登録画像を撮影順に前後に分け、
-片方の区間だけに現れる地面トラックを同じ空間セル内で比べた。
-再構成高さの差がシーン全体に一様に現れるわけではなく、比較に使えるセルの分布も異なった。
-この診断は時変な復元誤差と局所的な地面の凹凸の双方を含む。
+各シーンの登録画像を撮影順に前後に分け、一方の区間だけに現れる地面トラックを同じ空間セル内で比べた。
+再構成した地面の高さ差はシーン内でばらつき、比較できたセルの分布もシーン間で異なった（図\ref{fig:court-drift}）。
 
 \begin{figure}[tbp]
 \centering
@@ -129,4 +123,3 @@ Meijiでは\ev{court-shared}{69}クリップ・\ev{court-shared}{276}カメラ�
 \caption{SfM登録画像の前半と後半で求めた地面の高さ差（後半−前半、cm）。両区間に独立した支持点をもつセルを表示する。}
 \label{fig:court-drift}
 \end{figure}
-\FloatBarrier

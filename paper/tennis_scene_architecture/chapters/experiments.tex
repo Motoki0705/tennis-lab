@@ -4,22 +4,17 @@
 \subsection{評価対象と指標}
 
 標準経路について、復元の成立、幾何整合、処理性能を評価する。
-クリップの生成件数には停止を含む全クリップを分母とし、出力の有効性被覆は表ごとに
-クリップ、選手フレーム、関節点のいずれを分母とするかを定める。
-再投影残差は、コート座標で推定した点を評価視点へ戻した画素位置と参照の距離である。
-人物の疑似参照との整合と、モデルを変更した場合の座標差も測る。
-これらはいずれも、独立に計測したコート座標上の絶対誤差とは評価対象が異なる。
+生成率の分母は停止を含む全クリップとし、出力の被覆は有効性マスクから集計する。
+再投影残差は、評価視点に投影した推定点と参照との画素距離である。
+人物の疑似参照との整合と、実行条件間の座標差も測る。
 
 \subsection{多視点復元の幾何整合と被覆}
 
-ボールはMeiji 3camの\ev{lovo}{1}クリップを固定のカメラ幾何で再生した。
-主評価は元フレーム\ev{lovo}{[505,1010)}である。
-leave-one-view-out（LOVO）はカメラを\ev{lovo}{1}台ずつ球の復元から外し、留保視点の参照へ再投影する。
-カメラ校正は全視点由来の固定値で、球の参照には採点が認められた観測点と推定点を含む。
-同一視点・時刻の評価を全比較方式でできた共通\ev{lovo}{768/1,462}点で、基準方式の中央値は
-\ev{lovo}{8.97} px、P90は\ev{lovo}{25.40} pxだった。
-表\ref{tab:lovo}は、LOESSの比較も同じ採点集合で示す。基準方式が単独で採点できた範囲は
-\ev{lovo}{825/1,462}点であり、共通集合の精度と併せて読む。
+球の主評価はMeiji 3camの\ev{lovo}{1}クリップの元フレーム\ev{lovo}{[505,1010)}を対象とした。
+全視点由来の校正を固定し、カメラを\ev{lovo}{1}台ずつ球の復元から外して留保視点に再投影した（leave-one-view-out、LOVO）。
+球の参照には採点可能な観測点と推定点を含めた。
+共通の\ev{lovo}{768/1,462}点で、基準方式の再投影残差は中央値\ev{lovo}{8.97} px、P90 \ev{lovo}{25.40} pxだった。
+基準方式の採点範囲は\ev{lovo}{825/1,462}点だった。LOESSの有無による差を表\ref{tab:lovo}に示す。
 
 \begin{table}[tbp]
 \centering
@@ -30,16 +25,12 @@ leave-one-view-out（LOVO）はカメラを\ev{lovo}{1}台ずつ球の復元か�
 \input{tables/lovo}
 \end{table}
 
-人物のみのMeiji 4cam一括実行では、生成\ev{full-coverage}{55}件に対して関節点の有効性は
-\ev{full-coverage}{96.04\%}、SMPLの有効性は\ev{full-coverage}{95.79\%}だった（表\ref{tab:full-video}）。
-同じ選手IDの採用観測が単一視点に限られる区間では、3Dの関節が欠測になった。
-被覆はパイプラインが有効として保存した割合であり、人物IDや関節位置の正解率は別途評価を要する。
+生成済みクリップの関節点被覆は\ev{full-coverage}{96.04\%}、SMPLの被覆は\ev{full-coverage}{95.79\%}だった（表\ref{tab:full-video}）。
+同じ選手IDの採用観測が単一視点の区間では、3D関節が欠測した。
 
-保存済み多視点SMPLを視点へ射影した人物の疑似参照では、対応したViTPoseとの関節誤差の中央値が
-\ev{pseudo-reference}{3.42} px（有限\ev{pseudo-reference}{434,946}関節点）だった。
-対象は\ev{pseudo-reference}{6,844}画像の\ev{pseudo-reference}{26,276}参照人物で、ベンチマークと姿勢採点器の
-接続を確認した値である。参照には固定校正と復元済みの人体モデルが入り、比較する観測とも由来が重なる。
-少数の選手を選んで作った参照のため、全画面人物検出の適合率はこの検証で集計していない。
+姿勢採点器との接続検証では、保存済み多視点SMPLを固定校正で射影し、得られた疑似参照とViTPoseを対応付けた。
+\ev{pseudo-reference}{6,844}画像の\ev{pseudo-reference}{26,276}参照人物について、
+誤差が有限の\ev{pseudo-reference}{434,946}関節点で中央値は\ev{pseudo-reference}{3.42} pxだった。
 
 \subsection{登録動画の一括処理}
 
@@ -47,28 +38,26 @@ leave-one-view-out（LOVO）はカメラを\ev{lovo}{1}台ずつ球の復元か�
 RTX 5060 Ti上のTensorRT FP16と横断バッチを使って\ev{full-timing}{69}クリップを処理した。
 CLI起動から処理・集計・書き出し終了まで\ev{full-timing}{12時間10分58秒}、
 サンプル最大のVRAMは\ev{full-timing}{1.76} GiB、プロセスRSSは\ev{full-timing}{6.16} GiBだった。
-生成は\ev{full-timing}{55件}で、停止\ev{full-timing}{14件}すべての判定を記録した。
+生成は\ev{full-timing}{55件}、停止は\ev{full-timing}{14件}だった。全クリップの結果を保存し、CLIは非ゼロで終了した。
 内訳は人物対応\ev{full-stops}{13件}とコート向き\ev{full-stops}{1件}である。
 人物対応では選手採用境界で次点が近いものが\ev{full-stops}{9件}、片側の人数不足が\ev{full-stops}{2件}、
 長いトラック区間の割当が未決のものが\ev{full-stops}{2件}だった。
-この計測は全対象の処理結果を保存し、クリップ単位の失敗が残ったことをCLIの非ゼロ終了で伝えた。
 
 \begin{table}[tbp]
 \centering
-\caption{Meiji 4camの人物のみの全件実行。生成率は全クリップが分母。
-関節点は生成済みクリップの選手・元フレーム・部位、SMPLは選手・元フレームが分母。}
+\caption{Meiji 4camの人物のみの全件実行。生成した\ev{full-coverage}{55}クリップについて、
+関節点は選手・元フレーム・部位、SMPLは選手・元フレームが分母。}
 \label{tab:full-video}
 \small
 \input{tables/full_video}
 \end{table}
 
-GPUが遊休だった区間とCPU計時を突き合わせると、主スレッドでの人物の三角測量が最も長かった。
-実行系を高速化した後も、候補点の生成・再投影・再推定を行うCPU段が全体時間に残る。
+GPUの遊休区間とCPU計時を突き合わせると、最も長いCPU段は主スレッドで候補点の生成・再投影・再推定を行う人物三角測量だった。
 
 \subsection{実行系の統制アブレーション}
 
-同じ実装版、同じ固定コート、カメラごとに\ev{runtime-setup}{883}元フレームを含む\ev{runtime-setup}{3}クリップ
-（clip\_000、clip\_037、clip\_027）、\ev{runtime-setup}{4}カメラ、同じRTX 5060 Tiを用いた。
+同じ収録の\ev{runtime-setup}{3}クリップ（clip\_000、clip\_037、clip\_027）について、実装版、固定コート、RTX 5060 Tiを揃えた。
+\ev{runtime-setup}{4}カメラを用い、カメラごとに計\ev{runtime-setup}{883}元フレームを処理した。
 ボールを無効にして、各条件を空の独立storeで固定順に\ev{runtime-setup}{1}回ずつ実行した。
 同じ標準人物経路で、逐次実行からモデル共有、横断バッチ、TensorRT FP16を順に加えた。
 CLI時間はC1で各プロセスの経過を合計し、資源ピークは最大を採った。C4のエンジン準備は計時外である。
@@ -95,9 +84,7 @@ C1より\ev{runtime-metrics}{500.17}秒短くなった（表\ref{tab:runtime}）
 PyTorch FP16のCLI時間はC2より\ev{runtime-metrics}{20.66}秒長かった。
 互換なcropを集約したままTensorRTに切り替えたC4は、C3より\ev{runtime-metrics}{387.50}秒短く、
 C1比では\ev{runtime-metrics}{1.66}倍の速度となった（図\ref{fig:runtime}）。
-Peak VRAMはC1比で約\ev{runtime-metrics}{61\%}、Peak RSSはC1比で約\ev{runtime-metrics}{50\%}低下した。
-高充填の実行にTensorRTを組み合わせた条件で処理時間とメモリの低下を観測した。
-横断バッチを無効にしたTensorRT条件の効果はこの設計からは推定できない。
+C1比でピークVRAMは約\ev{runtime-metrics}{61\%}、ピークRSSは約\ev{runtime-metrics}{50\%}低下した。
 
 \begin{table}[tbp]
 \centering
@@ -113,5 +100,4 @@ C2の共通関節座標はC1と完全一致し、C3の最大差は\ev{runtime-pa
 C4の共通有効\ev{runtime-parity}{59,533}点では、中央値差\ev{runtime-parity}{1.81} mm、
 P95 \ev{runtime-parity}{9.06} mm、最大\ev{runtime-parity}{0.698} mだった。
 SMPLの有効フレームは\ev{runtime-parity}{3,496→3,495}となった。
-代表的な差が小さい一方、最大差と有効性マスクは、実行設定で個別の出力が変わりうることを示す。
 \FloatBarrier
