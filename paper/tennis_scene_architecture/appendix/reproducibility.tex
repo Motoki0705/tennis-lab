@@ -1,2 +1,40 @@
 \section{再現手順と追加資料}
 \label{app:reproducibility}
+
+\subsection{入力と公開サンプル}
+
+再構成を追試するときは、カメラID・同期・解像度・FPS・元フレーム数をmanifestで固定する。
+公開サンプルは \href{https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample}{テニス多視点サンプル}
+から取得し、リポジトリのデータroot基準で動画パスを指定する。
+指定したモデル重み、外部ライブラリ、DINOの拡張、身体モデル資産を先に解決する。
+配布版の再現と当時のv2保存については、
+\href{https://github.com/Motoki0705/tennis-lab/blob/main/knowledge/nodes/tennis_scene/000028-run-multiview-sample-standard-pipeline-20261021.md}{公開サンプルの実行記録}
+に固定入力のハッシュと実行版がある。
+
+現行の標準入口は次の通りである。指定する動画は同期済みの同じクリップである。
+イベント方式は公開シーンの版に合わせて明示する。GPU実行はリポジトリの共有キューを用いる。
+
+\begin{verbatim}
+.venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
+  'video_paths=[samples/cam0.mp4,samples/cam1.mp4,samples/cam2.mp4]' \
+  'camera_ids=[cam0,cam1,cam2]' event_detection.method=rule
+\end{verbatim}
+
+一括入口は \texttt{run\_video\_batch} で、登録済み動画のID、dataset、pipeline設定と上書き設定を渡す。
+固定コートを使う実験は共有成果物のdigestを指定し、プレイヤーのみの設定はそれをrunの入力記録へ保存する。
+比較では条件ごとに空のstoreを用意し、出力を読む際は採用した依存鎖と配列のchecksumを照合する。
+
+\subsection{採点単位と証拠の追跡}
+
+コート検出のKP誤差は各比較のモデル入力座標、球の位置と再投影の誤差は元画像座標で測定した。
+人物のIDF1は参照人物・視点・フレームを単位とするID対応、pair F1は異なる視点での同一人物の対応を採点する。
+被覆と精度は対応する母数を併記する。精度を共通有効集合で比べる場合は、共通集合までに除外された点の件数も記録する。
+時間とメモリの計測は起点・終点・同期設定・プロセスの数を固定し、モデルの読込と推論の区間を分ける。
+
+原稿ディレクトリの \texttt{evidence/claims.md} に、本文・表・図の指標、評価条件、対応する保存データと版を記した。
+\texttt{evidence/figures.md} では掲載画像のコピーと再生成方法を示す。
+GPU実験はこれらの元記録から追試できる。掲載物は保存値を使うため、PDFの生成と図表の照合はCPUで行える。
+
+\begin{verbatim}
+bash paper/tennis_scene_architecture/build.sh --check-tracked
+\end{verbatim}
