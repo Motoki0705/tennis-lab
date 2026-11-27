@@ -807,6 +807,7 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
         CLAUDE_CODE_SESSION_ID="private-session-a-unique",
         PARENT_GH_STATE=str(state_path),
         PARENT_GH_CALLS=str(calls_path),
+        AGENTS_TEST_DIRECT_MERGE_GATE="1",
     )
     # Parent operations must never reach the host Herdr executable. Display
     # integration tests explicitly replace this sentinel with their fake CLI.

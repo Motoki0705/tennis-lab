@@ -12,10 +12,20 @@
 
 `review-inspect` は各PRの `draft`（不明なら `null`）と、`review_candidates` の対象外になった理由を `excluded_reason` に返す。理由は `not_open`、`draft`、`draft_status_unknown`、`records_only`、`inspection_error`。取得に失敗した場合の詳細は各PRの `errors` を参照する。
 
-観測間隔の間にcheckoutの版が変わった場合、controllerは保存済みの進行段階と中断理由を `parent_wait` に記録し、
-終了コード75を返す。中断の通知は新しく起動したCLIから通常の通知経路で配送する。
-`wait-merge`・`merge-status` と `controller.log` で理由を確認し、`merge-continue --run-id RUN --instruction-file FILE` で同じ進行を再開できる。
-マージ後のCI待ちから再開する場合は、保存したmerge commitを照合する。
+通常の起動では、毎回異なるIDで `tennis-lab-merge-gate-<launch ID>` systemd user serviceを作る。起動元の固定HEADから
+`<state_dir>/merge-gate-checkouts/<launch ID>` に運用コードとqueue読取用モジュールを展開し、共有 `.venv` をリンクする。
+運用コードに未コミット変更があれば起動を拒否する。serviceは準備完了を通知してから進行を開始し、停止後に専用worktreeを回収する。
+controllerと標準review runnerは固定した版を使い、保存済みの `checkout` でGit照会・fetch・レビュー用worktree作成を行う。
+`git-sync` と共有するlockはレジストリ処理の区間で取得する。
+
+起動の失敗は `controller_start_failed` として進行に記録する。CLIのエラーと `controller.log` で原因を確認し、
+`merge-continue --run-id RUN --instruction-file FILE` で再開できる。
+稼働中のcontrollerへの合流と、checkout更新で `wait-merge` が75を返した場合の再実行は
+[親CLIの待機](../parent/README.md#排他とio) を参照する。
+
+メインcheckoutから `merge_gate.py --state` を直接実行した場合は、同じcheckoutの版を保護する。
+観測間隔で版が変わると中断を `parent_wait` に記録して75を返し、新しいCLIが通知を配送する。
+この進行を再開する際、マージ後のCI待ち段階に保存されたmerge commitは引き続き照合する。
 
 `review_capacity_deferred` で中断した場合は、容量回復後に `merge-continue` で同じレビュー回を再試行できる。
 レビューCLI未起動の証拠とランナーの終了を照合したときに起動枠が戻る。各試行の記録は

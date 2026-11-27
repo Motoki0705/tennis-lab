@@ -256,7 +256,7 @@ class Engine:
             self.state["status"] = "parent_wait"
         self.emit("parent_wait", pr=target["number"], reason=reason)
 
-    def block_start(self, pr: int, reason: str) -> None:
+    def block_start(self, pr: int | None, reason: str) -> None:
         if self.state["status"] in {"completed", "transferred"}:
             return
         # No step ran. Preserve each active stage for an explicit continuation

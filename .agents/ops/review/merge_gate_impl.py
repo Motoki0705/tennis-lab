@@ -34,6 +34,10 @@ from parent.snapshot import snapshot
 from parent.state import Store
 
 
+class ControllerRunning(ValueError):
+    pass
+
+
 def state_path(store: Store, identifier: str) -> Path:
     return store.directory / "progressions" / run_id(identifier) / "state.json"
 
@@ -46,7 +50,7 @@ def controller_lock(path: Path) -> Iterator[None]:
         try:
             fcntl.flock(lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError as exc:
-            raise ValueError(
+            raise ControllerRunning(
                 "automatic progression controller is already running"
             ) from exc
         yield
@@ -370,35 +374,30 @@ def view(path: Path) -> dict[str, Any]:
 
 
 def start(path: Path) -> None:
-    # The child takes a nonblocking lifetime lock before doing any work. Two
-    # competing launchers can never run two reviewers/workers or merge twice.
+    from lib.ops_review.controller_service import launch
+    from lib.ops_review.progression_backend import LiveBackend
+
+    path = path.resolve()
     state = read(path)
-    with (path.parent / "controller.log").open("ab") as log:
-        subprocess.Popen(
-            [
-                sys.executable,
-                str(Path(__file__).with_name("merge_gate.py")),
-                "--state",
-                str(path),
-            ],
-            cwd=state["checkout"],
-            env={
-                **os.environ,
-                "PYTHONPATH": os.pathsep.join(
-                    filter(
-                        None,
-                        [
-                            str(Path(__file__).resolve().parents[1]),
-                            os.environ.get("PYTHONPATH"),
-                        ],
+    try:
+        launch(path, Path(state["checkout"]))
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        # Keep an unsuccessful launch visible to waiters. A concurrent
+        # controller may already own the run or have advanced its state.
+        try:
+            with controller_lock(path):
+                if read(path) == state:
+                    store = Store(path.parents[2])
+                    Engine(path, LiveBackend(state, store), state=state).block_start(
+                        None, "controller_start_failed"
                     )
-                ),
-            },
-            stdin=subprocess.DEVNULL,
-            stdout=log,
-            stderr=log,
-            start_new_session=True,
-        )
+        except ControllerRunning:
+            pass
+        except (OSError, ValueError, subprocess.SubprocessError) as failure:
+            print(
+                f"could not record controller start failure: {failure}", file=sys.stderr
+            )
+        raise ValueError(f"could not start merge controller: {exc}") from exc
 
 
 def continue_progression(
@@ -517,7 +516,9 @@ def completion(store: Store, repo: str, parent: int, pr: int) -> dict[str, Any]:
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--state", type=Path, required=True)
-    parser.add_argument(
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--launch-id", help=argparse.SUPPRESS)
+    mode.add_argument(
         "--deliver-checkout-interruption", action="store_true", help=argparse.SUPPRESS
     )
     args = parser.parse_args()
@@ -529,7 +530,15 @@ def main() -> int:
     try:
         with controller_lock(path), ExitStack() as leases:
             state = read(path)
+            if args.launch_id is not None:
+                from lib.ops_review.controller_service import require_checkout
+
+                require_checkout(path, args.launch_id, Path(state["checkout"]))
             engine = Engine(path, LiveBackend(state, store), state=state)
+            if args.launch_id is not None:
+                from parent.local_jobs import notify_ready
+
+                notify_ready()
             if args.deliver_checkout_interruption:
                 if state.get("checkout_interrupted"):
                     engine.deliver()
@@ -561,6 +570,6 @@ def main() -> int:
         except (OSError, subprocess.SubprocessError) as exc:
             print(f"checkout interruption notice pending: {exc}", file=sys.stderr)
         return 75
-    except (ValueError, OSError) as exc:
+    except (ValueError, OSError, subprocess.SubprocessError) as exc:
         print(str(exc), file=sys.stderr)
         return 2

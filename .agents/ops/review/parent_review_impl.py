@@ -105,9 +105,16 @@ def require_matching_runtime(
 
 
 def review_runner(state: dict[str, Any]) -> Runtime:
-    return Runtime(
-        Path(state.get("options", {}).get("agent_exec", OPS / "lib/agent_exec.sh"))
-    )
+    # Use the controller's copy even if an existing request named the
+    # repository's standard runner explicitly. Custom runners are opt-in.
+    pinned = OPS / "lib/agent_exec.sh"
+    configured = state.get("options", {}).get("agent_exec")
+    if configured is not None:
+        runner = Path(configured)
+        deployed = Path(state["checkout"]) / ".agents/ops/lib/agent_exec.sh"
+        if runner.resolve() != deployed.resolve():
+            return Runtime(runner)
+    return Runtime(pinned)
 
 
 def ended_runtime(runner: Runtime, runtime: Path) -> dict[str, Any]:

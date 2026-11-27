@@ -6,7 +6,6 @@ import argparse
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import time
@@ -22,6 +21,7 @@ from lib.checkout_lock import common_directory
 from lib.ops_review.progression import CI_TIMEOUT, RateWait
 from lib.ops_review.progression_backend import LiveBackend
 from lib.ops_review.review_locks import pr_lease
+from lib.worktree_service import OPS_SOURCE_PATHS, worktree_properties
 
 from . import worker_followup, worker_slots
 from .github import GitHub
@@ -38,21 +38,6 @@ FORWARDED_ENV = (
     "XDG_CONFIG_HOME",
     "XDG_STATE_HOME",
 )
-MONITOR_SOURCE_PATHS = (
-    ".agents/ops",
-    "src/__init__.py",
-    "src/utils/__init__.py",
-    "src/utils/training_queue.py",
-)
-
-
-def _exec_property(setting: str, *argv: str | Path) -> str:
-    # systemd parses Exec* properties itself. Quote each argument, disable
-    # shell-style environment substitution, and escape unit specifiers.
-    quoted = " ".join(
-        json.dumps(str(arg), ensure_ascii=False).replace("%", "%%") for arg in argv
-    )
-    return f"--property={setting}=:{quoted}"
 
 
 def _monitor_checkout(store: Store, chain: str) -> Path:
@@ -67,60 +52,18 @@ def start(
     checkout = _monitor_checkout(store, chain)
     source = Path(__file__).resolve().parents[3]
     head = git("rev-parse", "--verify", "HEAD^{commit}", cwd=source).decode().strip()
-    if git("status", "--porcelain", "--", *MONITOR_SOURCE_PATHS, cwd=source).strip():
+    if git("status", "--porcelain", "--", *OPS_SOURCE_PATHS, cwd=source).strip():
         raise ValueError("commit the worker monitor source before starting a follow-up")
-    common = common_directory(source)
     directory = store.directory.resolve()
-    checkout.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
-    if checkout.exists():
-        raise ValueError("worker follow-up checkout already exists")
-    git_bin, ln = shutil.which("git"), shutil.which("ln")
-    if git_bin is None or ln is None:
-        raise ValueError("worker follow-up requires git and ln")
     # The service owns the pin from setup to cleanup. A linked worktree shares
     # the registry's Git common lock for short transactions and loads its own
     # code throughout the wait, including when it starts the next runner.
-    setup = [
-        _exec_property(
-            "ExecStartPre",
-            git_bin,
-            f"--git-dir={common}",
-            "worktree",
-            "add",
-            "--detach",
-            "--no-checkout",
-            checkout,
-            head,
-        ),
-        _exec_property(
-            "ExecStartPre",
-            git_bin,
-            "-C",
-            checkout,
-            "restore",
-            "--source=HEAD",
-            "--worktree",
-            "--",
-            *MONITOR_SOURCE_PATHS,
-        ),
-        _exec_property(
-            "ExecStartPre",
-            ln,
-            "--symbolic",
-            "--",
-            Path(sys.prefix).resolve(),
-            checkout / ".venv",
-        ),
-        _exec_property(
-            "ExecStopPost",
-            git_bin,
-            f"--git-dir={common}",
-            "worktree",
-            "remove",
-            "--force",
-            checkout,
-        ),
-    ]
+    setup = worktree_properties(
+        checkout,
+        common=common_directory(source),
+        head=head,
+        venv=Path(sys.prefix).resolve(),
+    )
     ops = checkout / ".agents/ops"
     # A transient service is forked by the user manager. setsid alone would
     # still leave a descendant of an agent runner subject to subreaper cleanup.
