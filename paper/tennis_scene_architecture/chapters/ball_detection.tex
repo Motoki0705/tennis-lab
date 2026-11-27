@@ -107,10 +107,11 @@ X3Dと形状対照は\ev{ball-intervention}{1280×720}、i935は\ev{ball-interve
 学習には\ev{ball-train-plan}{30,478}パックを使い、初期重みの共通部分と抽出順を揃えた。
 各条件は\ev{ball-train-plan}{4,700}更新、更新当たり\ev{ball-train-plan}{128}枚、計\ev{ball-train-plan}{601,600}入力フレームだった。
 単フレームの入力はRGBで、\ev{ball-train-plan}{T=8とT=32}ではRGBに各窓から計算したMDDを加えた。
-全validationの\ev{ball-train-val}{117,358}件（observed \ev{ball-train-val}{85,473}件）を採点した。
+全validationの\ev{ball-train-val}{117,358}件のうち、\ev{ball-train-val}{20} px以内率を含む位置指標は
+観測\ev{ball-train-val}{85,473}件（observed）で集計した。
 存在F1には条件ごとにvalidation上のFPRとFNRの平均を最小にする閾値を使い、位置には閾値適用前の予測を使った。
 
-全validationの\ev{ball-train-val}{20} px以内率は単フレームの\ev{ball-train-val}{1.66\%}から、
+位置命中率は単フレームの\ev{ball-train-val}{1.66\%}から、
 \ev{ball-train-plan}{T=8}で\ev{ball-train-val}{40.90\%}、\ev{ball-train-plan}{T=32}で\ev{ball-train-val}{44.23\%}に上がった。
 Chat、Meiji 3cam、TrackNet game9のすべてで上がり、同じ\ev{ball-train-anchor}{144}アンカーでも
 \ev{ball-train-anchor}{2/88→40/88→45/88}と増えた（表\ref{tab:ball-training}、図\ref{fig:ball-training}）。

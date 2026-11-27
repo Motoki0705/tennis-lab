@@ -1,35 +1,35 @@
 # 推敲記録
 
-初稿は #2720 の統合コミット @TICK@c16959632754b66778a6ef1350682e13082f814c@TICK@。要旨・第1〜11章・付録の全行を読み、実験条件と採点対象は各節の設定または表注にまとめ、解釈に必要な未評価事項を第10章に集めた。
+初稿は #2720 の統合コミット `c16959632754b66778a6ef1350682e13082f814c`。要旨・第1〜11章・付録の全行を読み、実験条件と採点対象は各節の設定または表注にまとめ、解釈に必要な未評価事項を第10章に集めた。
 
 ## 留保と説明の反復
 
-対象は @TICK@main.tex@TICK@、@TICK@chapters/*.tex@TICK@、@TICK@appendix/reproducibility.tex@TICK@ の13ファイル。各ファイルの空白・改行を除き、次の正規表現で数えた。合計はパターン別の一致数の和で、同じ箇所に複数パターンが当たる場合を含む。
+対象は `main.tex`、`chapters/*.tex`、`appendix/reproducibility.tex` の13ファイル。各ファイルの空白・改行を除き、次の正規表現で数えた。合計はパターン別の一致数の和で、同じ箇所に複数パターンが当たる場合を含む。
 
 | パターン | 初稿 | 改稿 |
 | --- | ---: | ---: |
-| @TICK@ただし@TICK@ | 0 | 0 |
-| @TICK@必ずしも@TICK@ | 0 | 0 |
-| @TICK@とは限らない@TICK@ | 1 | 0 |
-| @TICK@条件による@TICK@ | 0 | 0 |
-| @TICK@留意@TICK@ | 0 | 0 |
-| @TICK@注意が必要@TICK@ | 0 | 0 |
-| @TICK@とは異なる@TICK@ | 0 | 0 |
-| @TICK@は別の評価@TICK@ | 1 | 0 |
-| @TICK@とは別@TICK@ | 0 | 0 |
-| @TICK@とは区別@TICK@ | 0 | 0 |
-| @TICK@に限られる@TICK@ | 1 | 0 |
-| @TICK@にすぎない@TICK@ | 0 | 0 |
-| @TICK@は別途@TICK@ | 1 | 0 |
-| @TICK@だけでは@TICK@ | 1 | 0 |
-| @TICK@一概に@TICK@ | 0 | 0 |
-| @TICK@と区別し@TICK@ | 2 | 1 |
-| @TICK@(?:評価対象\|条件)が異なる@TICK@ | 3 | 0 |
-| @TICK@別途評価\|個別に評価する必要@TICK@ | 2 | 0 |
-| @TICK@採点対象から外れる@TICK@ | 1 | 0 |
-| @TICK@別の統制比較@TICK@ | 1 | 0 |
-| @TICK@この設計からは推定できない@TICK@ | 1 | 0 |
-| @TICK@この(?:支持率\|単体測定\|介入\|事例\|実験\|診断\|計測)は@TICK@ | 7 | 0 |
+| `ただし` | 0 | 0 |
+| `必ずしも` | 0 | 0 |
+| `とは限らない` | 1 | 0 |
+| `条件による` | 0 | 0 |
+| `留意` | 0 | 0 |
+| `注意が必要` | 0 | 0 |
+| `とは異なる` | 0 | 0 |
+| `は別の評価` | 1 | 0 |
+| `とは別` | 0 | 0 |
+| `とは区別` | 0 | 0 |
+| `に限られる` | 1 | 0 |
+| `にすぎない` | 0 | 0 |
+| `は別途` | 1 | 0 |
+| `だけでは` | 1 | 0 |
+| `一概に` | 0 | 0 |
+| `と区別し` | 2 | 1 |
+| `(?:評価対象\|条件)が異なる` | 3 | 0 |
+| `別途評価\|個別に評価する必要` | 2 | 0 |
+| `採点対象から外れる` | 1 | 0 |
+| `別の統制比較` | 1 | 0 |
+| `この設計からは推定できない` | 1 | 0 |
+| `この(?:支持率\|単体測定\|介入\|事例\|実験\|診断\|計測)は` | 7 | 0 |
 | **合計** | **22** | **1** |
 
 改稿で数えた「と区別し」の1件は、第6.1節でGSIの補間と実観測マスクの意味を規定する文。各節を通読し、パターンに該当しない場合も、結果を繰り返す文と表注にある採点条件の再掲を確認した。
@@ -38,9 +38,9 @@
 
 | 対象 | 照合結果 |
 | --- | --- |
-| @TICK@\ev{ID}{値}@TICK@ | 根拠ID 49種、IDと値の437組が一致。掲載箇所は527 → 522。 |
-| @TICK@\ev@TICK@ 外の数字列 | 本文・付録の40種が一致。下の変更一覧で値・単位・指標と母数の対応も照合。 |
-| 出典 | @TICK@\cite@TICK@ 16箇所の引数と順序、文献18件、@TICK@\href@TICK@ の外部URL 2件、@TICK@references.bib@TICK@ のバイトが一致。 |
+| `\ev{ID}{値}` | 根拠ID 49種、IDと値の437組が一致。掲載箇所は527 → 522。 |
+| `\ev` 外の数字列 | 本文・付録の40種が一致。下の変更一覧で値・単位・指標と母数の対応も照合。 |
+| 出典 | `\cite` 16箇所の引数と順序、文献18件、`\href` の外部URL 2件、`references.bib` のバイトが一致。 |
 | 図表と固定資料 | 生成表14点、図版28ファイル、根拠と固定資料の台帳がバイト一致。原稿内の表3点の全セルと図版・表の入力先も一致。 |
 | 構造 | 図表・章節などのラベル43個、付録の実行コマンドが一致。 |
 
@@ -48,17 +48,17 @@
 
 | IDと値 | 本文・図表で参照できる箇所 |
 | --- | --- |
-| @TICK@\ev{schema}{0}@TICK@ | 理由コードと有効マスクは付録A.2。無効座標の保存値は第3.2節。 |
-| @TICK@\ev{point-rejections}{1}@TICK@ | 復元出力の欠落とモデルの球の有効フレーム不足を付録A.2の一文に集約。 |
-| @TICK@\ev{track-3d-4cam}{55}@TICK@ | 表7の共通クリップ行。 |
-| @TICK@\ev{ball-footprint}{339}@TICK@ | 図10のキャプション。 |
-| @TICK@\ev{ball-intervention}{88}@TICK@ | 表10の位置・偽陰性の分母。 |
+| `\ev{schema}{0}` | 理由コードと有効マスクは付録A.2。無効座標の保存値は第3.2節。 |
+| `\ev{point-rejections}{1}` | 復元出力の欠落とモデルの球の有効フレーム不足を付録A.2の一文に集約。 |
+| `\ev{track-3d-4cam}{55}` | 表7の共通クリップ行。 |
+| `\ev{ball-footprint}{339}` | 図10のキャプション。 |
+| `\ev{ball-intervention}{88}` | 表10の位置・偽陰性の分母。 |
 
-照合には両版の同一パスを @TICK@git show <コミット>:<パス>@TICK@ で取り出した。本文・付録と @TICK@tables/*.tex@TICK@ から @TICK@\\ev\{([a-z0-9-]+)\}\{([^{}]+)\}@TICK@ の捕捉組を抽出し、組の集合と出現回数を比較した。本文・付録ではこのマクロと図版の組版オプションを除き、@TICK@[0-9]+(?:[.,][0-9]+)*@TICK@ で数字列の集合を比較した。数字列にはモデル名やコード識別子も含まれるため、出現回数が変わった箇所は変更前後の文脈で照合した。図・表は @TICK@\includegraphics@TICK@ と @TICK@\input@TICK@ の入力先、原稿内の @TICK@tabular@TICK@ の全セルを比較した。
+照合には両版の同一パスを `git show <コミット>:<パス>` で取り出した。本文・付録と `tables/*.tex` から `\\ev\{([a-z0-9-]+)\}\{([^{}]+)\}` の捕捉組を抽出し、組の集合と出現回数を比較した。本文・付録ではこのマクロと図版の組版オプションを除き、`[0-9]+(?:[.,][0-9]+)*` で数字列の集合を比較した。数字列にはモデル名やコード識別子も含まれるため、出現回数が変わった箇所は変更前後の文脈で照合した。図・表は `\includegraphics` と `\input` の入力先、原稿内の `tabular` の全セルを比較した。
 
 固定元の取り込み手順は [README](../README.md#図表の再生成と出典の照合) を参照。以下はリポジトリのルートで実行する。
 
-@TICK@@TICK@@TICK@bash
+```bash
 paper=paper/tennis_scene_architecture
 git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
     "$paper/tables" "$paper/figures" "$paper/references.bib" \
@@ -66,7 +66,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 .venv/bin/python -B "$paper/scripts/make_tables.py" --check
 .venv/bin/python -B "$paper/scripts/prepare_figures.py"
 .venv/bin/python -B "$paper/scripts/check_evidence.py"
-@TICK@@TICK@@TICK@
+```
 
 | 検証 | 終了値 | 結果 |
 | --- | ---: | --- |
@@ -81,7 +81,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 
 ### 要旨と参考文献
 
-対象ファイル [@TICK@main.tex@TICK@](../main.tex)。
+対象ファイル [`main.tex`](../main.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
@@ -93,7 +93,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 
 ### 第1章 はじめに
 
-対象ファイル [@TICK@chapters/introduction.tex@TICK@](../chapters/introduction.tex)。
+対象ファイル [`chapters/introduction.tex`](../chapters/introduction.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
@@ -102,7 +102,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 
 ### 第2章 関連研究
 
-対象ファイル [@TICK@chapters/related_work.tex@TICK@](../chapters/related_work.tex)。
+対象ファイル [`chapters/related_work.tex`](../chapters/related_work.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
@@ -112,7 +112,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 
 ### 第3章 問題設定と出力形式
 
-対象ファイル [@TICK@chapters/problem_and_output.tex@TICK@](../chapters/problem_and_output.tex)。
+対象ファイル [`chapters/problem_and_output.tex`](../chapters/problem_and_output.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
@@ -121,7 +121,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 
 ### 第4章 再構成手法の全体
 
-対象ファイル [@TICK@chapters/reconstruction.tex@TICK@](../chapters/reconstruction.tex)。
+対象ファイル [`chapters/reconstruction.tex`](../chapters/reconstruction.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
@@ -129,7 +129,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 
 ### 第5章 コート検出
 
-対象ファイル [@TICK@chapters/court_detection.tex@TICK@](../chapters/court_detection.tex)。
+対象ファイル [`chapters/court_detection.tex`](../chapters/court_detection.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
@@ -142,7 +142,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 
 ### 第6章 プレイヤーの3D空間上での追跡
 
-対象ファイル [@TICK@chapters/player_tracking.tex@TICK@](../chapters/player_tracking.tex)。
+対象ファイル [`chapters/player_tracking.tex`](../chapters/player_tracking.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
@@ -162,7 +162,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 
 ### 第7章 ボール検出
 
-対象ファイル [@TICK@chapters/ball_detection.tex@TICK@](../chapters/ball_detection.tex)。
+対象ファイル [`chapters/ball_detection.tex`](../chapters/ball_detection.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
@@ -177,13 +177,13 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 | 99–100 | 簡約（順序入替えと形状対照の結果） | `周辺の順序を変えた場合も、全体では両モデルで命中数が減った。形状対照は\ev{ball-intervention}{7/88（7.95\%）}で、`<br>`欠測や背景の紛らわしい像も含めたこの集合では、形状と短い背景差分の組合せから球を分けるのが難しかった。` | `周辺フレームの順序入替えでも両モデルの命中数が減った。形状対照の命中は\ev{ball-intervention}{7/88（7.95\%）}だった。` |
 | 104–105 | 表10に集約（位置・存在の分母と閾値の扱い） | `\caption{固定アンカーに対する推論時の介入。位置は存在閾値を適用する前の予測で採点し、`<br>`存在の偽陽性は確認不在\ev{ball-intervention}{56}件、偽陰性は観測\ev{ball-intervention}{88}件を分母とする。` | `\caption{固定アンカーに対する推論時の介入。観測\ev{ball-intervention}{88}件で閾値適用前の位置予測と存在の偽陰性を、`<br>`確認不在\ev{ball-intervention}{56}件で存在の偽陽性を採点する。` |
 | 114–116 | 簡約（スクラッチ学習の固定条件） | `推論時の反復に加え、各入力で最初から学習し直した。同じX3D／CSN＋DPTを`<br>`\ev{ball-train-plan}{512×288}、seed \ev{ball-train-plan}{42}、`<br>`\ev{ball-train-plan}{30,478}学習パックで比較し、初期重みの共通部分と抽出順を揃えた。` | `入力条件ごとに同じX3D／CSN＋DPTを初期状態から学習した。`<br>`解像度を\ev{ball-train-plan}{512×288}に固定し、単一seed \ev{ball-train-plan}{42}を用いた。`<br>`学習には\ev{ball-train-plan}{30,478}パックを使い、初期重みの共通部分と抽出順を揃えた。` |
-| 118 | 簡約（学習入力と採点設定を一箇所に記載） | `単フレームにはRGBを、時系列にはRGBと各窓から計算したMDDを入力した。` | `単フレームの入力はRGBで、\ev{ball-train-plan}{T=8とT=32}ではRGBに各窓から計算したMDDを加えた。`<br>`全validationの\ev{ball-train-val}{117,358}件（observed \ev{ball-train-val}{85,473}件）を採点した。`<br>`存在F1には条件ごとにvalidation上のFPRとFNRの平均を最小にする閾値を使い、位置には閾値適用前の予測を使った。` |
-| 120–121 | 簡約（結果の段落は命中率から始める） | `全validationの\ev{ball-train-val}{117,358}件（observed \ev{ball-train-val}{85,473}件）では、`<br>`\ev{ball-train-val}{20} px以内率が単フレームRGBの\ev{ball-train-val}{1.66\%}から、` | `全validationの\ev{ball-train-val}{20} px以内率は単フレームの\ev{ball-train-val}{1.66\%}から、` |
+| 118 | 簡約（学習入力と採点設定）。全体の位置指標は観測件数で集計 | `単フレームにはRGBを、時系列にはRGBと各窓から計算したMDDを入力した。` | `単フレームの入力はRGBで、\ev{ball-train-plan}{T=8とT=32}ではRGBに各窓から計算したMDDを加えた。`<br>`全validationの\ev{ball-train-val}{117,358}件のうち、\ev{ball-train-val}{20} px以内率を含む位置指標は`<br>`観測\ev{ball-train-val}{85,473}件（observed）で集計した。`<br>`存在F1には条件ごとにvalidation上のFPRとFNRの平均を最小にする閾値を使い、位置には閾値適用前の予測を使った。` |
+| 120–121 | 簡約（結果の段落は命中率から始める） | `全validationの\ev{ball-train-val}{117,358}件（observed \ev{ball-train-val}{85,473}件）では、`<br>`\ev{ball-train-val}{20} px以内率が単フレームRGBの\ev{ball-train-val}{1.66\%}から、` | `位置命中率は単フレームの\ev{ball-train-val}{1.66\%}から、` |
 | 125–131 | 簡約（窓長の差）。MDDの寄与と独立testは第10章へ集約 | `存在F1は各条件のvalidationでFPRとFNRの平均が最小となる閾値で集計した。位置採点にはこの閾値を適用しない。`<br>`〈空行〉`<br>`単フレームからの差にはMDDの有無が含まれる。`<br>`両方でRGB＋MDDを使う\ev{ball-train-plan}{T=8とT=32}の比較では、`<br>`窓の延長に伴う改善は全validationで\ev{ball-train-val}{3.33}ポイント、アンカーで\ev{ball-train-anchor}{5.68}ポイントだった。`<br>`単一seed・固定解像度での結果で、独立testは今後の評価に含める。`<br>`この学習比較と前節のチェックポイント比較では、学習履歴と入力解像度が異なる。` | `時系列条件で窓を延ばすと、全validationで\ev{ball-train-val}{3.33}ポイント、アンカーで\ev{ball-train-anchor}{5.68}ポイント改善した。` |
 
 ### 第8章 実行システム
 
-対象ファイル [@TICK@chapters/execution_system.tex@TICK@](../chapters/execution_system.tex)。
+対象ファイル [`chapters/execution_system.tex`](../chapters/execution_system.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
@@ -197,7 +197,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 
 ### 第9章 実験
 
-対象ファイル [@TICK@chapters/experiments.tex@TICK@](../chapters/experiments.tex)。
+対象ファイル [`chapters/experiments.tex`](../chapters/experiments.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
@@ -215,7 +215,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 
 ### 第10章 限界と今後の課題
 
-対象ファイル [@TICK@chapters/limitations.tex@TICK@](../chapters/limitations.tex)。
+対象ファイル [`chapters/limitations.tex`](../chapters/limitations.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
@@ -226,7 +226,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 
 ### 第11章 おわりに
 
-対象ファイル [@TICK@chapters/conclusion.tex@TICK@](../chapters/conclusion.tex)。
+対象ファイル [`chapters/conclusion.tex`](../chapters/conclusion.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
@@ -234,7 +234,7 @@ git diff --exit-code c16959632754b66778a6ef1350682e13082f814c HEAD -- \
 
 ### 付録 再現手順と追加資料
 
-対象ファイル [@TICK@appendix/reproducibility.tex@TICK@](../appendix/reproducibility.tex)。
+対象ファイル [`appendix/reproducibility.tex`](../appendix/reproducibility.tex)。
 
 | 初稿の行 | 処理 | 変更前 | 変更後 |
 | --- | --- | --- | --- |
