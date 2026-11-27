@@ -123,6 +123,7 @@ def register(
 ) -> dict[str, Any]:
     from lib.ops_review import knowledge_records
     from lib.ops_review.knowledge_progression import transfer_parked
+    from parent.review_handoff import require_ready_pr
 
     timeout = options.get("agent_timeout", 1800)
     if type(timeout) not in {int, float} or not math.isfinite(timeout) or timeout <= 0:
@@ -142,6 +143,7 @@ def register(
         )
         if pr.get("number") != n or pr.get("state") != "open" or not issues:
             raise ValueError("review requires related open PRs")
+        require_ready_pr(pr)
         if any(
             pr[side]["repo"]["full_name"].casefold() != session.gh.repo.casefold()
             for side in ("head", "base")

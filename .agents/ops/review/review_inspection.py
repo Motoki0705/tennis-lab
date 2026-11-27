@@ -27,16 +27,32 @@ def inspect_reviews(
         "errors": [],
     }
     for number in numbers:
-        item: dict[str, Any] = {"number": number, "history": [], "errors": []}
+        item: dict[str, Any] = {
+            "number": number,
+            "draft": None,
+            "history": [],
+            "errors": [],
+        }
         try:
             pr = object_value(gh.get(f"repos/{gh.repo}/pulls/{number}"))
             if pr.get("number") != number:
                 raise ValueError("PR identity differs from request")
+            draft = pr.get("draft")
+            item["draft"] = draft if isinstance(draft, bool) else None
             scope, _ = knowledge_records.assess(Path.cwd(), gh.repo, pr)
             item["scope"] = {"records_only": scope.records_only, "reason": scope.reason}
-            if pr["state"] == "open" and not pr.get("draft") and not scope.records_only:
+            if pr.get("state") != "open":
+                item["excluded_reason"] = "not_open"
+            elif draft is True:
+                item["excluded_reason"] = "draft"
+            elif draft is not False:
+                item["excluded_reason"] = "draft_status_unknown"
+            elif scope.records_only:
+                item["excluded_reason"] = "records_only"
+            else:
                 result["review_candidates"].append(number)
         except (ValueError, OSError) as exc:
+            item["excluded_reason"] = "inspection_error"
             item["errors"].append(str(exc))
         for registered in reviews:
             request = registered["request"]

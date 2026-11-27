@@ -15,6 +15,7 @@ from urllib.parse import quote
 
 from issues.format import visible_lines
 from lib import knowledge_ci
+from lib.ops_review.progression import is_transient_read
 from parent.policy import closing_references, nonempty, number, object_value
 from parent.snapshot import git
 
@@ -345,5 +346,7 @@ def observe_ci(
             merge_sha=comparison.merge,
         )
     except (ValueError, subprocess.TimeoutExpired) as exc:
+        if is_transient_read(exc):
+            raise
         return {**result, "status": "failure", "reasons": [str(exc)]}
     return {**result, "status": "success", "reasons": []}

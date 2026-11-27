@@ -30,7 +30,7 @@ def pr_with_paths(
     run_git(tree, "add", *paths)
     run_git(tree, "commit", "-m", message or f"fixture PR {number}")
     head = run_git(tree, "rev-parse", "HEAD")
-    pr = p.pr(number, 10, head, f"codex/knowledge-pr-{number}")
+    pr: dict[str, Any] = p.pr(number, 10, head, f"codex/knowledge-pr-{number}")
     merge = run_git(
         p.repo,
         "commit-tree",
@@ -178,6 +178,7 @@ def test_knowledge_records_are_excluded_at_both_review_entry_points(
         p.cli("review-inspect", "--prs", *map(str, range(100, 107))).stdout
     )
     assert value["review_candidates"] == [102, 103, 104, 105, 106]
+    assert [pr["excluded_reason"] for pr in value["prs"][:2]] == ["records_only"] * 2
     assert "test merge commit is unavailable" in value["prs"][-1]["scope"]["reason"]
     for n in (100, 101):
         result = p.cli(

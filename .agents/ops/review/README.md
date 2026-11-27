@@ -10,6 +10,8 @@
 - [knowledge_records.py](knowledge_records.py) は [記録専用CIの共通判定](../lib/README.md#ナレッジ記録専用prのci) から差分と結果を照合し、GitHubが認識する閉鎖対象を確認する。[knowledge_evidence.py](knowledge_evidence.py) が現HEADの受入確認とPR本文を照合し、[knowledge_progression.py](knowledge_progression.py) が専用マージ要求を保存する。
 - workerログ・判断ログの公開はそれぞれの専用経路を使う。[worker_logs](../worker_logs/README.md)・[decision_logs](../decision_logs/README.ja.md)
 
+`review-inspect` は各PRの `draft`（不明なら `null`）と、`review_candidates` の対象外になった理由を `excluded_reason` に返す。理由は `not_open`、`draft`、`draft_status_unknown`、`records_only`、`inspection_error`。取得に失敗した場合の詳細は各PRの `errors` を参照する。
+
 通常の起動では、毎回異なるIDで `tennis-lab-merge-gate-<launch ID>` systemd user serviceを作る。起動元の固定HEADから
 `<state_dir>/merge-gate-checkouts/<launch ID>` に運用コードとqueue読取用モジュールを展開し、共有 `.venv` をリンクする。
 運用コードに未コミット変更があれば起動を拒否する。serviceは準備完了を通知してから進行を開始し、停止後に専用worktreeを回収する。
@@ -32,6 +34,12 @@ controllerと標準review runnerは固定した版を使い、保存済みの `c
 レビュー資料の取得範囲は [review_tools](../lib/review_tools/README.md)、過去事例での検証は [比較harness](evaluation/README.ja.md) を参照。
 
 記録専用マージは、同じ親レジストリを使うcontrollerのマージ送信をリポジトリ単位で排他し、送信直前にmainのtipを照合する。GitHubの同期マージAPIではPRのHEADを固定できる。同時に外部操作でmainが進んだ場合は、観測されたマージコミットの両親を照合し、不一致を受入保留にする。 [GitHubの同期マージAPI](https://docs.github.com/en/rest/pulls/pulls#merge-a-pull-request)
+
+## GitHub の再観測とマージ後 CI
+
+- 通常 PR と記録専用 PR は、`mergeability_unknown` を 5、10、15、30、30、60 秒の間隔で最大6回再観測する。記録専用 PR の最終照合にも同じ上限を使う。再観測後も判定不能なら `mergeability_unknown` で親待ちに入り、`ci_wait` から再開できる。
+- GitHub の HTTP 500・502・503・504 と接続障害は、CI・依存・マージ後の読み取りとレビュー起動前の照合で 10、20、40、60、60 秒の間隔で最大5回再観測する。正常な観測で回数をリセットし、再観測後も障害が続けばエラーを記録して親へ返す。`merge_pending` と `repair_pending` の過渡エラーは `recovery_required` で親へ返し、保存済みの実行意図を照合する。
+- merge commit の最新の `.github/workflows/ci.yml` の push run がジョブ開始前にキャンセルされた場合は、run ID・試行番号・時刻を保存してから最大2回自動で再実行する。同じ試行のキャンセルが2分後も続く場合、API が失敗した場合、または再実行枠を使い切った場合は `main_ci_cancelled_before_start` で親へ返す。ジョブが作成済みで当該試行の `Python` が成功していなければ、`main_ci_failed` で親へ返す。 [GitHub の workflow 再実行 API](https://docs.github.com/en/rest/actions/workflow-runs#re-run-a-workflow)
 
 ## 正式レビューの障害復旧
 
