@@ -18,20 +18,22 @@ from xml.etree.ElementTree import ParseError
 
 from filelock import FileLock
 
-from .markdown import snippet, verify_markdown
+from .markdown import snippet
 from .pages import PAGES, Asset, asset_data, project
-from .publication import prepare_pair, verify_pair
+from .publication import prepare_pair
 from .sources import DEFAULT_REVISION, ROOT, Sources, require
 from .table_renderer import render_table
 from .table_spec import Table
 from .typst_runner import VERSION, resolve
 from .verify import (
+    VerifiedBundle,
     asset_paths,
     check_asset_directory,
     describe,
     file_digests,
     manifest_path,
     verify_bundle,
+    verify_wiki_page,
 )
 
 
@@ -119,27 +121,36 @@ def _generate(output: Path, pages: list[str], args: argparse.Namespace) -> None:
 
 
 def _verify(output: Path | None, pages: list[str], args: argparse.Namespace) -> None:
+    bundles: dict[str, VerifiedBundle] | None = None
     if output is not None:
+        bundles = {}
         typst = resolve(args.typst_bin, offline=args.offline) if args.rerender else None
         for page in pages:
             with _errors_for(page):
                 sources, assets = _source(page, args.data_revision)
-                manifest = verify_bundle(output, page, sources, assets)
+                bundle = verify_bundle(output, page, sources, assets)
+                bundles[page] = bundle
                 if typst is not None:
                     with TemporaryDirectory(prefix="wiki-assets-verify-") as temporary:
                         rerendered = Path(temporary)
                         render(rerendered, page, sources, assets, typst)
                         require(
-                            manifest["files"] == file_digests(rerendered, page, assets),
+                            bundle.files == file_digests(rerendered, page, assets),
                             f"{page}: re-rendered files differ from the bundle",
                         )
             print(
                 f"{page}: verified {len(assets)} SVG/PNG pairs and source-aligned Markdown"
             )
     for path in args.wiki_page:
-        for image in sorted(verify_markdown(path)):
-            verify_pair(image)
-        print(f"{path.name}: verified Wiki Markdown and relative SVG/PNG links")
+        verify_wiki_page(path, bundles)
+        result = (
+            " and matched copied blocks and images to the bundle"
+            if bundles is not None
+            else ""
+        )
+        print(
+            f"{path.name}: verified Wiki Markdown and relative SVG/PNG assets{result}"
+        )
 
 
 def _parser() -> argparse.ArgumentParser:

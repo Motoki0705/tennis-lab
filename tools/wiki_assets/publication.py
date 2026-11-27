@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import re
 import struct
+import unicodedata
 import zlib
 from html import unescape
 from pathlib import Path
@@ -22,8 +23,6 @@ ET.register_namespace("", SVG[1:-1])
 ET.register_namespace("xlink", XLINK[1:-1])
 
 FORBIDDEN = {
-    "local path": r"(?i)(?:/(?:home|mnt|Users|var|tmp|etc|opt|root|content|Volumes|workspace|private)/"
-    r"|(?<![\w])[a-z]:[\\/]|~[\\/]|file:/|\.claude[\\/]worktrees|\.worktree-outputs|\.training_queue)",
     "email": r"(?i)(?<![\w.])[a-z0-9_.+-]+@[a-z0-9.-]+\.[a-z]{2,}",
     "credential": r"(?i)(?:\bgh[pousr]_[a-z\d_]{20,}|\bgithub_pat_[a-z\d_]{20,}|\bsk-[a-z\d_-]{20,}"
     r"|\bAKIA[A-Z0-9]{16}|\bAIza[a-z\d_-]{28,}|-----BEGIN [^-]*PRIVATE KEY-----"
@@ -33,9 +32,40 @@ FORBIDDEN = {
     r"|\b(?:run|turn|decision|session|job)[_ -]?id['\"]?\s*[=:]\s*['\"]?[a-z0-9_.-]{8,})",
 }
 
+# Like the board safety check, look for a path at a text boundary. A slash
+# within a relative path, a fraction or a compound unit is a separator.
+HTTP_URL = re.compile(
+    r"""(?i)\bhttps?://(?:\[[0-9a-f:.]+\]|[^\s<>"'`()\[\]{}\\]|\([^()\s<>"'`\\]+\))+"""
+)
+HTML_END_TAG = re.compile(r"(?<!\()</[A-Za-z][A-Za-z0-9:-]*\s*>")
+PATH_PLACEHOLDER = re.compile(r"(?<=/)<[A-Za-z][\w-]*>(?=/)")
+INTERNAL_PATH = re.compile(
+    r"\.claude[/\\]worktrees|\.worktree-outputs|\.training_queue", re.IGNORECASE
+)
+ABSOLUTE_PATH = re.compile(
+    r"(?<![\w./\\^])(?:"
+    r"/(?=[^\s/\\\"'`<>()[\]{}|*?+^$])"
+    r"|[a-z]:[/\\]|~[/\\]|file:/"
+    r"|//[\w.-]+/(?=[\w.$-])"
+    r"|\\{2,}(?:[?.]\\+)?(?:UNC\\+)?(?:[a-z]:\\|[\w.-]+\\+(?=[\w.$-]))"
+    r")",
+    re.IGNORECASE,
+)
+
 
 def scan_public_text(text: str, name: str) -> None:
-    decoded = unquote(unescape(text))
+    text = unescape(text)
+    decoded = unquote(text)
+    # Mask URL spans before decoding so escaped spaces in a public URL do
+    # not resemble the start of a separate path.
+    path_view = unicodedata.normalize("NFKC", unquote(HTTP_URL.sub(" ", text)))
+    path_view = HTML_END_TAG.sub(" ", HTTP_URL.sub(" ", path_view))
+    path_view = PATH_PLACEHOLDER.sub("placeholder", path_view)
+    require(
+        ABSOLUTE_PATH.search(path_view) is None
+        and INTERNAL_PATH.search(path_view) is None,
+        f"{name}: found local path",
+    )
     for category, pattern in FORBIDDEN.items():
         require(re.search(pattern, decoded) is None, f"{name}: found {category}")
 
@@ -274,6 +304,14 @@ def verify_pair(svg: Path) -> None:
         abs(png_height - height * png_width / width) <= 2,
         f"{svg.name}: PNG and SVG proportions differ",
     )
+
+
+def verify_referenced_images(images: set[Path]) -> None:
+    pairs = {path for path in images if path.suffix.lower() == ".svg"}
+    for svg in sorted(pairs):
+        verify_pair(svg)
+    for png in sorted(images - pairs - {svg.with_suffix(".png") for svg in pairs}):
+        verify_png(png)
 
 
 def prepare_pair(svg: Path) -> None:

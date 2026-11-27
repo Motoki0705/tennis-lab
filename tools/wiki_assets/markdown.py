@@ -13,7 +13,7 @@ from markdown_it.token import Token
 from .pages import Asset, asset_data
 from .publication import scan_public_text
 from .sources import REPOSITORY, Sources, require
-from .table_spec import escape_markdown, markdown_table
+from .table_spec import SLUG, escape_markdown, markdown_table
 
 PARSER = MarkdownIt("commonmark", {"html": True}).enable("table")
 DETAILS = re.compile(
@@ -21,6 +21,9 @@ DETAILS = re.compile(
 )
 SUMMARY = re.compile(r"<summary>.+?</summary>", re.IGNORECASE)
 METADATA = re.compile(r"^(?:想定読者|検索キーワード|正本ファイル|主な正本パス)$")
+MARKER = re.compile(
+    rf"<!-- wiki-assets:(begin|end) ({SLUG.pattern})/({SLUG.pattern}) -->"
+)
 
 
 def snippet(page: str, sources: Sources, assets: tuple[Asset, ...]) -> str:
@@ -32,12 +35,14 @@ def snippet(page: str, sources: Sources, assets: tuple[Asset, ...]) -> str:
         note = escape_markdown(data.note)
         alt = f"{title}。{note} 数値と状態は直下のテキスト表を参照。"
         sections.append(
+            f"<!-- wiki-assets:begin {page}/{data.slug} -->\n\n"
             f"### {title}\n\n"
             f"![{alt}]({output}.svg)\n\n"
             f"[SVG 原寸]({output}.svg) · [互換 PNG]({output}.png)\n\n"
             f"{note}\n\n"
             f"<details>\n<summary>{title}のテキスト表</summary>\n\n"
-            f"{markdown_table(data)}\n\n</details>"
+            f"{markdown_table(data)}\n\n</details>\n\n"
+            f"<!-- wiki-assets:end {page}/{data.slug} -->"
         )
     links = [
         f"- [`{p.removeprefix('knowledge/runs/')}`]({REPOSITORY}/blob/{sources.revision}/{p})"
@@ -45,6 +50,44 @@ def snippet(page: str, sources: Sources, assets: tuple[Asset, ...]) -> str:
     ]
     sections.append("### 図表の正本\n\n" + "\n".join(links))
     return "\n\n".join(sections) + "\n"
+
+
+def embedded_sections(source: str, name: str) -> dict[tuple[str, str], str]:
+    """Read whole, uniquely identified blocks from standalone HTML comments."""
+    sections: dict[tuple[str, str], str] = {}
+    opened: tuple[tuple[str, str], int] | None = None
+    lines = source.split("\n")
+    for token in PARSER.parse(source):
+        if token.type != "html_block" or token.map is None or token.level != 0:
+            continue
+        marker = MARKER.fullmatch(token.content.rstrip("\n"))
+        if marker is None:
+            continue
+        start, end = token.map
+        key = marker[2], marker[3]
+        if marker[1] == "begin":
+            require(
+                opened is None and key not in sections,
+                f"{name}:{start + 1}: nested or duplicate wiki-assets block",
+            )
+            require(
+                start == 0 or not lines[start - 1].strip(),
+                f"{name}:{start + 1}: blank line before wiki-assets block required",
+            )
+            opened = key, start
+        else:
+            if opened is None or opened[0] != key:
+                raise ValueError(
+                    f"{name}:{start + 1}: unmatched wiki-assets end marker"
+                )
+            require(
+                end == len(lines) or not lines[end].strip(),
+                f"{name}:{start + 1}: blank line after wiki-assets block required",
+            )
+            sections[key] = "\n".join(lines[opened[1] : end])
+            opened = None
+    require(opened is None, f"{name}: unclosed wiki-assets block")
+    return sections
 
 
 class References(HTMLParser):
@@ -193,9 +236,10 @@ def _asset_path(url: str, root: Path, *, image: bool) -> Path | None:
     return target
 
 
-def verify_markdown(path: Path) -> set[Path]:
-    """Check a whole Wiki page or generated snippet. Return local SVGs for inspection."""
-    source = path.read_text(encoding="utf-8")
+def verify_markdown(path: Path, *, source: str | None = None) -> set[Path]:
+    """Check a Wiki page or snippet and return all referenced relative SVGs and PNGs."""
+    if source is None:
+        source = path.read_text(encoding="utf-8")
     scan_public_text(source, path.name)
     tokens = PARSER.parse(source)
     lines = source.splitlines()
@@ -204,6 +248,8 @@ def verify_markdown(path: Path) -> set[Path]:
     refs = References(path.name)
     refs.feed(PARSER.render(source))
     refs.close()
+    for url in refs.images | refs.links:
+        scan_public_text(url, path.name)
     assets = {
         item: _asset_path(item, path.parent, image=item in refs.images)
         for item in refs.images | refs.links
@@ -221,5 +267,5 @@ def verify_markdown(path: Path) -> set[Path]:
     return {
         item
         for item in images | links
-        if item is not None and item.suffix.lower() == ".svg"
+        if item is not None and item.suffix.lower() in {".svg", ".png"}
     }

@@ -26,11 +26,17 @@
 
 `verify` は指定版から値、状態、順位、テキスト参照を再計算し、manifest と Markdown、画像の SHA-256 と構造を照合する。同じツール・フォントで画像を再生成して比較する場合は `--rerender` を付ける。フォントや描画ライブラリの版を変えると画像のバイト列も変わり得る。SVG／PNG の文字などは表示を目視する。出力ファイルへの機密情報混入は生成時にも検査する。
 
-Wiki に取り込んだ Markdown は実ファイルを渡して検査できる。パスは Markdown の所在から解決される。
+Wiki ページへ図表を移すときは、生成スニペットの各図表を `<!-- wiki-assets:begin … -->` から `<!-- wiki-assets:end … -->` までコピーする。使うブロックを選び、ブロック間に空行と手書きの見出し・本文を置ける。各マーカーは同じページに一度だけ置き、マーカー間の値・単位・状態・リンクを保持する。マーカーがない旧スニペットは再生成する。
+
+公開前は検証済みの出力と Wiki 実ファイルを同じコマンドに渡す。マーカーのページ slug とアセット名で、コピーしたブロックの全文と、Wiki に置いた SVG／PNG の SHA-256 を照合する。選択したバンドルの画像には対応するマーカー付きブロックが必要。複数の Wiki ファイルは `--wiki-page` を繰り返して指定できる。
 
 ```bash
-.venv/bin/python -m tools.wiki_assets verify --wiki-page ../tennis-lab.wiki/Person-Model-Comparison-Overview.md
+.venv/bin/python -m tools.wiki_assets verify --output tmp/wiki-assets-preview \
+  --page person-model-comparison-overview \
+  --wiki-page ../tennis-lab.wiki/Person-Model-Comparison-Overview.md
 ```
+
+`--wiki-page` 単独では、Markdown の書式、相対リンク、参照先の SVG／PNG の形式を検査する。アセットのパスは Markdown の所在を基準に解決する。
 
 ## テスト
 

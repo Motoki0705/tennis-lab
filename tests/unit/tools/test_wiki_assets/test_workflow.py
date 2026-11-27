@@ -1,16 +1,19 @@
 import json
 import os
 from pathlib import Path
+from shutil import copytree
 from urllib.parse import unquote, urlsplit
 
 import pytest
 from PIL import Image
 
+from tools.wiki_assets.__main__ import main
 from tools.wiki_assets.chart_renderer import render_chart
 from tools.wiki_assets.chart_spec import Bars
 from tools.wiki_assets.markdown import PARSER, References, snippet, verify_markdown
-from tools.wiki_assets.publication import prepare_pair, verify_pair
-from tools.wiki_assets.sources import ROOT, Sources, number, string
+from tools.wiki_assets.pages import PAGES, Asset, asset_data, project
+from tools.wiki_assets.publication import prepare_pair, scan_public_text, verify_pair
+from tools.wiki_assets.sources import DEFAULT_REVISION, ROOT, Sources, number, string
 from tools.wiki_assets.table_spec import Column, Row, Table
 from tools.wiki_assets.typst_runner import BINARY_ENV, resolve
 from tools.wiki_assets.verify import (
@@ -24,6 +27,7 @@ PAGE = "example"
 REVISION = "c" * 40
 RAW = b'{"batch":"B1","backend":"PT16","p50_ms":2.375}'
 TABLE = "backend-speed"
+METHODS = "person-model-comparison-methods"
 
 
 @pytest.fixture
@@ -74,20 +78,24 @@ def test_chart_svg_and_rgb_png_are_deterministic(
         assert sum(image.getchannel("R").histogram()[:80]) > 100
 
 
-def _write_bundle(output: Path, sources: Sources, bars: Bars) -> None:
+def _write_bundle(
+    output: Path, sources: Sources, assets: tuple[Asset, ...], *, page: str = PAGE
+) -> None:
     # Use small static files here. A separate test renders a real Matplotlib chart.
-    svg = output / "assets" / PAGE / f"{TABLE}.svg"
-    svg.parent.mkdir(parents=True)
-    svg.write_text(
-        '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12">'
-        '<path fill="#fff" d="M0 0h12v12H0z"/></svg>'
-    )
-    Image.new("RGB", (12, 12), "white").save(svg.with_suffix(".png"))
-    (output / f"{PAGE}.md").write_text(snippet(PAGE, sources, (bars,)))
-    record = describe(PAGE, sources, (bars,))
-    record["files"] = file_digests(output, PAGE, (bars,))
+    directory = output / "assets" / page
+    directory.mkdir(parents=True)
+    for asset in assets:
+        svg = directory / f"{asset_data(asset).slug}.svg"
+        svg.write_text(
+            '<svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 12 12">'
+            '<path fill="#fff" d="M0 0h12v12H0z"/></svg>'
+        )
+        Image.new("RGB", (12, 12), "white").save(svg.with_suffix(".png"))
+    (output / f"{page}.md").write_text(snippet(page, sources, assets))
+    record = describe(page, sources, assets)
+    record["files"] = file_digests(output, page, assets)
     record["tools"] = {"typst": "0.15.1", "matplotlib": "3.11.1", "pillow": "12.3.0"}
-    target = manifest_path(output, PAGE)
+    target = manifest_path(output, page)
     target.parent.mkdir(parents=True)
     target.write_text(json.dumps(record))
 
@@ -106,7 +114,7 @@ def test_verify_rejects_numeric_and_file_drift(
     tmp_path: Path, projection: tuple[Sources, Bars], damage: str, message: str
 ) -> None:
     sources, bars = projection
-    _write_bundle(tmp_path, sources, bars)
+    _write_bundle(tmp_path, sources, (bars,))
     verify_bundle(tmp_path, PAGE, sources, (bars,))
     md = tmp_path / f"{PAGE}.md"
     svg = tmp_path / "assets" / PAGE / f"{TABLE}.svg"
@@ -159,8 +167,6 @@ def test_real_typst_cli_generate_and_verify(tmp_path: Path) -> None:
     typst = os.environ.get(BINARY_ENV)
     if not typst:
         pytest.skip(f"set {BINARY_ENV} to run with Typst")
-    from tools.wiki_assets.__main__ import main
-
     common = [
         "--page",
         "person-model-comparison-methods",
@@ -178,6 +184,121 @@ def test_real_typst_cli_generate_and_verify(tmp_path: Path) -> None:
         "| Top-down pose | 384 | B1 / B4 / B8 | ms/人 | B1 は先頭 300 crop |"
         in synopsis
     )
+
+
+@pytest.fixture
+def methods_transfer(tmp_path: Path) -> tuple[Path, Path]:
+    sources = Sources.from_git(ROOT, DEFAULT_REVISION)
+    assets = project(METHODS, sources)
+    bundle = tmp_path / "bundle"
+    _write_bundle(bundle, sources, assets, page=METHODS)
+    wiki = tmp_path / "wiki"
+    copytree(bundle / "assets", wiki / "assets")
+    page = wiki / "Person-Model-Comparison-Methods.md"
+    generated = (bundle / f"{METHODS}.md").read_text()
+    marker = f"<!-- wiki-assets:begin {METHODS}/timed-inputs -->"
+    first, second = generated.split(marker, maxsplit=1)
+    page.write_text(
+        f"# 評価方法\n\nこの節の説明は手書き。\n\n{first}"
+        f"## 速度の読み方\n\nここにも独自の説明を置く。\n\n{marker}{second}"
+    )
+    return bundle, page
+
+
+def _verify_methods(bundle: Path, page: Path) -> int:
+    result: int = main(
+        ["verify", "--output", str(bundle), "--page", METHODS, "--wiki-page", str(page)]
+    )
+    return result
+
+
+def test_wiki_transfer_accepts_multiple_blocks_and_handwritten_prose(
+    methods_transfer: tuple[Path, Path],
+) -> None:
+    assert _verify_methods(*methods_transfer) == 0
+
+
+def test_wiki_transfer_accepts_one_selected_block(
+    methods_transfer: tuple[Path, Path],
+) -> None:
+    bundle, page = methods_transfer
+    closing = f"<!-- wiki-assets:end {METHODS}/evaluation-cohort -->"
+    introduction, marker, _ = page.read_text().partition(closing)
+    assert marker
+    page.write_text(f"{introduction}{marker}\n")
+    assert _verify_methods(bundle, page) == 0
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        ("6,844", "6,845"),
+        ("| ms/人 |", "| ms/画像 |"),
+        ("B1 は先頭 300 crop |", "B1 は未計測 |"),
+        ("| Top-down pose | 384 | B1 / B4 / B8 | ms/人 | B1 は先頭 300 crop |\n", ""),
+    ],
+)
+def test_wiki_transfer_rejects_changed_numbers_units_states_and_rows(
+    methods_transfer: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+    before: str,
+    after: str,
+) -> None:
+    bundle, page = methods_transfer
+    source = page.read_text()
+    assert before in source
+    page.write_text(source.replace(before, after, 1))
+    assert _verify_methods(bundle, page) == 1
+    assert "copied block differs" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("extension", [".svg", ".png"])
+def test_wiki_transfer_rejects_changed_image_bytes(
+    methods_transfer: tuple[Path, Path],
+    capsys: pytest.CaptureFixture[str],
+    extension: str,
+) -> None:
+    bundle, page = methods_transfer
+    image = page.parent / "assets" / METHODS / f"timed-inputs{extension}"
+    if extension == ".svg":
+        image.write_text(image.read_text().replace("#fff", "#ffffff"))
+    else:
+        rgb = Image.new("RGB", (12, 12), "white")
+        rgb.putpixel((3, 3), (7, 7, 7))
+        rgb.save(image)
+    assert _verify_methods(bundle, page) == 1
+    assert "copied image SHA-256 differs" in capsys.readouterr().err
+
+
+def test_wiki_transfer_rejects_unmarked_generated_asset(
+    methods_transfer: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle, page = methods_transfer
+    edited = page.read_text()
+    for action in ("begin", "end"):
+        edited = edited.replace(
+            f"<!-- wiki-assets:{action} {METHODS}/timed-inputs -->\n", ""
+        )
+    page.write_text(edited)
+    assert _verify_methods(bundle, page) == 1
+    assert "generated images without a marked block" in capsys.readouterr().err
+
+
+def test_wiki_transfer_rejects_duplicate_blocks(
+    methods_transfer: tuple[Path, Path], capsys: pytest.CaptureFixture[str]
+) -> None:
+    bundle, page = methods_transfer
+    marker = f"<!-- wiki-assets:begin {METHODS}/timed-inputs -->"
+    source = page.read_text()
+    page.write_text(source + "\n" + marker + source.split(marker, maxsplit=1)[1])
+    assert _verify_methods(bundle, page) == 1
+    assert "duplicate wiki-assets block" in capsys.readouterr().err
+
+
+@pytest.mark.parametrize("page", sorted(PAGES))
+def test_public_snippet_from_real_sources_passes_path_check(page: str) -> None:
+    sources = Sources.from_git(ROOT, DEFAULT_REVISION)
+    scan_public_text(snippet(page, sources, project(page, sources)), page)
 
 
 def test_public_guides_have_resolvable_local_links_and_no_private_identifiers() -> None:
