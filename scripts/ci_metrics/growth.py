@@ -5,6 +5,7 @@ from __future__ import annotations
 import html
 import json
 import math
+import statistics
 from collections import defaultdict
 from pathlib import Path
 from typing import Any
@@ -167,6 +168,94 @@ def aggregate_snapshot(root: Path, audit: dict[str, Any]) -> dict[str, Any]:
     )
 
 
+def phase_statistics(seconds: list[float]) -> dict[str, float | None]:
+    if not seconds or any(
+        type(value) not in (int, float) or not math.isfinite(value) or value < 0
+        for value in seconds
+    ):
+        raise ValueError("shard phase seconds must be finite and nonnegative")
+    mean = statistics.mean(seconds)
+    return {
+        "min": min(seconds),
+        "max": max(seconds),
+        "mean": mean,
+        "max_over_mean": max(seconds) / mean if mean else None,
+    }
+
+
+def shard_balance(root: Path, count: int) -> dict[str, Any]:
+    """Pair recorded schedule estimates with audited ordinary shard phase totals."""
+    measured = {}
+    estimated = None
+    for directory in sorted(root.glob("*/tests")):
+        metadata = json.loads((directory / "environment.json").read_text())
+        index = metadata["shard"]["index"]
+        if index == count:
+            continue
+        if index in measured or not 0 <= index < count:
+            raise ValueError("invalid ordinary shard indices")
+        summary = json.loads((directory / "summary.json").read_text())
+        phases = summary["phase_elapsed_s"]
+        measured[index] = sum(phases[name] for name in ("setup", "call", "teardown"))
+        if estimated is None:
+            manifest_path = next(iter(sorted(directory.glob("shard-*.json"))), None)
+            if manifest_path is None:
+                raise ValueError("missing shard manifest")
+            manifest = json.loads(manifest_path.read_text())
+            estimated = manifest["estimated_phase_seconds"]
+    if (
+        set(measured) != set(range(count))
+        or not isinstance(estimated, list)
+        or len(estimated) != count
+    ):
+        raise ValueError("incomplete ordinary shard phase totals or estimates")
+    measured_seconds = [measured[index] for index in range(count)]
+    return {
+        "shards": [
+            {
+                "index": index,
+                "estimated_phase_s": estimated[index],
+                "measured_phase_s": measured_seconds[index],
+            }
+            for index in range(count)
+        ],
+        "estimated": phase_statistics(estimated),
+        "measured": phase_statistics(measured_seconds),
+    }
+
+
+def _profile_freshness(
+    profile: dict[str, Any], nodeids: list[str], files: set[str], *, partial: bool
+) -> dict[str, Any]:
+    source = profile.get("source")
+    if not isinstance(source, dict):
+        source = {}
+    selected = source.get("selected_count")
+    split_files = set(profile.get("split_files", []))
+    test_seconds = profile.get("test_seconds", {})
+    unknown_files = len(files - profile["file_seconds"].keys())
+    split_cases = [node for node in nodeids if node.split("::", 1)[0] in split_files]
+    return {
+        "source": {
+            key: source.get(key)
+            for key in ("run_id", "commit", "attempt", "selected_count")
+        },
+        "profile_file_count": len(profile["file_seconds"]),
+        "split_file_count": len(split_files),
+        "observed_file_count": len(files),
+        "observed_case_count": len(nodeids),
+        "full_selected_count_delta": len(nodeids) - selected
+        if not partial and type(selected) is int and selected > 0
+        else None,
+        "unmeasured_file_count": unknown_files,
+        "unmeasured_file_rate": unknown_files / len(files) if files else None,
+        "observed_split_case_count": len(split_cases),
+        "unmeasured_split_case_count": sum(
+            node not in test_seconds for node in split_cases
+        ),
+    }
+
+
 def analyze(
     current: dict[str, Any],
     baseline: dict[str, Any] | None,
@@ -174,6 +263,8 @@ def analyze(
     baseline_reason: str | None = None,
     profile: dict[str, Any] | None = None,
     profile_reason: str | None = None,
+    balance: dict[str, Any] | None = None,
+    balance_reason: str | None = None,
 ) -> dict[str, Any]:
     """Compare file scopes so deferred tests never appear as removals or 0 seconds."""
     requested_files = {node.split("::", 1)[0] for node in current["nodeids"]}
@@ -330,6 +421,17 @@ def analyze(
         "profile_reason": (profile_reason or "no timing profile was supplied")
         if profile is None
         else None,
+        "profile_freshness": _profile_freshness(
+            profile, current["nodeids"], requested_files, partial=partial
+        )
+        if profile is not None
+        else None,
+        "ordinary_shard_balance": balance,
+        "ordinary_shard_balance_reason": (
+            balance_reason or "no shard measurements were supplied"
+        )
+        if balance is None
+        else None,
     }
 
 
@@ -467,4 +569,51 @@ def markdown(report: dict[str, Any]) -> str:
                 for row in report["profile_drift"]
             ],
         )
+    if freshness := report.get("profile_freshness"):
+        source = freshness["source"]
+        lines.extend(["", "### Scheduling profile freshness", ""])
+        lines.append(
+            f"Source run {cell(source['run_id'])}, attempt {cell(source['attempt'])}, "
+            f"commit {cell(source['commit'])}, {cell(source['selected_count'])} selected cases. "
+            f"Profile has {freshness['profile_file_count']} files and {freshness['split_file_count']} split files."
+            if source["run_id"] and source["commit"]
+            else "Source run or commit is unavailable for this profile."
+        )
+        rate = freshness["unmeasured_file_rate"]
+        if rate is not None:
+            lines.append(
+                f"The profile lacks measurements for {freshness['unmeasured_file_count']} of "
+                f"{freshness['observed_file_count']} requested files ({rate:.1%}) and "
+                f"{freshness['unmeasured_split_case_count']} of "
+                f"{freshness['observed_split_case_count']} requested split-file cases."
+            )
+        if (delta := freshness["full_selected_count_delta"]) is not None:
+            lines.append(
+                f"The full inventory has changed by {delta:+d} cases since the profile source."
+            )
+    if balance := report.get("ordinary_shard_balance"):
+        table(
+            "Ordinary shard phase seconds",
+            ["Shard", "Estimated phase s", "Measured phase s"],
+            [
+                [row["index"], row["estimated_phase_s"], row["measured_phase_s"]]
+                for row in balance["shards"]
+            ],
+        )
+        table(
+            "Ordinary shard load distribution",
+            ["Load", "Min s", "Max s", "Mean s", "Max / mean"],
+            [
+                [
+                    name,
+                    *(
+                        balance[key][field]
+                        for field in ("min", "max", "mean", "max_over_mean")
+                    ),
+                ]
+                for key, name in (("estimated", "Estimated"), ("measured", "Measured"))
+            ],
+        )
+    elif reason := report.get("ordinary_shard_balance_reason"):
+        lines.extend(["", f"Ordinary shard balance is unavailable ({cell(reason)})."])
     return "\n".join(lines) + "\n"

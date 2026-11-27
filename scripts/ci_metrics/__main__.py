@@ -10,6 +10,8 @@ from .actions import fetch_attempts, markdown, summarize_attempts
 from .profile import build_profile
 from .report import summarize
 from .runner import environment_metadata, run, write_json
+from .update_profile import add_parser as add_update_parser
+from .update_profile import run_update
 
 
 def main() -> int:
@@ -58,7 +60,12 @@ def main() -> int:
         action="append",
         help="Reviewed independent fixture file (repeatable)",
     )
+    add_update_parser(
+        sub.add_parser("update-profile", help="Refresh weights from audited main CI")
+    )
     args = parser.parse_args()
+    if args.command == "update-profile":
+        return run_update(args)
     if args.command == "profile":
         result = build_profile(args.root, args.split_file)
         write_json(args.output, result)
