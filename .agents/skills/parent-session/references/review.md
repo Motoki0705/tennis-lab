@@ -27,13 +27,13 @@
 }
 ```
 
-CLIは本文の閉鎖指定とGitHubが認識する閉鎖対象を照合し、すべてが担当範囲内であることを確認する。PRタイトルやコミットメッセージから閉じるIssueも本文に明記する。別リポジトリへの閉鎖、未解決の指定、本文にない閉鎖対象、実装付随PRの閉鎖指定があれば保留する。現HEADと最新mainで成功した [Knowledge library](../../../ops/lib/README.md#ナレッジ記録専用prのci) を待つ。マージ直前に、実行根拠、`AGENT_AUTO_MERGE`、`needs-human`、停止指定、閉鎖対象とPR本文を再照合し、同じHEADと比較元の成功run・attemptを確認する。
+CLIは本文の閉鎖指定とGitHubが認識する閉鎖対象を照合し、すべてが担当範囲内であることを確認する。PRタイトルやコミットメッセージから閉じるIssueも本文に明記する。別リポジトリへの閉鎖、未解決の指定、本文にない閉鎖対象、実装付随PRの閉鎖指定があれば保留する。現HEADの `Knowledge library` が成功すると、CLIは検証済みの比較元から `main` への差分を調べる。監視パス外の前進だけなら、既存の成功結果でマージする。マージ直前に、実行根拠、`AGENT_AUTO_MERGE`、`needs-human`、停止指定、閉鎖対象とPR本文、現HEADの成功run・attemptと `main` の差分を再照合する。 [記録専用PRのCI](../../../ops/lib/README.md#ナレッジ記録専用prのci)
 
-待機と続行には同じrun IDで `merge-status`、`wait-merge`、`merge-continue` を使う。mainが進んだら、新しい比較元でのPRイベントの検査結果を待つ。続行するPRのうちマージ送信前のものについて現HEADと最新の本文を確認し、同じ形式のJSONを `merge-continue --run-id RUN --instruction-file verified.json --wait` に渡す。マージ応答喪失やmain CI待機の再照合だけを続けるときは、同じrunに続行理由を渡す。
+待機と続行には同じrun IDで `merge-status`、`wait-merge`、`merge-continue` を使う。完了済みのCI結果から監視パスが変わったと判明した場合は、直ちに `parent_wait` になる。マージ送信前なら、PRブランチに `main` を取り込み、新HEADでPR本文の実行証拠と親の受入確認を更新する。同じ形式のJSONを `merge-continue --run-id RUN --instruction-file verified.json --wait` に渡す。マージ応答喪失やmain CI待機の再照合だけを続けるときは、同じrunに続行理由を渡す。
 
 保留中のPRが実装混在に変わったら、`review-inspect` で候補になったことを確認し、通常どおり `review-request` を行う。CLIはPRがopenで未マージ、専用controllerが停止済み、マージ送信の記録がないことを確認したうえで、そのPRの専用予約を `transferred` として終え、正式レビューに渡す。送信済みの場合は専用runでマージ結果を照合する。
 
-マージ後はmerge commit、mainの `Python`、関連Issueの状態を `status.completion.knowledge_merges` で参照できる。Issueを閉じるPRでは `closed/completed` の確認が必要。実装PRに付随する記録PRでは、参照したIssueの観測状態を表示する。
+マージ後はmerge commitに対する `main` pushのフル `Python` CIの成功を待つ。merge commit、CI結果、関連Issueの状態は `status.completion.knowledge_merges` で参照できる。Issueを閉じるPRでは `closed/completed` の確認が必要。実装PRに付随する記録PRでは、参照したIssueの観測状態を表示する。
 
 ## 通知を受けたら
 
