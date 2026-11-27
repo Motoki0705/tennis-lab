@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from .artifacts import read_manifest
-from .growth import SCHEMA_VERSION, aggregate_snapshot, analyze
+from .growth import SCHEMA_VERSION, aggregate_snapshot, analyze, shard_balance
 from .growth import markdown as growth_markdown
 from .growth_baseline import previous_main
 from .lanes import parse_attempt, read_plan, validate_plan
@@ -477,12 +477,20 @@ def write_growth_report(
         except (OSError, ValueError, KeyError, TypeError) as error:
             profile = None
             profile_reason = f"{type(error).__name__}: {error}"
+        balance = None
+        balance_reason = None
+        try:
+            balance = shard_balance(root, audit["shard_count"])
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            balance_reason = f"{type(error).__name__}: {error}"
         report = analyze(
             snapshot,
             baseline,
             baseline_reason=reason,
             profile=profile,
             profile_reason=profile_reason,
+            balance=balance,
+            balance_reason=balance_reason,
         )
     document = growth_markdown(report)
     (root / "growth-summary.json").write_text(json.dumps(report, indent=2) + "\n")

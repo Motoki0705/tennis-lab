@@ -71,23 +71,88 @@ phase 合计不是 runner 实际时间；增加 job 会重复环境准备和收�
 
 ## 重新生成实测profile
 
-下载同一run、HEAD和lane plan的最新 `cpu-test-measurements-RUN-shard-*`，每个shard恰好放在一个独立目录中。
+在checkout中使用已认证且能读取Actions产物的 `gh` 运行 `update-profile`。
+`--latest-main` 按从新到旧的顺序检查成功的main push，并报告不合格run的原因。
+产物仍可用时，可用 `--run-id` 和 `--attempt` 复现指定更新。
+
+命令固定run和HEAD，按artifact ID下载lane plan、最新coverage和所有shard，核对
+汇总的下载清单，并重建worker与JUnit审计。仅接受完整成功的main push，要求延期
+用例为0并通过独立runtime shard审计。部分重试可按上述attempt规则复用固定plan下
+较早成功的shard。证据无效或缺失时保留原输出profile，验证通过后原子替换。
+
+使用测量来源run的调度profile作为比较基准，可复现本次更新。
 
 ```bash
-.venv/bin/python -m scripts.ci_metrics profile --root /absolute/artifacts \
-  --output scripts/ci_metrics/cpu-file-times.json
+profile_work=$(mktemp -d)
+git show 8d629a35289f475e514291167435c333876afdd2:scripts/ci_metrics/cpu-file-times.json > "$profile_work/baseline.json"
+.venv/bin/python -m scripts.ci_metrics update-profile --run-id 45955929416 --attempt 1 \
+  --baseline "$profile_work/baseline.json" --output "$profile_work/cpu-file-times.json" \
+  --report "$profile_work/comparison.json" \
+  --split-file tests/e2e/agents_ops/test_board_messages.py \
+  --split-file tests/e2e/agents_ops/test_parent_session.py \
+  --split-file tests/integration/agents_ops/test_storage_tier_crash_boundaries.py \
+  --split-file tests/integration/agents_ops/test_storage_tier_recovery_boundaries.py
 ```
 
-命令重建phase/JUnit报告，核对source/run/plan、attempt范围、全部worker manifest、分配与完整inventory多重集合。混用attempt时，以shard的最大attempt作为汇总attempt，并记录 `source.plan_attempt` 与 `source.shard_attempts`。拒绝phase缺失、重复、dirty/mixed source、取消和收集失败。完整记录的测试失败保留在权重及 `source.counts` / `unsuccessful_cases` 中；生成权重不会令CI通过。`Python` 仍要求job和观测成功。审计另用 `observations_complete` 表示完整性。
+选择最新run时，将 `--run-id … --attempt …` 换成 `--latest-main`。默认比较基准是
+checkout中的 `cpu-file-times.json`。省略拆分选项会沿用测量来源的拆分声明。检查fixture
+后，重复指定 `--split-file` 可替换列表。若某个声明的文件没有实测用例，需要显式更新列表。
+JSON报告包含来源、固定的复现命令、文件差异，以及完整的分组分配和负载。若未测文件或
+用例明显增多，或实测负载持续失衡，比较候选并通过常规评审PR发布。命令只写本地文件。
 
-只要存在延后case，就拒绝生成profile。部分成功不能覆盖完整CPU权重或宣称完整baseline。
+对于历史记录或失败诊断，仍可用 `profile --root /absolute/artifacts
+--output /absolute/diagnostic.json` 从已下载的shard目录重建权重。完整记录的失败保存在
+`source.counts` 和 `unsuccessful_cases` 中。混合attempt时使用最高shard attempt，
+有延期用例时拒绝生成。
 
-默认保留观测中的 `split_files`。检查fixture后，重复传入 `--split-file tests/path.py` 可明确替换列表。收集guard会根据当前fixture graph验证声明。merge gate、board messages、parent session继续按function fixture拆分。坐标训练使用module scope的 `shared`，因此保留在一个shard内；不修改测试本体与fixture scope。
+### 当前profile的离线比较
 
-新profile来自成功main push的完整[run 41240159671](https://github.com/Motoki0705/tennis-lab/actions/runs/41240159671)：全部10个shard、883个文件、14,561例（14,470 passed / 91 skipped / 0 failed）、共7,543.124 phase秒。旧profile有54个当前文件未测量，包括29例的court dataset集成：中位数估计为0.077秒，实测为406.228秒。在相同inventory上，旧权重估计每shard为676.570–676.572秒，但该分配的实测负荷为439.996–1,101.161秒。用新权重重新分配后，10个shard估计为754.311–754.313秒，没有未测文件或拆分用例。这是并行worker phase的累计值，不是wall时间预测。测试成本显著改变后需重新生成。
+旧profile来自[run 41240159671](https://github.com/Motoki0705/tennis-lab/actions/runs/41240159671)的
+883个文件和14,561个用例。更新采用[run 45955929416](https://github.com/Motoki0705/tennis-lab/actions/runs/45955929416)，
+commit为 `8d629a35289f475e514291167435c333876afdd2`。lane plan、11份测量和成功coverage
+的run与HEAD一致，所有attempt均为1。1,160个文件共26,189例，26,070例通过、119例合法跳过、
+失败与延期均为0。独立job的17例全部通过。新增282个文件权重，更新878个，移出5个没有实测
+用例的旧条目。准确的artifact ID及inventory哈希记录在profile的 `source` 中。
+
+A使用旧权重，B用新权重并在实测inventory上沿用原拆分策略，C进一步拆分停止和恢复边界的
+两个文件。旧声明中的 `test_merge_gate.py` 提供辅助函数，收集用例为0。B有两个有效拆分
+文件，C有四个。A为普通shard的281个文件和28个拆分用例使用未测估值。B和C均无未测普通
+文件或拆分用例。
+
+下表为所有worker的setup、call和teardown累计秒数。A实测为来源run按A分配的实测负载。
+B/C用同一批观测值估计重新分配的负载。独立job的18.578 phase秒不计入普通shard合计。
+
+| Shard | A估计 | A实测 | B估计 | C估计 |
+|---|---:|---:|---:|---:|
+| 0 | 610.579 | 725.360 | 1809.091 | 1360.607 |
+| 1 | 610.580 | 1322.624 | 1310.776 | 1360.609 |
+| 2 | 610.579 | 611.440 | 1310.776 | 1360.608 |
+| 3 | 610.579 | 1304.961 | 1310.776 | 1360.609 |
+| 4 | 610.579 | 1185.038 | 1310.777 | 1360.608 |
+| 5 | 610.578 | 1397.866 | 1310.777 | 1360.607 |
+| 6 | 610.579 | 1650.712 | 1310.776 | 1360.608 |
+| 7 | 610.580 | 844.635 | 1310.778 | 1360.609 |
+| 8 | 610.578 | 3311.545 | 1310.777 | 1360.608 |
+| 9 | 610.578 | 1235.024 | 1310.778 | 1360.609 |
+| 最小 | 610.578 | 611.440 | 1310.776 | 1360.607 |
+| 最大 | 610.580 | 3311.545 | 1809.091 | 1360.609 |
+| 平均 | 610.579 | 1358.921 | 1360.608 | 1360.608 |
+| 最大 / 平均 | 1.000 | 2.437 | 1.330 | 1.000 |
+
+4,606个恢复边界用例耗时1809.091秒，从A的shard 8移到B的shard 0。1,649个停止边界用例
+耗时533.836秒，从A的6移到B的1。C把两个文件分到全部十个普通shard。接下来最重的
+整文件是 `test_parent_development.py`（423.166秒，A/B/C分别为1/2/0）、
+`test_parent_completion_resume.py`（373.922秒，8/3/1）和 `test_court_dataset.py`
+（355.775秒，0/4/2）。按C重新分配实测用例成本的最大累计值为1360.609秒，比A的
+实测最大值低58.9%。Test步骤耗时与runner用量的变化需在同条件Actions中比较。
+
+两个边界文件使用function scope的 `tmp_path`、`monkeypatch` 与全局的逐用例随机种子
+fixture。pytest的session scope临时目录分配器为各用例提供独立根目录。`make_lab` 在
+该根目录中存放repo、镜像、模拟 `/proc`、journal和锁。trace hook仅在fork的子进程内
+运行，子进程会被join或kill，pytest在teardown时恢复路径改动。实际shard plugin的收集
+guard接受了全部6,255个边界用例，每例恰好分配一次，未测拆分用例为0。
 
 ## 默认配置选择
 
-默认使用10 shard、2 worker，这是实测2 worker配置中，在15分钟内完成且没有已知README之外失败的最小配置。4 worker重复出现process cleanup后立即检查的额外assert失败，保留为手动比较选项。时间、runner成本、cache、RSS的完整表与样本限制以[baseline](baseline.zh-CN.md#runner配置比较)为准。父会话合并fixture优化后，应重新生成profile并重测6/8 shard是否足够。
-
-保留既有3个文件的拆分声明。最重的完整文件是court dataset集成，406.228秒低于更新后的每shard预算754.312秒。已用当前fixture graph确认可以拆分，但加入 `split_files` 后最大估计负荷仍为754.313秒，因此对这次完整inventory没有均衡收益。`test_parent_development.py`、`test_execution_basis.py` 和 `test_parent_completion_resume.py` 分别为291.218 / 251.793 / 138.501秒，也在预算内。不修改测试本体或fixture scope。
+默认十个普通shard，每个两个worker，另有一个必需的独立runtime job。用于选定默认值的
+测量、cache条件和样本限制见[baseline](baseline.zh-CN.md#runner配置比较)。

@@ -129,6 +129,13 @@ fixture時間はcase setupの内数で、phase合計へ再加算しません。s
 未計測のままstatusを表示します。profileは実際の分割に使ったfingerprintと照合し、
 欠落・不一致は理由を示し、新規fileはprofile未計測と表示します。
 
+同じレポートに分割profileのrun・commit・case件数・分割file数を表示します。要求対象と
+計測済みfile・分割caseを照合し、全件要求ならprofile計測時からのcase件数差も示します。
+通常shardについて、分配時の推定値とsetup・call・teardownの実測合計秒を並べ、
+それぞれの最小・最大・平均・最大/平均を示します。専用runtime jobは偏りの集計から外します。
+未計測率の増加や実測負荷の偏りが続く場合は、
+[profile更新コマンド](sharding.ja.md#実測profileの再生成)で更新候補を確認します。
+
 `cpu-test-coverage-<run>-<attempt>` artifactには、`growth.json`（schema 1、完全な要求対象
 inventory/詳細/results/fixtureコストとrun identity、または不完全な理由）、`growth-summary.json`（全レポート行）、
 `growth-summary.md` も90日保存します。summaryの各表は20行までで、全行はJSONに残します。
