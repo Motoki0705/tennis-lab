@@ -7,8 +7,28 @@ from collections.abc import Mapping, Sequence
 from typing import Any
 
 from lib.ops_review.review_policy import check_started_at
+from parent.policy import nonempty, number
 
+CI_WORKFLOW_PATH = ".github/workflows/ci.yml"
 REQUIRED_CHECK = "Python"
+
+
+def latest_push_ci_run(
+    runs: Sequence[dict[str, Any]], head: str, branch: str
+) -> dict[str, Any] | None:
+    return max(
+        (
+            run
+            for run in runs
+            if nonempty(run.get("path"), "Actions workflow path").partition("@")[0]
+            == CI_WORKFLOW_PATH
+            and run.get("event") == "push"
+            and run.get("head_sha") == head
+            and run.get("head_branch") == branch
+        ),
+        key=lambda run: (number(run.get("run_number")), number(run.get("run_attempt"))),
+        default=None,
+    )
 
 
 def python_ci_errors(runs: Sequence[Mapping[str, Any]], head: str) -> tuple[str, ...]:

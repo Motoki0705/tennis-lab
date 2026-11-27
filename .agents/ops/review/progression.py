@@ -15,13 +15,20 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any, Protocol
 
+from issues.cli import GitHubHTTPError, GitHubTransportError
 from lib.checkout_lock import CheckoutRefused, checkout_wait
 from lib.d_capacity import CapacityError
+from parent.github import GitHubWriteError
 from parent.state import Store, unique_object
 
 POLL_SECONDS = 60
 CI_TIMEOUT = 6 * 3600
 REPAIR_LIMIT = 3
+MERGEABILITY_UNKNOWN = "mergeability_unknown"
+MERGEABILITY_DELAYS = (5, 10, 15, 30, 30, 60)
+TRANSIENT_READ_DELAYS = (10, 20, 40, 60, 60)
+MAIN_CI_RERUN_LIMIT = 2
+MAIN_CI_RERUN_GRACE = 2 * POLL_SECONDS
 KNOWLEDGE_MERGE = "knowledge_merge"
 INACTIVE_STAGES = {"parent_wait", "completed", "transferred"}
 
@@ -38,11 +45,18 @@ class MergeHold(ValueError):
         self.retry = retry
 
 
+def is_transient_read(error: Exception) -> bool:
+    return isinstance(error, GitHubTransportError) or (
+        isinstance(error, GitHubHTTPError) and error.status in {500, 502, 503, 504}
+    )
+
+
 class Backend(Protocol):
     def local(self, state: dict[str, Any]) -> str | None: ...
     def review(self, state: dict[str, Any], directory: Path) -> dict[str, Any]: ...
     def pr(self, number: int) -> dict[str, Any]: ...
     def ci(self, number: int, head: str, *, main: bool = False) -> dict[str, Any]: ...
+    def rerun_workflow(self, run_id: int) -> None: ...
     def shape(self, target: dict[str, Any], pr: dict[str, Any]) -> str | None: ...
     def human(self, state: dict[str, Any], target: dict[str, Any]) -> str | None: ...
     def dependency(self, target: dict[str, Any]) -> bool: ...
@@ -331,7 +345,11 @@ class Engine:
                 continue
             if target["stage"] == "parent_wait":
                 target["stage"] = target.pop("resume_stage")
-                target.pop("reason", None)
+                reason = target.pop("reason", None)
+                if reason == MERGEABILITY_UNKNOWN:
+                    target.pop("mergeability_retries", None)
+                elif reason == "observation_failed":
+                    target.pop("transient_error", None)
                 target["next_poll"] = 0
                 target["ci_since"] = None
         self.state["status"] = "running"
@@ -362,6 +380,9 @@ class Engine:
                     )
                     return self.state
         while review["stage"] in {"requested", "running"}:
+            if (delay := review.get("next_poll", 0) - self.clock()) > 0:
+                self._wait(delay)
+                continue
             try:
                 reason = self.backend.local(self.state)
                 if reason:
@@ -374,6 +395,8 @@ class Engine:
                         self.state["status"] = "parent_wait"
                         self.emit("parent_wait", pr=target["number"], reason=reason)
                         return self.state
+                review.pop("transient_error", None)
+                review.pop("next_poll", None)
                 review["stage"] = "running"
                 self.state["status"] = "running"
                 self.save()
@@ -401,6 +424,10 @@ class Engine:
             except RateWait as exc:
                 self.wait_rate(exc, review)
             except Exception as exc:
+                if review["stage"] == "requested" and self.retry_transient_read(
+                    review, exc
+                ):
+                    continue
                 review.update(stage="parent_wait", error=str(exc))
                 self.state["status"] = "parent_wait"
                 reason = (
@@ -428,24 +455,36 @@ class Engine:
                     or target["next_poll"] > self.clock()
                 ):
                     continue
+                # Commit the reset together with any successful step's state.
+                transient_error = target.pop("transient_error", None)
                 try:
                     target.pop("rate_limit", None)
                     self.step(target)
-                except RateWait as exc:
-                    target.update(
-                        next_poll=exc.resume_at,
-                        rate_limit={"resume_at": exc.resume_at, "reason": str(exc)},
-                    )
-                    self.save()
-                except CapacityError as exc:
-                    self.pause(target, f"repair_capacity_deferred: {exc}")
                 except Exception as exc:
+                    if transient_error is not None:
+                        target["transient_error"] = transient_error
+                    stage = target["stage"]
+                    if isinstance(exc, CapacityError):
+                        self.pause(target, f"repair_capacity_deferred: {exc}")
+                        continue
+                    if stage in {"merge_pending", "repair_pending"}:
+                        reason = "recovery_required"
+                    elif isinstance(exc, RateWait):
+                        target.update(
+                            next_poll=exc.resume_at,
+                            rate_limit={"resume_at": exc.resume_at, "reason": str(exc)},
+                        )
+                        self.save()
+                        continue
+                    elif stage in {
+                        "ci_wait",
+                        "dependency_wait",
+                        "post_merge_wait",
+                    } and self.retry_transient_read(target, exc):
+                        continue
+                    else:
+                        reason = "observation_failed"
                     target["error"] = str(exc)
-                    reason = (
-                        "recovery_required"
-                        if target["stage"] in {"merge_pending", "repair_pending"}
-                        else "observation_failed"
-                    )
                     self.pause(target, reason)
             active = [
                 t
@@ -475,9 +514,29 @@ class Engine:
         target.pop("rate_limit", None)
         self.save()
 
-    def later(self, target: dict[str, Any]) -> None:
-        target["next_poll"] = self.clock() + POLL_SECONDS
+    def later(self, target: dict[str, Any], delay: float = POLL_SECONDS) -> None:
+        target["next_poll"] = self.clock() + delay
         self.save()
+
+    def retry_transient_read(
+        self, observation: dict[str, Any], error: Exception
+    ) -> bool:
+        if not is_transient_read(error):
+            return False
+        retries = observation.get("transient_error", {}).get("retries", 0)
+        if retries >= len(TRANSIENT_READ_DELAYS):
+            return False
+        observation["transient_error"] = {"retries": retries + 1, "reason": str(error)}
+        self.later(observation, TRANSIENT_READ_DELAYS[retries])
+        return True
+
+    def wait_mergeability(self, target: dict[str, Any], retries: int) -> None:
+        if retries >= len(MERGEABILITY_DELAYS):
+            target["mergeability_retries"] = retries
+            self.pause(target, MERGEABILITY_UNKNOWN, resume="ci_wait")
+            return
+        target.update(stage="ci_wait", mergeability_retries=retries + 1)
+        self.later(target, MERGEABILITY_DELAYS[retries])
 
     def step(self, target: dict[str, Any]) -> None:
         stage = target["stage"]
@@ -550,6 +609,10 @@ class Engine:
             self.save()
             return
         reason = self.backend.shape(target, current)
+        retries = target.pop("mergeability_retries", 0)
+        if reason == MERGEABILITY_UNKNOWN:
+            self.wait_mergeability(target, retries)
+            return
         if reason:
             self.start_repair(target, reason)
             return
@@ -574,6 +637,8 @@ class Engine:
             target["stage"] = "ci_wait"
             self.later(target)
             return
+        except (GitHubHTTPError, GitHubTransportError, GitHubWriteError):
+            raise
         except Exception as exc:
             target["merge_error"] = str(exc)
             self.save()
@@ -587,7 +652,13 @@ class Engine:
             self.pause(target, reason)
             return
         pr = self.backend.pr(target["number"])
-        if reason := self.backend.shape(target, pr):
+        reason = self.backend.shape(target, pr)
+        # Keep the previous count through the final, authoritative shape check.
+        retries = target.pop("mergeability_retries", 0)
+        if reason == MERGEABILITY_UNKNOWN:
+            self.wait_mergeability(target, retries)
+            return
+        if reason:
             self.pause(target, reason, resume="ci_wait")
             return
         head = pr["head"]["sha"]
@@ -624,12 +695,15 @@ class Engine:
         try:
             self.backend.merge_knowledge(self.state, target, ci, record_intent)
         except MergeHold as exc:
-            if exc.retry:
+            if exc.retry and str(exc) == MERGEABILITY_UNKNOWN:
+                ci.update(status="pending", reasons=[MERGEABILITY_UNKNOWN])
+                self.wait_mergeability(target, retries)
+            elif exc.retry:
                 self.wait_knowledge_ci(target, str(exc))
             else:
                 self.pause(target, str(exc), resume="ci_wait")
             return
-        except RateWait:
+        except (RateWait, GitHubHTTPError, GitHubTransportError, GitHubWriteError):
             raise
         except Exception as exc:
             if target["stage"] != "merge_pending":
@@ -734,11 +808,41 @@ class Engine:
             self.save()
         elif ci["status"] == "failure":
             self.pause(target, "main_ci_failed")
+        elif ci["status"] == "cancelled_before_start":
+            self.rerun_main_ci(target, ci["run"])
         elif ci["status"] not in {"pending", "success"}:
             raise ValueError("unknown main CI observation")
         elif self.clock() - target["merged_at"] >= CI_TIMEOUT:
             self.pause(
                 target, "main_ci_timeout" if issues_closed else "issue_not_completed"
             )
+        else:
+            self.later(target)
+
+    def rerun_main_ci(self, target: dict[str, Any], run: dict[str, Any]) -> None:
+        run_id, run_attempt = run["id"], run["run_attempt"]
+        history = target.setdefault("main_ci_reruns", [])
+        reason = "main_ci_cancelled_before_start"
+        now = self.clock()
+        for attempt in history:
+            if (attempt["run_id"], attempt["run_attempt"]) != (run_id, run_attempt):
+                continue
+            remaining = attempt["at"] + MAIN_CI_RERUN_GRACE - now
+            if remaining <= 0:
+                self.pause(target, reason)
+            else:
+                self.later(target, min(POLL_SECONDS, remaining))
+            return
+        if len(history) >= MAIN_CI_RERUN_LIMIT:
+            self.pause(target, reason)
+            return
+        # A lost response or controller restart may leave this POST applied.
+        history.append({"run_id": run_id, "run_attempt": run_attempt, "at": now})
+        self.save()
+        try:
+            self.backend.rerun_workflow(run_id)
+        except Exception as exc:
+            target["error"] = str(exc)
+            self.pause(target, reason)
         else:
             self.later(target)

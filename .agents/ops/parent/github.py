@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from issues.cli import GitHub as IssueGitHub
 from issues.evidence import EVIDENCE_LABEL, is_evidence_issue, require_work_issue
 from issues.polling import GETResponse, JobLog
+from issues.transport import HTTPResponse
 
 from . import metrics
 from .judgement_comments import read_json
@@ -298,6 +299,12 @@ class GitHub(IssueGitHub):
     def write(
         self, method: str, endpoint: str, payload: dict[str, Any]
     ) -> dict[str, Any]:
+        response = self._write_response(method, endpoint, payload)
+        return object_value(json.loads(self._http.redact_json(response.body)))
+
+    def _write_response(
+        self, method: str, endpoint: str, payload: dict[str, Any]
+    ) -> HTTPResponse:
         self._require_scope()
         self.invalidate(endpoint)
         with self.io_scope():
@@ -317,7 +324,7 @@ class GitHub(IssueGitHub):
                 f"gh {method} {self._http.redact(endpoint)} failed: {self._http.redact(detail)}",
                 status=None if response.error else response.status,
             )
-        return object_value(json.loads(self._http.redact_json(response.body)))
+        return response
 
     def graphql(self, query: str, variables: dict[str, Any]) -> dict[str, Any]:
         """Read GraphQL without caching or holding the registry lock remotely."""
