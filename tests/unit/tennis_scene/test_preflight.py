@@ -208,6 +208,26 @@ def test_ecpose_inventory_selects_the_pinned_model_and_explicit_engine(installat
     assert {"hmr2", "gvhmr", "tracking_encoder", "aflink"} <= requirements.keys()
 
 
+@pytest.mark.parametrize(("detector", "pose", "expected", "absent"), [
+    ("dino", "rtmpose-x", {"detector", "dino_ops", "rtmpose-x", "rtmpose-x_engine_0/engine.plan"}, {"vitpose", "rfdetr-l"}),
+    ("rfdetr-l", "vitpose-h", {"rfdetr-l", "vitpose"}, {"detector", "dino_ops", "rtmpose-x"}),
+    ("rfdetr-l", "rtmpose-x", {"rfdetr-l", "rtmpose-x", "rtmpose-x_engine_0/engine.plan"}, {"detector", "dino_ops", "vitpose"}),
+])
+def test_people_inventory_matches_configured_mixed_models(
+    installation_config: DictConfig, detector: str, pose: str, expected: set[str], absent: set[str],
+) -> None:
+    installation_config.people_models.detector = detector
+    installation_config.people_models.pose = pose
+    runtime_pose = installation_config.people_models.runtime.rtmpose_x
+    runtime_pose.backend, runtime_pose.precision, runtime_pose.engines = "tensorrt", "fp16", ["tensorrt/pose"]
+    cfg = PipelineRuntimeConfig.from_config(installation_config)
+    requirements = {item.name: item for item in preflight.configured_requirements(installation_config)}
+    assert requirements == {item.name: item for item in standard_requirements(cfg)}
+    assert expected <= requirements.keys() and not absent & requirements.keys()
+    for model in {"rfdetr-l", "rtmpose-x"} & requirements.keys():
+        assert requirements[model].sha256
+
+
 def test_unreadable_association_recipe_does_not_hide_independent_assets(
     installation_config: DictConfig, tmp_path: Path,
 ) -> None:

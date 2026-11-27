@@ -18,6 +18,8 @@ from src.tennis_scene.pipeline.model_resources import (
     dino_tensorrt,
     gvhmr_tensorrt,
     hmr2_tensorrt,
+    rfdetr_tensorrt,
+    rtmpose_tensorrt,
     vitpose_tensorrt,
 )
 from src.tennis_scene.pipeline.orchestrator import TennisSceneOrchestrator
@@ -165,3 +167,38 @@ def test_all_tensorrt_model_declarations_reach_publication(
     too_large = runtime(tmp_path, overrides=(*config_overrides, f"{pose_batch}5"))
     with pytest.raises(ValueError, match=r"\(10, 3, 256, 192\) outside profile"):
         TennisSceneOrchestrator(too_large).publication_identity()
+
+
+def test_people_engine_profiles_and_plan_bytes_bind_publication(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    overrides = (
+        "device=cuda", "people_models.detector=rfdetr-l", "people_models.pose=rtmpose-x",
+        "people_models.runtime.rfdetr_l.precision=fp16", "people_models.runtime.rfdetr_l.backend=tensorrt",
+        "people_models.runtime.rfdetr_l.batch_size=2", "people_models.runtime.rfdetr_l.engines=[rf/1,rf/2]",
+        "people_models.runtime.rtmpose_x.precision=fp16", "people_models.runtime.rtmpose_x.backend=tensorrt",
+        "people_models.runtime.rtmpose_x.batch_size=4", "people_models.runtime.rtmpose_x.engines=[pose]",
+    )
+    cfg = runtime(tmp_path, overrides=overrides)
+    materialize_assets(enabled_model_assets(cfg).values(), tmp_path, court=cfg.court_kp)
+    monkeypatch.setattr("src.tennis_scene.pipeline.model_resources.require_people_checkpoint", lambda *_: None)
+    environment = EngineEnvironment(tensorrt_version="10.14.1", device_name="test GPU", compute_capability=(12, 0))
+    monkeypatch.setattr("src.tennis_scene.pipeline.tensorrt_assets.resolve_device", torch.device)
+    monkeypatch.setattr("src.tennis_scene.pipeline.tensorrt_assets.tensorrt_module", object)
+    monkeypatch.setattr("src.tennis_scene.pipeline.tensorrt_assets.engine_environment", lambda *_: environment)
+    with pytest.raises(FileNotFoundError, match=r"(engine|export)\.json"):
+        TennisSceneOrchestrator(cfg).publication_identity()
+    for batch in (1, 2):
+        _make_bundle(rfdetr_tensorrt(cfg.people, batch), cfg.roots.artifact_root / f"rf/{batch}", environment)
+    _make_bundle(rtmpose_tensorrt(cfg.people), cfg.roots.artifact_root / "pose", environment)
+    identity = TennisSceneOrchestrator(cfg).publication_identity()
+    assert identity["people_models"] == {"detector": "rfdetr-l", "pose": "rtmpose-x"}
+    detection = identity["models"]["person_detection"]["detector"]
+    pose = identity["models"]["person_pose_features"]["pose"]
+    assert detection["settings"]["runtime"]["confidence"] == .30
+    assert detection["settings"]["engines"][1]["profiles"]["input"]["minimum"] == [2, 3, 704, 704]
+    assert pose["settings"]["joint_confidence"] == "raw_simcc_peak"
+    assert pose["settings"]["engines"][0]["profiles"]["pixels"]["maximum"] == [4, 3, 384, 288]
+    with pytest.raises(ValueError, match="outside profile"):
+        TennisSceneOrchestrator(runtime(tmp_path, overrides=(*overrides, "people_models.runtime.rtmpose_x.batch_size=5"))).publication_identity()
+    (cfg.roots.artifact_root / "rf/2" / PLAN_FILE).write_bytes(b"wrong engine")
+    with pytest.raises(ValueError, match="SHA-256 mismatch"):
+        TennisSceneOrchestrator(cfg).publication_identity()

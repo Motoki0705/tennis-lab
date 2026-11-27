@@ -6,14 +6,33 @@ from collections.abc import Mapping
 from dataclasses import dataclass, fields
 from functools import lru_cache
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 from src.submodules.configuration import (
     BodyRuntimeConfig,
+    DinoDetectorRuntimeConfig,
+    RFDetrRuntimeConfig,
+    RTMPoseRuntimeConfig,
     SmplAssetPaths,
     SubmoduleRuntimeConfig,
+    ViTPoseRuntimeConfig,
 )
 from src.utils.checksum import dual_sha256
+
+DetectorName = Literal["dino", "rfdetr-l"]
+PoseName = Literal["vitpose-h", "rtmpose-x"]
+LEGACY_PEOPLE_MODELS: tuple[DetectorName, PoseName] = ("dino", "vitpose-h")
+
+
+def people_model_names(values: Mapping[str, object]) -> tuple[DetectorName, PoseName]:
+    # Older saved pipeline settings predate the two selectors.
+    effective = {"detector": "dino", "pose": "vitpose-h", **values}
+    detector, pose = effective["detector"], effective["pose"]
+    if detector not in ("dino", "rfdetr-l"):
+        raise ValueError("people_models.detector must be dino or rfdetr-l")
+    if pose not in ("vitpose-h", "rtmpose-x"):
+        raise ValueError("people_models.pose must be vitpose-h or rtmpose-x")
+    return detector, pose
 
 
 @lru_cache(maxsize=128)
@@ -89,10 +108,57 @@ class PeopleModelConfig:
     body_models_dir: Path
     smpl_assets: SmplAssetPaths
     runtime: SubmoduleRuntimeConfig
+    detector: DetectorName
+    pose: PoseName
+    rfdetr_checkpoint: Path | None
+    rtmpose_checkpoint: Path | None
 
     def __post_init__(self) -> None:
+        people_model_names({"detector": self.detector, "pose": self.pose})
+        if self.detector == "rfdetr-l":
+            self.rfdetr_settings()
+        if self.pose == "rtmpose-x":
+            self.rtmpose_settings()
         if not self.runtime.static_cam:
             raise ValueError("Automatic reconstruction currently requires static cameras")
+
+    def rfdetr_settings(self) -> tuple[Path, RFDetrRuntimeConfig]:
+        if self.rfdetr_checkpoint is None or self.runtime.rfdetr_l is None:
+            raise ValueError("RF-DETR-L requires people_models.rfdetr_checkpoint and runtime.rfdetr_l")
+        return self.rfdetr_checkpoint, self.runtime.rfdetr_l
+
+    def rtmpose_settings(self) -> tuple[Path, RTMPoseRuntimeConfig]:
+        if self.rtmpose_checkpoint is None or self.runtime.rtmpose_x is None:
+            raise ValueError("RTMPose-X requires people_models.rtmpose_checkpoint and runtime.rtmpose_x")
+        return self.rtmpose_checkpoint, self.runtime.rtmpose_x
+
+    @property
+    def detector_runtime(self) -> DinoDetectorRuntimeConfig | RFDetrRuntimeConfig:
+        return self.runtime.dino_detector if self.detector == "dino" else self.rfdetr_settings()[1]
+
+    @property
+    def pose_runtime(self) -> ViTPoseRuntimeConfig | RTMPoseRuntimeConfig:
+        return self.runtime.vitpose if self.pose == "vitpose-h" else self.rtmpose_settings()[1]
+
+    @property
+    def uses_tensorrt(self) -> bool:
+        return bool(self.detector_runtime.engines or self.pose_runtime.engines
+                    or self.runtime.hmr2.backend.engines or self.runtime.clip_reid.backend.engines
+                    or self.runtime.gvhmr.backend.engines)
+
+    @property
+    def uses_alternative_models(self) -> bool:
+        return self.selection != LEGACY_PEOPLE_MODELS
+
+    @property
+    def selection(self) -> tuple[DetectorName, PoseName]:
+        return self.detector, self.pose
+
+    def detection_assets(self) -> dict[str, Path]:
+        return {"checkpoint": self.dino_checkpoint if self.detector == "dino" else self.rfdetr_settings()[0]}
+
+    def pose_assets(self) -> dict[str, Path]:
+        return {"pose": self.vitpose_checkpoint if self.pose == "vitpose-h" else self.rtmpose_settings()[0]}
 
     def body_assets(self) -> dict[str, Path]:
         return _body_assets(self)

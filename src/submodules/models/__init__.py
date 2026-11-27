@@ -32,6 +32,12 @@ from src.submodules.models.hmr2.feature_extractor import (
     ImageFeatureRequest,
     ImageFeatureResult,
 )
+from src.submodules.models.rfdetr.person_detector import RFDetrPersonDetector
+from src.submodules.models.rtmpose.pose2d import (
+    RTMPoseBoxSequenceRequest,
+    RTMPoseXPose2D,
+    iter_rtmpose_crops,
+)
 from src.submodules.models.tracker.common import (
     TrackRequest,
     TrackResult,
@@ -58,8 +64,10 @@ __all__ = [
     "PersonDetectionResult",
     "Pose2DFrameSequenceRequest",
     "Pose2DRequest",
-    "Pose2DFrameSequenceRequest",
     "Pose2DResult",
+    "RFDetrPersonDetector",
+    "RTMPoseBoxSequenceRequest",
+    "RTMPoseXPose2D",
     "SmplCoco17Reconstructor",
     "SmplVertexReconstructor",
     "TrackRequest",
@@ -69,6 +77,7 @@ __all__ = [
     "dino_source_assets",
     "filter_detections_by_footpoint",
     "iter_frame_person_crops",
+    "iter_rtmpose_crops",
     "select_and_complete_tracks",
     "validate_dino_extension",
 ]

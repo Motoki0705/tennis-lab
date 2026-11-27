@@ -16,12 +16,14 @@ src/submodules/
 ├── models/            # 型付きの推論モデル（下流はここだけ見ればよい）
 │   ├── _base/         # BaseInferenceModel: load/unload/predict の共通契約
 │   ├── dino/          # DinoPersonDetector: frame(s) -> person boxes
+│   ├── rfdetr/        # RFDetrPersonDetector: frame(s) -> person boxes
 │   ├── tracker/       # 共通のtrack契約・bbox補間・足元polygonフィルタ
 │   ├── vitpose/       # ViTPosePose2D: video + boxes -> COCO-17 keypoints
+│   ├── rtmpose/       # RTMPoseXPose2D: video / frames + boxes -> COCO-17 keypoints
 │   ├── hmr2/          # Hmr2FeatureExtractor: video + boxes -> (F, 1024) features
 │   └── gvhmr/         # GvhmrMeshRecovery: keypoints+boxes+features -> SMPL-X params
 │                      # SmplVertexReconstructor: params -> SMPL vertices (F, 6890, 3)
-└── vendor/gvhmr/      # 環境競合を避けるため移植したGVHMR研究コード
+└── vendor/            # GVHMR研究コードと、RTMPose-XのCSPNeXt/RTMCC推論
 ```
 
 ## 共通インターフェース（`models`）
@@ -90,6 +92,14 @@ single_image_batches = detector.predict_batch(requests, batch_size=1)
 ViTPose-H・DINO・CLIP-ReID・HMR2・GVHMRのTensorRT FP16推論、ONNX export、
 エンジンの作成と配置は[シーンのTensorRT設定](../tennis_scene/pipeline/README.md#tensorrt-fp16)を参照してください。
 
+`RFDetrPersonDetector` は同じ request と result を使います。PyTorch と ONNX export に
+`uv sync --locked --extra rfdetr` が必要です。TRT16 は明示したバッチのエンジンを使います。
+`RTMPoseXPose2D` は `Pose2DRequest`、`Pose2DFrameSequenceRequest` の square box に対応します。
+元画像の矩形 box を保つ場合は `RTMPoseBoxSequenceRequest` に xyxy を渡します。
+`iter_rtmpose_crops` が返す正規化済み `(N,3,384,288)` と元座標の `(cx,cy,w,h)` は
+`predict_crops` に渡せます。両モデルのシーンでの選択とスコアの意味は
+[人物モデルの選択](../tennis_scene/pipeline/README.md#人物モデルの選択)を参照してください。
+
 ## デモ
 
 保存済みの入力pose・観測mask・3D身体と配置拒否を同じsource frameで確認する
@@ -111,6 +121,21 @@ scene pipelineは重みの配置に `paths.checkpoint_root` を使います。
 `paths.external_asset_root` はDINO等の外部source専用です。旧配置から移す際は原本を保持し、
 コピー元/先のSHA-256一致を確認してからckptへ配置します。旧パスを探索するfallbackはありません。
 SMPL-X/SMPL-H本体、SMPL補助資産、外部重みはgitへ追加しません。
+
+### RF-DETR-L と RTMPose-X の重みの取得
+
+[LICENSES.ja.md](../../LICENSES.ja.md#separately-obtained-weights) に公式配布元と条件があります。
+次のコマンドは指定した重みを取得し、SHA-256 を照合してから `paths.checkpoint_root` 配下に配置します。
+
+```bash
+.venv/bin/python -m src.submodules.scripts.install_people_model_checkpoint \
+  --checkpoint-root "$PWD/ckpt" --model rfdetr-l
+.venv/bin/python -m src.submodules.scripts.install_people_model_checkpoint \
+  --checkpoint-root "$PWD/ckpt" --model rtmpose-x
+```
+
+`--list` で公式 URL・配置先・期待する SHA-256 を表示します。
+`--verify-only` は既存ファイルを照合します。既存ファイルの SHA-256 が異なる場合は停止します。
 
 ### SMPL補助資産の取得
 

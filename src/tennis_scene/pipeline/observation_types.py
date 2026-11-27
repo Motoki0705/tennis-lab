@@ -32,8 +32,12 @@ class ObjectObservations:
             raise ValueError("Invalid observation image size / fps")
         if self.uv_px.dtype != np.float32 or self.confidence.dtype != np.float32 or self.local_track_ids.dtype != np.int64:
             raise TypeError("Observations require float32 coordinates/confidence and int64 local IDs")
-        if not np.isfinite(self.uv_px).all() or not np.isfinite(self.confidence).all() or (self.confidence < 0).any():
-            raise ValueError("Object observations must be finite with nonnegative confidence")
+        if not np.isfinite(self.uv_px).all() or not np.isfinite(self.confidence).all():
+            raise ValueError("Object observations must be finite")
+        # A signed SimCC peak is retained for a missing joint. The adapter
+        # encodes its absent coordinates as (-1, -1), outside every image.
+        if np.any(self.uv_px[self.confidence < 0] != -1):
+            raise ValueError("Negative confidence requires missing (-1, -1) coordinates")
         if self.boxes_xys is not None and (self.boxes_xys.shape != (v, t, d, 3) or not np.isfinite(self.boxes_xys).all()):
             raise ValueError("Object boxes must match (V,T,D,3)")
 
