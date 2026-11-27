@@ -26,7 +26,9 @@ from .safety import public
 TRANSPORT_TIMEOUT = 5
 
 
-def claude(env: Mapping[str, str], notification: Notification) -> NotificationResult:
+def claude(
+    env: Mapping[str, str], notification: Notification | receivers.ReceiverBell
+) -> NotificationResult:
     with locked(receivers.root(env) / "routes.lock"):
         try:
             record = receivers.resolve(env, notification)
@@ -46,7 +48,9 @@ def claude(env: Mapping[str, str], notification: Notification) -> NotificationRe
             {
                 "type": "user",
                 "message": {"role": "user", "content": notification.bell},
-                "from": "tennis-board",
+                "from": "tennis-board"
+                if isinstance(notification, Notification)
+                else "tennis-merge-progression",
                 "uuid": str(uuid.UUID(notification.idempotency_key[:32])),
                 "msg_id": notification.idempotency_key,
             },
@@ -80,13 +84,17 @@ def _accepted(task: dict[str, Any]) -> NotificationResult:
     return NotificationResult(False, "notification_uncertain")
 
 
-def codex(env: Mapping[str, str], notification: Notification) -> NotificationResult:
+def codex(
+    env: Mapping[str, str], notification: Notification | receivers.ReceiverBell
+) -> NotificationResult:
+    board_post = isinstance(notification, Notification)
     with locked(receivers.root(env) / "routes.lock"):
         try:
             record = receivers.resolve(env, notification)
             if not Path(record["codex"]).is_file():
                 raise BoardError("Codex CLI unavailable")
-            task_dir = receivers.root(env) / "queue" / notification.idempotency_key
+            queue = "queue" if board_post else "progression-queue"
+            task_dir = receivers.root(env) / queue / notification.idempotency_key
             task_dir.mkdir(parents=True, exist_ok=True, mode=0o700)
             task_path = task_dir / "task.json"
             task = receivers.read(task_path)
@@ -98,12 +106,12 @@ def codex(env: Mapping[str, str], notification: Notification) -> NotificationRes
                 return _accepted(task)
             task = {
                 **record,
-                "post_id": notification.post_id,
-                "name": notification.name,
                 "prompt": notification.bell,
                 "deliveries": [],
                 "queue_timeout_seconds": TRANSPORT_TIMEOUT,
             }
+            if isinstance(notification, Notification):
+                task.update(post_id=notification.post_id, name=notification.name)
             _, task["observed_boundary"] = codex_queue.history(task, None)
             if not task["observed_boundary"]["line_complete"]:
                 raise BoardError("Codex rollout is incomplete")
@@ -113,11 +121,17 @@ def codex(env: Mapping[str, str], notification: Notification) -> NotificationRes
         def persist() -> None:
             receivers.write(task_path, task)
 
+        marker = (
+            f"[board-delivery:{notification.idempotency_key}]"
+            if board_post
+            else notification.bell.split(" ", 1)[0]
+        )
         codex_queue.enqueue(
             task,
-            f"[board-delivery:{notification.idempotency_key}]",
+            marker,
             persist=persist,
             command=_command,
+            message=None if board_post else notification.bell,
         )
         codex_queue.reconcile(task, persist)
         return _accepted(task)

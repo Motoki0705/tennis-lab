@@ -402,6 +402,7 @@ class ParentSession:
         return {"parent": self.parent, "display_summary": row["display_summary"]}
 
     def status(self) -> dict[str, Any]:
+        from lib.ops_review.progression_notify import notifications
         from worker_logs.reconciliation import (
             decision_resume_command,
             remaining_publications,
@@ -410,6 +411,9 @@ class ParentSession:
         from .notifications import publication_status
 
         row = self.row
+        notices = [
+            item for item in notifications(self.store, row) if not item["acknowledged"]
+        ]
         _, items = self.work_items()
         history = self.history()
         assignment_retry = self._missing_assignment_record(history)
@@ -453,6 +457,7 @@ class ParentSession:
             "notifications": publication_status(
                 self.gh.record_history(self.parent, self.login)
             ),
+            **({"progression_notifications": notices} if notices else {}),
             "tasks": {
                 n: {
                     **visible_task(task, run_paths),

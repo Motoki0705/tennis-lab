@@ -350,9 +350,9 @@ def review_usage(path: Path, state: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def view(path: Path) -> dict[str, Any]:
+def view(path: Path, *, store: Store | None = None) -> dict[str, Any]:
     state = read(path)
-    return {
+    result = {
         "review_run_id": state["id"],
         "status": state["status"],
         "kind": state["request"].get("kind", "review_and_merge"),
@@ -371,6 +371,18 @@ def view(path: Path) -> dict[str, Any]:
         "review_usage": review_usage(path, state),
         "decisions": state["decisions"],
     }
+    if store is not None:
+        from lib.ops_review.progression_notify import notifications
+
+        request = state["request"]
+        with store.consistent_snapshot():
+            row = store.parents.get(
+                f"{request['repo'].casefold()}#{request['parent_issue']}", {}
+            )
+        notices = notifications(store, row, state=state)
+        if notices:
+            result["progression_notifications"] = notices
+    return result
 
 
 def start(path: Path) -> None:

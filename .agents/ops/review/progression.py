@@ -340,9 +340,16 @@ class Engine:
             # A normal continuation re-enters the same round. A retry has
             # already reserved a new round in prepare().
             review.update(stage="running")
+        # Advance the notice cursors in the same write as the continuation.
+        # A partial continuation leaves other PRs' notices unacknowledged.
+        events = self.state["events"]
+        seen = events[-1]["id"] if events else 0
+        acknowledgements = self.state.setdefault("notification_acknowledgements", {})
+        acknowledgements["run"] = seen
         for target in self.state["targets"].values():
             if prs is not None and target["number"] not in prs:
                 continue
+            acknowledgements[str(target["number"])] = seen
             if target["stage"] == "parent_wait":
                 target["stage"] = target.pop("resume_stage")
                 reason = target.pop("reason", None)

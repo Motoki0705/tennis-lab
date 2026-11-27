@@ -361,7 +361,10 @@ def test_labelled_parent_recovers_completion_with_or_without_a_worker(
     assert {label["name"] for label in p.state()["issues"]["1"]["labels"]} == {
         "issue:parent"
     }
+    progression_reads = importlib.import_module("dispatcher.state").progression_reads
+    assert before["progression_notifications"] and not progression_reads(before)
     resumed = flow.close_and_reserve()
+    assert progression_reads(flow.row())
     assert flow.control.claim("o/r#1", resumed["id"]) is not None
     flow.accept(resumed)
     p.announce_completion()

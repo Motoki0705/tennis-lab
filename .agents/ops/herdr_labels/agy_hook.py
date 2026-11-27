@@ -11,7 +11,7 @@ from typing import Any
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from board.display import agy_unread  # noqa: E402
+from board.display import agy_context  # noqa: E402
 from board.errors import BoardError  # noqa: E402
 from lib.agy_session import (  # noqa: E402
     AGY_LAUNCH_ENV,
@@ -83,16 +83,10 @@ def main() -> int:
             if mode == "status-line":
                 agy_session_changed(env, tui, conversation)
             else:
-                count = agy_unread(env, tui, conversation)
-                if count:
+                context = agy_context(env, tui, conversation)
+                if context:
                     reply = {
-                        "injectSteps": [
-                            {
-                                "systemMessage": {
-                                    "systemMessage": f"[board] 未読:{count}。作業の区切りで board inbox --unread を確認。"
-                                }
-                            }
-                        ]
+                        "injectSteps": [{"systemMessage": {"systemMessage": context}}]
                     }
     except UnconfirmedDisplayDestination:
         problem = "parent display destination is unconfirmed"
