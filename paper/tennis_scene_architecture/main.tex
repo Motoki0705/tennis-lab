@@ -9,7 +9,14 @@
 \maketitle
 
 \begin{abstract}
-% 全文が揃った段階で要旨を記入する。
+同期した固定カメラの映像から、テニスのプレイヤーの身体運動とボール軌道を同じコート座標系に復元する。
+コートのキーポイントとラインでカメラを校正し、人物の追跡結果をコート上で選別して視点間で対応付ける。
+関節とボールを三角測量し、単眼で復元した身体を多視点の関節に合わせて配置する。
+出力は元映像の時間軸を保ち、関節・身体・ボールごとの有効性を記録する。
+合成コートのシーン構成、選手の候補選別、ボール検出の時間文脈を比較し、
+下流に届く観測の品質と組合せが復元の成立を左右することを示す。
+宣言型の実行計画と成果物再利用を基盤とする一括処理に、モデル共有、横断バッチ、TensorRTを組み込む。
+実映像で幾何整合、出力の被覆、処理時間、メモリ使用量を評価した。
 \end{abstract}
 
 \input{chapters/introduction}
@@ -24,11 +31,13 @@
 \input{chapters/limitations}
 \input{chapters/conclusion}
 
-% 最初の引用を追加するときに次の二行を有効にする。
-% \bibliographystyle{unsrt}
-% \bibliography{references}
+\FloatBarrier
+\bibliographystyle{unsrt}
+\begingroup
+\small
+\bibliography{references}
+\endgroup
 
-\clearpage
 \appendix
 \input{appendix/reproducibility}
 

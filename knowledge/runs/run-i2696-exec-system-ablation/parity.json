@@ -1,0 +1,1266 @@
+{
+  "conditions": {
+    "C1_serial_pt16": {
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "joint_frame_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 1416,
+            "candidate_only": 0,
+            "compared": 1424,
+            "reference_only": 0
+          },
+          "joint_point_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 229,
+            "both_valid": 23979,
+            "candidate_only": 0,
+            "compared": 24208,
+            "reference_only": 0
+          },
+          "joint_position_l2": {
+            "common_valid_joint_points": 23979,
+            "max_m": 0.0,
+            "median_m": 0.0,
+            "p95_m": 0.0
+          },
+          "matched_player_ids": 4,
+          "player_frames": 1424,
+          "player_id_mapping": [
+            {
+              "baseline_id": 0,
+              "common_2d_frames": 354,
+              "common_2d_points": 20503,
+              "condition_id": 0,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 1,
+              "common_2d_frames": 354,
+              "common_2d_points": 21941,
+              "condition_id": 1,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 2,
+              "common_2d_frames": 354,
+              "common_2d_points": 23788,
+              "condition_id": 2,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 3,
+              "common_2d_frames": 354,
+              "common_2d_points": 21651,
+              "condition_id": 3,
+              "median_2d_delta_px": 0.0
+            }
+          ],
+          "player_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "same_numeric_id": 4,
+          "scene_sha256": "6fe4e6230532524c46dd3f1ef24c607f959ba327aeba6087e00c88d8d7bfeb53",
+          "scene_status": "ok",
+          "smpl_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 16,
+            "both_valid": 1408,
+            "candidate_only": 0,
+            "compared": 1424,
+            "reference_only": 0
+          },
+          "source_frames": 356,
+          "valid_joint_frames": 1416,
+          "valid_joint_frames_by_player": [
+            354,
+            354,
+            354,
+            354
+          ],
+          "valid_joint_points": 23979,
+          "valid_smpl_frames": 1408,
+          "valid_smpl_frames_by_player": [
+            353,
+            353,
+            353,
+            349
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "joint_frame_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 1160,
+            "candidate_only": 0,
+            "compared": 1168,
+            "reference_only": 0
+          },
+          "joint_point_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 136,
+            "both_valid": 19720,
+            "candidate_only": 0,
+            "compared": 19856,
+            "reference_only": 0
+          },
+          "joint_position_l2": {
+            "common_valid_joint_points": 19720,
+            "max_m": 0.0,
+            "median_m": 0.0,
+            "p95_m": 0.0
+          },
+          "matched_player_ids": 4,
+          "player_frames": 1168,
+          "player_id_mapping": [
+            {
+              "baseline_id": 0,
+              "common_2d_frames": 290,
+              "common_2d_points": 19586,
+              "condition_id": 0,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 1,
+              "common_2d_frames": 290,
+              "common_2d_points": 18441,
+              "condition_id": 1,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 2,
+              "common_2d_frames": 290,
+              "common_2d_points": 17878,
+              "condition_id": 2,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 3,
+              "common_2d_frames": 290,
+              "common_2d_points": 19181,
+              "condition_id": 3,
+              "median_2d_delta_px": 0.0
+            }
+          ],
+          "player_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "same_numeric_id": 4,
+          "scene_sha256": "f6529d3985eaeb596f2698aa63cfff2f275c0351d9cf03636a9699781d0d13b9",
+          "scene_status": "ok",
+          "smpl_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 12,
+            "both_valid": 1156,
+            "candidate_only": 0,
+            "compared": 1168,
+            "reference_only": 0
+          },
+          "source_frames": 292,
+          "valid_joint_frames": 1160,
+          "valid_joint_frames_by_player": [
+            290,
+            290,
+            290,
+            290
+          ],
+          "valid_joint_points": 19720,
+          "valid_smpl_frames": 1156,
+          "valid_smpl_frames_by_player": [
+            289,
+            289,
+            289,
+            289
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "joint_frame_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 932,
+            "candidate_only": 0,
+            "compared": 940,
+            "reference_only": 0
+          },
+          "joint_point_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 139,
+            "both_valid": 15841,
+            "candidate_only": 0,
+            "compared": 15980,
+            "reference_only": 0
+          },
+          "joint_position_l2": {
+            "common_valid_joint_points": 15841,
+            "max_m": 0.0,
+            "median_m": 0.0,
+            "p95_m": 0.0
+          },
+          "matched_player_ids": 4,
+          "player_frames": 940,
+          "player_id_mapping": [
+            {
+              "baseline_id": 0,
+              "common_2d_frames": 233,
+              "common_2d_points": 15249,
+              "condition_id": 0,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 1,
+              "common_2d_frames": 233,
+              "common_2d_points": 15201,
+              "condition_id": 1,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 2,
+              "common_2d_frames": 233,
+              "common_2d_points": 15719,
+              "condition_id": 2,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 3,
+              "common_2d_frames": 233,
+              "common_2d_points": 14524,
+              "condition_id": 3,
+              "median_2d_delta_px": 0.0
+            }
+          ],
+          "player_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "same_numeric_id": 4,
+          "scene_sha256": "b88f128425de0c229af7844f0be86655c2fea52650aa46e325567eed71841e76",
+          "scene_status": "ok",
+          "smpl_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 932,
+            "candidate_only": 0,
+            "compared": 940,
+            "reference_only": 0
+          },
+          "source_frames": 235,
+          "valid_joint_frames": 932,
+          "valid_joint_frames_by_player": [
+            233,
+            233,
+            233,
+            233
+          ],
+          "valid_joint_points": 15841,
+          "valid_smpl_frames": 932,
+          "valid_smpl_frames_by_player": [
+            233,
+            233,
+            233,
+            233
+          ]
+        }
+      ],
+      "totals": {
+        "generated_clips": 3,
+        "joint_frame_mask": {
+          "agreement_fraction": 1.0,
+          "both_invalid": 24,
+          "both_valid": 3508,
+          "candidate_only": 0,
+          "compared": 3532,
+          "reference_only": 0
+        },
+        "joint_point_mask": {
+          "agreement_fraction": 1.0,
+          "both_invalid": 504,
+          "both_valid": 59540,
+          "candidate_only": 0,
+          "compared": 60044,
+          "reference_only": 0
+        },
+        "joint_position_l2": {
+          "common_valid_joint_points": 59540,
+          "max_m": 0.0,
+          "median_m": 0.0,
+          "p95_m": 0.0
+        },
+        "matched_player_ids": 12,
+        "player_frames": 3532,
+        "same_numeric_id": 12,
+        "smpl_mask": {
+          "agreement_fraction": 1.0,
+          "both_invalid": 36,
+          "both_valid": 3496,
+          "candidate_only": 0,
+          "compared": 3532,
+          "reference_only": 0
+        },
+        "source_frames": 883,
+        "valid_joint_frames": 3508,
+        "valid_joint_points": 59540,
+        "valid_smpl_frames": 3496
+      }
+    },
+    "C2_shared_pt16": {
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "joint_frame_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 1416,
+            "candidate_only": 0,
+            "compared": 1424,
+            "reference_only": 0
+          },
+          "joint_point_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 229,
+            "both_valid": 23979,
+            "candidate_only": 0,
+            "compared": 24208,
+            "reference_only": 0
+          },
+          "joint_position_l2": {
+            "common_valid_joint_points": 23979,
+            "max_m": 0.0,
+            "median_m": 0.0,
+            "p95_m": 0.0
+          },
+          "matched_player_ids": 4,
+          "player_frames": 1424,
+          "player_id_mapping": [
+            {
+              "baseline_id": 0,
+              "common_2d_frames": 354,
+              "common_2d_points": 20503,
+              "condition_id": 0,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 1,
+              "common_2d_frames": 354,
+              "common_2d_points": 21941,
+              "condition_id": 1,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 2,
+              "common_2d_frames": 354,
+              "common_2d_points": 23788,
+              "condition_id": 2,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 3,
+              "common_2d_frames": 354,
+              "common_2d_points": 21651,
+              "condition_id": 3,
+              "median_2d_delta_px": 0.0
+            }
+          ],
+          "player_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "same_numeric_id": 4,
+          "scene_sha256": "6fe4e6230532524c46dd3f1ef24c607f959ba327aeba6087e00c88d8d7bfeb53",
+          "scene_status": "ok",
+          "smpl_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 16,
+            "both_valid": 1408,
+            "candidate_only": 0,
+            "compared": 1424,
+            "reference_only": 0
+          },
+          "source_frames": 356,
+          "valid_joint_frames": 1416,
+          "valid_joint_frames_by_player": [
+            354,
+            354,
+            354,
+            354
+          ],
+          "valid_joint_points": 23979,
+          "valid_smpl_frames": 1408,
+          "valid_smpl_frames_by_player": [
+            353,
+            353,
+            353,
+            349
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "joint_frame_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 1160,
+            "candidate_only": 0,
+            "compared": 1168,
+            "reference_only": 0
+          },
+          "joint_point_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 136,
+            "both_valid": 19720,
+            "candidate_only": 0,
+            "compared": 19856,
+            "reference_only": 0
+          },
+          "joint_position_l2": {
+            "common_valid_joint_points": 19720,
+            "max_m": 0.0,
+            "median_m": 0.0,
+            "p95_m": 0.0
+          },
+          "matched_player_ids": 4,
+          "player_frames": 1168,
+          "player_id_mapping": [
+            {
+              "baseline_id": 0,
+              "common_2d_frames": 290,
+              "common_2d_points": 19586,
+              "condition_id": 0,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 1,
+              "common_2d_frames": 290,
+              "common_2d_points": 18441,
+              "condition_id": 1,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 2,
+              "common_2d_frames": 290,
+              "common_2d_points": 17878,
+              "condition_id": 2,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 3,
+              "common_2d_frames": 290,
+              "common_2d_points": 19181,
+              "condition_id": 3,
+              "median_2d_delta_px": 0.0
+            }
+          ],
+          "player_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "same_numeric_id": 4,
+          "scene_sha256": "f6529d3985eaeb596f2698aa63cfff2f275c0351d9cf03636a9699781d0d13b9",
+          "scene_status": "ok",
+          "smpl_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 12,
+            "both_valid": 1156,
+            "candidate_only": 0,
+            "compared": 1168,
+            "reference_only": 0
+          },
+          "source_frames": 292,
+          "valid_joint_frames": 1160,
+          "valid_joint_frames_by_player": [
+            290,
+            290,
+            290,
+            290
+          ],
+          "valid_joint_points": 19720,
+          "valid_smpl_frames": 1156,
+          "valid_smpl_frames_by_player": [
+            289,
+            289,
+            289,
+            289
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "joint_frame_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 932,
+            "candidate_only": 0,
+            "compared": 940,
+            "reference_only": 0
+          },
+          "joint_point_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 139,
+            "both_valid": 15841,
+            "candidate_only": 0,
+            "compared": 15980,
+            "reference_only": 0
+          },
+          "joint_position_l2": {
+            "common_valid_joint_points": 15841,
+            "max_m": 0.0,
+            "median_m": 0.0,
+            "p95_m": 0.0
+          },
+          "matched_player_ids": 4,
+          "player_frames": 940,
+          "player_id_mapping": [
+            {
+              "baseline_id": 0,
+              "common_2d_frames": 233,
+              "common_2d_points": 15249,
+              "condition_id": 0,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 1,
+              "common_2d_frames": 233,
+              "common_2d_points": 15201,
+              "condition_id": 1,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 2,
+              "common_2d_frames": 233,
+              "common_2d_points": 15719,
+              "condition_id": 2,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 3,
+              "common_2d_frames": 233,
+              "common_2d_points": 14524,
+              "condition_id": 3,
+              "median_2d_delta_px": 0.0
+            }
+          ],
+          "player_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "same_numeric_id": 4,
+          "scene_sha256": "b88f128425de0c229af7844f0be86655c2fea52650aa46e325567eed71841e76",
+          "scene_status": "ok",
+          "smpl_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 932,
+            "candidate_only": 0,
+            "compared": 940,
+            "reference_only": 0
+          },
+          "source_frames": 235,
+          "valid_joint_frames": 932,
+          "valid_joint_frames_by_player": [
+            233,
+            233,
+            233,
+            233
+          ],
+          "valid_joint_points": 15841,
+          "valid_smpl_frames": 932,
+          "valid_smpl_frames_by_player": [
+            233,
+            233,
+            233,
+            233
+          ]
+        }
+      ],
+      "totals": {
+        "generated_clips": 3,
+        "joint_frame_mask": {
+          "agreement_fraction": 1.0,
+          "both_invalid": 24,
+          "both_valid": 3508,
+          "candidate_only": 0,
+          "compared": 3532,
+          "reference_only": 0
+        },
+        "joint_point_mask": {
+          "agreement_fraction": 1.0,
+          "both_invalid": 504,
+          "both_valid": 59540,
+          "candidate_only": 0,
+          "compared": 60044,
+          "reference_only": 0
+        },
+        "joint_position_l2": {
+          "common_valid_joint_points": 59540,
+          "max_m": 0.0,
+          "median_m": 0.0,
+          "p95_m": 0.0
+        },
+        "matched_player_ids": 12,
+        "player_frames": 3532,
+        "same_numeric_id": 12,
+        "smpl_mask": {
+          "agreement_fraction": 1.0,
+          "both_invalid": 36,
+          "both_valid": 3496,
+          "candidate_only": 0,
+          "compared": 3532,
+          "reference_only": 0
+        },
+        "source_frames": 883,
+        "valid_joint_frames": 3508,
+        "valid_joint_points": 59540,
+        "valid_smpl_frames": 3496
+      }
+    },
+    "C3_batched_pt16": {
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "joint_frame_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 1416,
+            "candidate_only": 0,
+            "compared": 1424,
+            "reference_only": 0
+          },
+          "joint_point_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 229,
+            "both_valid": 23979,
+            "candidate_only": 0,
+            "compared": 24208,
+            "reference_only": 0
+          },
+          "joint_position_l2": {
+            "common_valid_joint_points": 23979,
+            "max_m": 7.929416275509627e-05,
+            "median_m": 0.0,
+            "p95_m": 0.0
+          },
+          "matched_player_ids": 4,
+          "player_frames": 1424,
+          "player_id_mapping": [
+            {
+              "baseline_id": 0,
+              "common_2d_frames": 354,
+              "common_2d_points": 20503,
+              "condition_id": 0,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 1,
+              "common_2d_frames": 354,
+              "common_2d_points": 21941,
+              "condition_id": 1,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 2,
+              "common_2d_frames": 354,
+              "common_2d_points": 23788,
+              "condition_id": 2,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 3,
+              "common_2d_frames": 354,
+              "common_2d_points": 21651,
+              "condition_id": 3,
+              "median_2d_delta_px": 0.0
+            }
+          ],
+          "player_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "same_numeric_id": 4,
+          "scene_sha256": "b7bab01825a73d23b02ac98a282427c03b8279e4ece05dc6c0b9987b056872b4",
+          "scene_status": "ok",
+          "smpl_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 16,
+            "both_valid": 1408,
+            "candidate_only": 0,
+            "compared": 1424,
+            "reference_only": 0
+          },
+          "source_frames": 356,
+          "valid_joint_frames": 1416,
+          "valid_joint_frames_by_player": [
+            354,
+            354,
+            354,
+            354
+          ],
+          "valid_joint_points": 23979,
+          "valid_smpl_frames": 1408,
+          "valid_smpl_frames_by_player": [
+            353,
+            353,
+            353,
+            349
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "joint_frame_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 1160,
+            "candidate_only": 0,
+            "compared": 1168,
+            "reference_only": 0
+          },
+          "joint_point_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 136,
+            "both_valid": 19720,
+            "candidate_only": 0,
+            "compared": 19856,
+            "reference_only": 0
+          },
+          "joint_position_l2": {
+            "common_valid_joint_points": 19720,
+            "max_m": 0.0,
+            "median_m": 0.0,
+            "p95_m": 0.0
+          },
+          "matched_player_ids": 4,
+          "player_frames": 1168,
+          "player_id_mapping": [
+            {
+              "baseline_id": 0,
+              "common_2d_frames": 290,
+              "common_2d_points": 19586,
+              "condition_id": 0,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 1,
+              "common_2d_frames": 290,
+              "common_2d_points": 18441,
+              "condition_id": 1,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 2,
+              "common_2d_frames": 290,
+              "common_2d_points": 17878,
+              "condition_id": 2,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 3,
+              "common_2d_frames": 290,
+              "common_2d_points": 19181,
+              "condition_id": 3,
+              "median_2d_delta_px": 0.0
+            }
+          ],
+          "player_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "same_numeric_id": 4,
+          "scene_sha256": "1222cefdc4e5735af05246a9fbdadcc842ac097841914566a76c9ead68c2e18e",
+          "scene_status": "ok",
+          "smpl_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 12,
+            "both_valid": 1156,
+            "candidate_only": 0,
+            "compared": 1168,
+            "reference_only": 0
+          },
+          "source_frames": 292,
+          "valid_joint_frames": 1160,
+          "valid_joint_frames_by_player": [
+            290,
+            290,
+            290,
+            290
+          ],
+          "valid_joint_points": 19720,
+          "valid_smpl_frames": 1156,
+          "valid_smpl_frames_by_player": [
+            289,
+            289,
+            289,
+            289
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "joint_frame_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 932,
+            "candidate_only": 0,
+            "compared": 940,
+            "reference_only": 0
+          },
+          "joint_point_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 139,
+            "both_valid": 15841,
+            "candidate_only": 0,
+            "compared": 15980,
+            "reference_only": 0
+          },
+          "joint_position_l2": {
+            "common_valid_joint_points": 15841,
+            "max_m": 5.099942827375467e-05,
+            "median_m": 0.0,
+            "p95_m": 0.0
+          },
+          "matched_player_ids": 4,
+          "player_frames": 940,
+          "player_id_mapping": [
+            {
+              "baseline_id": 0,
+              "common_2d_frames": 233,
+              "common_2d_points": 15249,
+              "condition_id": 0,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 1,
+              "common_2d_frames": 233,
+              "common_2d_points": 15201,
+              "condition_id": 1,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 2,
+              "common_2d_frames": 233,
+              "common_2d_points": 15719,
+              "condition_id": 2,
+              "median_2d_delta_px": 0.0
+            },
+            {
+              "baseline_id": 3,
+              "common_2d_frames": 233,
+              "common_2d_points": 14524,
+              "condition_id": 3,
+              "median_2d_delta_px": 0.0
+            }
+          ],
+          "player_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "same_numeric_id": 4,
+          "scene_sha256": "6339f63aca388970c7bda9c290c313da30b9090c9289d89ca0a42f7008ad620a",
+          "scene_status": "ok",
+          "smpl_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 932,
+            "candidate_only": 0,
+            "compared": 940,
+            "reference_only": 0
+          },
+          "source_frames": 235,
+          "valid_joint_frames": 932,
+          "valid_joint_frames_by_player": [
+            233,
+            233,
+            233,
+            233
+          ],
+          "valid_joint_points": 15841,
+          "valid_smpl_frames": 932,
+          "valid_smpl_frames_by_player": [
+            233,
+            233,
+            233,
+            233
+          ]
+        }
+      ],
+      "totals": {
+        "generated_clips": 3,
+        "joint_frame_mask": {
+          "agreement_fraction": 1.0,
+          "both_invalid": 24,
+          "both_valid": 3508,
+          "candidate_only": 0,
+          "compared": 3532,
+          "reference_only": 0
+        },
+        "joint_point_mask": {
+          "agreement_fraction": 1.0,
+          "both_invalid": 504,
+          "both_valid": 59540,
+          "candidate_only": 0,
+          "compared": 60044,
+          "reference_only": 0
+        },
+        "joint_position_l2": {
+          "common_valid_joint_points": 59540,
+          "max_m": 7.929416275509627e-05,
+          "median_m": 0.0,
+          "p95_m": 0.0
+        },
+        "matched_player_ids": 12,
+        "player_frames": 3532,
+        "same_numeric_id": 12,
+        "smpl_mask": {
+          "agreement_fraction": 1.0,
+          "both_invalid": 36,
+          "both_valid": 3496,
+          "candidate_only": 0,
+          "compared": 3532,
+          "reference_only": 0
+        },
+        "source_frames": 883,
+        "valid_joint_frames": 3508,
+        "valid_joint_points": 59540,
+        "valid_smpl_frames": 3496
+      }
+    },
+    "C4_batched_trt16": {
+      "clips": [
+        {
+          "clip_id": "video_000/clip_000",
+          "joint_frame_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 1416,
+            "candidate_only": 0,
+            "compared": 1424,
+            "reference_only": 0
+          },
+          "joint_point_mask": {
+            "agreement_fraction": 0.9992977528089888,
+            "both_invalid": 219,
+            "both_valid": 23972,
+            "candidate_only": 10,
+            "compared": 24208,
+            "reference_only": 7
+          },
+          "joint_position_l2": {
+            "common_valid_joint_points": 23972,
+            "max_m": 0.6978441422130778,
+            "median_m": 0.001965653097329495,
+            "p95_m": 0.010726310973578526
+          },
+          "matched_player_ids": 4,
+          "player_frames": 1424,
+          "player_id_mapping": [
+            {
+              "baseline_id": 0,
+              "common_2d_frames": 354,
+              "common_2d_points": 20474,
+              "condition_id": 0,
+              "median_2d_delta_px": 0.09083000511019187
+            },
+            {
+              "baseline_id": 1,
+              "common_2d_frames": 354,
+              "common_2d_points": 21595,
+              "condition_id": 1,
+              "median_2d_delta_px": 0.11699204307503344
+            },
+            {
+              "baseline_id": 2,
+              "common_2d_frames": 354,
+              "common_2d_points": 23693,
+              "condition_id": 2,
+              "median_2d_delta_px": 0.09367459923686906
+            },
+            {
+              "baseline_id": 3,
+              "common_2d_frames": 354,
+              "common_2d_points": 21550,
+              "condition_id": 3,
+              "median_2d_delta_px": 0.11276905065050868
+            }
+          ],
+          "player_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "same_numeric_id": 4,
+          "scene_sha256": "1253a28b7b0149ed8544555192faa39af3eddf9856ae761ef7000dd9fd70f9ab",
+          "scene_status": "ok",
+          "smpl_mask": {
+            "agreement_fraction": 0.9978932584269663,
+            "both_invalid": 15,
+            "both_valid": 1406,
+            "candidate_only": 1,
+            "compared": 1424,
+            "reference_only": 2
+          },
+          "source_frames": 356,
+          "valid_joint_frames": 1416,
+          "valid_joint_frames_by_player": [
+            354,
+            354,
+            354,
+            354
+          ],
+          "valid_joint_points": 23982,
+          "valid_smpl_frames": 1407,
+          "valid_smpl_frames_by_player": [
+            351,
+            353,
+            353,
+            350
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_037",
+          "joint_frame_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 1160,
+            "candidate_only": 0,
+            "compared": 1168,
+            "reference_only": 0
+          },
+          "joint_point_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 136,
+            "both_valid": 19720,
+            "candidate_only": 0,
+            "compared": 19856,
+            "reference_only": 0
+          },
+          "joint_position_l2": {
+            "common_valid_joint_points": 19720,
+            "max_m": 0.4424635622150301,
+            "median_m": 0.0015693272404779168,
+            "p95_m": 0.006379528860435043
+          },
+          "matched_player_ids": 4,
+          "player_frames": 1168,
+          "player_id_mapping": [
+            {
+              "baseline_id": 0,
+              "common_2d_frames": 290,
+              "common_2d_points": 19583,
+              "condition_id": 0,
+              "median_2d_delta_px": 0.08620700475282962
+            },
+            {
+              "baseline_id": 1,
+              "common_2d_frames": 290,
+              "common_2d_points": 18430,
+              "condition_id": 1,
+              "median_2d_delta_px": 0.10471640955777638
+            },
+            {
+              "baseline_id": 2,
+              "common_2d_frames": 290,
+              "common_2d_points": 17841,
+              "condition_id": 2,
+              "median_2d_delta_px": 0.10776854822132349
+            },
+            {
+              "baseline_id": 3,
+              "common_2d_frames": 290,
+              "common_2d_points": 19164,
+              "condition_id": 3,
+              "median_2d_delta_px": 0.10352023035003594
+            }
+          ],
+          "player_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "same_numeric_id": 4,
+          "scene_sha256": "31ed4a087cacd6c2a1c3bf0b0dff468933d83038fd050044a7e075978dc534ec",
+          "scene_status": "ok",
+          "smpl_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 12,
+            "both_valid": 1156,
+            "candidate_only": 0,
+            "compared": 1168,
+            "reference_only": 0
+          },
+          "source_frames": 292,
+          "valid_joint_frames": 1160,
+          "valid_joint_frames_by_player": [
+            290,
+            290,
+            290,
+            290
+          ],
+          "valid_joint_points": 19720,
+          "valid_smpl_frames": 1156,
+          "valid_smpl_frames_by_player": [
+            289,
+            289,
+            289,
+            289
+          ]
+        },
+        {
+          "clip_id": "video_000/clip_027",
+          "joint_frame_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 932,
+            "candidate_only": 0,
+            "compared": 940,
+            "reference_only": 0
+          },
+          "joint_point_mask": {
+            "agreement_fraction": 0.9999374217772216,
+            "both_invalid": 138,
+            "both_valid": 15841,
+            "candidate_only": 1,
+            "compared": 15980,
+            "reference_only": 0
+          },
+          "joint_position_l2": {
+            "common_valid_joint_points": 15841,
+            "max_m": 0.43645184998531156,
+            "median_m": 0.0019380645688274192,
+            "p95_m": 0.010866038546298263
+          },
+          "matched_player_ids": 4,
+          "player_frames": 940,
+          "player_id_mapping": [
+            {
+              "baseline_id": 0,
+              "common_2d_frames": 233,
+              "common_2d_points": 15222,
+              "condition_id": 0,
+              "median_2d_delta_px": 0.1282751249321676
+            },
+            {
+              "baseline_id": 1,
+              "common_2d_frames": 233,
+              "common_2d_points": 15183,
+              "condition_id": 1,
+              "median_2d_delta_px": 0.09256270886170694
+            },
+            {
+              "baseline_id": 2,
+              "common_2d_frames": 233,
+              "common_2d_points": 15476,
+              "condition_id": 2,
+              "median_2d_delta_px": 0.09664438255305405
+            },
+            {
+              "baseline_id": 3,
+              "common_2d_frames": 233,
+              "common_2d_points": 14496,
+              "condition_id": 3,
+              "median_2d_delta_px": 0.09464199901402556
+            }
+          ],
+          "player_ids": [
+            0,
+            1,
+            2,
+            3
+          ],
+          "same_numeric_id": 4,
+          "scene_sha256": "256a76859035637f7bd5f1ec30a51cfde270781d1259c91f178a71581ecf862e",
+          "scene_status": "ok",
+          "smpl_mask": {
+            "agreement_fraction": 1.0,
+            "both_invalid": 8,
+            "both_valid": 932,
+            "candidate_only": 0,
+            "compared": 940,
+            "reference_only": 0
+          },
+          "source_frames": 235,
+          "valid_joint_frames": 932,
+          "valid_joint_frames_by_player": [
+            233,
+            233,
+            233,
+            233
+          ],
+          "valid_joint_points": 15842,
+          "valid_smpl_frames": 932,
+          "valid_smpl_frames_by_player": [
+            233,
+            233,
+            233,
+            233
+          ]
+        }
+      ],
+      "totals": {
+        "generated_clips": 3,
+        "joint_frame_mask": {
+          "agreement_fraction": 1.0,
+          "both_invalid": 24,
+          "both_valid": 3508,
+          "candidate_only": 0,
+          "compared": 3532,
+          "reference_only": 0
+        },
+        "joint_point_mask": {
+          "agreement_fraction": 0.9997002198387849,
+          "both_invalid": 493,
+          "both_valid": 59533,
+          "candidate_only": 11,
+          "compared": 60044,
+          "reference_only": 7
+        },
+        "joint_position_l2": {
+          "common_valid_joint_points": 59533,
+          "max_m": 0.6978441422130778,
+          "median_m": 0.001812496599231846,
+          "p95_m": 0.009062803599121639
+        },
+        "matched_player_ids": 12,
+        "player_frames": 3532,
+        "same_numeric_id": 12,
+        "smpl_mask": {
+          "agreement_fraction": 0.9991506228765572,
+          "both_invalid": 35,
+          "both_valid": 3494,
+          "candidate_only": 1,
+          "compared": 3532,
+          "reference_only": 2
+        },
+        "source_frames": 883,
+        "valid_joint_frames": 3508,
+        "valid_joint_points": 59544,
+        "valid_smpl_frames": 3495
+      }
+    }
+  },
+  "matching": {
+    "max_median_2d_image_diagonal_fraction": 0.01,
+    "min_2d_confidence": 0.3,
+    "min_shared_source_frames": 30
+  },
+  "reference": "C1_serial_pt16"
+}

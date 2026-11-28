@@ -119,6 +119,12 @@ fixture行显示scope、实际setup次数、setup合计及最长的单次setup�
 合计。setup skip导致的call缺失保持未测量，并显示status。profile必须与实际分片使用的
 fingerprint一致；缺失或不一致时显示原因，新文件标为profile未测量。
 
+同一报告显示调度profile的来源run、commit、用例数和拆分文件数。报告核对请求范围与已测
+文件及拆分用例，并为完整请求给出与profile来源的用例总数差。普通shard表并列显示调度时
+记录的估计值与实测setup、call和teardown的累计秒数，分别给出最小值、最大值、平均值及
+最大值/平均值。独立runtime job不计入负载分布。未测比例上升或实测负载持续失衡时，使用
+[profile更新命令](sharding.zh-CN.md#重新生成实测profile)查看候选。
+
 `cpu-test-coverage-<run>-<attempt>` artifact还保存 `growth.json`（schema 1，完整要求范围的
 inventory/详情/results/fixture成本与run identity，或明确的不完整原因）、`growth-summary.json`（全部报告行）及
 `growth-summary.md`，保留90天。summary每张表最多20行，JSON保留全部行。
@@ -246,4 +252,6 @@ API 依据：[pytest hooks](https://docs.pytest.org/en/stable/reference/referenc
 [Actions attempt API](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt)、
 [`setup-uv` outputs](https://github.com/astral-sh/setup-uv#outputs)。
 
-使用[`profile`命令](sharding.zh-CN.md#重新生成实测profile)从同一run的最新完整shard成果物重新生成权重。合法的attempt混用保留来源；失败用例保持可见，不完整观测会被拒绝。
+使用[`update-profile` 命令](sharding.zh-CN.md#重新生成实测profile)从经审计的
+成功main CI更新调度权重。同一指南也记录了诊断用的 `profile` 命令以及
+同条件Actions比较。

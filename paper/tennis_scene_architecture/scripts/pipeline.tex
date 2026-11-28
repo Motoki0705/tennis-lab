@@ -1,0 +1,41 @@
+\documentclass[border=2pt]{standalone}
+\input{diagram-style}
+\begin{document}
+\begin{tikzpicture}[x=1mm,y=-1mm]
+  \node[processing,minimum width=49mm] (input) at (0,0) {同期固定カメラの映像};
+  \node[processing] (court) at (-52,15) {コート点とライン};
+  \node[processing] (people) at (0,15) {人物検出・関節・外観};
+  \node[processing] (ball) at (52,15) {球の検出と時間整合};
+  \node[geom] (local) at (-52,30) {視点ごとの近似校正};
+  \node[processing] (tracks) at (0,30) {追跡とコート上の選別};
+  \node[processing] (observed) at (52,30) {採用した実観測};
+  \node[geom] (side) at (0,45) {向き判定と人物対応};
+  \node[geom] (cameras) at (0,60) {幾何検証・共通校正};
+  \node[geom] (joints) at (-52,75) {同一IDの関節三角測量};
+  \node[processing] (bodies) at (0,75) {視点選択・GVHMR};
+  \node[geom] (ballxyz) at (52,75) {球の三角測量};
+  \node[geom] (placement) at (0,90) {身体の位置・yaw配置};
+  \node[stored,minimum width=66mm] (scene) at (0,105) {SceneResult・有効性マスク・診断};
+
+  \draw[flow] (input) -- (people);
+  \draw[flow] (input) -- ++(0,7.5) -| (court.north);
+  \draw[flow] (input) -- ++(0,7.5) -| (ball.north);
+  \draw[flow] (court) -- (local);
+  \draw[flow] (people) -- (tracks);
+  \draw[flow] (ball) -- (observed);
+  \draw[flow] (local) -- (tracks);
+  \draw[flow] (local) |- (side);
+  \draw[flow] (tracks) -- (side);
+  \draw[optional] (observed) |- (side);
+  \draw[flow] (side) -- (cameras);
+  \draw[flow] (cameras) -| (joints);
+  \draw[flow] (cameras) -- (bodies);
+  \draw[flow] (cameras) -| (ballxyz);
+  \draw[flow] (observed.east) -- ++(5,0) |- (ballxyz.east);
+  \draw[flow] (joints) |- (placement);
+  \draw[flow] (bodies) -- (placement);
+  \draw[flow] (placement) -- (scene);
+  \draw[flow] (joints.south) |- (scene.west);
+  \draw[flow] (ballxyz.south) |- (scene.east);
+\end{tikzpicture}
+\end{document}

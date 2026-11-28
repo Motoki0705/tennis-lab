@@ -39,6 +39,11 @@ schema-3の各 `shard-gw*.json` に `system_deps_nodeids` と `universe_nodeids`
 - marker一覧が独立eventと全shardで一致し、通常群に混入せず、専用群で全件がpassedであること（skip/xfail 0）。
 - plan・lint・全matrix job・専用runtime jobが成功すること。skip/cancelは成功へ変換しないこと。
 
+phase監査はpytestが記録する `passed`・`failed`・`skipped` を受理します。
+setup・teardownは各1件が必要です。setup成功時はcallが1件必要で、setupの失敗・skip時は
+callを経ずにteardownへ進みます。xfailとxpassはpytestの `wasxfail` に従って分類します。
+未知のphase・outcomeや不完全なphase列は監査で拒否します。
+
 全manifestから同じcaseを消しても、独立した選別前eventとの照合で検出します。Dはskipにも成功にも数えません。
 集約は `scoped_cpu_success` を表示し、`full_cpu_success` はさらにDが空であることを要求します。
 Uは既存のmarker・明示除外後のCPU対象であり、全環境の全テストを表しません。
@@ -73,28 +78,175 @@ Pythonだけの再実行でも、以前のattemptのshardをこの証拠とと�
 負荷分散・メモリは実測で確認し、証拠と比較の制限は[baseline](baseline.ja.md)を参照してください。
 fixtureやsuiteが大きく変わったら完全な計測からprofileを更新します。file件数だけで分割数を決めません。
 
+準備とpin更新の正本は[runtime契約](README.ja.md#固定したシステム実行環境)です。
+
 ## 実測profileの再生成
 
-同じrun・HEAD・lane planの最新 `cpu-test-measurements-RUN-shard-*` を全件ダウンロードし、shardごとに1ディレクトリ置きます。
+Actionsの成果物を読み取れる認証済みの `gh` を用意し、checkoutから
+`update-profile` を実行します。`--latest-main` は成功したmain pushを新しい順に
+調べ、採用条件を満たさないrunは理由を表示します。`--run-id` と `--attempt` を指定
+すると、成果物が有効な間は特定の更新を再現できます。
+成果物の内容が不正ならrun IDと理由を記録して次候補へ進みます。
+明示指定したrunの証拠が不正な場合や、API通信・ローカルI/Oが失敗した場合は、
+その時点で終了して出力profileを保全します。
+
+runとHEADを固定してlane plan、最新coverage、全shardをartifact IDで取得します。
+集約の取得一覧を照合し、workerとJUnitの監査を再計算します。完全なmain push成功回の
+うち、deferredが0件で専用runtime shardの監査を通ったものを採用します。同一planの
+部分再実行では、上記のattempt規則で以前の成功shardを再利用できます。証拠の欠落や
+不整合があれば出力profileを保全し、検証後の置換は原子的に行います。
+
+計測元runが使ったprofileを比較元として、今回の更新を再現できます。
 
 ```bash
-.venv/bin/python -m scripts.ci_metrics profile --root /absolute/artifacts \
-  --output scripts/ci_metrics/cpu-file-times.json
+profile_work=$(mktemp -d)
+git show 8d629a35289f475e514291167435c333876afdd2:scripts/ci_metrics/cpu-file-times.json > "$profile_work/baseline.json"
+.venv/bin/python -m scripts.ci_metrics update-profile --run-id 45955929416 --attempt 1 \
+  --baseline "$profile_work/baseline.json" --output "$profile_work/cpu-file-times.json" \
+  --report "$profile_work/comparison.json" \
+  --split-file tests/e2e/agents_ops/test_board_messages.py \
+  --split-file tests/e2e/agents_ops/test_parent_session.py \
+  --split-file tests/integration/agents_ops/test_storage_tier_crash_boundaries.py \
+  --split-file tests/integration/agents_ops/test_storage_tier_recovery_boundaries.py
 ```
 
-phase/JUnit reportを再構築し、source/run/plan、attemptの範囲、全worker manifest、割当、全inventoryの多重集合を照合します。attempt混在時はshardの最大attemptを集約attemptとし、`source.plan_attempt` と `source.shard_attempts` を記録します。phase欠測、重複、dirty/mixed source、cancel、収集失敗は拒否します。完全に記録されたテスト失敗は重みと `source.counts` / `unsuccessful_cases` に残します。重み生成はCI成功を意味せず、`Python` は引き続きjobと観測の成功を要求します。監査の `observations_complete` は成功と別に完全性を示します。
+最新runを選ぶときは `--run-id … --attempt …` を `--latest-main` に置き換えます。
+既定の比較元はcheckoutの `cpu-file-times.json` です。分割指定を省くと計測元の分割宣言を
+引き継ぎます。fixtureを確認して一覧を入れ替える場合は `--split-file` を繰り返します。
+計測caseが0件の分割宣言は一覧の明示的な見直しが必要です。JSONレポートには出典・固定の再現
+コマンド・fileの差分・全groupの割当と負荷を出力します。未計測fileやcaseが大きく増えた場合や、
+実測の偏りが続く場合に候補を比較し、通常のレビュー付きPRで反映します。コマンドの書き込み先は
+ローカルファイルです。
 
-繰延べcaseが1件でもある回からはprofileを生成できません。部分成功で全CPUの重みを上書きしたり、全件baselineと表示したりしません。
+過去の計測や失敗回の診断には、取得済みshardディレクトリから再計算する
+`profile --root artifacts --output diagnostic.json` を使えます。
+完全に観測された失敗を `source.counts` と `unsuccessful_cases` に保持します。
+attemptが混在する場合は最大のshard attemptを使い、deferredがある場合は拒否します。
 
-既定は観測した `split_files` を維持します。fixtureを確認して一覧を置き換える場合だけ `--split-file tests/path.py` を繰り返し指定します。収集時のguardが現行fixture graphに対して検証します。merge gate、board messages、parent sessionはfunction fixture単位の分割を維持します。座標学習はmodule scopeの `shared` を使うため、同じshardに保持します。テスト本体とfixture scopeは変更しません。
+### 現行profileのオフライン比較
 
-更新profileは、成功したmain pushの全件[run 41240159671](https://github.com/Motoki0705/tennis-lab/actions/runs/41240159671)の全10 shard、883 file、14,561件（14,470 passed / 91 skipped / 0 failed）、合計7,543.124 phase秒に基づきます。旧profileでは現行54 fileが未計測で、29件のcourt dataset統合も中央値0.077秒の推定に対して実測406.228秒でした。同じinventoryで旧profileのshard推定は676.570〜676.572秒でしたが、その割当の実測負荷は439.996〜1,101.161秒でした。更新した重みで再配分すると10 shardの推定は754.311〜754.313秒となり、未計測file・分割caseはありません。重複するworker phaseの和でありwall時間の予測ではありません。テストコストが大きく変わったら再生成します。
+旧profileは883 file・14,561件の[run 41240159671](https://github.com/Motoki0705/tennis-lab/actions/runs/41240159671)
+に基づきます。更新元は[run 45955929416](https://github.com/Motoki0705/tennis-lab/actions/runs/45955929416)、
+commit `8d629a35289f475e514291167435c333876afdd2` です。lane plan、計測11件、成功coverageの
+runとHEADが一致し、attemptはすべて1です。1,160 file・26,189件のうちpassed 26,070件、正当なskip
+119件、失敗・deferred 0件でした。専用jobは17件すべてpassedです。file重みの追加は282件、更新は
+878件、現行の観測caseが0件の重みは5件です。artifact IDとinventoryのハッシュはprofileの
+`source` に記録しています。
 
+Aは旧重み、Bは観測inventoryに対して分割方針を維持した重み更新、Cは停止・復旧境界の2 fileを
+追加でcase分割します。旧宣言の `test_merge_gate.py` は補助モジュールで収集caseが0件でした。
+有効な分割はBが2 file、Cが4 fileです。Aで未計測値を使ったのは通常shardの281 fileと分割case
+28件です。B/Cでは通常fileと分割caseに未計測がありません。
 
-準備とpin更新の正本は[runtime契約](README.ja.md#固定したシステム実行環境)です。
+表はworkerのsetup・call・teardownの合計秒です。A実測は計測元runの26,189件を
+A割当で観測した負荷です。推定列は計測元と下記2つの全件inventoryに共通です。
+専用jobの実測18.578 phase秒は別集計です。
+
+| Shard | A推定 | A実測 | B推定 | C推定 |
+|---|---:|---:|---:|---:|
+| 0 | 610.579 | 725.360 | 1809.091 | 1360.607 |
+| 1 | 610.580 | 1322.624 | 1310.776 | 1360.609 |
+| 2 | 610.579 | 611.440 | 1310.776 | 1360.608 |
+| 3 | 610.579 | 1304.961 | 1310.776 | 1360.609 |
+| 4 | 610.579 | 1185.038 | 1310.777 | 1360.608 |
+| 5 | 610.578 | 1397.866 | 1310.777 | 1360.607 |
+| 6 | 610.579 | 1650.712 | 1310.776 | 1360.608 |
+| 7 | 610.580 | 844.635 | 1310.778 | 1360.609 |
+| 8 | 610.578 | 3311.545 | 1310.777 | 1360.608 |
+| 9 | 610.578 | 1235.024 | 1310.778 | 1360.609 |
+| 最小 | 610.578 | 611.440 | 1310.776 | 1360.607 |
+| 最大 | 610.580 | 3311.545 | 1809.091 | 1360.609 |
+| 平均 | 610.579 | 1358.921 | 1360.608 | 1360.608 |
+| 最大 / 平均 | 1.000 | 2.437 | 1.330 | 1.000 |
+
+復旧境界4,606件は1809.091秒で、Aのshard 8からBの0へ移ります。停止境界1,649件は
+533.836秒で、Aの6からBの1へ移ります。Cは両fileを通常10 shardに分散します。次に重い
+未分割fileは `test_parent_development.py` の423.166秒（A/B/Cのshardは1/2/0）、
+`test_parent_completion_resume.py` の373.922秒（8/3/1）、`test_court_dataset.py` の
+355.775秒（0/4/2）です。実測caseコストをCの割当に載せ替えた最大は1360.609秒で、Aの
+実測最大より58.9%小さくなります。
+
+停止・復旧境界ではfunction scopeの `tmp_path`・`monkeypatch` と全体のcase別seed fixtureを
+使います。pytestのsession scopeの一時ディレクトリ割当はcaseに個別のrootを渡します。
+`make_lab` はrepo、mirror、模擬 `/proc`、journal、lockをその配下に置きます。trace hookは
+forkした子だけで動き、子はjoinまたはkillで回収し、pytestがteardownでpath変更を復元します。
+実際のshard pluginの収集guardを境界6,255件が通過し、全件が1回ずつ割り当てられ、未計測
+分割caseは0件でした。
+
+#### 後続の全件inventoryに対する比較
+
+実Actions比較の26,208 nodeidを固定し、A/B/Cの割当を再計算しました。続いて
+修正コード `1e139b9aecd44fc7b9e157c5ebe360d62117a07e` を、
+lockのpytest 9.2.0と `spin test` のCPU選別で全件収集しました。26,218件のnodeidは
+Actionsの集合に新規10件を加えたものと一致し、各inventoryに共通の専用17件を確認しました。
+各条件・各通常shardの推定負荷、group数、case数、およびinventoryと割当のハッシュを
+記録しています。 [実Actionsの全件run](https://github.com/Motoki0705/tennis-lab/actions/runs/46056231956) · [オフライン比較データ](sharding-comparison.json)
+
+計測元からActions比較までの19件と、レビュー修正で追加した10件は計測済みの
+file単位groupに入ります。既存groupの固定重みを使うため、3つのinventoryで各条件の
+割当・推定負荷・未計測件数は同じ値でした。通常groupはA/Bが各1,440、Cが7,693です。
+
+| 既存file group | Actions比較までの追加 | レビュー修正の追加 | Shard A / B / C | 固定推定 A / B / C (秒) |
+|---|---:|---:|---|---|
+| `test_ci_growth.py` | 1 | 0 | 0 / 9 / 4 | 0.084556 / 0.054511 / 0.054511 |
+| `test_ci_shards.py` | 18 | 6 | 5 / 3 / 1 | 4.998372 / 8.766644 / 8.766644 |
+| `test_ci_metrics.py` | 0 | 4 | 1 / 8 / 6 | 3.595444 / 5.535053 / 5.535053 |
+
+## 同一条件のActions比較
+
+Aは旧重み、Cは採用した重みを使いました。全件dispatchのソース差分は
+`cpu-file-times.json` だけです。scoped PR はそれぞれの基準から
+`src/tasks/ball_refiner_3d/__init__.py` に同じコメントを追加しました。
+各runは4 vCPUの通常10 shardと専用runtime job 1つで、各 shard 2 pytest worker、
+native thread 1です。全66テストjobでuv cache hitを記録しました。ホストの
+CPU型番とUbuntu imageの版にはばらつきがあり、以下はこの6回の観測結果です。
+
+6 runはすべて初回attemptで成功しました。全件4 runは26,208件を要求し、
+26,089件がpassed、119件がskip、`full_cpu_success=true` でした。scoped PRの
+2 runは26,208件のうち同じ23,334件を要求し、23,219件がpassed、115件がskip、
+2,874件がdeferredで、`scoped_cpu_success=true` でした。worker manifest、
+event、JUnitから監査を再計算し、各runの固定profileとlane planを照合しました。
+要求と実行のnodeidに欠落・重複・余分な実行は0件で、各scope内のskip対象も一致しました。
+専用jobは毎回17件すべてpassedです。
+
+表の単位は秒です。Testとjobには通常shardの各最大値と該当indexを示します。
+Pythonはworkflow作成から必須checkの完了まで、全体経過は作成からActionsの
+最終更新までです。runner合計は全15 jobの実行時間の和です。
+
+| 条件 | Actions run | 最長Test (shard) | 最長job (shard) | Python | 全体経過 | runner合計 |
+|---|---|---:|---:|---:|---:|---:|
+| Full A1 | [46045996862](https://github.com/Motoki0705/tennis-lab/actions/runs/46045996862) | 1755 (8) | 1834 (8) | 1941 | 1941 | 9082 |
+| Full C1 | [46050353999](https://github.com/Motoki0705/tennis-lab/actions/runs/46050353999) | 933 (5) | 1006 (5) | 1088 | 1089 | 8792 |
+| Full A2 | [46052765632](https://github.com/Motoki0705/tennis-lab/actions/runs/46052765632) | 1467 (8) | 1535 (8) | 1607 | 1608 | 8502 |
+| Full C2 | [46056231956](https://github.com/Motoki0705/tennis-lab/actions/runs/46056231956) | 991 (1) | 1061 (1) | 1141 | 1141 | 9476 |
+| Scoped A | [46058668606](https://github.com/Motoki0705/tennis-lab/actions/runs/46058668606) | 1069 (3) | 1125 (0) | 1208 | 1209 | 6496 |
+| Scoped C | [46061213080](https://github.com/Motoki0705/tennis-lab/actions/runs/46061213080) | 706 (2) | 749 (2) | 823 | 824 | 6328 |
+
+準備は通常jobの開始からTestステップ開始まで、収集はテストコマンドの起動から
+全workerの収集完了までで、いずれも通常shardの平均です。待ち時間はdispatchから
+最初のjob開始までと、job作成から開始までの全job中の最大を示します。
+実測phase秒はworkerのsetup・call・teardownの和です。
+
+| 条件 | 準備 | 起動から収集完了 | 最初のjobまで | 最大job待ち | 最大実測phase | phase最大 / 平均 |
+|---|---:|---:|---:|---:|---:|---:|
+| Full A1 | 60.5 | 109.1 | 3 | 3 | 3264.667 | 2.409 |
+| Full C1 | 59.9 | 109.9 | 4 | 2 | 1552.381 | 1.178 |
+| Full A2 | 60.8 | 107.4 | 3 | 3 | 2672.376 | 2.139 |
+| Full C2 | 62.3 | 118.5 | 5 | 3 | 1645.171 | 1.155 |
+| Scoped A | 39.4 | 110.8 | 3 | 3 | 1945.171 | 2.149 |
+| Scoped C | 40.6 | 106.8 | 2 | 3 | 1117.201 | 1.280 |
+
+全件は2回ずつの平均で最長Testが1611→962秒（40.3%短縮）、Python完了が
+1774→1114.5秒（37.2%短縮）でした。各組の最長Test短縮は46.8%と32.4%で、
+どちらも30%の目標を達成しました。runner合計の平均は8792→9134秒で、
+全件1 runあたり342秒（3.9%）増えました。scopedの1組は最長Testが
+1069→706秒（34.0%短縮）、Python完了が385秒早まり、runner合計は
+6496→6328秒（2.6%減）でした。
+
+全shardの推定・実測phase秒、wall time、runner情報、監査に使った識別子は
+[比較データ](sharding-comparison.json)に記録しています。
 
 ## 既定値の選定
 
-既定は10 shard・2 workerです。実測した2 worker構成のうち、既知のREADME失敗以外の失敗なく15分以内に完了した最小構成を選びます。4 workerはprocess cleanup直後の追加assert失敗が再発したため、手動比較用として残します。時間・runner費用・cache・RSSの全比較表と標本の制限は[baseline](baseline.ja.md#runner構成の比較)を正本とします。親のfixture軽量化をmerge後、profileを再生成し、6/8 shardへ減らせるか再計測してください。
-
-既存3 fileの分割宣言を維持します。最も重い未分割fileはcourt dataset統合の406.228秒で、更新後の各shard予算754.312秒に収まります。現行fixture graphで分割可能なことを確認しましたが、`split_files` に追加しても推定最大負荷は同じ754.313秒なので、今回の全件inventoryで負荷を均す効果はありません。`test_parent_development.py`・`test_execution_basis.py`・`test_parent_completion_resume.py`も291.218 / 251.793 / 138.501秒で予算内です。テスト本体とfixture scopeは変更しません。
+既定は通常10 shard・各2 workerと必須の専用runtime jobです。既定値を選んだ計測、cache条件、
+標本の制限は[baseline](baseline.ja.md#runner構成の比較)に記録しています。

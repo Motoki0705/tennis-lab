@@ -94,6 +94,70 @@ def test_warning_boundaries_are_strict_and_use_single_fixture_executions(
     assert "setup + call + teardown" in document
 
 
+def test_profile_freshness_and_shard_balance_use_observed_scope(tmp_path: Path) -> None:
+    first = "tests/test_split.py::test_cost[old]"
+    second = "tests/test_split.py::test_cost[new]"
+    third = "tests/test_unmeasured.py::test_cost"
+    current = _snapshot([first, second, third])
+    profile = {
+        "source": {
+            "run_id": "91",
+            "commit": "a" * 40,
+            "attempt": "2",
+            "selected_count": 2,
+        },
+        "file_seconds": {"tests/test_split.py": 5},
+        "split_files": ["tests/test_split.py"],
+        "test_seconds": {first: 5},
+    }
+    for index, call in enumerate([14, 2, 300]):
+        directory = tmp_path / f"s{index}/tests"
+        directory.mkdir(parents=True)
+        (directory / "environment.json").write_text(
+            json.dumps({"shard": {"index": index}})
+        )
+        (directory / "summary.json").write_text(
+            json.dumps(
+                {"phase_elapsed_s": {"setup": 1.5, "call": call, "teardown": 0.5}}
+            )
+        )
+        (directory / "shard-gw0.json").write_text(
+            json.dumps({"estimated_phase_seconds": [12, 9]})
+        )
+
+    balance = growth.shard_balance(tmp_path, 2)
+    report = growth.analyze(current, None, profile=profile, balance=balance)
+    assert report["profile_freshness"] == {
+        "source": profile["source"],
+        "profile_file_count": 1,
+        "split_file_count": 1,
+        "observed_file_count": 2,
+        "observed_case_count": 3,
+        "full_selected_count_delta": 1,
+        "unmeasured_file_count": 1,
+        "unmeasured_file_rate": 0.5,
+        "observed_split_case_count": 2,
+        "unmeasured_split_case_count": 1,
+    }
+    assert balance["shards"] == [
+        {"index": 0, "estimated_phase_s": 12, "measured_phase_s": 16},
+        {"index": 1, "estimated_phase_s": 9, "measured_phase_s": 4},
+    ]
+    assert balance["measured"] == {
+        "min": 4,
+        "max": 16,
+        "mean": 10,
+        "max_over_mean": 1.6,
+    }
+    document = growth.markdown(report)
+    assert "50.0%" in document and "1.600" in document and "Source run 91" in document
+    with pytest.raises(ValueError, match="incomplete"):
+        growth.shard_balance(tmp_path, 4)
+    incomplete = growth.analyze(current, None, balance_reason="missing shard manifest")
+    assert incomplete["profile_freshness"] is None
+    assert "missing shard manifest" in growth.markdown(incomplete)
+
+
 @pytest.mark.parametrize("count,expected", [(49, False), (50, False), (51, True)])
 def test_expansion_uses_collected_originalname_even_with_brackets_and_separators(
     count: int, expected: bool

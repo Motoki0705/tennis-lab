@@ -1,0 +1,1 @@
+/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2627-issue-2633-primary/court_detection/campaign/viewpoint-diversity-v1/runs/broad-s42/logs/version_0/checkpoints

@@ -1,6 +1,6 @@
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-11-26
+更新日: 2026-11-28
 
 研究トピックごとの**現在の判断**（採用中の構成とその根拠、未解決の課題、次の実験）をまとめた入口です。数値・条件・考察の正本は各[ノード](nodes/)、再現手順は[runs](runs/)にあります。2026-11-05までの日付順の記録は、[凍結アーカイブ](history/summary-2026-11-05.md)に原文のまま残しています。
 
@@ -23,6 +23,7 @@
 - **6方式の比較と採否**: [統合比較](nodes/tennis_scene/000041-run-ball3d-integrated-comparison-20261104.md)では後半LOVOとcoverageの一貫した改善は得られず、人間はbaseline維持を決定しました。後処理・三角測量側の追加改善はキャンセルされ、検出モデルの学習戦略の改善が必要と判断されました。比較は1 clip・近似校正・推定を含む2D参照に限られます。詳細は[凍結アーカイブ](history/summary-2026-11-05.md)を参照してください。
 
 - **動画一括推論の現行本番構成**: [player証拠と特徴分離のCPU統合](nodes/tennis_scene/000072-run-i1752-player-main-cpu-20261119.md)で、共有コートload・clip単位のplayer side判定・ball両機能off・ダブルス2・DINO/ViTPose fp16を明示します。ballありのbenchmarkも共通設定で選択可能です。保存済み3clipの単独/共有判定は#2270と完全一致しました。全69clipのplayer証拠の採否、新構成のGPU再測定と本番実行は未確認です。
+- **固定3クリップの動画一括推論**　同一HEAD・ボール無効で逐次PyTorch FP16は2,186秒、モデル共有は1,686秒、横断バッチ追加は1,707秒、TensorRT FP16は1,319秒でした。主要5モデルと身体モデルのロードは共有で18→6回。TensorRTは横断バッチPyTorch比でPeak VRAM 4.49→1.76 GiB、Peak RSS 8.16→3.77 GiB。全条件で3件と12選手IDが揃い、TensorRTのC1比3D関節差はP95 9.06 mm、最大0.698 m、SMPL有効フレームは1減りました。固定順で各1回の結果です。 [同一入力の統制比較](nodes/tennis_scene/000107-run-i2696-exec-system-ablation.md)
 - **動画一括推論の過去GPU証拠**: C4の[共有court_side・明示fp16・ダブルス2](nodes/tennis_scene/000064-run-i1752-shared-fp16-20261118.md)で000/037/027の全114nodeが1計画で完了し、GVHMR配置・scene公開まで通りました。各side2 identity、C3管理7resourceは各1load/unload。CPU AFLinkの都度loadは別に記録しています。[同じfp16での単一027比較](nodes/tennis_scene/000065-run-i1752-shared-fp16-reference-20261118.md)は最終scene29配列・metadata・全離散値がexactですが、Ball補助evidence9配列が従来許容を超え、全component一致は未達です。原因と採否は親レビューに残します。69clipは未実行で、25.27〜25.88時間はballありの短い3clipからの条件付き投影で、現行player-only本番の時間ではありません。C1同期・初回compile等を含み、共有side・精度・profilerの差を単独の高速化率にはしません。
 
 - **TensorRTの人物モデル単体比較**　ViTPose-HはFP16が許容差内で中央値54.423→8.468 ms。INT8・FP8には最大5 pxの基準を超える関節があり、E2E候補はFP16です。HMR2はFP8も単体精度の基準を満たし、中央値5.399 msでした。CLIP-ReIDの新INT8・FP8は、同じ2クリップから設定選定用12 cropを除いた224件で、cosine P05が0.999602／0.995416、FP32とのID一致が両方224/224でした。下流の時系列・人物対応と速度はE2Eで確認します。[固定入力の全条件比較](nodes/tennis_scene/000077-run-i2303-vit-tensorrt.md)
@@ -30,11 +31,13 @@
 - **人物モデルの共通速度基準**　固定6 clipで現行DINO、ViTPose-Hのflipあり・なし、HMR2特徴＋GVHMRのPT16・TRT16を再計測し、全22条件で計時が完了しました。parityは未判定です。検出・姿勢の比較図には疑似GTによる精度と実測速度を使います。PT32の暫定速度と初回parityは初回記録を参照してください。 [再計測の基準値](nodes/tennis_scene/000086-run-person-model-speed-low-precision.md) · [初回記録](nodes/tennis_scene/000085-run-person-model-speed-baseline.md)
 - **身体復元の採否**　共通ハーネスの実測で速度優位を確認できなかったため、FastHMRへの置き換えを見送りました。標準recipeはGVHMRを使い、`recipe=fasthmr` で別経路を選べます。 [速度と採否の記録](nodes/tennis_scene/000095-run-fasthmr-camerahmr-pt16-speed.md)
 - **2D姿勢の置換候補**　固定疑似BBoxではRTMPose-X TRT16が、ViTPose-H flipありTRT16に対しbatch 1のwall P50を28.7%、P95を10.1%、NVMLピークを60.2%削減し、平均OKSは0.95ポイント低下しました。実DINO BBoxと3D再構成で下流品質を確認する優先候補です。採用にはconfidenceの較正と重み・engineの利用条件の確認が残ります。 [固定疑似GTと実測の比較](nodes/tennis_scene/000091-run-meiji-topdown-pose-comparison.md)
+- **明示選択の人物検出・2D姿勢checkpoint**　PR #2681（#2492）で `src/tennis_scene/configs/pipeline.yaml` に追加された `people_models.rfdetr_checkpoint`（`rfdetr-l`）と `people_models.rtmpose_checkpoint`（`rtmpose-x`）を [deployments.yaml](registry/deployments.yaml) へ登録しました。いずれも明示指定時のみ利用する公開重みであり、既定の `dino`・`vitpose-h` は変更していません。 [RF-DETR-L比較](nodes/player_detection/000009-run-meiji-rfdetr-large-accuracy.md) · [2D姿勢比較](nodes/tennis_scene/000091-run-meiji-topdown-pose-comparison.md)
 
 ## Court Detection
 
 - **現行**: `multiscale_depth3` のcheckpointと、画像だけによる領域探索を組み合わせ、各カメラの先頭frameだけを推論します。[Meiji 3cameraの校正が通った](nodes/court_detection/000032-run-court-meiji-model-only-regions-20260922.md)ことが採用の根拠です。このcheckpointを学習したrunのノードはなく、独立したheld-out testでの精度も未確立です。
 - **合成データのscene組合せ**（#1581）: [全6ペアと共通4scene評価](nodes/court_detection/000067-group-court-scene-pair-s42.md)が完了しました。固定5,500枚・33,160更新・seed42では、同群2ペアの実画像KP中央値平均57.36 pxに対し、異群4ペアは4.57 px（δ=+52.80 px）で、全5指標が同群側で悪い向きでした。P03（B00+B03）が実画像KP中央値で最良（2.97 px）、共通合成の4scene平均ではscene-4が最良です。単一seed・再開・会場とsurface等の交絡があり、一般的な因果効果や採用変更にはしません。旧[1〜4scene比較](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)は当時の4条件の証拠として保持します。
+- **視点軌道の分布**（#2633）　B00〜B03各128枚で撮影近傍と広分布を比較しました。`real-video-v1` test 4,372枚の2 seed平均は広分布でKP誤差103.50→111.07 px、H成立率32.41→22.19%。seed 43のKPは改善し、事前基準では部分的支持でした。難視点439枚でも平均KP誤差とH成立率は悪化しました。 [固定6,000更新の比較と層別](nodes/court_detection/000084-group-i2633-court-viewpoint-diversity.md)
 - **backbone**（#983）: [凍結DINOv3 S/S+/B/Lの比較](nodes/court_detection/000044-group-i983-court-dinov3-shared1024-s42.md)では、出力ごとに最良のサイズが異なり、サイズによる一様な改善は見られませんでした（1 seed）。
 - **後処理**（#2190）: revision 4で1frameの精度目標を動画共有へ移した。[旧処理復元](nodes/court_detection/000075-run-court-legacy-default-20261117.md)は全3545画像・8530領域の採否・Hが旧処理と完全一致。clip既定は`legacy`・RGB無効のまま、白線・品質部品と[run 69〜74](nodes/court_detection/000074-run-court-semantic-support-20261117.md)の負の結果を保持する。
 - **動画共有**（#2191）: [人間が共通Hを承認](nodes/court_detection/000078-run-court-video-drift-lines-20261117.md)し、検査不能を警告にする明示方針 `unobservable_policy=warn` を既定にした。H・測定値・hashは維持し、全69clip×4cameraを利用可能（159/276件warning、失敗0）。確認範囲は3clip×4camera＋原寸crop。信頼できるmean10/max25px超過は失敗を維持する。自動診断は人工24/24一致だが、実データの隣接線誤抽出等が残り、clip途中のcamera移動を見逃す可能性がある。候補保持・線配置による対応検証は将来の改善。一括CLI接続は#1752が担当する。
