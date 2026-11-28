@@ -43,7 +43,7 @@
 | 軸（マニフェストのキー） | 意味 | 付与主体 |
 |---|---|---|
 | 階層（`hierarchy`） | 親・子・単独・改善提案の役割（上表） | 起票者・担当親・テンプレート・親CLI・triage。`issues check` で正式な関係と照合する |
-| 作業種別（`work-type`） | バグ修正・機能改善・調査研究・文書・追補 | テンプレート、起票者・親CLIの明示指定、issue-labelerのタイトル先頭prefix |
+| 作業種別（`work-type`） | バグ修正・機能改善・調査研究・アブレーション・文書・追補 | テンプレート、起票者・親CLIの明示指定、issue-labelerのタイトル先頭prefix |
 | 起票元（`origin`） | `ai-proposed` は運用レポートの採用提案からの起票、`agent:*` は起票agent | 前者はレポートtriage、後者は起票agent。通常のAI作業・親CLIの子起票には `ai-proposed` を付けない |
 | 対象領域（`area`） | 対象モジュール・CI・テスト・依存・外部コード・Python・知見 | issueは起票者・親CLIの明示指定だけ。PRは `.github/labeler.yml` が変更ファイルから付け、Dependabotは設定で指定する |
 | 状態（`status`） | `needs-human` は人間の承認待ち、`ops-report` と `parent-evidence` は記録容器、`supplement:*` は[本文補足追加の確定状態](#親issueの補足追加状態) | 承認を必要とする仕組み・担当者、各記録CLI、補足追加workflow（skipは人間） |
@@ -51,6 +51,8 @@
 issue-labelerは [.github/issue-labeler.yml](../../../.github/issue-labeler.yml) のタイトル先頭prefixから
 作業種別だけを付け、本文を読まない。対象領域をタイトルからも推測しない。
 親子の識別名prefixは作業種別を意味しないため、テンプレートや明示指定で補う。
+
+`ablation` は、比較条件を揃えてモデル・入力・処理などの要素の寄与を切り分ける実験の設計・実施・結果整理を扱うIssueに、起票者または担当者が明示的に付ける。`research` など他の作業種別と併用できる。
 
 同期と既存open issueの誤ラベル解除は次で計画を確認する。`--repo` 省略時は `gh repo view` を使う。
 
