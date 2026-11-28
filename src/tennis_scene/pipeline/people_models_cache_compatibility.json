@@ -51,7 +51,7 @@
     },
     "tennis_scene/configuration.py": {
       "before": "77a81d2b1a26f0cd04456159466f1003b9d7d7ced2d54b45c9e4b53616934922",
-      "after": "15c5454cce77543d747e25207eefd1b2c608c4f5d285154ff3308b6a9c61fdd0"
+      "after": "7678835b560ddedfbf78aaeaa556f8a3b554b2f69efe587636e2afe6adc3ea6a"
     },
     "tennis_scene/multiview_pose/inputs.py": {
       "before": "f559ac80331dd9dac9a48cd30d3c707fa962b73b3d9685ad6948d8e051b67ee6",

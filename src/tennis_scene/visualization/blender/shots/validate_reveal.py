@@ -1,4 +1,4 @@
-"""Validate a saved reveal scene inside Blender against its exported bundle.
+"""Validate a saved reveal or playback scene against its exported bundle.
 
 blender --background <shot>/tennis_reveal.blend --python-exit-code 1 \
     --python src/tennis_scene/visualization/blender/shots/validate_reveal.py -- \
@@ -12,19 +12,66 @@ from __future__ import annotations
 
 import argparse
 import json
+import math
 import sys
 from pathlib import Path
+from typing import Any
 
 import bpy
 import numpy as np
 from bpy_extras.object_utils import world_to_camera_view
 from mathutils import Vector
 
+sys.path.insert(0, str(Path(__file__).parent))
+from playback import (  # noqa: E402
+    EVENT_HOLD_SECONDS,
+    PLAYBACK_BUNDLE_SCHEMA,
+    event_badge_name,
+    event_ring_name,
+)
+from reveal import (  # noqa: E402
+    PLAYBACK_LENS_MM,
+    PLAYBACK_SENSOR_WIDTH_MM,
+    Shot,
+    load_manifest,
+)
+
+
+def _playback_visibility(
+    manifest: dict[str, Any], frames: int
+) -> dict[str, np.ndarray]:
+    hold = math.ceil(EVENT_HOLD_SECONDS * manifest["fps"])
+    badges: dict[str, np.ndarray] = {}
+    visibility: dict[str, np.ndarray] = {}
+    for event in manifest["ball_events"]:
+        frame, kind = event["frame"], event["kind"]
+        active = np.zeros(frames, dtype=bool)
+        active[frame : frame + hold] = True
+        if kind not in badges:
+            badges[kind] = active.copy()
+        else:
+            badges[kind] |= active
+        if event["position"] is not None:
+            name = event_ring_name(kind, frame)
+            np.testing.assert_allclose(
+                bpy.data.objects[name].location, event["position"], atol=2e-5, rtol=0
+            )
+            visibility[name] = active
+    for kind, active in badges.items():
+        name = event_badge_name(kind)
+        for suffix in ("", ".Accent", ".Label"):
+            visibility[name + suffix] = active
+    actual = {
+        obj.name for obj in bpy.data.objects
+        if obj.name.startswith(("BallEvent.", "EventBadge."))
+    }
+    assert actual == visibility.keys(), actual.symmetric_difference(visibility.keys())
+    return visibility
+
 
 def validate(bundle: Path) -> dict[str, object]:
-    manifest = json.loads((bundle / "manifest.json").read_text())
-    if manifest["schema"] != "tennis_scene_blender_bundle_v1":
-        raise ValueError("Unsupported bundle schema")
+    manifest = load_manifest(bundle)
+    playback = manifest["schema"] == PLAYBACK_BUNDLE_SCHEMA
     scene = bpy.context.scene
     frames = int(manifest["num_frames"])
     samples = sorted({0, frames - 1, *(int(x) for x in np.linspace(0, frames - 1, 9))})
@@ -50,16 +97,34 @@ def validate(bundle: Path) -> dict[str, object]:
         pc2[player["index"]] = np.memmap(
             path, dtype="<f4", mode="r", offset=32, shape=(frames, count, 3)
         )
-    K = np.asarray(manifest["camera"]["opencv"]["K"])
-    R = np.asarray(manifest["camera"]["opencv"]["R"])
-    t = np.asarray(manifest["camera"]["opencv"]["t"])
     points = np.array([[0, 0, 0], [3, 8, 1], [-3, -8, 1]], dtype=float)
-    calibrated = points @ R.T + t
-    expected_uv = calibrated[:, :2] / calibrated[:, 2:] @ K[:2, :2].T + K[:2, 2]
+    expected_uv = None
+    visibility = {}
+    if playback:
+        assert camera.data.type == "PERSP" and camera.animation_data is None
+        assert camera.data.sensor_fit == "HORIZONTAL"
+        assert math.isclose(camera.data.lens, PLAYBACK_LENS_MM, rel_tol=1e-6)
+        assert math.isclose(camera.data.sensor_width, PLAYBACK_SENSOR_WIDTH_MM)
+        shot = Shot()
+        np.testing.assert_allclose(camera.location, shot.move_end_location, atol=1e-6)
+        target = world_to_camera_view(scene, camera, Vector(shot.move_end_target))
+        np.testing.assert_allclose((target.x, target.y), (0.5, 0.5), atol=1e-6)
+        assert all(image.source != "SEQUENCE" for image in bpy.data.images)
+        visibility = _playback_visibility(manifest, frames)
+    else:
+        K = np.asarray(manifest["camera"]["opencv"]["K"])
+        R = np.asarray(manifest["camera"]["opencv"]["R"])
+        t = np.asarray(manifest["camera"]["opencv"]["t"])
+        calibrated = points @ R.T + t
+        expected_uv = calibrated[:, :2] / calibrated[:, 2:] @ K[:2, :2].T + K[:2, 2]
     initial_camera = None
     final_camera = None
     for frame in range(frames):
         scene.frame_set(frame)
+        for name, active in visibility.items():
+            obj = bpy.data.objects[name]
+            hidden = not active[frame]
+            assert obj.hide_render == obj.hide_viewport == hidden, (name, frame)
         for player in manifest["players"]:
             index = player["index"]
             obj = bpy.data.objects[f"Player{index}"]
@@ -67,7 +132,8 @@ def validate(bundle: Path) -> dict[str, object]:
                 obj.name,
                 frame,
             )
-            if frame in samples:
+            # Hidden objects may retain the prior evaluated mesh in Blender.
+            if player_valid[index, frame] and frame in samples:
                 evaluated = obj.evaluated_get(bpy.context.evaluated_depsgraph_get())
                 vertices = np.empty((len(evaluated.data.vertices), 3), dtype=np.float32)
                 evaluated.data.vertices.foreach_get("co", vertices.ravel())
@@ -87,7 +153,7 @@ def validate(bundle: Path) -> dict[str, object]:
             ball_error = max(ball_error, error)
             assert error < 2e-5, ("Ball", frame, error)
         # These frames precede the default reveal and camera movement.
-        if frame in (0, min(100, frames - 1)):
+        if expected_uv is not None and frame in (0, min(100, frames - 1)):
             actual_uv = []
             for point in points:
                 projected = world_to_camera_view(scene, camera, Vector(point))
@@ -105,16 +171,16 @@ def validate(bundle: Path) -> dict[str, object]:
         if frame == frames - 1:
             final_camera = np.asarray(camera.matrix_world).copy()
     moved = bool(not np.allclose(initial_camera, final_camera))
-    if frames > 421:
+    if not playback and frames > 421:
         assert moved, "Camera did not leave the calibrated viewpoint"
     scene.frame_set(0)
-    return {
+    report = {
         "blender_version": bpy.app.version_string,
         "frames_checked": frames,
         "mesh_frames_checked": samples,
         "max_mesh_error_m": mesh_error,
         "max_ball_error_m": ball_error,
-        "max_camera_projection_error_px": projection_error,
+        "max_camera_projection_error_px": None if playback else projection_error,
         "visibility_matches_masks": True,
         "fps": actual_fps,
         "render_frame_step": scene.frame_step,
@@ -122,6 +188,9 @@ def validate(bundle: Path) -> dict[str, object]:
         "render_samples": scene.eevee.taa_render_samples,
         "camera_moved": moved,
     }
+    if playback:
+        report["in_play_events_checked"] = len(manifest["ball_events"])
+    return report
 
 
 if __name__ == "__main__":

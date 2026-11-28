@@ -37,6 +37,7 @@ def test_shipped_config_resolves_roles_and_limits(tmp_path: Path) -> None:
         tmp_path / "outputs/tennis_scene/visualize/blender_export"
     )
     assert runtime.bundle.camera_id == "cam1"
+    assert runtime.bundle.mode == "reveal"
     assert runtime.bundle.player_max_gap_frames == 12
     assert runtime.bundle.ball_max_gap_frames == 3
     assert (
@@ -46,6 +47,30 @@ def test_shipped_config_resolves_roles_and_limits(tmp_path: Path) -> None:
         tmp_path
         / "ckpt/body_models/gvhmr/smpl_neutral_J_regressor.pt"
     )
+
+
+def test_playback_resolves_without_camera(tmp_path: Path) -> None:
+    runtime = parse_blender_export_config(
+        _config(tmp_path, "mode=playback", "camera_id=null")
+    )
+
+    assert runtime.bundle.mode == "playback"
+    assert runtime.bundle.camera_id is None
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        (("mode=unknown",), "mode must be"),
+        (("camera_id=null",), "camera_id must be non-empty"),
+        (("mode=playback",), "camera_id must be null"),
+    ],
+)
+def test_export_mode_rejects_incompatible_camera(
+    tmp_path: Path, overrides: tuple[str, ...], message: str
+) -> None:
+    with pytest.raises(SemanticConfigurationError, match=message):
+        parse_blender_export_config(_config(tmp_path, *overrides))
 
 
 @pytest.mark.parametrize(

@@ -1449,7 +1449,8 @@ _BLENDER_EXPORT_SCHEMA = StrictConfigSchema(
         "assets": ConfigField.mapping(_VISUALIZATION_ASSETS_SCHEMA),
         "input": ConfigField.of(str),
         "output": ConfigField.of(str),
-        "camera_id": ConfigField.of(str),
+        "mode": ConfigField.of(str),
+        "camera_id": ConfigField.of(str, type(None)),
         "player_max_gap_frames": ConfigField.of(int),
         "ball_max_gap_frames": ConfigField.of(int),
         "max_ball_reprojection_median_px": ConfigField.of(float, int),
@@ -1474,14 +1475,11 @@ def parse_blender_export_config(cfg: DictConfig) -> BlenderExportRuntimeConfig:
     value = _BLENDER_EXPORT_SCHEMA.validate(_plain(cfg))
     roots, resolver = _roots(value["paths"])
     assets = _mapping(value["assets"], name="assets")
-    camera_id = cast(str, value["camera_id"])
-    if not camera_id.strip():
-        raise SemanticConfigurationError("camera_id must be non-empty.")
     sensor_width_mm = float(cast(float, value["sensor_width_mm"]))
     _positive(sensor_width_mm, name="sensor_width_mm")
     try:
         bundle = BlenderBundleConfig(
-            camera_id=camera_id,
+            camera_id=cast(str | None, value["camera_id"]),
             player_max_gap_frames=cast(int, value["player_max_gap_frames"]),
             ball_max_gap_frames=cast(int, value["ball_max_gap_frames"]),
             max_ball_reprojection_median_px=float(
@@ -1489,6 +1487,7 @@ def parse_blender_export_config(cfg: DictConfig) -> BlenderExportRuntimeConfig:
             ),
             sensor_width_mm=sensor_width_mm,
             plate_jpeg_quality=cast(int, value["plate_jpeg_quality"]),
+            mode=cast(str, value["mode"]),
         )
     except ValueError as error:
         raise SemanticConfigurationError(str(error)) from error

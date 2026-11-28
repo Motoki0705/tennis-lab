@@ -1,7 +1,8 @@
 # Blender export・撮影
 
-保存済みSceneResult v2・v3と元動画から、Blenderで「入力映像 → グリッド → コート → 選手・ボール」へ
-切り替わり、最後にカメラが移動するアニメーションを生成します。
+保存済みSceneResultからBlenderアニメーションを生成します。既定の `mode=reveal` は
+「入力映像 → グリッド → コート → 選手・ボール」へ切り替わり、最後にカメラが移動します。
+`mode=playback` は[冒頭から3Dでイベントを再生](#3dイベント再生)します。
 
 ![Meiji cam1の再構成プレビュー](../../../../../assets/tennis_scene/blender_reveal_meiji_cam1.gif)
 
@@ -38,7 +39,7 @@ bundle削除は呼出側の責務です。既存のreveal exporterは全区間�
 ## 入力と書き出し
 
 `input`はARTIFACT root相対のscene archive、component storeのdirectory、または`scene.json`です。
-標準のarchive readerで検証したv2 sceneの`player_smpl_valid`・`ball_3d_valid`を使います。
+標準のarchive readerで検証したv2・v3 sceneの`player_smpl_valid`・`ball_3d_valid`を使います。
 有効性maskを持たない旧sceneを推測で補完しません。
 
 ```bash
@@ -47,7 +48,7 @@ bundle削除は呼出側の責務です。既存のreveal exporterは全区間�
 ```
 
 worktreeから共有データを使う場合は`paths.project_root=<main repoの絶対パス>`を明示します。
-SMPL facesはCHECKPOINT root、regressorはPROJECT rootから解決します。
+SMPL facesとregressorはCHECKPOINT rootから解決します。
 元動画はscene metadataの`camera_ids`と`video_paths`を対応させて読み、解像度・FPS・フレーム数の一致を要求します。
 
 カメラは`metadata.court_reference.camera_fits`のpinhole fit（歪みなし、主点=画像中心、fx=fy）を使います。
@@ -72,6 +73,30 @@ world座標はコート座標（m、XY地面、+Z上）です。rendererと同�
 補間frameと残った欠損をmanifestに記録します。残った欠損はBlenderで非表示にし、球の軌跡も欠損を跨ぎません。
 コート線・ネット形状の正本は`src/utils/schema/court.py`で、bundleに書き出します。
 既存bundleは上書きせず、途中失敗の出力は削除します。
+
+## 3Dイベント再生
+
+元のMeiji cam1 revealの終点と同じ位置・向き・画角にカメラを固定し、フレーム0から
+コート・選手・ボールを再生します。入力は
+SMPLメッシュとボールイベント注釈を含むSceneResult v3です。Meiji multiview-v3では、
+各クリップの `scene/scene.json` を指定すると採用済みのsceneを読み込みます。
+
+```bash
+BENCHMARK=/absolute/path/to/multiview-v3
+.venv/bin/python -m src.tennis_scene.scripts.export_blender \
+  mode=playback "paths.artifact_root=$BENCHMARK" \
+  input=videos/video_000/clips/clip_038/scene/scene.json \
+  output=tennis_scene/visualize/blender_export/meiji-clip038/bundle
+```
+
+`camera_id` は `null` を使います。bundleは `tennis_scene_blender_playback_v1` です。
+マニフェストの `ball_events` に `ball_event_in_point=true` のイベントを元のフレーム番号で
+保存します。注釈の確度は `certain`・`probable`・`uncertain` のすべてを対象とします。
+
+同じ[撮影・動画化](#撮影動画化)のコマンドにbundleを渡します。ラベルは打球・バウンド・
+ネット接触が記録されたフレームから約0.4秒表示され、3D球位置が有効ならその位置にリングも
+出ます。球位置が欠測のイベントはラベルで示します。元の秒数と各イベントの開始フレームを
+保つため、`--frame-step 1` とマニフェストのFPSで動画化します。
 
 ## 配置bundle（player placement）
 
@@ -262,7 +287,7 @@ ffmpeg -n -framerate 15000/1001 -pattern_type glob -i "$SHOT_DIR/frames/*.png" \
   -c:v libx264 -crf 16 -pix_fmt yuv420p -movflags +faststart "$SHOT_DIR/preview.mp4"
 ```
 
-色・切り替えのタイミング・カメラ終点は撮影スクリプトの`Shot`にまとまっています。
+revealの色・切り替えのタイミング・カメラ終点は撮影スクリプトの`Shot`にまとまっています。
 タイミングは入力のframe単位で、既定では150から切り替わり、420の後にカメラが移動します。
 短いclipではこの範囲に合わせて`Shot`を調整してください。スクリプトを再実行するとシーンを作り直します。
 
@@ -276,6 +301,6 @@ blender --background "$SHOT_DIR/tennis_reveal.blend" --python-exit-code 1 \
   --bundle "$BUNDLE" --report "$SHOT_DIR/validation.json"
 ```
 
-Blenderで評価したmesh頂点とPC2、球の位置、全frameの有効性と非表示設定、入力カメラとの投影一致、
-FPSとカメラ移動を検査します。不一致は非ゼロ終了し、成功時にJSONの検証結果を保存します。
-映像側は切り替え前のframeと元動画、切り替え中、自由視点の各場面も確認してください。
+Blenderで評価したmesh頂点とPC2、球の位置、全frameの有効性と非表示設定、FPSを検査します。
+revealは入力カメラとの投影一致とカメラ移動を、playbackは固定カメラと全フレームのイベントの
+表示状態・マーカー位置を検査します。不一致は非ゼロ終了し、成功時にJSONの検証結果を保存します。
