@@ -1,0 +1,1825 @@
+{
+  "player_identity_links_example": {
+    "schema_version": 1,
+    "identity_scope": "meiji_4cam/video_000",
+    "registry_version": 1,
+    "source_manifest_hashes": {
+      "multiview_v4": "8e012944b1407d696a1ab1d325ae3c6b60cf26f071752510ea2fc688b031893c"
+    },
+    "upstream_digests": {
+      "cache_npz": "0714acb622a938c630595e0c98fbf2d93b413008605ff9805f2c745e42cfcd35"
+    },
+    "encoder_identity": {
+      "profile": "clipreid_vitb16_market1501",
+      "checkpoint": "ckpt/player_association/person_vit_clip_reid.pth",
+      "checkpoint_sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc",
+      "input_size_hw": [
+        256,
+        128
+      ],
+      "feature_dim": 1280,
+      "normalization": {
+        "mean": [
+          0.5,
+          0.5,
+          0.5
+        ],
+        "std": [
+          0.5,
+          0.5,
+          0.5
+        ]
+      },
+      "l2_normalized": true
+    },
+    "preprocessing_identity": {
+      "crops_per_camera": 4,
+      "max_crops_per_person_clip": 16,
+      "min_height_px": 16.0,
+      "border_px": 4.0,
+      "strategy": "deterministic_uniform_linspace_over_real_observed_frames"
+    },
+    "method": "E4",
+    "config": {
+      "min_score": 0.7,
+      "min_margin": 0.0,
+      "shape_weight": null,
+      "camera_mask": [
+        true,
+        true,
+        true,
+        true
+      ]
+    },
+    "links": [
+      {
+        "clip_id": "video_000/clip_005",
+        "local_player_id": 0,
+        "global_player_id": "player_01",
+        "status": "accepted",
+        "score": 0.9582483108433331,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.8057764061527659,
+        "assignment_margin": 0.15247190469056715,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              104,
+              209,
+              313
+            ],
+            "cam1": [
+              0,
+              105,
+              209,
+              313
+            ],
+            "cam2": [
+              0,
+              104,
+              209,
+              313
+            ],
+            "cam3": [
+              0,
+              104,
+              209,
+              313
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              0,
+              1244,
+              2464,
+              3622
+            ],
+            "cam1": [
+              4,
+              658,
+              1364,
+              1993
+            ],
+            "cam2": [
+              0,
+              531,
+              1096,
+              1661
+            ],
+            "cam3": [
+              0,
+              592,
+              1241,
+              1877
+            ]
+          },
+          "appearance_term": 0.9582483108433331,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_005",
+        "local_player_id": 1,
+        "global_player_id": "player_02",
+        "status": "accepted",
+        "score": 0.9148939763916297,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.7624220717010626,
+        "assignment_margin": 0.15247190469056715,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              104,
+              209,
+              313
+            ],
+            "cam1": [
+              0,
+              104,
+              209,
+              313
+            ],
+            "cam2": [
+              0,
+              107,
+              211,
+              313
+            ],
+            "cam3": [
+              67,
+              181,
+              259,
+              313
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              3,
+              1243,
+              2467,
+              3623
+            ],
+            "cam1": [
+              1,
+              651,
+              1361,
+              1994
+            ],
+            "cam2": [
+              2,
+              547,
+              1109,
+              1663
+            ],
+            "cam3": [
+              381,
+              1087,
+              1532,
+              1876
+            ]
+          },
+          "appearance_term": 0.9148939763916297,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_005",
+        "local_player_id": 2,
+        "global_player_id": "player_04",
+        "status": "accepted",
+        "score": 0.8918947891757504,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.717983811602764,
+        "assignment_margin": 0.17391097757298635,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              104,
+              209,
+              313
+            ],
+            "cam1": [
+              0,
+              104,
+              209,
+              313
+            ],
+            "cam2": [
+              0,
+              104,
+              209,
+              313
+            ],
+            "cam3": [
+              0,
+              103,
+              207,
+              313
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              6,
+              1247,
+              2465,
+              3624
+            ],
+            "cam1": [
+              0,
+              650,
+              1360,
+              1995
+            ],
+            "cam2": [
+              3,
+              533,
+              1098,
+              1664
+            ],
+            "cam3": [
+              1,
+              590,
+              1233,
+              1881
+            ]
+          },
+          "appearance_term": 0.8918947891757504,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_005",
+        "local_player_id": 3,
+        "global_player_id": "player_03",
+        "status": "accepted",
+        "score": 0.9024362449236074,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.7416025785697586,
+        "assignment_margin": 0.16083366635384877,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              100,
+              215,
+              313
+            ],
+            "cam1": [
+              0,
+              100,
+              215,
+              313
+            ],
+            "cam2": [
+              0,
+              100,
+              214,
+              313
+            ],
+            "cam3": [
+              0,
+              15,
+              33,
+              173
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              7,
+              1200,
+              2543,
+              3626
+            ],
+            "cam1": [
+              2,
+              625,
+              1398,
+              1996
+            ],
+            "cam2": [
+              1,
+              511,
+              1124,
+              1662
+            ],
+            "cam3": [
+              6,
+              94,
+              194,
+              1038
+            ]
+          },
+          "appearance_term": 0.9024362449236074,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_019",
+        "local_player_id": 0,
+        "global_player_id": "player_02",
+        "status": "accepted",
+        "score": 0.9063133385635015,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.8605503522614474,
+        "assignment_margin": 0.04576298630205411,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              189,
+              379,
+              568
+            ],
+            "cam1": [
+              0,
+              189,
+              379,
+              568
+            ],
+            "cam2": [
+              0,
+              189,
+              379,
+              568
+            ],
+            "cam3": [
+              0,
+              189,
+              379,
+              568
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              0,
+              1851,
+              3789,
+              5791
+            ],
+            "cam1": [
+              0,
+              1136,
+              2277,
+              3411
+            ],
+            "cam2": [
+              0,
+              946,
+              1907,
+              2865
+            ],
+            "cam3": [
+              0,
+              1230,
+              2519,
+              3784
+            ]
+          },
+          "appearance_term": 0.9063133385635015,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_019",
+        "local_player_id": 1,
+        "global_player_id": "player_01",
+        "status": "accepted",
+        "score": 0.811403420968567,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.7656404346665129,
+        "assignment_margin": 0.04576298630205411,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              189,
+              379,
+              568
+            ],
+            "cam1": [
+              0,
+              189,
+              379,
+              568
+            ],
+            "cam2": [
+              0,
+              189,
+              379,
+              568
+            ],
+            "cam3": [
+              0,
+              167,
+              401,
+              568
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              2,
+              1855,
+              3790,
+              5790
+            ],
+            "cam1": [
+              1,
+              1134,
+              2274,
+              3412
+            ],
+            "cam2": [
+              1,
+              949,
+              1909,
+              2867
+            ],
+            "cam3": [
+              6,
+              1063,
+              2674,
+              3785
+            ]
+          },
+          "appearance_term": 0.811403420968567,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_019",
+        "local_player_id": 2,
+        "global_player_id": "player_03",
+        "status": "accepted",
+        "score": 0.9604608739455422,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.7921296359648531,
+        "assignment_margin": 0.16833123798068916,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              189,
+              379,
+              568
+            ],
+            "cam1": [
+              0,
+              189,
+              379,
+              568
+            ],
+            "cam2": [
+              0,
+              190,
+              379,
+              568
+            ],
+            "cam3": [
+              0,
+              191,
+              379,
+              568
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              3,
+              1853,
+              3793,
+              5792
+            ],
+            "cam1": [
+              2,
+              1135,
+              2276,
+              3413
+            ],
+            "cam2": [
+              3,
+              953,
+              1910,
+              2866
+            ],
+            "cam3": [
+              2,
+              1247,
+              2522,
+              3786
+            ]
+          },
+          "appearance_term": 0.9604608739455422,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_019",
+        "local_player_id": 3,
+        "global_player_id": "player_04",
+        "status": "accepted",
+        "score": 0.9525958599525751,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.7544942544830754,
+        "assignment_margin": 0.19810160546949973,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              148,
+              297,
+              445
+            ],
+            "cam1": [
+              0,
+              148,
+              297,
+              445
+            ],
+            "cam2": [
+              0,
+              148,
+              295,
+              443
+            ],
+            "cam3": [
+              0,
+              148,
+              295,
+              443
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              4,
+              1421,
+              2985,
+              4479
+            ],
+            "cam1": [
+              3,
+              889,
+              1782,
+              2677
+            ],
+            "cam2": [
+              2,
+              741,
+              1478,
+              2227
+            ],
+            "cam3": [
+              1,
+              919,
+              1929,
+              2967
+            ]
+          },
+          "appearance_term": 0.9525958599525751,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_039",
+        "local_player_id": 0,
+        "global_player_id": "player_04",
+        "status": "accepted",
+        "score": 0.903950429162014,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.7558185977613068,
+        "assignment_margin": 0.14813183140070718,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              291,
+              581,
+              872
+            ],
+            "cam1": [
+              0,
+              289,
+              578,
+              870
+            ],
+            "cam2": [
+              0,
+              291,
+              581,
+              872
+            ],
+            "cam3": [
+              0,
+              291,
+              581,
+              872
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              0,
+              3364,
+              6549,
+              9859
+            ],
+            "cam1": [
+              2,
+              2038,
+              4250,
+              6198
+            ],
+            "cam2": [
+              3,
+              1523,
+              3162,
+              4655
+            ],
+            "cam3": [
+              2,
+              1755,
+              3500,
+              5256
+            ]
+          },
+          "appearance_term": 0.903950429162014,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_039",
+        "local_player_id": 1,
+        "global_player_id": "player_02",
+        "status": "accepted",
+        "score": 0.9193879659220836,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.8712278379135849,
+        "assignment_margin": 0.04816012800849867,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              291,
+              581,
+              872
+            ],
+            "cam1": [
+              0,
+              291,
+              581,
+              872
+            ],
+            "cam2": [
+              0,
+              286,
+              573,
+              872
+            ],
+            "cam3": [
+              0,
+              290,
+              579,
+              872
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              2,
+              3370,
+              6550,
+              9860
+            ],
+            "cam1": [
+              0,
+              2057,
+              4273,
+              6207
+            ],
+            "cam2": [
+              2,
+              1495,
+              3114,
+              4657
+            ],
+            "cam3": [
+              1,
+              1748,
+              3487,
+              5255
+            ]
+          },
+          "appearance_term": 0.9193879659220836,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_039",
+        "local_player_id": 2,
+        "global_player_id": "player_01",
+        "status": "accepted",
+        "score": 0.8084004393399238,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.7602403113314251,
+        "assignment_margin": 0.04816012800849867,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              291,
+              581,
+              872
+            ],
+            "cam1": [
+              0,
+              291,
+              581,
+              872
+            ],
+            "cam2": [
+              0,
+              286,
+              578,
+              872
+            ],
+            "cam3": [
+              0,
+              291,
+              581,
+              872
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              3,
+              3365,
+              6552,
+              9865
+            ],
+            "cam1": [
+              1,
+              2058,
+              4272,
+              6205
+            ],
+            "cam2": [
+              0,
+              1492,
+              3142,
+              4653
+            ],
+            "cam3": [
+              0,
+              1753,
+              3498,
+              5253
+            ]
+          },
+          "appearance_term": 0.8084004393399238,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_039",
+        "local_player_id": 3,
+        "global_player_id": "player_03",
+        "status": "accepted",
+        "score": 0.9195931222821039,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.789564121717167,
+        "assignment_margin": 0.13002900056493694,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              287,
+              575,
+              872
+            ],
+            "cam1": [
+              0,
+              291,
+              581,
+              872
+            ],
+            "cam2": [
+              0,
+              291,
+              581,
+              872
+            ],
+            "cam3": [
+              0,
+              291,
+              581,
+              872
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              7,
+              3317,
+              6486,
+              9867
+            ],
+            "cam1": [
+              3,
+              2059,
+              4274,
+              6206
+            ],
+            "cam2": [
+              1,
+              1522,
+              3159,
+              4654
+            ],
+            "cam3": [
+              3,
+              1756,
+              3501,
+              5254
+            ]
+          },
+          "appearance_term": 0.9195931222821039,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_062",
+        "local_player_id": 0,
+        "global_player_id": "player_04",
+        "status": "accepted",
+        "score": 0.8790482215989803,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.8720096298205033,
+        "assignment_margin": 0.007038591778476988,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              143,
+              286,
+              429
+            ],
+            "cam1": [
+              0,
+              142,
+              287,
+              429
+            ],
+            "cam2": [
+              0,
+              142,
+              287,
+              429
+            ],
+            "cam3": [
+              0,
+              143,
+              286,
+              429
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              0,
+              1379,
+              2843,
+              4279
+            ],
+            "cam1": [
+              0,
+              988,
+              2110,
+              3157
+            ],
+            "cam2": [
+              1,
+              864,
+              1660,
+              2395
+            ],
+            "cam3": [
+              0,
+              878,
+              1737,
+              2537
+            ]
+          },
+          "appearance_term": 0.8790482215989803,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_062",
+        "local_player_id": 1,
+        "global_player_id": "player_02",
+        "status": "accepted",
+        "score": 0.913567903604598,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.9086007689526971,
+        "assignment_margin": 0.004967134651900906,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              90,
+              181,
+              294
+            ],
+            "cam1": [
+              0,
+              91,
+              181,
+              276
+            ],
+            "cam2": [
+              0,
+              90,
+              181,
+              276
+            ],
+            "cam3": [
+              0,
+              91,
+              182,
+              294
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              1,
+              849,
+              1762,
+              2929
+            ],
+            "cam1": [
+              2,
+              606,
+              1300,
+              2030
+            ],
+            "cam2": [
+              3,
+              551,
+              1095,
+              1604
+            ],
+            "cam3": [
+              4,
+              559,
+              1109,
+              1785
+            ]
+          },
+          "appearance_term": 0.913567903604598,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_062",
+        "local_player_id": 2,
+        "global_player_id": "player_03",
+        "status": "accepted",
+        "score": 0.9290427597991442,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.8096071819799364,
+        "assignment_margin": 0.11943557781920777,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              143,
+              286,
+              429
+            ],
+            "cam1": [
+              0,
+              143,
+              285,
+              429
+            ],
+            "cam2": [
+              0,
+              143,
+              286,
+              429
+            ],
+            "cam3": [
+              0,
+              142,
+              287,
+              429
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              3,
+              1381,
+              2847,
+              4278
+            ],
+            "cam1": [
+              1,
+              997,
+              2096,
+              3158
+            ],
+            "cam2": [
+              0,
+              867,
+              1651,
+              2392
+            ],
+            "cam3": [
+              1,
+              873,
+              1738,
+              2535
+            ]
+          },
+          "appearance_term": 0.9290427597991442,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_062",
+        "local_player_id": 3,
+        "global_player_id": "player_01",
+        "status": "accepted",
+        "score": 0.7839437079487005,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.7789765732967996,
+        "assignment_margin": 0.004967134651900906,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              143,
+              285,
+              429
+            ],
+            "cam1": [
+              0,
+              138,
+              276,
+              429
+            ],
+            "cam2": [
+              0,
+              143,
+              286,
+              429
+            ],
+            "cam3": [
+              0,
+              121,
+              242,
+              363
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              4,
+              1387,
+              2838,
+              4280
+            ],
+            "cam1": [
+              3,
+              959,
+              2032,
+              3159
+            ],
+            "cam2": [
+              2,
+              870,
+              1652,
+              2391
+            ],
+            "cam3": [
+              3,
+              748,
+              1466,
+              2206
+            ]
+          },
+          "appearance_term": 0.7839437079487005,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_063",
+        "local_player_id": 0,
+        "global_player_id": "player_02",
+        "status": "accepted",
+        "score": 0.9113123104279,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.8891658334596304,
+        "assignment_margin": 0.022146476968269546,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              113,
+              227,
+              340
+            ],
+            "cam1": [
+              0,
+              113,
+              227,
+              340
+            ],
+            "cam2": [
+              0,
+              113,
+              227,
+              340
+            ],
+            "cam3": [
+              0,
+              113,
+              227,
+              340
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              1,
+              1137,
+              2263,
+              3382
+            ],
+            "cam1": [
+              0,
+              683,
+              1367,
+              2052
+            ],
+            "cam2": [
+              0,
+              565,
+              1142,
+              1709
+            ],
+            "cam3": [
+              0,
+              697,
+              1406,
+              2152
+            ]
+          },
+          "appearance_term": 0.9113123104279,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_063",
+        "local_player_id": 1,
+        "global_player_id": "player_03",
+        "status": "accepted",
+        "score": 0.9607012010737702,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.8144105139736099,
+        "assignment_margin": 0.14629068710016035,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              113,
+              227,
+              340
+            ],
+            "cam1": [
+              0,
+              113,
+              227,
+              340
+            ],
+            "cam2": [
+              0,
+              113,
+              227,
+              340
+            ],
+            "cam3": [
+              0,
+              104,
+              207,
+              340
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              2,
+              1136,
+              2264,
+              3377
+            ],
+            "cam1": [
+              1,
+              684,
+              1368,
+              2050
+            ],
+            "cam2": [
+              2,
+              567,
+              1144,
+              1708
+            ],
+            "cam3": [
+              1,
+              644,
+              1267,
+              2155
+            ]
+          },
+          "appearance_term": 0.9607012010737702,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_063",
+        "local_player_id": 2,
+        "global_player_id": "player_01",
+        "status": "accepted",
+        "score": 0.8093125922364186,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.7871661152681491,
+        "assignment_margin": 0.022146476968269546,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              113,
+              227,
+              340
+            ],
+            "cam1": [
+              0,
+              113,
+              227,
+              340
+            ],
+            "cam2": [
+              0,
+              109,
+              231,
+              340
+            ],
+            "cam3": [
+              0,
+              109,
+              231,
+              340
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              3,
+              1138,
+              2262,
+              3378
+            ],
+            "cam1": [
+              2,
+              682,
+              1366,
+              2053
+            ],
+            "cam2": [
+              3,
+              549,
+              1163,
+              1710
+            ],
+            "cam3": [
+              3,
+              676,
+              1436,
+              2154
+            ]
+          },
+          "appearance_term": 0.8093125922364186,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      },
+      {
+        "clip_id": "video_000/clip_063",
+        "local_player_id": 3,
+        "global_player_id": "player_04",
+        "status": "accepted",
+        "score": 0.9547687984626237,
+        "score_kind": "cosine_similarity",
+        "runner_up_score": 0.7289764230883146,
+        "assignment_margin": 0.22579237537430918,
+        "reason": "matched",
+        "evidence": {
+          "cameras_used": [
+            "cam0",
+            "cam1",
+            "cam2",
+            "cam3"
+          ],
+          "sample_frames": {
+            "cam0": [
+              0,
+              99,
+              199,
+              340
+            ],
+            "cam1": [
+              0,
+              113,
+              227,
+              340
+            ],
+            "cam2": [
+              0,
+              113,
+              227,
+              340
+            ],
+            "cam3": [
+              0,
+              113,
+              227,
+              340
+            ]
+          },
+          "sample_source_rows": {
+            "cam0": [
+              4,
+              996,
+              2014,
+              3379
+            ],
+            "cam1": [
+              3,
+              685,
+              1369,
+              2051
+            ],
+            "cam2": [
+              1,
+              566,
+              1141,
+              1707
+            ],
+            "cam3": [
+              2,
+              696,
+              1405,
+              2153
+            ]
+          },
+          "appearance_term": 0.9547687984626237,
+          "shape_term": null,
+          "temporal_term": null,
+          "shape_valid": false,
+          "temporal_valid": false,
+          "gallery_update_sources": [],
+          "extra": {
+            "shape_reason": null,
+            "temporal_reason": null
+          }
+        },
+        "frame_interval": null
+      }
+    ]
+  },
+  "registry_example": {
+    "identity_scope": "meiji_4cam/video_000",
+    "registry_version": 1,
+    "identities": {
+      "player_01": {
+        "global_player_id": "player_01",
+        "anchor_key": "clip_002:p0",
+        "origin_clip_id": "video_000/clip_002",
+        "origin_local_player_id": 0,
+        "gallery_updates": [],
+        "metadata": {
+          "side": -1
+        }
+      },
+      "player_02": {
+        "global_player_id": "player_02",
+        "anchor_key": "clip_002:p1",
+        "origin_clip_id": "video_000/clip_002",
+        "origin_local_player_id": 1,
+        "gallery_updates": [],
+        "metadata": {
+          "side": 1
+        }
+      },
+      "player_03": {
+        "global_player_id": "player_03",
+        "anchor_key": "clip_002:p2",
+        "origin_clip_id": "video_000/clip_002",
+        "origin_local_player_id": 2,
+        "gallery_updates": [],
+        "metadata": {
+          "side": -1
+        }
+      },
+      "player_04": {
+        "global_player_id": "player_04",
+        "anchor_key": "clip_002:p3",
+        "origin_clip_id": "video_000/clip_002",
+        "origin_local_player_id": 3,
+        "gallery_updates": [],
+        "metadata": {
+          "side": 1
+        }
+      }
+    },
+    "anchor_to_global_id": {
+      "clip_002:p0": "player_01",
+      "clip_002:p1": "player_02",
+      "clip_002:p2": "player_03",
+      "clip_002:p3": "player_04"
+    },
+    "revision_history": [
+      {
+        "registry_version": 1,
+        "action": "register_anchor",
+        "global_player_id": "player_01",
+        "anchor_key": "clip_002:p0",
+        "clip_id": "video_000/clip_002",
+        "local_player_id": 0
+      },
+      {
+        "registry_version": 1,
+        "action": "register_anchor",
+        "global_player_id": "player_02",
+        "anchor_key": "clip_002:p1",
+        "clip_id": "video_000/clip_002",
+        "local_player_id": 1
+      },
+      {
+        "registry_version": 1,
+        "action": "register_anchor",
+        "global_player_id": "player_03",
+        "anchor_key": "clip_002:p2",
+        "clip_id": "video_000/clip_002",
+        "local_player_id": 2
+      },
+      {
+        "registry_version": 1,
+        "action": "register_anchor",
+        "global_player_id": "player_04",
+        "anchor_key": "clip_002:p3",
+        "clip_id": "video_000/clip_002",
+        "local_player_id": 3
+      }
+    ]
+  },
+  "downstream_event_join_example": [
+    {
+      "clip_id": "video_000/clip_005",
+      "frame": 120,
+      "event_kind": "hit",
+      "local_player_id": 0,
+      "global_player_id": "player_01",
+      "identity_status": "accepted",
+      "identity_reason": "matched",
+      "identity_registry_version": 1
+    },
+    {
+      "clip_id": "video_000/clip_019",
+      "frame": 200,
+      "event_kind": "hit",
+      "local_player_id": 1,
+      "global_player_id": "player_01",
+      "identity_status": "accepted",
+      "identity_reason": "matched",
+      "identity_registry_version": 1
+    },
+    {
+      "clip_id": "video_000/clip_039",
+      "frame": 150,
+      "event_kind": "hit",
+      "local_player_id": 0,
+      "global_player_id": "player_04",
+      "identity_status": "accepted",
+      "identity_reason": "matched",
+      "identity_registry_version": 1
+    },
+    {
+      "clip_id": "video_000/clip_063",
+      "frame": 180,
+      "event_kind": "hit",
+      "local_player_id": 2,
+      "global_player_id": "player_01",
+      "identity_status": "accepted",
+      "identity_reason": "matched",
+      "identity_registry_version": 1
+    }
+  ]
+}

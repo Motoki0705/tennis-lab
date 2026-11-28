@@ -1,0 +1,2698 @@
+{
+  "schema_version": 1,
+  "issue": 2746,
+  "dataset_id": "meiji_4cam",
+  "video_id": "video_000",
+  "benchmark_version": "multiview-v4",
+  "benchmark_manifest_sha256": "8e012944b1407d696a1ab1d325ae3c6b60cf26f071752510ea2fc688b031893c",
+  "projects_json_sha256": "950cf57ec383aec1899898c01b43f3fb549732c1becc0383441d24f7a73a94d0",
+  "gt_audit": {
+    "num_clips": 69,
+    "num_nodes": 276,
+    "anomalies": [
+      {
+        "clip": "clip_062",
+        "issue": "non_bijective",
+        "gids": [
+          null,
+          "player_02",
+          "player_03",
+          "player_01"
+        ]
+      },
+      {
+        "clip": "clip_062",
+        "issue": "doubles_side_mismatch",
+        "gid_to_side": {
+          "player_02": -1,
+          "player_03": 1,
+          "player_01": 1
+        }
+      }
+    ],
+    "mixed_tracks": [
+      {
+        "clip": "clip_062",
+        "local_player_id": 0,
+        "purity": "mixed",
+        "mixed_interval": {
+          "player_04": [
+            0,
+            271
+          ],
+          "player_02": [
+            271,
+            430
+          ]
+        }
+      }
+    ],
+    "uncertain_tracks": [
+      {
+        "clip": "clip_062",
+        "local_player_id": 0,
+        "status": "uncertain"
+      }
+    ],
+    "end_change_boundary_clips": [
+      "clip_005",
+      "clip_019",
+      "clip_039",
+      "clip_051",
+      "clip_059",
+      "clip_063",
+      "clip_067"
+    ],
+    "num_end_flipped_clips": 32,
+    "wardrobe_change_boundary_clip": "clip_019",
+    "pre_layer_removal_clips": 19,
+    "post_layer_removal_clips": 50
+  },
+  "warmup": {
+    "warmup_clip_idx": 2,
+    "warmup_clip_name": "clip_002",
+    "candidates": [
+      {
+        "clip_idx": 0,
+        "clip_name": "clip_000",
+        "all_cams_ok": true,
+        "no_id_amb": true,
+        "mean_quality": 0.6114,
+        "min_node_quality": 0.5004,
+        "selection_score": 12.5559
+      },
+      {
+        "clip_idx": 1,
+        "clip_name": "clip_001",
+        "all_cams_ok": true,
+        "no_id_amb": true,
+        "mean_quality": 0.6621,
+        "min_node_quality": 0.5721,
+        "selection_score": 12.6171
+      },
+      {
+        "clip_idx": 2,
+        "clip_name": "clip_002",
+        "all_cams_ok": true,
+        "no_id_amb": true,
+        "mean_quality": 0.6698,
+        "min_node_quality": 0.6049,
+        "selection_score": 12.6373
+      },
+      {
+        "clip_idx": 3,
+        "clip_name": "clip_003",
+        "all_cams_ok": true,
+        "no_id_amb": false,
+        "mean_quality": 0.6423,
+        "min_node_quality": 0.5874,
+        "selection_score": 10.6148
+      },
+      {
+        "clip_idx": 4,
+        "clip_name": "clip_004",
+        "all_cams_ok": true,
+        "no_id_amb": false,
+        "mean_quality": 0.6248,
+        "min_node_quality": 0.4795,
+        "selection_score": 10.5522
+      }
+    ]
+  },
+  "split": {
+    "warmup_clip_name": "clip_002",
+    "dev_count": 34,
+    "test_count": 34,
+    "dev_clip_names": [
+      "clip_000",
+      "clip_001",
+      "clip_003",
+      "clip_004",
+      "clip_005",
+      "clip_006",
+      "clip_007",
+      "clip_008",
+      "clip_009",
+      "clip_010",
+      "clip_011",
+      "clip_012",
+      "clip_013",
+      "clip_014",
+      "clip_015",
+      "clip_016",
+      "clip_017",
+      "clip_018",
+      "clip_019",
+      "clip_020",
+      "clip_021",
+      "clip_022",
+      "clip_023",
+      "clip_024",
+      "clip_025",
+      "clip_026",
+      "clip_027",
+      "clip_028",
+      "clip_029",
+      "clip_030",
+      "clip_031",
+      "clip_032",
+      "clip_033",
+      "clip_034"
+    ],
+    "test_clip_names": [
+      "clip_035",
+      "clip_036",
+      "clip_037",
+      "clip_038",
+      "clip_039",
+      "clip_040",
+      "clip_041",
+      "clip_042",
+      "clip_043",
+      "clip_044",
+      "clip_045",
+      "clip_046",
+      "clip_047",
+      "clip_048",
+      "clip_049",
+      "clip_050",
+      "clip_051",
+      "clip_052",
+      "clip_053",
+      "clip_054",
+      "clip_055",
+      "clip_056",
+      "clip_057",
+      "clip_058",
+      "clip_059",
+      "clip_060",
+      "clip_061",
+      "clip_062",
+      "clip_063",
+      "clip_064",
+      "clip_065",
+      "clip_066",
+      "clip_067",
+      "clip_068"
+    ],
+    "source_frame_overlaps_verified": 0
+  },
+  "cache_provenance": {
+    "clip_reid": {
+      "encoder": {
+        "profile": "clipreid_vitb16_market1501",
+        "checkpoint": "ckpt/player_association/person_vit_clip_reid.pth",
+        "checkpoint_sha256": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc",
+        "input_size_hw": [
+          256,
+          128
+        ],
+        "feature_dim": 1280,
+        "normalization": {
+          "mean": [
+            0.5,
+            0.5,
+            0.5
+          ],
+          "std": [
+            0.5,
+            0.5,
+            0.5
+          ]
+        },
+        "l2_normalized": true
+      },
+      "sampling": {
+        "crops_per_camera": 4,
+        "max_crops_per_person_clip": 16,
+        "min_height_px": 16.0,
+        "border_px": 4.0,
+        "strategy": "deterministic_uniform_linspace_over_real_observed_frames"
+      },
+      "stats": {
+        "num_clips": 69,
+        "num_nodes": 276,
+        "total_crops_extracted": 4416,
+        "expected_max_crops": 4416,
+        "missing_camera_node_pairs": 0,
+        "cache_npz_path": "outputs/i2746_cross_clip_player_id/cache/clip_reid_cache.npz",
+        "cache_npz_sha256": "0714acb622a938c630595e0c98fbf2d93b413008605ff9805f2c745e42cfcd35",
+        "cache_npz_bytes": 22118883,
+        "wall_sec": 328.161,
+        "cpu_sec": 1748.72,
+        "gpu_embed_sec": 19.589,
+        "peak_rss_mb": 1380.12,
+        "peak_vram_mb": 820.47,
+        "device": "cuda"
+      }
+    },
+    "kpr": {
+      "schema_version": 1,
+      "encoder": {
+        "name": "kpr_market_solider_parts",
+        "checkpoint": "ckpt/player_association/kpr/kpr_market_SOLIDER_93.25_96.59_41453430.pth.tar",
+        "checkpoint_sha256": "e29bacd699a15d1d069c9d19c8804b7d35baea81e713b55e632ee546e1733a1b",
+        "input_size_hw": [
+          384,
+          128
+        ],
+        "num_parts": 6,
+        "part_dim": 512
+      },
+      "source_clip_reid_cache_sha256": "0714acb622a938c630595e0c98fbf2d93b413008605ff9805f2c745e42cfcd35",
+      "stats": {
+        "total_crops": 4416,
+        "crops_with_negative_prompt": 519,
+        "wall_sec": 405.094,
+        "cpu_sec": 1844.709,
+        "gpu_unprompted_sec": 59.9,
+        "gpu_prompted_sec": 54.562,
+        "peak_rss_mb": 1943.61,
+        "peak_vram_mb": 2777.5,
+        "cache_npz_sha256": "5690ce1a7c68e2affe3803da131b38182a75adf3be05d2f27f14f8875f5b6c21",
+        "cache_npz_bytes": 66892795,
+        "device": "cuda"
+      }
+    }
+  },
+  "smpl_beta_dev_diagnostics": {
+    "valid_nodes": 136,
+    "unavailable_nodes": 0,
+    "valid_rate": 1.0,
+    "same_person_l2_mean": 1.2072,
+    "same_person_l2_std": 0.5068,
+    "diff_person_l2_mean": 1.6204,
+    "diff_person_l2_std": 0.6315,
+    "same_rep_cam_same_person_l2_mean": 1.1433,
+    "diff_rep_cam_same_person_l2_mean": 1.2399,
+    "pairwise_auroc": 0.6913,
+    "gate_params": {
+      "min_valid_frames": 30,
+      "min_obs_samples": 15,
+      "max_beta_std": 0.6
+    }
+  },
+  "temporal_gap_audit": {
+    "short_gap_max_sec": 3.0,
+    "total_consecutive_pairs": 68,
+    "eligible_pairs": 0,
+    "eligible_rate": 0.0,
+    "min_gap_sec": 7.338,
+    "median_gap_sec": 13.617,
+    "max_gap_sec": 41.351,
+    "gaps_under_10s": 14
+  },
+  "llr_calibration_dev": {
+    "same_camera_cross_clip": {
+      "slope": 37.2167,
+      "center": 0.8584,
+      "pos_mean": 0.9206,
+      "neg_mean": 0.8025,
+      "n_pos": 8976,
+      "n_neg": 26928
+    },
+    "cross_camera_cross_clip": {
+      "slope": 40.0371,
+      "center": 0.8481,
+      "pos_mean": 0.9017,
+      "neg_mean": 0.7968,
+      "n_pos": 26928,
+      "n_neg": 80784
+    },
+    "node_common_cam_mean": {
+      "slope": 41.9233,
+      "center": 0.8566,
+      "pos_mean": 0.9206,
+      "neg_mean": 0.8025,
+      "n_pos": 2244,
+      "n_neg": 6732
+    }
+  },
+  "dev_open_set": {
+    "E1": {
+      "mean_unregistered_false_accept_rate": 0.235294,
+      "total_unregistered_false_accepts": 32,
+      "total_unregistered_nodes": 136,
+      "mean_registered_coverage": 0.852941,
+      "per_omitted_player": {
+        "player_01": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 18,
+          "unregistered_false_accept_rate": 0.529412,
+          "registered_coverage": 1.0,
+          "registered_pair_f1": 0.785623
+        },
+        "player_02": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 14,
+          "unregistered_false_accept_rate": 0.411765,
+          "registered_coverage": 0.843137,
+          "registered_pair_f1": 0.708506
+        },
+        "player_03": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.813725,
+          "registered_pair_f1": 0.607309
+        },
+        "player_04": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.754902,
+          "registered_pair_f1": 0.630037
+        }
+      }
+    },
+    "E2": {
+      "mean_unregistered_false_accept_rate": 0.411765,
+      "total_unregistered_false_accepts": 56,
+      "total_unregistered_nodes": 136,
+      "mean_registered_coverage": 0.901961,
+      "per_omitted_player": {
+        "player_01": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 18,
+          "unregistered_false_accept_rate": 0.529412,
+          "registered_coverage": 1.0,
+          "registered_pair_f1": 0.785623
+        },
+        "player_02": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 27,
+          "unregistered_false_accept_rate": 0.794118,
+          "registered_coverage": 0.882353,
+          "registered_pair_f1": 0.728734
+        },
+        "player_03": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 5,
+          "unregistered_false_accept_rate": 0.147059,
+          "registered_coverage": 0.921569,
+          "registered_pair_f1": 0.616804
+        },
+        "player_04": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 6,
+          "unregistered_false_accept_rate": 0.176471,
+          "registered_coverage": 0.803922,
+          "registered_pair_f1": 0.663374
+        }
+      }
+    },
+    "E3": {
+      "mean_unregistered_false_accept_rate": 0.404412,
+      "total_unregistered_false_accepts": 55,
+      "total_unregistered_nodes": 136,
+      "mean_registered_coverage": 0.901961,
+      "per_omitted_player": {
+        "player_01": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 18,
+          "unregistered_false_accept_rate": 0.529412,
+          "registered_coverage": 1.0,
+          "registered_pair_f1": 0.785623
+        },
+        "player_02": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 26,
+          "unregistered_false_accept_rate": 0.764706,
+          "registered_coverage": 0.872549,
+          "registered_pair_f1": 0.728802
+        },
+        "player_03": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 7,
+          "unregistered_false_accept_rate": 0.205882,
+          "registered_coverage": 0.921569,
+          "registered_pair_f1": 0.617828
+        },
+        "player_04": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 4,
+          "unregistered_false_accept_rate": 0.117647,
+          "registered_coverage": 0.813725,
+          "registered_pair_f1": 0.683292
+        }
+      }
+    },
+    "E4": {
+      "mean_unregistered_false_accept_rate": 0.073529,
+      "total_unregistered_false_accepts": 10,
+      "total_unregistered_nodes": 136,
+      "mean_registered_coverage": 0.877451,
+      "per_omitted_player": {
+        "player_01": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 1.0,
+          "registered_pair_f1": 0.857143
+        },
+        "player_02": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 10,
+          "unregistered_false_accept_rate": 0.294118,
+          "registered_coverage": 0.843137,
+          "registered_pair_f1": 0.705128
+        },
+        "player_03": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.833333,
+          "registered_pair_f1": 0.718447
+        },
+        "player_04": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.833333,
+          "registered_pair_f1": 0.718447
+        }
+      }
+    },
+    "E5": {
+      "mean_unregistered_false_accept_rate": 0.095588,
+      "total_unregistered_false_accepts": 13,
+      "total_unregistered_nodes": 136,
+      "mean_registered_coverage": 0.877451,
+      "per_omitted_player": {
+        "player_01": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 1.0,
+          "registered_pair_f1": 0.857143
+        },
+        "player_02": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 13,
+          "unregistered_false_accept_rate": 0.382353,
+          "registered_coverage": 0.843137,
+          "registered_pair_f1": 0.706343
+        },
+        "player_03": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.833333,
+          "registered_pair_f1": 0.718447
+        },
+        "player_04": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.833333,
+          "registered_pair_f1": 0.718447
+        }
+      }
+    },
+    "E7": {
+      "mean_unregistered_false_accept_rate": 0.110294,
+      "total_unregistered_false_accepts": 15,
+      "total_unregistered_nodes": 136,
+      "mean_registered_coverage": 0.882353,
+      "per_omitted_player": {
+        "player_01": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 1.0,
+          "registered_pair_f1": 0.857143
+        },
+        "player_02": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 15,
+          "unregistered_false_accept_rate": 0.441176,
+          "registered_coverage": 0.843137,
+          "registered_pair_f1": 0.708783
+        },
+        "player_03": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.843137,
+          "registered_pair_f1": 0.724638
+        },
+        "player_04": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.843137,
+          "registered_pair_f1": 0.724638
+        }
+      }
+    }
+  },
+  "test_open_set": {
+    "E1": {
+      "mean_unregistered_false_accept_rate": 0.02963,
+      "total_unregistered_false_accepts": 4,
+      "total_unregistered_nodes": 135,
+      "mean_registered_coverage": 0.760494,
+      "per_omitted_player": {
+        "player_01": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 1.0,
+          "registered_pair_f1": 0.854701
+        },
+        "player_02": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 4,
+          "unregistered_false_accept_rate": 0.117647,
+          "registered_coverage": 0.663366,
+          "registered_pair_f1": 0.662432
+        },
+        "player_03": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.722772,
+          "registered_pair_f1": 0.613151
+        },
+        "player_04": {
+          "unregistered_nodes": 33,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.656863,
+          "registered_pair_f1": 0.66
+        }
+      }
+    },
+    "E2": {
+      "mean_unregistered_false_accept_rate": 0.237037,
+      "total_unregistered_false_accepts": 32,
+      "total_unregistered_nodes": 135,
+      "mean_registered_coverage": 0.866667,
+      "per_omitted_player": {
+        "player_01": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 10,
+          "unregistered_false_accept_rate": 0.294118,
+          "registered_coverage": 1.0,
+          "registered_pair_f1": 0.800283
+        },
+        "player_02": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 10,
+          "unregistered_false_accept_rate": 0.294118,
+          "registered_coverage": 0.722772,
+          "registered_pair_f1": 0.645868
+        },
+        "player_03": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 12,
+          "unregistered_false_accept_rate": 0.352941,
+          "registered_coverage": 0.940594,
+          "registered_pair_f1": 0.56862
+        },
+        "player_04": {
+          "unregistered_nodes": 33,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.803922,
+          "registered_pair_f1": 0.624292
+        }
+      }
+    },
+    "E3": {
+      "mean_unregistered_false_accept_rate": 0.237037,
+      "total_unregistered_false_accepts": 32,
+      "total_unregistered_nodes": 135,
+      "mean_registered_coverage": 0.866667,
+      "per_omitted_player": {
+        "player_01": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 10,
+          "unregistered_false_accept_rate": 0.294118,
+          "registered_coverage": 1.0,
+          "registered_pair_f1": 0.800283
+        },
+        "player_02": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 9,
+          "unregistered_false_accept_rate": 0.264706,
+          "registered_coverage": 0.742574,
+          "registered_pair_f1": 0.635612
+        },
+        "player_03": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 13,
+          "unregistered_false_accept_rate": 0.382353,
+          "registered_coverage": 0.920792,
+          "registered_pair_f1": 0.561008
+        },
+        "player_04": {
+          "unregistered_nodes": 33,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.803922,
+          "registered_pair_f1": 0.624292
+        }
+      }
+    },
+    "E4": {
+      "mean_unregistered_false_accept_rate": 0.237037,
+      "total_unregistered_false_accepts": 32,
+      "total_unregistered_nodes": 135,
+      "mean_registered_coverage": 0.745679,
+      "per_omitted_player": {
+        "player_01": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 1.0,
+          "registered_pair_f1": 0.854701
+        },
+        "player_02": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 31,
+          "unregistered_false_accept_rate": 0.911765,
+          "registered_coverage": 0.663366,
+          "registered_pair_f1": 0.825498
+        },
+        "player_03": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 1,
+          "unregistered_false_accept_rate": 0.029412,
+          "registered_coverage": 0.653465,
+          "registered_pair_f1": 0.620606
+        },
+        "player_04": {
+          "unregistered_nodes": 33,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.666667,
+          "registered_pair_f1": 0.653465
+        }
+      }
+    },
+    "E5": {
+      "mean_unregistered_false_accept_rate": 0.244444,
+      "total_unregistered_false_accepts": 33,
+      "total_unregistered_nodes": 135,
+      "mean_registered_coverage": 0.745679,
+      "per_omitted_player": {
+        "player_01": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 1.0,
+          "registered_pair_f1": 0.854701
+        },
+        "player_02": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 32,
+          "unregistered_false_accept_rate": 0.941176,
+          "registered_coverage": 0.663366,
+          "registered_pair_f1": 0.83509
+        },
+        "player_03": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 1,
+          "unregistered_false_accept_rate": 0.029412,
+          "registered_coverage": 0.653465,
+          "registered_pair_f1": 0.620606
+        },
+        "player_04": {
+          "unregistered_nodes": 33,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.666667,
+          "registered_pair_f1": 0.653465
+        }
+      }
+    },
+    "E7": {
+      "mean_unregistered_false_accept_rate": 0.133333,
+      "total_unregistered_false_accepts": 18,
+      "total_unregistered_nodes": 135,
+      "mean_registered_coverage": 0.748148,
+      "per_omitted_player": {
+        "player_01": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 1.0,
+          "registered_pair_f1": 0.854701
+        },
+        "player_02": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 18,
+          "unregistered_false_accept_rate": 0.529412,
+          "registered_coverage": 0.663366,
+          "registered_pair_f1": 0.719374
+        },
+        "player_03": {
+          "unregistered_nodes": 34,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.663366,
+          "registered_pair_f1": 0.66
+        },
+        "player_04": {
+          "unregistered_nodes": 33,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": 0.0,
+          "registered_coverage": 0.666667,
+          "registered_pair_f1": 0.673267
+        }
+      }
+    }
+  },
+  "dev_camera_dropout": {
+    "E1": {
+      "drop_cam0": {
+        "pair_f1": 0.797428,
+        "pair_precision": 1.0,
+        "pair_recall": 0.663102,
+        "false_merge_rate": 0.0,
+        "coverage": 0.772059,
+        "clip_exact_match_rate": 0.147059
+      },
+      "drop_cam1": {
+        "pair_f1": 0.847518,
+        "pair_precision": 0.981808,
+        "pair_recall": 0.745544,
+        "false_merge_rate": 0.018192,
+        "coverage": 0.845588,
+        "clip_exact_match_rate": 0.352941
+      },
+      "drop_cam2": {
+        "pair_f1": 0.81018,
+        "pair_precision": 1.0,
+        "pair_recall": 0.680927,
+        "false_merge_rate": 0.0,
+        "coverage": 0.801471,
+        "clip_exact_match_rate": 0.264706
+      },
+      "drop_cam3": {
+        "pair_f1": 0.779108,
+        "pair_precision": 1.0,
+        "pair_recall": 0.638146,
+        "false_merge_rate": 0.0,
+        "coverage": 0.764706,
+        "clip_exact_match_rate": 0.176471
+      },
+      "mean_pair_f1": 0.808558
+    },
+    "E2": {
+      "drop_cam0": {
+        "pair_f1": 0.848345,
+        "pair_precision": 1.0,
+        "pair_recall": 0.736631,
+        "false_merge_rate": 0.0,
+        "coverage": 0.816176,
+        "clip_exact_match_rate": 0.264706
+      },
+      "drop_cam1": {
+        "pair_f1": 0.839574,
+        "pair_precision": 0.946339,
+        "pair_recall": 0.754456,
+        "false_merge_rate": 0.053661,
+        "coverage": 0.860294,
+        "clip_exact_match_rate": 0.352941
+      },
+      "drop_cam2": {
+        "pair_f1": 0.86351,
+        "pair_precision": 1.0,
+        "pair_recall": 0.759804,
+        "false_merge_rate": 0.0,
+        "coverage": 0.845588,
+        "clip_exact_match_rate": 0.382353
+      },
+      "drop_cam3": {
+        "pair_f1": 0.881913,
+        "pair_precision": 1.0,
+        "pair_recall": 0.78877,
+        "false_merge_rate": 0.0,
+        "coverage": 0.860294,
+        "clip_exact_match_rate": 0.441176
+      },
+      "mean_pair_f1": 0.858335
+    },
+    "E3": {
+      "drop_cam0": {
+        "pair_f1": 0.85188,
+        "pair_precision": 1.0,
+        "pair_recall": 0.741979,
+        "false_merge_rate": 0.0,
+        "coverage": 0.823529,
+        "clip_exact_match_rate": 0.294118
+      },
+      "drop_cam1": {
+        "pair_f1": 0.8615,
+        "pair_precision": 0.981207,
+        "pair_recall": 0.767825,
+        "false_merge_rate": 0.018793,
+        "coverage": 0.852941,
+        "clip_exact_match_rate": 0.382353
+      },
+      "drop_cam2": {
+        "pair_f1": 0.872645,
+        "pair_precision": 1.0,
+        "pair_recall": 0.774064,
+        "false_merge_rate": 0.0,
+        "coverage": 0.852941,
+        "clip_exact_match_rate": 0.411765
+      },
+      "drop_cam3": {
+        "pair_f1": 0.881913,
+        "pair_precision": 1.0,
+        "pair_recall": 0.78877,
+        "false_merge_rate": 0.0,
+        "coverage": 0.860294,
+        "clip_exact_match_rate": 0.441176
+      },
+      "mean_pair_f1": 0.866984
+    },
+    "E4": {
+      "drop_cam0": {
+        "pair_f1": 0.895397,
+        "pair_precision": 1.0,
+        "pair_recall": 0.810606,
+        "false_merge_rate": 0.0,
+        "coverage": 0.875,
+        "clip_exact_match_rate": 0.5
+      },
+      "drop_cam1": {
+        "pair_f1": 0.879153,
+        "pair_precision": 0.981858,
+        "pair_recall": 0.7959,
+        "false_merge_rate": 0.018142,
+        "coverage": 0.875,
+        "clip_exact_match_rate": 0.5
+      },
+      "drop_cam2": {
+        "pair_f1": 0.895397,
+        "pair_precision": 1.0,
+        "pair_recall": 0.810606,
+        "false_merge_rate": 0.0,
+        "coverage": 0.875,
+        "clip_exact_match_rate": 0.5
+      },
+      "drop_cam3": {
+        "pair_f1": 0.9,
+        "pair_precision": 1.0,
+        "pair_recall": 0.818182,
+        "false_merge_rate": 0.0,
+        "coverage": 0.882353,
+        "clip_exact_match_rate": 0.529412
+      },
+      "mean_pair_f1": 0.892487
+    }
+  },
+  "test_camera_dropout": {
+    "E1": {
+      "drop_cam0": {
+        "pair_f1": 0.844828,
+        "pair_precision": 1.0,
+        "pair_recall": 0.731343,
+        "false_merge_rate": 0.0,
+        "coverage": 0.740741,
+        "clip_exact_match_rate": 0.0
+      },
+      "drop_cam1": {
+        "pair_f1": 0.834783,
+        "pair_precision": 1.0,
+        "pair_recall": 0.716418,
+        "false_merge_rate": 0.0,
+        "coverage": 0.733333,
+        "clip_exact_match_rate": 0.0
+      },
+      "drop_cam2": {
+        "pair_f1": 0.804865,
+        "pair_precision": 1.0,
+        "pair_recall": 0.673451,
+        "false_merge_rate": 0.0,
+        "coverage": 0.711111,
+        "clip_exact_match_rate": 0.0
+      },
+      "drop_cam3": {
+        "pair_f1": 0.83509,
+        "pair_precision": 1.0,
+        "pair_recall": 0.71687,
+        "false_merge_rate": 0.0,
+        "coverage": 0.733333,
+        "clip_exact_match_rate": 0.0
+      },
+      "mean_pair_f1": 0.829892
+    },
+    "E2": {
+      "drop_cam0": {
+        "pair_f1": 0.817378,
+        "pair_precision": 0.89372,
+        "pair_recall": 0.753053,
+        "false_merge_rate": 0.10628,
+        "coverage": 0.792593,
+        "clip_exact_match_rate": 0.0
+      },
+      "drop_cam1": {
+        "pair_f1": 0.769304,
+        "pair_precision": 0.815923,
+        "pair_recall": 0.727725,
+        "false_merge_rate": 0.184077,
+        "coverage": 0.807407,
+        "clip_exact_match_rate": 0.0
+      },
+      "drop_cam2": {
+        "pair_f1": 0.782007,
+        "pair_precision": 0.798023,
+        "pair_recall": 0.766621,
+        "false_merge_rate": 0.201977,
+        "coverage": 0.837037,
+        "clip_exact_match_rate": 0.0
+      },
+      "drop_cam3": {
+        "pair_f1": 0.793893,
+        "pair_precision": 0.8125,
+        "pair_recall": 0.776119,
+        "false_merge_rate": 0.1875,
+        "coverage": 0.837037,
+        "clip_exact_match_rate": 0.0
+      },
+      "mean_pair_f1": 0.790646
+    },
+    "E3": {
+      "drop_cam0": {
+        "pair_f1": 0.817378,
+        "pair_precision": 0.89372,
+        "pair_recall": 0.753053,
+        "false_merge_rate": 0.10628,
+        "coverage": 0.792593,
+        "clip_exact_match_rate": 0.0
+      },
+      "drop_cam1": {
+        "pair_f1": 0.785178,
+        "pair_precision": 0.845151,
+        "pair_recall": 0.733152,
+        "false_merge_rate": 0.154849,
+        "coverage": 0.8,
+        "clip_exact_match_rate": 0.0
+      },
+      "drop_cam2": {
+        "pair_f1": 0.788854,
+        "pair_precision": 0.790286,
+        "pair_recall": 0.787427,
+        "false_merge_rate": 0.209714,
+        "coverage": 0.851852,
+        "clip_exact_match_rate": 0.0
+      },
+      "drop_cam3": {
+        "pair_f1": 0.791209,
+        "pair_precision": 0.801113,
+        "pair_recall": 0.781547,
+        "false_merge_rate": 0.198887,
+        "coverage": 0.844444,
+        "clip_exact_match_rate": 0.0
+      },
+      "mean_pair_f1": 0.795655
+    },
+    "E4": {
+      "drop_cam0": {
+        "pair_f1": 0.837607,
+        "pair_precision": 0.98,
+        "pair_recall": 0.731343,
+        "false_merge_rate": 0.02,
+        "coverage": 0.748148,
+        "clip_exact_match_rate": 0.0
+      },
+      "drop_cam1": {
+        "pair_f1": 0.821549,
+        "pair_precision": 0.961212,
+        "pair_recall": 0.717322,
+        "false_merge_rate": 0.038788,
+        "coverage": 0.748148,
+        "clip_exact_match_rate": 0.0
+      },
+      "drop_cam2": {
+        "pair_f1": 0.767677,
+        "pair_precision": 0.898182,
+        "pair_recall": 0.670285,
+        "false_merge_rate": 0.101818,
+        "coverage": 0.748148,
+        "clip_exact_match_rate": 0.0
+      },
+      "drop_cam3": {
+        "pair_f1": 0.806527,
+        "pair_precision": 0.943636,
+        "pair_recall": 0.704206,
+        "false_merge_rate": 0.056364,
+        "coverage": 0.748148,
+        "clip_exact_match_rate": 0.0
+      },
+      "mean_pair_f1": 0.80834
+    }
+  },
+  "leave_one_out_integration": {
+    "dev": {
+      "adopted_E4_swap": {
+        "metrics_pure": {
+          "cross_clip_pair_precision": 1.0,
+          "cross_clip_pair_recall": 1.0,
+          "cross_clip_pair_f1": 1.0,
+          "false_merge_rate": 0.0,
+          "split_rate": 0.0,
+          "tp_pairs": 2244,
+          "fp_pairs": 0,
+          "fn_pairs": 0,
+          "tn_pairs": 6732,
+          "pred_pos_pairs": 2244,
+          "gt_pos_pairs": 2244,
+          "total_cross_clip_pairs": 8976,
+          "coverage": 1.0,
+          "accepted_nodes": 136,
+          "total_registered_nodes": 136,
+          "node_accuracy": 1.0,
+          "node_precision_at_accepted": 1.0,
+          "correct_nodes": 136,
+          "clip_exact_match_rate": 1.0,
+          "clip_exact_matches": 34,
+          "total_eval_clips": 34,
+          "id_switch_boundaries": 0,
+          "id_transitions": 132,
+          "macro_player_accuracy": 1.0,
+          "macro_player_coverage": 1.0,
+          "scope_frame_idf1": 1.0,
+          "scope_frame_assa": 1.0,
+          "unregistered_total_nodes": 0,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": null,
+          "block_bootstrap_f1_ci95": [
+            1.0,
+            1.0
+          ],
+          "num_bootstrap_blocks": 4,
+          "per_player": {
+            "player_01": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            },
+            "player_02": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            },
+            "player_03": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            },
+            "player_04": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            }
+          },
+          "scope_label_map": {
+            "player_01": "player_01",
+            "player_02": "player_02",
+            "player_03": "player_03",
+            "player_04": "player_04"
+          }
+        },
+        "metrics_all": {
+          "cross_clip_pair_precision": 1.0,
+          "cross_clip_pair_recall": 1.0,
+          "cross_clip_pair_f1": 1.0,
+          "false_merge_rate": 0.0,
+          "split_rate": 0.0,
+          "tp_pairs": 2244,
+          "fp_pairs": 0,
+          "fn_pairs": 0,
+          "tn_pairs": 6732,
+          "pred_pos_pairs": 2244,
+          "gt_pos_pairs": 2244,
+          "total_cross_clip_pairs": 8976,
+          "coverage": 1.0,
+          "accepted_nodes": 136,
+          "total_registered_nodes": 136,
+          "node_accuracy": 1.0,
+          "node_precision_at_accepted": 1.0,
+          "correct_nodes": 136,
+          "clip_exact_match_rate": 1.0,
+          "clip_exact_matches": 34,
+          "total_eval_clips": 34,
+          "id_switch_boundaries": 0,
+          "id_transitions": 132,
+          "macro_player_accuracy": 1.0,
+          "macro_player_coverage": 1.0,
+          "scope_frame_idf1": 1.0,
+          "scope_frame_assa": 1.0,
+          "unregistered_total_nodes": 0,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": null,
+          "block_bootstrap_f1_ci95": [
+            1.0,
+            1.0
+          ],
+          "num_bootstrap_blocks": 4,
+          "per_player": {
+            "player_01": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            },
+            "player_02": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            },
+            "player_03": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            },
+            "player_04": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            }
+          },
+          "scope_label_map": {
+            "player_01": "player_01",
+            "player_02": "player_02",
+            "player_03": "player_03",
+            "player_04": "player_04"
+          }
+        },
+        "open_set": {
+          "mean_unregistered_false_accept_rate": 0.073529,
+          "total_unregistered_false_accepts": 10,
+          "total_unregistered_nodes": 136,
+          "mean_registered_coverage": 0.877451,
+          "per_omitted_player": {
+            "player_01": {
+              "unregistered_nodes": 34,
+              "unregistered_false_accepts": 0,
+              "unregistered_false_accept_rate": 0.0,
+              "registered_coverage": 1.0,
+              "registered_pair_f1": 0.857143
+            },
+            "player_02": {
+              "unregistered_nodes": 34,
+              "unregistered_false_accepts": 10,
+              "unregistered_false_accept_rate": 0.294118,
+              "registered_coverage": 0.843137,
+              "registered_pair_f1": 0.705128
+            },
+            "player_03": {
+              "unregistered_nodes": 34,
+              "unregistered_false_accepts": 0,
+              "unregistered_false_accept_rate": 0.0,
+              "registered_coverage": 0.833333,
+              "registered_pair_f1": 0.718447
+            },
+            "player_04": {
+              "unregistered_nodes": 34,
+              "unregistered_false_accepts": 0,
+              "unregistered_false_accept_rate": 0.0,
+              "registered_coverage": 0.833333,
+              "registered_pair_f1": 0.718447
+            }
+          }
+        },
+        "open_set_swap_margin": {
+          "unreg_false_accepts": 10,
+          "unreg_total": 136,
+          "unreg_false_accept_rate": 0.073529
+        }
+      },
+      "E4_swap_strict_open_set_gate": {
+        "min_score": 0.84,
+        "min_margin": 0.02,
+        "metrics_pure": {
+          "cross_clip_pair_precision": 1.0,
+          "cross_clip_pair_recall": 0.789216,
+          "cross_clip_pair_f1": 0.882192,
+          "false_merge_rate": 0.0,
+          "split_rate": 0.210784,
+          "tp_pairs": 1771,
+          "fp_pairs": 0,
+          "fn_pairs": 473,
+          "tn_pairs": 6732,
+          "pred_pos_pairs": 1771,
+          "gt_pos_pairs": 2244,
+          "total_cross_clip_pairs": 8976,
+          "coverage": 0.867647,
+          "accepted_nodes": 118,
+          "total_registered_nodes": 136,
+          "node_accuracy": 0.867647,
+          "node_precision_at_accepted": 1.0,
+          "correct_nodes": 118,
+          "clip_exact_match_rate": 0.529412,
+          "clip_exact_matches": 18,
+          "total_eval_clips": 34,
+          "id_switch_boundaries": 0,
+          "id_transitions": 114,
+          "macro_player_accuracy": 0.867647,
+          "macro_player_coverage": 0.867647,
+          "scope_frame_idf1": 0.926906,
+          "scope_frame_assa": 0.790863,
+          "unregistered_total_nodes": 0,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": null,
+          "block_bootstrap_f1_ci95": [
+            0.823312,
+            1.0
+          ],
+          "num_bootstrap_blocks": 4,
+          "per_player": {
+            "player_01": {
+              "total_nodes": 34,
+              "accepted_nodes": 18,
+              "correct_nodes": 18,
+              "coverage": 0.529412,
+              "accuracy": 0.529412,
+              "switches": 0
+            },
+            "player_02": {
+              "total_nodes": 34,
+              "accepted_nodes": 32,
+              "correct_nodes": 32,
+              "coverage": 0.941176,
+              "accuracy": 0.941176,
+              "switches": 0
+            },
+            "player_03": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            },
+            "player_04": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            }
+          },
+          "scope_label_map": {
+            "player_01": "player_01",
+            "player_02": "player_02",
+            "player_03": "player_03",
+            "player_04": "player_04"
+          }
+        },
+        "open_set_swap_margin": {
+          "unreg_false_accepts": 0,
+          "unreg_total": 136,
+          "unreg_false_accept_rate": 0.0
+        }
+      },
+      "minus_swap_margin_E4_row": {
+        "cross_clip_pair_precision": 1.0,
+        "cross_clip_pair_recall": 0.810606,
+        "cross_clip_pair_f1": 0.895397,
+        "false_merge_rate": 0.0,
+        "split_rate": 0.189394,
+        "tp_pairs": 1819,
+        "fp_pairs": 0,
+        "fn_pairs": 425,
+        "tn_pairs": 6732,
+        "pred_pos_pairs": 1819,
+        "gt_pos_pairs": 2244,
+        "total_cross_clip_pairs": 8976,
+        "coverage": 0.875,
+        "accepted_nodes": 119,
+        "total_registered_nodes": 136,
+        "node_accuracy": 0.875,
+        "node_precision_at_accepted": 1.0,
+        "correct_nodes": 119,
+        "clip_exact_match_rate": 0.5,
+        "clip_exact_matches": 17,
+        "total_eval_clips": 34,
+        "id_switch_boundaries": 0,
+        "id_transitions": 115,
+        "macro_player_accuracy": 0.875,
+        "macro_player_coverage": 0.875,
+        "scope_frame_idf1": 0.926101,
+        "scope_frame_assa": 0.80067,
+        "unregistered_total_nodes": 0,
+        "unregistered_false_accepts": 0,
+        "unregistered_false_accept_rate": null,
+        "block_bootstrap_f1_ci95": [
+          0.858852,
+          1.0
+        ],
+        "num_bootstrap_blocks": 4,
+        "per_player": {
+          "player_01": {
+            "total_nodes": 34,
+            "accepted_nodes": 17,
+            "correct_nodes": 17,
+            "coverage": 0.5,
+            "accuracy": 0.5,
+            "switches": 0
+          },
+          "player_02": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_03": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_04": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          }
+        },
+        "scope_label_map": {
+          "player_01": "player_01",
+          "player_02": "player_02",
+          "player_03": "player_03",
+          "player_04": "player_04"
+        }
+      },
+      "minus_hungarian_E3": {
+        "cross_clip_pair_precision": 1.0,
+        "cross_clip_pair_recall": 0.796791,
+        "cross_clip_pair_f1": 0.886905,
+        "false_merge_rate": 0.0,
+        "split_rate": 0.203209,
+        "tp_pairs": 1788,
+        "fp_pairs": 0,
+        "fn_pairs": 456,
+        "tn_pairs": 6732,
+        "pred_pos_pairs": 1788,
+        "gt_pos_pairs": 2244,
+        "total_cross_clip_pairs": 8976,
+        "coverage": 0.860294,
+        "accepted_nodes": 117,
+        "total_registered_nodes": 136,
+        "node_accuracy": 0.860294,
+        "node_precision_at_accepted": 1.0,
+        "correct_nodes": 117,
+        "clip_exact_match_rate": 0.441176,
+        "clip_exact_matches": 15,
+        "total_eval_clips": 34,
+        "id_switch_boundaries": 0,
+        "id_transitions": 113,
+        "macro_player_accuracy": 0.860294,
+        "macro_player_coverage": 0.860294,
+        "scope_frame_idf1": 0.916024,
+        "scope_frame_assa": 0.786347,
+        "unregistered_total_nodes": 0,
+        "unregistered_false_accepts": 0,
+        "unregistered_false_accept_rate": null,
+        "block_bootstrap_f1_ci95": [
+          0.85788,
+          0.979196
+        ],
+        "num_bootstrap_blocks": 4,
+        "per_player": {
+          "player_01": {
+            "total_nodes": 34,
+            "accepted_nodes": 15,
+            "correct_nodes": 15,
+            "coverage": 0.441176,
+            "accuracy": 0.441176,
+            "switches": 0
+          },
+          "player_02": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_03": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_04": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          }
+        },
+        "scope_label_map": {
+          "player_01": "player_01",
+          "player_02": "player_02",
+          "player_03": "player_03",
+          "player_04": "player_04"
+        }
+      },
+      "minus_quality_E2_hungarian_swap": {
+        "cross_clip_pair_precision": 1.0,
+        "cross_clip_pair_recall": 1.0,
+        "cross_clip_pair_f1": 1.0,
+        "false_merge_rate": 0.0,
+        "split_rate": 0.0,
+        "tp_pairs": 2244,
+        "fp_pairs": 0,
+        "fn_pairs": 0,
+        "tn_pairs": 6732,
+        "pred_pos_pairs": 2244,
+        "gt_pos_pairs": 2244,
+        "total_cross_clip_pairs": 8976,
+        "coverage": 1.0,
+        "accepted_nodes": 136,
+        "total_registered_nodes": 136,
+        "node_accuracy": 1.0,
+        "node_precision_at_accepted": 1.0,
+        "correct_nodes": 136,
+        "clip_exact_match_rate": 1.0,
+        "clip_exact_matches": 34,
+        "total_eval_clips": 34,
+        "id_switch_boundaries": 0,
+        "id_transitions": 132,
+        "macro_player_accuracy": 1.0,
+        "macro_player_coverage": 1.0,
+        "scope_frame_idf1": 1.0,
+        "scope_frame_assa": 1.0,
+        "unregistered_total_nodes": 0,
+        "unregistered_false_accepts": 0,
+        "unregistered_false_accept_rate": null,
+        "block_bootstrap_f1_ci95": [
+          1.0,
+          1.0
+        ],
+        "num_bootstrap_blocks": 4,
+        "per_player": {
+          "player_01": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_02": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_03": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_04": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          }
+        },
+        "scope_label_map": {
+          "player_01": "player_01",
+          "player_02": "player_02",
+          "player_03": "player_03",
+          "player_04": "player_04"
+        }
+      },
+      "minus_per_cam_E1_hungarian_swap": {
+        "cross_clip_pair_precision": 0.942959,
+        "cross_clip_pair_recall": 0.942959,
+        "cross_clip_pair_f1": 0.942959,
+        "false_merge_rate": 0.057041,
+        "split_rate": 0.057041,
+        "tp_pairs": 2116,
+        "fp_pairs": 128,
+        "fn_pairs": 128,
+        "tn_pairs": 6604,
+        "pred_pos_pairs": 2244,
+        "gt_pos_pairs": 2244,
+        "total_cross_clip_pairs": 8976,
+        "coverage": 1.0,
+        "accepted_nodes": 136,
+        "total_registered_nodes": 136,
+        "node_accuracy": 0.970588,
+        "node_precision_at_accepted": 0.970588,
+        "correct_nodes": 132,
+        "clip_exact_match_rate": 0.941176,
+        "clip_exact_matches": 32,
+        "total_eval_clips": 34,
+        "id_switch_boundaries": 8,
+        "id_transitions": 132,
+        "macro_player_accuracy": 0.970588,
+        "macro_player_coverage": 1.0,
+        "scope_frame_idf1": 0.979071,
+        "scope_frame_assa": 0.940573,
+        "unregistered_total_nodes": 0,
+        "unregistered_false_accepts": 0,
+        "unregistered_false_accept_rate": null,
+        "block_bootstrap_f1_ci95": [
+          0.899371,
+          1.0
+        ],
+        "num_bootstrap_blocks": 4,
+        "per_player": {
+          "player_01": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 32,
+            "coverage": 1.0,
+            "accuracy": 0.941176,
+            "switches": 4
+          },
+          "player_02": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 32,
+            "coverage": 1.0,
+            "accuracy": 0.941176,
+            "switches": 4
+          },
+          "player_03": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_04": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          }
+        },
+        "scope_label_map": {
+          "player_01": "player_01",
+          "player_02": "player_02",
+          "player_03": "player_03",
+          "player_04": "player_04"
+        }
+      }
+    },
+    "test": {
+      "adopted_E4_swap": {
+        "metrics_pure": {
+          "cross_clip_pair_precision": 0.970149,
+          "cross_clip_pair_recall": 0.970149,
+          "cross_clip_pair_f1": 0.970149,
+          "false_merge_rate": 0.029851,
+          "split_rate": 0.029851,
+          "tp_pairs": 2145,
+          "fp_pairs": 66,
+          "fn_pairs": 66,
+          "tn_pairs": 6567,
+          "pred_pos_pairs": 2211,
+          "gt_pos_pairs": 2211,
+          "total_cross_clip_pairs": 8844,
+          "coverage": 1.0,
+          "accepted_nodes": 135,
+          "total_registered_nodes": 135,
+          "node_accuracy": 0.985185,
+          "node_precision_at_accepted": 0.985185,
+          "correct_nodes": 133,
+          "clip_exact_match_rate": 0.970588,
+          "clip_exact_matches": 33,
+          "total_eval_clips": 34,
+          "id_switch_boundaries": 4,
+          "id_transitions": 131,
+          "macro_player_accuracy": 0.985294,
+          "macro_player_coverage": 1.0,
+          "scope_frame_idf1": 0.981268,
+          "scope_frame_assa": 0.946517,
+          "unregistered_total_nodes": 0,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": null,
+          "block_bootstrap_f1_ci95": [
+            0.915875,
+            1.0
+          ],
+          "num_bootstrap_blocks": 6,
+          "per_player": {
+            "player_01": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 33,
+              "coverage": 1.0,
+              "accuracy": 0.970588,
+              "switches": 2
+            },
+            "player_02": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 33,
+              "coverage": 1.0,
+              "accuracy": 0.970588,
+              "switches": 2
+            },
+            "player_03": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            },
+            "player_04": {
+              "total_nodes": 33,
+              "accepted_nodes": 33,
+              "correct_nodes": 33,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            }
+          },
+          "scope_label_map": {
+            "player_01": "player_01",
+            "player_02": "player_02",
+            "player_03": "player_03",
+            "player_04": "player_04"
+          }
+        },
+        "metrics_all": {
+          "cross_clip_pair_precision": 0.970149,
+          "cross_clip_pair_recall": 0.970149,
+          "cross_clip_pair_f1": 0.970149,
+          "false_merge_rate": 0.029851,
+          "split_rate": 0.029851,
+          "tp_pairs": 2145,
+          "fp_pairs": 66,
+          "fn_pairs": 66,
+          "tn_pairs": 6567,
+          "pred_pos_pairs": 2211,
+          "gt_pos_pairs": 2211,
+          "total_cross_clip_pairs": 8844,
+          "coverage": 1.0,
+          "accepted_nodes": 135,
+          "total_registered_nodes": 135,
+          "node_accuracy": 0.985185,
+          "node_precision_at_accepted": 0.985185,
+          "correct_nodes": 133,
+          "clip_exact_match_rate": 0.970588,
+          "clip_exact_matches": 33,
+          "total_eval_clips": 34,
+          "id_switch_boundaries": 4,
+          "id_transitions": 131,
+          "macro_player_accuracy": 0.985294,
+          "macro_player_coverage": 1.0,
+          "scope_frame_idf1": 0.981268,
+          "scope_frame_assa": 0.946517,
+          "unregistered_total_nodes": 0,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": null,
+          "block_bootstrap_f1_ci95": [
+            0.915875,
+            1.0
+          ],
+          "num_bootstrap_blocks": 6,
+          "per_player": {
+            "player_01": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 33,
+              "coverage": 1.0,
+              "accuracy": 0.970588,
+              "switches": 2
+            },
+            "player_02": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 33,
+              "coverage": 1.0,
+              "accuracy": 0.970588,
+              "switches": 2
+            },
+            "player_03": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            },
+            "player_04": {
+              "total_nodes": 33,
+              "accepted_nodes": 33,
+              "correct_nodes": 33,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            }
+          },
+          "scope_label_map": {
+            "player_01": "player_01",
+            "player_02": "player_02",
+            "player_03": "player_03",
+            "player_04": "player_04"
+          }
+        },
+        "open_set": {
+          "mean_unregistered_false_accept_rate": 0.237037,
+          "total_unregistered_false_accepts": 32,
+          "total_unregistered_nodes": 135,
+          "mean_registered_coverage": 0.745679,
+          "per_omitted_player": {
+            "player_01": {
+              "unregistered_nodes": 34,
+              "unregistered_false_accepts": 0,
+              "unregistered_false_accept_rate": 0.0,
+              "registered_coverage": 1.0,
+              "registered_pair_f1": 0.854701
+            },
+            "player_02": {
+              "unregistered_nodes": 34,
+              "unregistered_false_accepts": 31,
+              "unregistered_false_accept_rate": 0.911765,
+              "registered_coverage": 0.663366,
+              "registered_pair_f1": 0.825498
+            },
+            "player_03": {
+              "unregistered_nodes": 34,
+              "unregistered_false_accepts": 1,
+              "unregistered_false_accept_rate": 0.029412,
+              "registered_coverage": 0.653465,
+              "registered_pair_f1": 0.620606
+            },
+            "player_04": {
+              "unregistered_nodes": 33,
+              "unregistered_false_accepts": 0,
+              "unregistered_false_accept_rate": 0.0,
+              "registered_coverage": 0.666667,
+              "registered_pair_f1": 0.653465
+            }
+          }
+        },
+        "open_set_swap_margin": {
+          "unreg_false_accepts": 33,
+          "unreg_total": 135,
+          "unreg_false_accept_rate": 0.244444
+        }
+      },
+      "E4_swap_strict_open_set_gate": {
+        "min_score": 0.84,
+        "min_margin": 0.02,
+        "metrics_pure": {
+          "cross_clip_pair_precision": 1.0,
+          "cross_clip_pair_recall": 0.746269,
+          "cross_clip_pair_f1": 0.854701,
+          "false_merge_rate": 0.0,
+          "split_rate": 0.253731,
+          "tp_pairs": 1650,
+          "fp_pairs": 0,
+          "fn_pairs": 561,
+          "tn_pairs": 6633,
+          "pred_pos_pairs": 1650,
+          "gt_pos_pairs": 2211,
+          "total_cross_clip_pairs": 8844,
+          "coverage": 0.748148,
+          "accepted_nodes": 101,
+          "total_registered_nodes": 135,
+          "node_accuracy": 0.748148,
+          "node_precision_at_accepted": 1.0,
+          "correct_nodes": 101,
+          "clip_exact_match_rate": 0.0,
+          "clip_exact_matches": 0,
+          "total_eval_clips": 34,
+          "id_switch_boundaries": 0,
+          "id_transitions": 98,
+          "macro_player_accuracy": 0.75,
+          "macro_player_coverage": 0.75,
+          "scope_frame_idf1": 0.857341,
+          "scope_frame_assa": 0.750303,
+          "unregistered_total_nodes": 0,
+          "unregistered_false_accepts": 0,
+          "unregistered_false_accept_rate": null,
+          "block_bootstrap_f1_ci95": [
+            0.849799,
+            0.857143
+          ],
+          "num_bootstrap_blocks": 6,
+          "per_player": {
+            "player_01": {
+              "total_nodes": 34,
+              "accepted_nodes": 0,
+              "correct_nodes": 0,
+              "coverage": 0.0,
+              "accuracy": 0.0,
+              "switches": 0
+            },
+            "player_02": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            },
+            "player_03": {
+              "total_nodes": 34,
+              "accepted_nodes": 34,
+              "correct_nodes": 34,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            },
+            "player_04": {
+              "total_nodes": 33,
+              "accepted_nodes": 33,
+              "correct_nodes": 33,
+              "coverage": 1.0,
+              "accuracy": 1.0,
+              "switches": 0
+            }
+          },
+          "scope_label_map": {
+            "player_02": "player_02",
+            "player_03": "player_03",
+            "player_04": "player_04"
+          }
+        },
+        "open_set_swap_margin": {
+          "unreg_false_accepts": 0,
+          "unreg_total": 135,
+          "unreg_false_accept_rate": 0.0
+        }
+      },
+      "minus_swap_margin_E4_row": {
+        "cross_clip_pair_precision": 0.98,
+        "cross_clip_pair_recall": 0.731343,
+        "cross_clip_pair_f1": 0.837607,
+        "false_merge_rate": 0.02,
+        "split_rate": 0.268657,
+        "tp_pairs": 1617,
+        "fp_pairs": 33,
+        "fn_pairs": 594,
+        "tn_pairs": 6600,
+        "pred_pos_pairs": 1650,
+        "gt_pos_pairs": 2211,
+        "total_cross_clip_pairs": 8844,
+        "coverage": 0.748148,
+        "accepted_nodes": 101,
+        "total_registered_nodes": 135,
+        "node_accuracy": 0.740741,
+        "node_precision_at_accepted": 0.990099,
+        "correct_nodes": 100,
+        "clip_exact_match_rate": 0.0,
+        "clip_exact_matches": 0,
+        "total_eval_clips": 34,
+        "id_switch_boundaries": 0,
+        "id_transitions": 97,
+        "macro_player_accuracy": 0.742647,
+        "macro_player_coverage": 0.75,
+        "scope_frame_idf1": 0.846638,
+        "scope_frame_assa": 0.723563,
+        "unregistered_total_nodes": 0,
+        "unregistered_false_accepts": 0,
+        "unregistered_false_accept_rate": null,
+        "block_bootstrap_f1_ci95": [
+          0.806527,
+          0.857143
+        ],
+        "num_bootstrap_blocks": 6,
+        "per_player": {
+          "player_01": {
+            "total_nodes": 34,
+            "accepted_nodes": 1,
+            "correct_nodes": 0,
+            "coverage": 0.029412,
+            "accuracy": 0.0,
+            "switches": 0
+          },
+          "player_02": {
+            "total_nodes": 34,
+            "accepted_nodes": 33,
+            "correct_nodes": 33,
+            "coverage": 0.970588,
+            "accuracy": 0.970588,
+            "switches": 0
+          },
+          "player_03": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_04": {
+            "total_nodes": 33,
+            "accepted_nodes": 33,
+            "correct_nodes": 33,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          }
+        },
+        "scope_label_map": {
+          "player_02": "player_02",
+          "player_03": "player_03",
+          "player_04": "player_04"
+        }
+      },
+      "minus_hungarian_E3": {
+        "cross_clip_pair_precision": 0.837037,
+        "cross_clip_pair_recall": 0.766621,
+        "cross_clip_pair_f1": 0.800283,
+        "false_merge_rate": 0.162963,
+        "split_rate": 0.233379,
+        "tp_pairs": 1695,
+        "fp_pairs": 330,
+        "fn_pairs": 516,
+        "tn_pairs": 6303,
+        "pred_pos_pairs": 2025,
+        "gt_pos_pairs": 2211,
+        "total_cross_clip_pairs": 8844,
+        "coverage": 0.822222,
+        "accepted_nodes": 111,
+        "total_registered_nodes": 135,
+        "node_accuracy": 0.748148,
+        "node_precision_at_accepted": 0.90991,
+        "correct_nodes": 101,
+        "clip_exact_match_rate": 0.0,
+        "clip_exact_matches": 0,
+        "total_eval_clips": 34,
+        "id_switch_boundaries": 0,
+        "id_transitions": 107,
+        "macro_player_accuracy": 0.75,
+        "macro_player_coverage": 0.82353,
+        "scope_frame_idf1": 0.82288,
+        "scope_frame_assa": 0.693684,
+        "unregistered_total_nodes": 0,
+        "unregistered_false_accepts": 0,
+        "unregistered_false_accept_rate": null,
+        "block_bootstrap_f1_ci95": [
+          0.781002,
+          0.840631
+        ],
+        "num_bootstrap_blocks": 6,
+        "per_player": {
+          "player_01": {
+            "total_nodes": 34,
+            "accepted_nodes": 10,
+            "correct_nodes": 0,
+            "coverage": 0.294118,
+            "accuracy": 0.0,
+            "switches": 0
+          },
+          "player_02": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_03": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_04": {
+            "total_nodes": 33,
+            "accepted_nodes": 33,
+            "correct_nodes": 33,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          }
+        },
+        "scope_label_map": {
+          "player_02": "player_02",
+          "player_03": "player_03",
+          "player_04": "player_04"
+        }
+      },
+      "minus_quality_E2_hungarian_swap": {
+        "cross_clip_pair_precision": 0.970149,
+        "cross_clip_pair_recall": 0.970149,
+        "cross_clip_pair_f1": 0.970149,
+        "false_merge_rate": 0.029851,
+        "split_rate": 0.029851,
+        "tp_pairs": 2145,
+        "fp_pairs": 66,
+        "fn_pairs": 66,
+        "tn_pairs": 6567,
+        "pred_pos_pairs": 2211,
+        "gt_pos_pairs": 2211,
+        "total_cross_clip_pairs": 8844,
+        "coverage": 1.0,
+        "accepted_nodes": 135,
+        "total_registered_nodes": 135,
+        "node_accuracy": 0.985185,
+        "node_precision_at_accepted": 0.985185,
+        "correct_nodes": 133,
+        "clip_exact_match_rate": 0.970588,
+        "clip_exact_matches": 33,
+        "total_eval_clips": 34,
+        "id_switch_boundaries": 4,
+        "id_transitions": 131,
+        "macro_player_accuracy": 0.985294,
+        "macro_player_coverage": 1.0,
+        "scope_frame_idf1": 0.981268,
+        "scope_frame_assa": 0.946517,
+        "unregistered_total_nodes": 0,
+        "unregistered_false_accepts": 0,
+        "unregistered_false_accept_rate": null,
+        "block_bootstrap_f1_ci95": [
+          0.915875,
+          1.0
+        ],
+        "num_bootstrap_blocks": 6,
+        "per_player": {
+          "player_01": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 33,
+            "coverage": 1.0,
+            "accuracy": 0.970588,
+            "switches": 2
+          },
+          "player_02": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 33,
+            "coverage": 1.0,
+            "accuracy": 0.970588,
+            "switches": 2
+          },
+          "player_03": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_04": {
+            "total_nodes": 33,
+            "accepted_nodes": 33,
+            "correct_nodes": 33,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          }
+        },
+        "scope_label_map": {
+          "player_01": "player_01",
+          "player_02": "player_02",
+          "player_03": "player_03",
+          "player_04": "player_04"
+        }
+      },
+      "minus_per_cam_E1_hungarian_swap": {
+        "cross_clip_pair_precision": 0.970149,
+        "cross_clip_pair_recall": 0.970149,
+        "cross_clip_pair_f1": 0.970149,
+        "false_merge_rate": 0.029851,
+        "split_rate": 0.029851,
+        "tp_pairs": 2145,
+        "fp_pairs": 66,
+        "fn_pairs": 66,
+        "tn_pairs": 6567,
+        "pred_pos_pairs": 2211,
+        "gt_pos_pairs": 2211,
+        "total_cross_clip_pairs": 8844,
+        "coverage": 1.0,
+        "accepted_nodes": 135,
+        "total_registered_nodes": 135,
+        "node_accuracy": 0.985185,
+        "node_precision_at_accepted": 0.985185,
+        "correct_nodes": 133,
+        "clip_exact_match_rate": 0.970588,
+        "clip_exact_matches": 33,
+        "total_eval_clips": 34,
+        "id_switch_boundaries": 4,
+        "id_transitions": 131,
+        "macro_player_accuracy": 0.985294,
+        "macro_player_coverage": 1.0,
+        "scope_frame_idf1": 0.985297,
+        "scope_frame_assa": 0.957576,
+        "unregistered_total_nodes": 0,
+        "unregistered_false_accepts": 0,
+        "unregistered_false_accept_rate": null,
+        "block_bootstrap_f1_ci95": [
+          0.915875,
+          1.0
+        ],
+        "num_bootstrap_blocks": 6,
+        "per_player": {
+          "player_01": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 33,
+            "coverage": 1.0,
+            "accuracy": 0.970588,
+            "switches": 2
+          },
+          "player_02": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 33,
+            "coverage": 1.0,
+            "accuracy": 0.970588,
+            "switches": 2
+          },
+          "player_03": {
+            "total_nodes": 34,
+            "accepted_nodes": 34,
+            "correct_nodes": 34,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          },
+          "player_04": {
+            "total_nodes": 33,
+            "accepted_nodes": 33,
+            "correct_nodes": 33,
+            "coverage": 1.0,
+            "accuracy": 1.0,
+            "switches": 0
+          }
+        },
+        "scope_label_map": {
+          "player_01": "player_01",
+          "player_02": "player_02",
+          "player_03": "player_03",
+          "player_04": "player_04"
+        }
+      }
+    }
+  },
+  "axis_g_diagnostics": {
+    "dev": {
+      "G_greedy": {
+        "num_windows": 7,
+        "max_nodes_per_window": 28,
+        "timeouts": 0,
+        "timeout_rate": 0.0,
+        "wall_ms": 81.1,
+        "cpu_ms": 81.1,
+        "windows": [
+          {
+            "window_idx": 0,
+            "clips": [
+              "clip_000",
+              "clip_001",
+              "clip_003",
+              "clip_004",
+              "clip_005",
+              "clip_006"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 0.19
+          },
+          {
+            "window_idx": 1,
+            "clips": [
+              "clip_006",
+              "clip_007",
+              "clip_008",
+              "clip_009",
+              "clip_010",
+              "clip_011"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 0.18
+          },
+          {
+            "window_idx": 2,
+            "clips": [
+              "clip_011",
+              "clip_012",
+              "clip_013",
+              "clip_014",
+              "clip_015",
+              "clip_016"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 0.18
+          },
+          {
+            "window_idx": 3,
+            "clips": [
+              "clip_016",
+              "clip_017",
+              "clip_018",
+              "clip_019",
+              "clip_020",
+              "clip_021"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 0.22
+          },
+          {
+            "window_idx": 4,
+            "clips": [
+              "clip_021",
+              "clip_022",
+              "clip_023",
+              "clip_024",
+              "clip_025",
+              "clip_026"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 0.2
+          },
+          {
+            "window_idx": 5,
+            "clips": [
+              "clip_026",
+              "clip_027",
+              "clip_028",
+              "clip_029",
+              "clip_030",
+              "clip_031"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 0.18
+          },
+          {
+            "window_idx": 6,
+            "clips": [
+              "clip_031",
+              "clip_032",
+              "clip_033",
+              "clip_034"
+            ],
+            "num_nodes": 20,
+            "timed_out": false,
+            "solve_ms": 0.1
+          }
+        ]
+      },
+      "G_milp": {
+        "num_windows": 7,
+        "max_nodes_per_window": 28,
+        "timeouts": 0,
+        "timeout_rate": 0.0,
+        "wall_ms": 790.03,
+        "cpu_ms": 865.57,
+        "windows": [
+          {
+            "window_idx": 0,
+            "clips": [
+              "clip_000",
+              "clip_001",
+              "clip_003",
+              "clip_004",
+              "clip_005",
+              "clip_006"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 113.65
+          },
+          {
+            "window_idx": 1,
+            "clips": [
+              "clip_006",
+              "clip_007",
+              "clip_008",
+              "clip_009",
+              "clip_010",
+              "clip_011"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 110.95
+          },
+          {
+            "window_idx": 2,
+            "clips": [
+              "clip_011",
+              "clip_012",
+              "clip_013",
+              "clip_014",
+              "clip_015",
+              "clip_016"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 111.4
+          },
+          {
+            "window_idx": 3,
+            "clips": [
+              "clip_016",
+              "clip_017",
+              "clip_018",
+              "clip_019",
+              "clip_020",
+              "clip_021"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 110.92
+          },
+          {
+            "window_idx": 4,
+            "clips": [
+              "clip_021",
+              "clip_022",
+              "clip_023",
+              "clip_024",
+              "clip_025",
+              "clip_026"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 111.8
+          },
+          {
+            "window_idx": 5,
+            "clips": [
+              "clip_026",
+              "clip_027",
+              "clip_028",
+              "clip_029",
+              "clip_030",
+              "clip_031"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 111.04
+          },
+          {
+            "window_idx": 6,
+            "clips": [
+              "clip_031",
+              "clip_032",
+              "clip_033",
+              "clip_034"
+            ],
+            "num_nodes": 20,
+            "timed_out": false,
+            "solve_ms": 38.81
+          }
+        ]
+      }
+    },
+    "test": {
+      "G_greedy": {
+        "num_windows": 7,
+        "max_nodes_per_window": 28,
+        "timeouts": 0,
+        "timeout_rate": 0.0,
+        "wall_ms": 80.62,
+        "cpu_ms": 80.62,
+        "windows": [
+          {
+            "window_idx": 0,
+            "clips": [
+              "clip_035",
+              "clip_036",
+              "clip_037",
+              "clip_038",
+              "clip_039",
+              "clip_040"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 0.2
+          },
+          {
+            "window_idx": 1,
+            "clips": [
+              "clip_040",
+              "clip_041",
+              "clip_042",
+              "clip_043",
+              "clip_044",
+              "clip_045"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 0.21
+          },
+          {
+            "window_idx": 2,
+            "clips": [
+              "clip_045",
+              "clip_046",
+              "clip_047",
+              "clip_048",
+              "clip_049",
+              "clip_050"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 0.18
+          },
+          {
+            "window_idx": 3,
+            "clips": [
+              "clip_050",
+              "clip_051",
+              "clip_052",
+              "clip_053",
+              "clip_054",
+              "clip_055"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 0.22
+          },
+          {
+            "window_idx": 4,
+            "clips": [
+              "clip_055",
+              "clip_056",
+              "clip_057",
+              "clip_058",
+              "clip_059",
+              "clip_060"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 0.18
+          },
+          {
+            "window_idx": 5,
+            "clips": [
+              "clip_060",
+              "clip_061",
+              "clip_062",
+              "clip_063",
+              "clip_064",
+              "clip_065"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 0.19
+          },
+          {
+            "window_idx": 6,
+            "clips": [
+              "clip_065",
+              "clip_066",
+              "clip_067",
+              "clip_068"
+            ],
+            "num_nodes": 20,
+            "timed_out": false,
+            "solve_ms": 0.1
+          }
+        ]
+      },
+      "G_milp": {
+        "num_windows": 7,
+        "max_nodes_per_window": 28,
+        "timeouts": 0,
+        "timeout_rate": 0.0,
+        "wall_ms": 797.25,
+        "cpu_ms": 871.49,
+        "windows": [
+          {
+            "window_idx": 0,
+            "clips": [
+              "clip_035",
+              "clip_036",
+              "clip_037",
+              "clip_038",
+              "clip_039",
+              "clip_040"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 112.29
+          },
+          {
+            "window_idx": 1,
+            "clips": [
+              "clip_040",
+              "clip_041",
+              "clip_042",
+              "clip_043",
+              "clip_044",
+              "clip_045"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 111.36
+          },
+          {
+            "window_idx": 2,
+            "clips": [
+              "clip_045",
+              "clip_046",
+              "clip_047",
+              "clip_048",
+              "clip_049",
+              "clip_050"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 111.41
+          },
+          {
+            "window_idx": 3,
+            "clips": [
+              "clip_050",
+              "clip_051",
+              "clip_052",
+              "clip_053",
+              "clip_054",
+              "clip_055"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 114.11
+          },
+          {
+            "window_idx": 4,
+            "clips": [
+              "clip_055",
+              "clip_056",
+              "clip_057",
+              "clip_058",
+              "clip_059",
+              "clip_060"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 114.51
+          },
+          {
+            "window_idx": 5,
+            "clips": [
+              "clip_060",
+              "clip_061",
+              "clip_062",
+              "clip_063",
+              "clip_064",
+              "clip_065"
+            ],
+            "num_nodes": 28,
+            "timed_out": false,
+            "solve_ms": 111.27
+          },
+          {
+            "window_idx": 6,
+            "clips": [
+              "clip_065",
+              "clip_066",
+              "clip_067",
+              "clip_068"
+            ],
+            "num_nodes": 20,
+            "timed_out": false,
+            "solve_ms": 39.31
+          }
+        ]
+      }
+    }
+  },
+  "e7_gallery_diagnostics": {
+    "dev": {
+      "duplicate_cooccurring_violations": 0,
+      "no_common_camera_nodes": 0,
+      "shape_used": 0,
+      "shape_unavailable": 0,
+      "temporal_used": 0,
+      "temporal_unavailable": 0,
+      "gallery_updates_total": 28,
+      "gallery_updates_wrong": 0,
+      "wrong_update_clip_idx": null,
+      "post_contamination_fp_nodes": 0,
+      "wall_ms": 78.736,
+      "cpu_ms": 78.676,
+      "peak_rss_mb": 130.46
+    },
+    "test": {
+      "duplicate_cooccurring_violations": 0,
+      "no_common_camera_nodes": 0,
+      "shape_used": 0,
+      "shape_unavailable": 0,
+      "temporal_used": 0,
+      "temporal_unavailable": 0,
+      "gallery_updates_total": 21,
+      "gallery_updates_wrong": 0,
+      "wrong_update_clip_idx": null,
+      "post_contamination_fp_nodes": 0,
+      "wall_ms": 83.525,
+      "cpu_ms": 83.526,
+      "peak_rss_mb": 130.46
+    }
+  }
+}

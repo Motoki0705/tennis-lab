@@ -1,0 +1,4109 @@
+{
+  "schema_version": 1,
+  "identity_scope": "meiji_4cam/video_000",
+  "benchmark_version": "multiview-v4",
+  "benchmark_manifest_sha256": "8e012944b1407d696a1ab1d325ae3c6b60cf26f071752510ea2fc688b031893c",
+  "annotation_method": "independent_4view_plus_early_late_visual_inspection_by_gemini_4_hydrogen_xhigh_workers",
+  "reid_model_independence": true,
+  "player_definitions": {
+    "player_01": {
+      "team": "pair_13",
+      "role": "net",
+      "pre_layer_removal": "Red GOSEN long-sleeve jacket + black long pants (dark cap from clip_001)",
+      "post_layer_removal": "Black short-sleeve t-shirt (white chest graphic) + black shorts + dark cap (from clip_019)"
+    },
+    "player_02": {
+      "team": "pair_24",
+      "role": "net",
+      "pre_layer_removal": "Black long-sleeve jacket (large white 'G' logo on back) + black long pants, no cap",
+      "post_layer_removal": "Dark/grey mottled short-sleeve t-shirt (white chest graphic) + black long pants, no cap (from clip_019)"
+    },
+    "player_03": {
+      "team": "pair_13",
+      "role": "baseline",
+      "pre_layer_removal": "Black long-sleeve top + light-blue shorts + dark cap (cap removed by clip_005)",
+      "post_layer_removal": "Black long-sleeve top + light-blue shorts, no cap"
+    },
+    "player_04": {
+      "team": "pair_24",
+      "role": "baseline",
+      "pre_layer_removal": "White short-sleeve t-shirt + dark/black shorts + white cap",
+      "post_layer_removal": "White short-sleeve t-shirt + dark/black shorts + white cap (unchanged)"
+    }
+  },
+  "audit": {
+    "num_clips": 69,
+    "num_nodes": 276,
+    "anomalies": [
+      {
+        "clip": "clip_062",
+        "issue": "non_bijective",
+        "gids": [
+          null,
+          "player_02",
+          "player_03",
+          "player_01"
+        ]
+      },
+      {
+        "clip": "clip_062",
+        "issue": "doubles_side_mismatch",
+        "gid_to_side": {
+          "player_02": -1,
+          "player_03": 1,
+          "player_01": 1
+        }
+      }
+    ],
+    "mixed_tracks": [
+      {
+        "clip": "clip_062",
+        "local_player_id": 0,
+        "purity": "mixed",
+        "mixed_interval": {
+          "player_04": [
+            0,
+            271
+          ],
+          "player_02": [
+            271,
+            430
+          ]
+        }
+      }
+    ],
+    "uncertain_tracks": [
+      {
+        "clip": "clip_062",
+        "local_player_id": 0,
+        "status": "uncertain"
+      }
+    ],
+    "end_change_boundary_clips": [
+      "clip_005",
+      "clip_019",
+      "clip_039",
+      "clip_051",
+      "clip_059",
+      "clip_063",
+      "clip_067"
+    ],
+    "num_end_flipped_clips": 32,
+    "wardrobe_change_boundary_clip": "clip_019",
+    "pre_layer_removal_clips": 19,
+    "post_layer_removal_clips": 50
+  },
+  "clips": {
+    "clip_000": {
+      "clip_idx": 0,
+      "clip_id": "video_000/clip_000",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back, black long pants, no cap visible in cam0/cam1/cam2/early/late (cam3 f=270 occluded in front by player_02 with large white 'G' on back)."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top with large white 'G' logo on back (cam2/cam3/early/late) and white chest logo (cam0), black long pants, no cap across all views."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Dark/black long-sleeve top, light-blue shorts, dark cap visible across cam0/cam1/cam2/cam3/early/late (player_01 crouched in foreground of cam2 f=295)."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark/black shorts, white cap visible across cam0/cam1/cam2/cam3/early/late."
+        }
+      ],
+      "notes": "Bijective 1-to-1 mapping; side -1 has player_01 & player_03, side +1 has player_02 & player_04. Minor single-camera occlusion in cam3 of local_id 0 by player_02."
+    },
+    "clip_001": {
+      "clip_idx": 1,
+      "clip_id": "video_000/clip_001",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap visible across cam0/cam1/cam2/cam3/early/late."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top with white chest logo (cam0/cam1) and large white 'G' on back (cam2/cam3/early/late), black long pants, no cap."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back (cam1/early/late), black long pants, no cap across all views."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 8,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views."
+        }
+      ],
+      "notes": "Clean bijective mapping; side -1 has player_01 & player_03, side +1 has player_02 & player_04."
+    },
+    "clip_002": {
+      "clip_idx": 2,
+      "clip_id": "video_000/clip_002",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back (cam0/cam1/early/late), black long pants, no cap across all views."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top with white chest/sleeve markings (cam0/cam1/cam2/early) and large white 'G' on back (late c2 f=1377), black long pants, no cap."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap visible across cam0/cam1/cam2/cam3/early/late."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views."
+        }
+      ],
+      "notes": "Clean bijective mapping; side -1 has player_01 & player_03, side +1 has player_02 & player_04."
+    },
+    "clip_003": {
+      "clip_idx": 3,
+      "clip_id": "video_000/clip_003",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap visible across cam0/cam1/cam2/cam3/early/late."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back (cam1/early/late), black long pants, no cap across all views."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views (player_02 partially visible behind in cam2 f=114)."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top with white chest logo (cam0/cam1) and large white 'G' on back (cam2/late), black long pants, no cap."
+        }
+      ],
+      "notes": "Clean bijective mapping; side -1 has player_01 & player_03, side +1 has player_02 & player_04."
+    },
+    "clip_004": {
+      "clip_idx": 4,
+      "clip_id": "video_000/clip_004",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back (cam0/cam1/early/late), black long pants, no cap across all views."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top with white chest logo (cam0/cam1) and large white 'G' on back (cam2/cam3/early/late), black long pants, no cap."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap visible across all views."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 22,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views."
+        }
+      ],
+      "notes": "Clean bijective mapping; side -1 has player_01 & player_03, side +1 has player_02 & player_04."
+    },
+    "clip_005": {
+      "clip_idx": 5,
+      "clip_id": "video_000/clip_005",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": true,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back (cam2/cam3/early/late), black long pants, no cap across all views."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top with large white 'G' on back (cam0/cam1/early/late) and white chest logo (cam2/cam3), black long pants, no cap."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 6,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 7,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 6,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap visible across all views."
+        }
+      ],
+      "notes": "Teams changed ends for game 1: side +1 now has player_01 & player_03, side -1 now has player_02 & player_04. Clean bijective mapping."
+    },
+    "clip_006": {
+      "clip_idx": 6,
+      "clip_id": "video_000/clip_006",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back, black long pants, no cap in cam0/cam2/cam3/early/late; cam1 f=708 is occluded in front by player_02 (large white 'G' on back) with player_01 visible directly behind."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Verified player_02 (same person across continuous cam1 trace f=70..666 in clip_006; arched '30th' back logo resolves clearly near baseline and blurs into 'G'-like shape at net)."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap visible across all views."
+        }
+      ],
+      "notes": "Side +1 has player_01 & player_03; side -1 has player_04 & player_02. local_id 2 has mixed cam1 early/late appearance because a 5th person wearing a black short-sleeve '30th' t-shirt stands in cam1's line of sight near the -x baseline at f=70-72 (pose & sleeves differ from player_02 in cam0 f=56), while cam0/cam2/cam3 and late c1 f=666 show player_02 (large white 'G' on back)."
+    },
+    "clip_007": {
+      "clip_idx": 7,
+      "clip_id": "video_000/clip_007",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top with large white 'G' on back (cam0/early) and white chest logo (cam2/cam3), black long pants, no cap across all views."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back (cam3/early/late), black long pants, no cap in cam0/cam2/cam3/early/late; cam1 f=341 occluded in front by player_02 ('G' on back) with player_01 red shoulder visible behind."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap clearly visible in cam2/cam3/early/late (matching silhouette in far cam0/cam1)."
+        }
+      ],
+      "notes": "Clean bijective mapping; side +1 has player_01 & player_03, side -1 has player_02 & player_04. Minor single-camera occlusion in cam1 of local_id 2 by player_02."
+    },
+    "clip_008": {
+      "clip_idx": 8,
+      "clip_id": "video_000/clip_008",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Verified player_02 (same person across continuous cam1 trace f=70..666 in clip_006; arched '30th' back logo resolves clearly near baseline and blurs into 'G'-like shape at net)."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap clearly visible in cam2/cam3/early/late (matching far cam0/cam1)."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back (late c3 f=511), black long pants, no cap across all views."
+        }
+      ],
+      "notes": "Side +1 has player_01 & player_03; side -1 has player_04 & player_02. Like clip_006, local_id 0 shows a mixed cam1 track because cam1 early (f=10-12) picks up the 5th person ('30th' short-sleeve t-shirt) in front of cam1 while cam0/cam2/cam3 and late c1 f=584 show player_02 (long sleeves)."
+    },
+    "clip_009": {
+      "clip_idx": 9,
+      "clip_id": "video_000/clip_009",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back (cam2/cam3/early/late), black long pants, no cap across all views."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top with large white 'G' on back (cam1/early/late) and white chest logo (cam2), black long pants, no cap; cam3 f=86 is occluded in front by player_01 in red."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 5,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 10,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 6,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap clearly visible in cam2/cam3/early/late (matching far cam0/cam1)."
+        }
+      ],
+      "notes": "Clean bijective mapping; side +1 has player_01 & player_03, side -1 has player_02 & player_04. Minor single-camera occlusion in cam3 of local_id 1 by player_01."
+    },
+    "clip_010": {
+      "clip_idx": 10,
+      "clip_id": "video_000/clip_010",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back (cam2/cam3/early/late), black long pants, no cap across all views."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Verified player_02 (same person across continuous cam1 trace f=70..666 in clip_006; arched '30th' back logo resolves clearly near baseline and blurs into 'G'-like shape at net)."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 7,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap visible across all views."
+        }
+      ],
+      "notes": "Violates 4-player bijection: local_id 1 on side -1 is a temporally pure track of a 5th player (black short-sleeve '30th' t-shirt, bare forearms, black pants, no cap) who rotated into player_02's spot for this ad-court point (player_02 in the large-'G' long-sleeve plays the very next clip clip_011). Set to null/'uncertain' because the reference definitions only cover player_01..player_04."
+    },
+    "clip_011": {
+      "clip_idx": 11,
+      "clip_id": "video_000/clip_011",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back (cam3/late), black long pants, no cap across all views."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top with large white 'G' on back (cam0/cam1/early/late) and white chest logo (cam2/cam3), black long pants, no cap across all views."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap clearly visible in cam2/cam3/early/late (matching far cam0/cam1)."
+        }
+      ],
+      "notes": "Clean bijective mapping; player_02 (large-'G' long-sleeve) is back on court on side -1 with player_04; side +1 has player_01 & player_03."
+    },
+    "clip_012": {
+      "clip_idx": 12,
+      "clip_id": "video_000/clip_012",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Verified player_02 (same person across continuous cam1 trace f=70..666 in clip_006; arched '30th' back logo resolves clearly near baseline and blurs into 'G'-like shape at net)."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap clearly visible in cam2/cam3/early/late (matching far cam0/cam1)."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back (cam3/early/late), black long pants, no cap across all views."
+        }
+      ],
+      "notes": "Violates 4-player bijection: local_id 0 on side -1 is a temporally pure track of the 5th player (black short-sleeve '30th' t-shirt, bare forearms, black pants, no cap) rotated into player_02's spot for this ad-court point. Set to null/'uncertain' because only player_01..player_04 are defined."
+    },
+    "clip_013": {
+      "clip_idx": 13,
+      "clip_id": "video_000/clip_013",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Red long-sleeve top with white 'GOSEN' text on back (cam2/cam3/early/late), black long pants, no cap across all views (player_02 visible behind across net in cam3/early)."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, white cap visible across all views."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 1,
+          "mixed_interval": null,
+          "visual_evidence": "Dark long-sleeve top, light-blue shorts, dark cap clearly visible in cam2/cam3/early/late (matching far cam0/cam1)."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 10,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 1,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top with large white 'G' on back (cam0 f=350) and white chest logo (cam2/early/late), black long pants, no cap; crouched in cam1 f=428 in front of player_01, and occluded in cam3 f=429 by player_01."
+        }
+      ],
+      "notes": "Clean bijective mapping; player_02 (large-'G' long-sleeve) is back on court on side -1 with player_04; side +1 stays player_01 & player_03 (even total games [1,1])."
+    },
+    "clip_014": {
+      "clip_idx": 14,
+      "clip_id": "video_000/clip_014",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=60, f=215) show white short-sleeve t-shirt, dark/black shorts, and white cap on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/early/late show black long-sleeve top with large white 'G' logo on back and black long pants, no cap; cam2/cam3 show white chest logo on front, on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=8, f=351) show red long-sleeve top with white 'GOSEN' text on back and black long pants (now wearing a black cap), on side +1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=52, f=407) show dark long-sleeve top, light-blue shorts, and dark cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_04 & player_02; side +1: player_01 & player_03). Note player_01 is wearing a black cap starting by this clip while keeping the red GOSEN long-sleeve top and black long pants."
+    },
+    "clip_015": {
+      "clip_idx": 15,
+      "clip_id": "video_000/clip_015",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 3,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam2/cam3/early show black long-sleeve top with white chest logo and black long pants, no cap; cam1/late show large white 'G' logo on back, on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=48, f=749) show red long-sleeve top ('GOSEN' on back in cam2/early), black long pants, and black cap on side +1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=72, f=621) show white short-sleeve t-shirt, dark/black shorts, and white cap on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=144, f=661) show dark long-sleeve top, light-blue shorts, and dark cap on side +1 (player_01 visible in background in cam2/late)."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_02 & player_04; side +1: player_01 & player_03). All tracks temporally pure."
+    },
+    "clip_016": {
+      "clip_idx": 16,
+      "clip_id": "video_000/clip_016",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam2/cam3 show black long-sleeve top (white chest logo) and black long pants, no cap; cam1/late show large white 'G' logo on back, early shows serving silhouette consistent with player_02 on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=156, f=946) show white short-sleeve t-shirt, dark/black shorts, and white cap on side -1 (player_02 partially visible behind in early)."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=242, f=993) show red long-sleeve top ('GOSEN' on back in cam2/early), black long pants, and black cap on side +1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=300, f=1210) show dark long-sleeve top, light-blue shorts, and dark cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_02 & player_04; side +1: player_01 & player_03). All tracks temporally pure."
+    },
+    "clip_017": {
+      "clip_idx": 17,
+      "clip_id": "video_000/clip_017",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=18, f=282) show red long-sleeve top with white 'GOSEN' on back, black long pants, and black cap on side +1 (player_02 visible across net in cam3/late)."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=90, f=345) show white short-sleeve t-shirt, dark/black shorts, and white cap on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/early/late show black long-sleeve top with large white 'G' logo on back and black long pants, no cap; cam2/cam3 show white chest logo on front, on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=33, f=273) show dark long-sleeve top, light-blue shorts, and dark cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side +1: player_01 & player_03; side -1: player_04 & player_02). All tracks temporally pure."
+    },
+    "clip_018": {
+      "clip_idx": 18,
+      "clip_id": "video_000/clip_018",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "pre_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=93, f=335) show white short-sleeve t-shirt, dark/black shorts, and white cap on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=0, f=361) show red long-sleeve top with white 'GOSEN' on back, black long pants, and black cap on side +1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/cam3/late show black long-sleeve top (white chest logo) and black long pants, no cap; early (cam1 f=3) shows large white 'G' logo on back, on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=0, f=319) show dark long-sleeve top, light-blue shorts, and dark cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_04 & player_02; side +1: player_01 & player_03). Last clip before the game-3 changeover (games=[1,1] -> [1,2])."
+    },
+    "clip_019": {
+      "clip_idx": 19,
+      "clip_id": "video_000/clip_019",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": true,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=0, f=556) show dark/grey mottled short-sleeve t-shirt (white chest logo in cam1/cam2), same black long pants, no cap, partnered with player_04 on side +1 (player_04 visible behind in cam0)."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=0, f=526) show black short-sleeve t-shirt (white chest graphic in cam2/cam3), black shorts, and same black cap, partnered with player_03 on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=10, f=536) show black long-sleeve top and light-blue shorts (cap removed during changeover) on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=0, f=349) show white short-sleeve t-shirt, dark/black shorts, and white cap on side +1."
+        }
+      ],
+      "notes": "After game 3 changeover (games=[1,2], 606.5s->647.9s), teams switched ends (player_01/03 now side -1, player_02/04 now side +1) and players removed warm-up layers: player_01 removed red GOSEN jacket & black long pants (now black tee + black shorts + black cap); player_02 removed black 'G' jacket (now dark/grey mottled tee + black long pants, no cap); player_03 removed dark cap."
+    },
+    "clip_020": {
+      "clip_idx": 20,
+      "clip_id": "video_000/clip_020",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=150, f=488) show black long-sleeve top and light-blue shorts, no cap, on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 4,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=138, f=488) show black short-sleeve t-shirt (white chest graphic in cam2/cam3), black shorts, and black cap on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=66, f=495) show dark/grey mottled short-sleeve t-shirt (white chest logo in cam0/cam1/cam2), black long pants, and no cap on side +1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 7,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=156, f=548) show white short-sleeve t-shirt, dark/black shorts, and white cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_03 & player_01; side +1: player_02 & player_04), consistent with post-game-3 changeover attire."
+    },
+    "clip_021": {
+      "clip_idx": 21,
+      "clip_id": "video_000/clip_021",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=10, f=479) show black long-sleeve top and light-blue shorts, no cap, on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1 show dark short-sleeve t-shirt (white chest logo) and black long pants, no cap; cam2/cam3/early/late show dark/grey mottled back pattern and black long pants, no cap, on side +1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 1,
+          "mixed_interval": null,
+          "visual_evidence": "cam0, cam1, cam3, early (cam0 f=60), and late (cam0 f=375) all show black short-sleeve t-shirt (white chest graphic), black shorts, and black cap on side -1. In cam2 (f=374), net player player_02 on side +1 overlaps in front of player_01."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 22,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=104, f=417) show white short-sleeve t-shirt, dark/black shorts, and white cap on side +1 (dark net player edge visible at right of cam0 f=401; amb=22)."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_03 & player_01; side +1: player_02 & player_04). Note single-camera net overlap in local_id 2 cam2 (f=374) where player_02 stands in front; early/late and other 3 cameras confirm local_id 2 is pure player_01."
+    },
+    "clip_022": {
+      "clip_idx": 22,
+      "clip_id": "video_000/clip_022",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=100, f=803) show black long-sleeve top and light-blue shorts, no cap, on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=0, f=893) show white short-sleeve t-shirt, dark/black shorts, and white cap on side +1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/cam2 show dark short-sleeve t-shirt (white chest logo) and black long pants, no cap; cam3/early/late show dark/grey mottled t-shirt (lit clearly in late cam3 f=953), black long pants, and no cap on side +1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 20,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=466, f=862) show black short-sleeve t-shirt (white chest logo), black shorts, and black cap on side -1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_03 & player_01; side +1: player_04 & player_02). All tracks temporally pure."
+    },
+    "clip_023": {
+      "clip_idx": 23,
+      "clip_id": "video_000/clip_023",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=408, f=1387) show black short-sleeve t-shirt (white chest logo in cam2/cam3), black shorts, and black cap on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=204, f=1302) show black long-sleeve top and light-blue shorts, no cap, on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=242, f=1342) show white short-sleeve t-shirt, dark/black shorts, and white cap on side +1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam1/cam2/late show dark short-sleeve t-shirt (white chest logo) and black long pants, no cap; cam3/early show dark/grey mottled back pattern and black long pants, no cap, on side +1 (player_04 behind in cam0 f=1008)."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_01 & player_03; side +1: player_04 & player_02). All tracks temporally pure."
+    },
+    "clip_024": {
+      "clip_idx": 24,
+      "clip_id": "video_000/clip_024",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=15, f=337) show white short-sleeve t-shirt, dark/black shorts, and white cap on side +1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=69, f=322) show black long-sleeve top and light-blue shorts, no cap, on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=81, f=313) show black short-sleeve t-shirt (white chest graphic), black shorts, and black cap on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 7,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/cam2 show dark short-sleeve t-shirt (white chest graphic in cam2 f=348) and black long pants, no cap; cam3/early/late show dark short-sleeve tee and black long pants, no cap, on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side +1: player_04 & player_02; side -1: player_03 & player_01). All tracks temporally pure."
+    },
+    "clip_025": {
+      "clip_idx": 25,
+      "clip_id": "video_000/clip_025",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=75, f=428) show black long-sleeve top and light-blue shorts, no cap (bare hair clearly visible in cam0 f=504), on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1 show dark short-sleeve t-shirt (white chest logo) and black long pants, no cap; cam2/cam3/early/late show dark/grey mottled back pattern and black long pants, no cap, on side +1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=90, f=488) show black short-sleeve t-shirt (white chest graphic), black shorts, and black cap on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=30, f=503) show white short-sleeve t-shirt, dark/black shorts, and white cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_03 & player_01; side +1: player_02 & player_04). All tracks temporally pure."
+    },
+    "clip_026": {
+      "clip_idx": 26,
+      "clip_id": "video_000/clip_026",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0, cam1, cam3, early (cam1 f=48), and late (cam1 f=1062) show black short-sleeve t-shirt (white chest graphic), black shorts, and black cap on side -1 (cam2 f=257 shows partial background/side overlap)."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=12, f=1222) show black long-sleeve top and light-blue shorts, no cap, on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=0, f=1258) show white short-sleeve t-shirt, dark/black shorts, and white cap on side +1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/cam2 show dark short-sleeve t-shirt (white chest logo) and black long pants, no cap; cam3/early/late (cam3 f=946) clearly show dark/grey mottled back pattern and black long pants, no cap, on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_01 & player_03; side +1: player_04 & player_02). All tracks temporally pure."
+    },
+    "clip_027": {
+      "clip_idx": 27,
+      "clip_id": "video_000/clip_027",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=42, f=232) show white short-sleeve t-shirt, dark/black shorts, and white cap on side +1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=52, f=210) show black long-sleeve top and light-blue shorts, no cap, on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=56, f=198) show black short-sleeve t-shirt (white chest logo in cam2/cam3), black shorts, and black cap on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1 show dark short-sleeve t-shirt (white chest logo) and black long pants, no cap; cam2/cam3/early/late show dark/grey mottled back pattern and black long pants, no cap, on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side +1: player_04 & player_02; side -1: player_03 & player_01). All tracks temporally pure."
+    },
+    "clip_028": {
+      "clip_idx": 28,
+      "clip_id": "video_000/clip_028",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c3 f=252, f=1000); side=+1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 5,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap across cam0-cam3 and early/late (c1 f=60, f=1026); player_01 removed red GOSEN jacket and long pants after clip_018; side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap (removed cap before clip_005) across cam0-cam3 and early/late (c1 f=156, f=1098); side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap, light-soled shoes across cam0-cam3 and early/late (c3 f=60, f=1062); player_02 removed black 'G' jacket; side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_01 & player_03, side=+1: player_02 & player_04). Note amb=5 on local_id=1 at net, but all views and early/late confirm pure player_01."
+    },
+    "clip_029": {
+      "clip_idx": 29,
+      "clip_id": "video_000/clip_029",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap (visor clearly visible in cam0 and early c0 f=144; consistent in late c0 f=742); side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c1 f=99, f=796); side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 3,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap across cam0-cam3 and early/late (c3 f=126, f=676); side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 7,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c2 f=54, f=976); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_01 & player_03, side=+1: player_02 & player_04). Note amb=3 on net local_id=2, but all views and early/late confirm pure player_02."
+    },
+    "clip_030": {
+      "clip_idx": 30,
+      "clip_id": "video_000/clip_030",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c0 f=15, f=451); side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap across cam0-cam3 and early/late (c1 f=100, f=406); side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c2 f=35, f=451); side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap across cam0-cam3 and early/late (c3 f=30, f=386); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_01 & player_03, side=+1: player_02 & player_04)."
+    },
+    "clip_031": {
+      "clip_idx": 31,
+      "clip_id": "video_000/clip_031",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap across cam0-cam3 and early/late (c3 f=78, f=312); side=+1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 1,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap across cam0-cam3 and early/late (c1 f=42 rear, c1 f=282 front matching c3 f=282); side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c1 f=78, f=300); side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c2 f=27, f=273); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_01 & player_03, side=+1: player_02 & player_04). Note amb=1 on local_id=1, pure player_01."
+    },
+    "clip_032": {
+      "clip_idx": 32,
+      "clip_id": "video_000/clip_032",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c1 f=32, f=350); side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c2 f=4, f=410); side=+1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 5,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap across cam0-cam3 and early/late (c0 f=4, f=418); side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap across cam0-cam3 and early/late (c3 f=12, f=450); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_01 & player_03, side=+1: player_02 & player_04)."
+    },
+    "clip_033": {
+      "clip_idx": 33,
+      "clip_id": "video_000/clip_033",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c1 f=36, f=343); side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap across cam0-cam3 and early/late (c0 f=52, f=383); side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap, greenish/light shoes across cam0-cam3 and early/late (c3 f=0, f=391; player_04 partially visible behind in late); side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c2 f=40, f=343); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_01 & player_03, side=+1: player_02 & player_04)."
+    },
+    "clip_034": {
+      "clip_idx": 34,
+      "clip_id": "video_000/clip_034",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c0 f=44, f=1008); side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap across cam0-cam3 (including late c2 f=1117) and early/late (c1 f=22, f=845); side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap across cam0-cam3 and early/late (c3 f=11, f=1074); side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c3 f=0, f=1063); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_01 & player_03, side=+1: player_02 & player_04)."
+    },
+    "clip_035": {
+      "clip_idx": 35,
+      "clip_id": "video_000/clip_035",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c0 f=483, f=1959); side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 5,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap across cam0-cam3 and early/late (c2 f=462, f=2106); side=+1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap in cam0 (f=320), cam1 (f=1850), cam2 (f=1839), and late (c3 f=1903). In cam3 (f=547) and early (c3 f=555), net player_02 stands in front of the net in cam3's line of sight while player_01's dark cap is visible behind him; side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c2 f=126, f=1686); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_01 & player_03, side=+1: player_02 & player_04). Note amb=5 on local_id=1 and foreground occlusion by player_02 in cam3/early crops of local_id=2 (c3 f=547, f=555), both verified pure."
+    },
+    "clip_036": {
+      "clip_idx": 36,
+      "clip_id": "video_000/clip_036",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c0 f=84, f=355); side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap across cam0-cam3 and early/late (c2 f=32, f=403); side=+1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap across cam0-cam3 and early/late (c1 f=96, f=303); side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c3 f=68, f=403); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_01 & player_03, side=+1: player_02 & player_04)."
+    },
+    "clip_037": {
+      "clip_idx": 37,
+      "clip_id": "video_000/clip_037",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap across cam0-cam3 and early/late (c1 f=6, f=229); side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap across cam0-cam3 and early/late (c2 f=60, f=241); side=+1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c0 f=40, f=291); side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c3 f=72, f=253); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_01 & player_03, side=+1: player_02 & player_04)."
+    },
+    "clip_038": {
+      "clip_idx": 38,
+      "clip_id": "video_000/clip_038",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c0 f=3, f=309); side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c2 f=0, f=294); side=+1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap across cam0-cam3 and early/late (c1 f=9, f=252); side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap across cam0-cam3 and early/late (c3 f=27, f=261); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_01 & player_03, side=+1: player_02 & player_04)."
+    },
+    "clip_039": {
+      "clip_idx": 39,
+      "clip_id": "video_000/clip_039",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": true,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c0 f=152, f=854); side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap across cam0-cam3 and early/late (c1 f=216, f=774); side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap, red-accented racket across cam0-cam3 and early/late (c3 f=0, f=718); side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c2 f=8, f=854); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; teams changed ends after game 5 (games=[2, 3]), so side=-1 has player_02 & player_04 and side=+1 has player_01 & player_03."
+    },
+    "clip_040": {
+      "clip_idx": 40,
+      "clip_id": "video_000/clip_040",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap across cam0-cam3 and early/late (c1 f=0, f=360); side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c1 f=96, f=380); side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt, black shorts, dark cap, red-accented racket across cam1, cam3, early (c3 f=32), and late (c3 f=402); cam0 (f=225) and cam2 (f=318) crops overlap with partner player_03 behind him; side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c3 f=84, f=416); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_02 & player_04, side=+1: player_01 & player_03). Note multi-player overlap in cam0/cam2 crops of local_id=2."
+    },
+    "clip_041": {
+      "clip_idx": 41,
+      "clip_id": "video_000/clip_041",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black long pants, no cap across cam0-cam3 and early/late (c1 f=0, f=753); side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, black shorts, white cap across cam0-cam3 and early/late (c1 f=98, f=725); side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, no cap across cam0-cam3 and early/late (c3 f=182, f=739); side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap across cam1-cam3 and early/late (c2 f=112, f=711; background white cap visible in cam0 f=228); side=+1."
+        }
+      ],
+      "notes": "Bijective 4-player assignment; partners match sides (side=-1: player_02 & player_04, side=+1: player_01 & player_03)."
+    },
+    "clip_042": {
+      "clip_idx": 42,
+      "clip_id": "video_000/clip_042",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark/black shorts, and white cap across cam0-cam3; early (c0 f=0) and late (c0 f=317) consistently show the same player on side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top and light-blue shorts (cap removed earlier in match; bare dark hair visible in cam2/cam3); early (c3 f=28) and late (c3 f=397) match across all 4 cameras on side=+1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white horizontal chest graphic and dark patterned upper back (black 'G' warm-up top removed earlier around clip_018/019), black long pants, no cap; consistent across cam0-cam3 and early (c1 f=16) / late (c1 f=313) on side=-1 as partner of player_04."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest text, black shorts, dark cap, white socks, and red-framed racket (red GOSEN warm-up jacket and long pants removed around clip_018/019); dark cap clearly visible in cam0 (f=401), cam1 (f=355), cam2 (f=51), early (c3 f=100), and rear sunlit late (c3 f=361) on side=+1 as partner of player_03."
+        }
+      ],
+      "notes": "Bijective mapping and consistent doubles partner court sides (-1: player_02 & player_04; +1: player_01 & player_03). Note: compared to clip_000, player_01 and player_02 removed their warm-up tops/pants (confirmed visually via clip_010-clip_019) and player_03 removed his cap while player_01 wears a dark cap."
+    },
+    "clip_043": {
+      "clip_idx": 43,
+      "clip_id": "video_000/clip_043",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark/black shorts, and white cap across cam0-cam3; early (c0 f=7) and late (c0 f=685) consistent on side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest text, black shorts, dark cap (clearly visible in cam0-cam3 and late c3 f=706), white socks, and red-framed racket (rear sunlit view in early c3 f=0) on side=+1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest graphic, black long pants, and no cap across cam0-cam3; early (c1 f=0) and late (c1 f=657) consistent on side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3; early (c3 f=106) and late (c3 f=588) consistent on side=+1."
+        }
+      ],
+      "notes": "All 4 tracks pure and bijective; doubles partners share sides (-1: player_02 & player_04; +1: player_01 & player_03)."
+    },
+    "clip_044": {
+      "clip_idx": 44,
+      "clip_id": "video_000/clip_044",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, and white cap across cam0-cam3 (in cam3 f=510, player_01 appears in foreground lower-left while player_04 is clearly visible behind); early (c1 f=150) and late (c1 f=594) consistent on side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest text, black shorts, dark cap (visible in cam0-cam3 and late c3 f=540), and red-framed racket (early c3 f=150 and late c3 f=540) on side=+1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with patterned upper back, black long pants, and no cap across cam0-cam3 (cam0 f=56 and cam3 f=502 show player_04 behind); early (c1 f=15) and late (c1 f=412) consistent on side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3; early (c3 f=150) and late (c3 f=600) consistent on side=+1."
+        }
+      ],
+      "notes": "All 4 tracks pure and bijective; doubles partners share sides (-1: player_02 & player_04; +1: player_01 & player_03)."
+    },
+    "clip_045": {
+      "clip_idx": 45,
+      "clip_id": "video_000/clip_045",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, and white cap across cam0-cam3; early (c0 f=84) and late (c0 f=275) consistent on side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest logo, black shorts, dark cap (visible in cam0-cam2), and red-framed racket (cam2 f=338, cam3 f=254, early c3 f=3, late c3 f=257) on side=+1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt (white chest graphic in cam2 f=60, patterned upper back in cam3 f=341), black long pants, and no cap across cam0-cam3; early (c1 f=84) and late (c1 f=281) consistent on side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3; early (c2 f=0) and late (c2 f=271) consistent on side=+1."
+        }
+      ],
+      "notes": "All 4 tracks pure and bijective; doubles partners share sides (-1: player_02 & player_04; +1: player_01 & player_03)."
+    },
+    "clip_046": {
+      "clip_idx": 46,
+      "clip_id": "video_000/clip_046",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white horizontal chest graphic, black long pants, and no cap across cam0-cam3; early (c1 f=68) and late (c1 f=422) consistent on side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, and white cap across cam0-cam3; early (c1 f=72) and late (c1 f=386) consistent on side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3; early (c2 f=104) and late (c2 f=362) consistent on side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest text, black shorts, white socks, and dark cap (clearly visible in cam0-cam3 and early c3 f=0; rear sunlit view in late c3 f=326, with cap confirmed at c1 f=422) on side=+1."
+        }
+      ],
+      "notes": "All 4 tracks pure and bijective; doubles partners share sides (-1: player_02 & player_04; +1: player_01 & player_03)."
+    },
+    "clip_047": {
+      "clip_idx": 47,
+      "clip_id": "video_000/clip_047",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, and white cap across cam0-cam3; early (c1 f=112) and late (c1 f=649) consistent on side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest graphic, black long pants, and no cap across cam0-cam3; early (c0 f=48) and late (c0 f=633) consistent on side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest text, black shorts, dark cap (cam0 f=371, cam1 f=322, cam2 f=140), and red-framed racket (cam3 f=504, early c3 f=8, late c3 f=641) on side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3; early (c3 f=168) and late (c3 f=633) consistent on side=+1."
+        }
+      ],
+      "notes": "All 4 tracks pure and bijective; doubles partners share sides (-1: player_02 & player_04; +1: player_01 & player_03)."
+    },
+    "clip_048": {
+      "clip_idx": 48,
+      "clip_id": "video_000/clip_048",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, and white cap across cam0-cam3; early (c0 f=0) and late (c0 f=830) consistent on side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest graphic, black long pants, and no cap across cam0-cam3; early (c1 f=80) and late (c1 f=806) consistent on side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3 (cam0 f=780 shows net player below in foreground while player_03 hits overhead behind); early (c2 f=0) and late (c2 f=870) consistent on side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest text, black shorts, dark cap (cam0-cam3, including late c0 f=772 and c1 f=747), and red-framed racket (late c3 f=662) on side=+1 (note player_02 crouched in foreground of cam0 f=772)."
+        }
+      ],
+      "notes": "All 4 tracks pure and bijective; doubles partners share sides (-1: player_02 & player_04; +1: player_01 & player_03)."
+    },
+    "clip_049": {
+      "clip_idx": 49,
+      "clip_id": "video_000/clip_049",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, and white cap across cam0-cam3; early (c0 f=88) and late (c0 f=851) consistent on side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest graphic, black long pants, and no cap across cam0-cam3 (cam3 f=144 has player_01 shoulder in lower-right foreground); early (c1 f=242) and late (c1 f=851) consistent on side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3; early (c2 f=143) and late (c2 f=939) consistent on side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 38,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "Despite amb=2 metadata flag, all 4 cameras and early (c3 f=426) / late (c3 f=1082) consistently show black short-sleeve t-shirt (white chest text), black shorts, white socks, and dark cap (adjusted in cam0/cam1/cam3 f=518-545, visor visible in cam2 f=1105) on side=+1."
+        }
+      ],
+      "notes": "All 4 tracks pure and bijective; doubles partners share sides (-1: player_02 & player_04; +1: player_01 & player_03). Inspected local_id=3 carefully due to amb=2 and confirmed pure player_01."
+    },
+    "clip_050": {
+      "clip_idx": 50,
+      "clip_id": "video_000/clip_050",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3; early (c2 f=120) and late (c2 f=664) consistent on side=+1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, and white cap across cam0-cam3; early (c1 f=56) and late (c1 f=712) consistent on side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest graphic, black long pants, and no cap across cam0-cam3; early (c1 f=56) and late (c1 f=632) consistent on side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest text, black shorts, dark cap (cam0-cam3, including c0 f=730), and red-framed racket (late c3 f=640) across early (c3 f=120) and late (c3 f=640) on side=+1."
+        }
+      ],
+      "notes": "All 4 tracks pure and bijective; doubles partners share sides (-1: player_02 & player_04; +1: player_01 & player_03)."
+    },
+    "clip_051": {
+      "clip_idx": 51,
+      "clip_id": "video_000/clip_051",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": true,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest text, black shorts, white socks, and dark cap (clearly visible in cam2 f=254, cam3 f=204, and late c1 f=297); early (c1 f=21) and late (c1 f=297) consistent on side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3; early (c0 f=39) and late (c0 f=273) consistent on side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, and white cap across cam0-cam3; early (c2 f=69) and late (c2 f=294) consistent on side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest graphic, black long pants, and no cap across cam0-cam3; early (c3 f=72) and late (c3 f=276) consistent on side=+1."
+        }
+      ],
+      "notes": "Teams switched court sides at game changeover (games=[3,4]); all 4 tracks pure and bijective (-1: player_01 & player_03; +1: player_02 & player_04)."
+    },
+    "clip_052": {
+      "clip_idx": 52,
+      "clip_id": "video_000/clip_052",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, and white cap across cam0-cam3; early (c2 f=100) and late (c2 f=318) consistent on side=+1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3; early (c1 f=48) and late (c1 f=362) consistent on side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest text, black shorts, white socks, and dark cap across cam0-cam3; early (c0 f=36) and late (c0 f=402) consistent on side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt (white chest graphic in cam0/cam1, patterned upper back in cam2/cam3), black long pants, and no cap across cam0-cam3; early (c3 f=0) and late (c3 f=422) consistent on side=+1."
+        }
+      ],
+      "notes": "All 4 tracks pure and bijective; doubles partners share sides (-1: player_01 & player_03; +1: player_02 & player_04)."
+    },
+    "clip_053": {
+      "clip_idx": 53,
+      "clip_id": "video_000/clip_053",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3; early (c1 f=60) and late (c1 f=469) consistent on side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt (white chest graphic and patterned upper back), black long pants, and no cap across cam0-cam3 (player_04 behind in cam0 f=336); early (c3 f=5) and late (c3 f=504) consistent on side=+1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest text, black shorts, white socks, and dark cap across cam0-cam3; early (c0 f=90) and late (c0 f=409) consistent on side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, and white cap across cam0-cam3; early (c3 f=40) and late (c3 f=409) consistent on side=+1."
+        }
+      ],
+      "notes": "All 4 tracks pure and bijective; doubles partners share sides (-1: player_01 & player_03; +1: player_02 & player_04)."
+    },
+    "clip_054": {
+      "clip_idx": 54,
+      "clip_id": "video_000/clip_054",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3; early (c1 f=0) and late (c1 f=625) consistent on side=-1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 4,
+          "mixed_interval": null,
+          "visual_evidence": "Despite amb=4 metadata flag, all 4 cameras and early (c1 f=60) / late (c1 f=525) consistently show black short-sleeve t-shirt (white chest text), black shorts, white socks, and dark cap (visor clearly visible in cam0, cam2, cam3, and late c1 f=525) on side=-1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, and white cap across cam0-cam3; early (c2 f=35) and late (c2 f=716) consistent on side=+1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt (white chest graphic and patterned upper back), black long pants, and no cap across cam0-cam3 (player_04 behind in late c3 f=618); early (c3 f=21) and late (c3 f=618) consistent on side=+1."
+        }
+      ],
+      "notes": "All 4 tracks pure and bijective; doubles partners share sides (-1: player_01 & player_03; +1: player_02 & player_04). Inspected local_id=1 carefully due to amb=4 and confirmed pure player_01."
+    },
+    "clip_055": {
+      "clip_idx": 55,
+      "clip_id": "video_000/clip_055",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "White short-sleeve t-shirt, dark shorts, and white cap across cam0-cam3 (dark player silhouette in lower-right foreground of cam3 f=201); early (c2 f=168) and late (c2 f=620) consistent on side=+1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest text, black shorts, white socks, and dark cap in cam0 (f=688), cam1 (f=655), cam2 (f=317), early (c1 f=36), and late (c1 f=566) on side=-1. In cam3 (f=647), partner player_03 (light-blue shorts) overlaps along the line of sight in the same crop."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black long-sleeve top, light-blue shorts, and no cap across cam0-cam3 (slight line-of-sight overlap with player_01 in cam3 f=650); early (c0 f=126) and late (c0 f=536) consistent on side=-1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "Black short-sleeve t-shirt with white chest graphic, black long pants, and no cap across cam0-cam3; early (c2 f=168) and late (c2 f=686) consistent on side=+1."
+        }
+      ],
+      "notes": "All 4 tracks pure and bijective; doubles partners share sides (-1: player_01 & player_03; +1: player_02 & player_04). Note cam3 overlap between local_id=1 (player_01) and local_id=2 (player_03) around f=647-650."
+    },
+    "clip_056": {
+      "clip_idx": 56,
+      "clip_id": "video_000/clip_056",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=182, f=677) show white short-sleeve t-shirt, black shorts, and white cap on side +1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=49, f=726) show dark cap, black short-sleeve t-shirt with white chest print, black shorts, and white socks on side -1 (having removed red GOSEN outer top and long pants in earlier clips)."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=77, f=572) show black long-sleeve top and light-blue shorts with no cap on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 15,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/cam2/early (cam3 f=313) show black short-sleeve t-shirt with white horizontal chest bar and black long pants, no cap; cam3/late (cam3 f=631) show tonal dark camo back and black long pants on side +1 (having removed black 'G' outer top in earlier clips)."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side +1: player_04 & player_02; side -1: player_01 & player_03). Note player_01 wears black short-sleeve t-shirt + black shorts + dark cap (without red GOSEN top/long pants), player_02 wears black short-sleeve t-shirt (white chest bar, tonal camo back) + black long pants without outer 'G' top, and player_03 plays without a cap."
+    },
+    "clip_057": {
+      "clip_idx": 57,
+      "clip_id": "video_000/clip_057",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=8, f=267) show dark cap, black short-sleeve t-shirt with white chest print, and black shorts on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=22, f=281) show black long-sleeve top and light-blue shorts with no cap on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/cam2 show black short-sleeve t-shirt with white horizontal chest bar and black long pants, no cap; cam3/early/late (cam3 f=6, f=213) show tonal camo back and black long pants on side +1 (player_01 visible across net in background)."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=32, f=229) show white short-sleeve t-shirt, black shorts, and white cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_01 & player_03; side +1: player_02 & player_04)."
+    },
+    "clip_058": {
+      "clip_idx": 58,
+      "clip_id": "video_000/clip_058",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=14, f=573) show black long-sleeve top and light-blue shorts with no cap on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/cam3/late (cam3 f=745) show black short-sleeve t-shirt with white horizontal chest bar and black long pants, no cap; cam2/early (cam3 f=161) show tonal camo back and black long pants on side +1 (white cap of player_04 briefly at bottom-right foreground of early)."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=154, f=580) show dark cap, black short-sleeve t-shirt with white chest print, and black shorts on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=0, f=601) show white short-sleeve t-shirt, black shorts, and white cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_03 & player_01; side +1: player_02 & player_04)."
+    },
+    "clip_059": {
+      "clip_idx": 59,
+      "clip_id": "video_000/clip_059",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": true,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/cam3 and early/late (cam0 f=64, f=460; cam1 f=465) all show white short-sleeve t-shirt, black shorts, and white cap on side -1. cam2 (f=412) is occluded by net player player_01 (local_id=2) standing in front along cam2 line of sight."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/cam3 and early/late (cam1 f=44, f=401; cam3 f=470) all show black short-sleeve t-shirt (tonal camo back), black long pants, and no cap on side -1. cam2 (f=414) is occluded by net player player_01 (local_id=2) standing in front along cam2 line of sight."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=72, f=404) show dark cap, black short-sleeve t-shirt with white chest print, black shorts, and white socks on side +1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=36, f=428) show black long-sleeve top and light-blue shorts with no cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_04 & player_02; side +1: player_01 & player_03). Single-camera net-player overlap in cam2 (f=412-414) places player_01 in front of both side -1 players (local_id 0 and 1), while cam0/cam1/cam3 and early/late confirm pure identities."
+    },
+    "clip_060": {
+      "clip_idx": 60,
+      "clip_id": "video_000/clip_060",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=0, f=312) show white short-sleeve t-shirt, black shorts, and white cap on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=30, f=312) show dark cap, black short-sleeve t-shirt with white chest print, black shorts, and white socks on side +1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=18, f=312) show black short-sleeve t-shirt (white horizontal chest bar, tonal camo back) and black long pants with no cap on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=51, f=291) show black long-sleeve top and light-blue shorts with no cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_04 & player_02; side +1: player_01 & player_03)."
+    },
+    "clip_061": {
+      "clip_idx": 61,
+      "clip_id": "video_000/clip_061",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=112, f=433) show white short-sleeve t-shirt, black shorts, and white cap on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=108, f=449) show black short-sleeve t-shirt (white horizontal chest bar, tonal camo back) and black long pants with no cap on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=76, f=413) show dark cap, black short-sleeve t-shirt with white chest print, black shorts, and white socks on side +1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 7,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=104, f=381) show black long-sleeve top and light-blue shorts with no cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_04 & player_02; side +1: player_01 & player_03)."
+    },
+    "clip_062": {
+      "clip_idx": 62,
+      "clip_id": "video_000/clip_062",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": null,
+          "status": "uncertain",
+          "purity": "mixed",
+          "confidence": "high",
+          "id_ambiguous_frames": 1,
+          "mixed_interval": {
+            "player_04": [
+              0,
+              271
+            ],
+            "player_02": [
+              271,
+              430
+            ]
+          },
+          "visual_evidence": "Mixed track on side -1 (amb=1, x=-0.0m): early panels cam0 (f=66), cam1 (f=96), and early (cam0 f=68) show player_04 (white short-sleeve t-shirt, black shorts, white cap); late panels cam2 (f=365), cam3 (f=382), and late (cam0 f=382) show player_02 (black short-sleeve t-shirt with white chest bar, black long pants, no cap), with player_04 visible nearby at left edge of cam3 (f=382)."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views (cam0 f=62, cam1 f=58, cam2 f=68, cam3 f=276) and early/late (cam1 f=58, f=224) show black short-sleeve t-shirt (white horizontal chest bar, tonal camo back) and black long pants with no cap on side -1; track appears to end mid-clip around f=276 before local_id=0 switches onto player_02."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=4, f=338) show black long-sleeve top and light-blue shorts with no cap on side +1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=72, f=418) show dark cap, black short-sleeve t-shirt with white chest print, and black shorts on side +1."
+        }
+      ],
+      "notes": "Violates clip-level bijection on side -1 due to mid-clip ID switch in local_id=0: local_id=0 starts on player_04 (cam0 f=66, early f=68, cam1 f=96) and switches between f=96 and f=365 onto player_02 (cam2 f=365, cam3 f=382, late cam0 f=382). Meanwhile local_id=1 purely tracks player_02 from f=58 to f=276. Side +1 is pure and partner-consistent (player_03 & player_01)."
+    },
+    "clip_063": {
+      "clip_idx": 63,
+      "clip_id": "video_000/clip_063",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": true,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/cam2 show black short-sleeve t-shirt with white horizontal chest bar and black long pants, no cap; cam3/early/late (cam3 f=42, f=330) show tonal camo back and black long pants on side +1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=84, f=285) show black long-sleeve top and light-blue shorts with no cap on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=81, f=267) show dark cap, black short-sleeve t-shirt with white chest print, black shorts, and white socks on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=24, f=339) show white short-sleeve t-shirt, black shorts, and white cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side +1: player_02 & player_04; side -1: player_03 & player_01)."
+    },
+    "clip_064": {
+      "clip_idx": 64,
+      "clip_id": "video_000/clip_064",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=44, f=1029) show white short-sleeve t-shirt, black shorts, and white cap on side +1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=225, f=1179) show black long-sleeve top and light-blue shorts with no cap on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 2,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=96, f=1239) show dark cap, black short-sleeve t-shirt with white chest print, black shorts, and white socks on side -1 (pure despite amb=2 near x=-0.1m)."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 4,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=12, f=1251) show black short-sleeve t-shirt (white horizontal chest bar, tonal camo back) and black long pants with no cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side +1: player_04 & player_02; side -1: player_03 & player_01)."
+    },
+    "clip_065": {
+      "clip_idx": 65,
+      "clip_id": "video_000/clip_065",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=24, f=269) show black long-sleeve top and light-blue shorts with no cap on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1 show black short-sleeve t-shirt with white horizontal chest bar and black long pants, no cap; cam2/cam3/early/late (cam3 f=24, f=302) show tonal camo back and black long pants on side +1 (other players visible in background/foreground edges)."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=3, f=326) show dark cap, black short-sleeve t-shirt with white chest print, black shorts, and white socks on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=84, f=266) show white short-sleeve t-shirt, black shorts, and white cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_03 & player_01; side +1: player_02 & player_04)."
+    },
+    "clip_066": {
+      "clip_idx": 66,
+      "clip_id": "video_000/clip_066",
+      "end_flipped_vs_clip000": false,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": 1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "cam0/cam1/cam2 show black short-sleeve t-shirt with white horizontal chest bar and black long pants, no cap; cam3/early/late (cam3 f=132, f=477) show tonal camo back and black long pants on side +1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=114, f=525) show black long-sleeve top and light-blue shorts with no cap on side -1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 4,
+          "side": -1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=72, f=459) show dark cap, black short-sleeve t-shirt with white chest print, black shorts, and white socks on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 5,
+          "side": 1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=114, f=489) show white short-sleeve t-shirt, black shorts, and white cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side +1: player_02 & player_04; side -1: player_03 & player_01)."
+    },
+    "clip_067": {
+      "clip_idx": 67,
+      "clip_id": "video_000/clip_067",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": true,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=55, f=487) show white short-sleeve t-shirt, black shorts, and white cap on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=75, f=412) show dark cap, black short-sleeve t-shirt with white chest print, black shorts, and white socks on side +1."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 2,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=85, f=442) show black short-sleeve t-shirt (white chest bar in cam2/cam3, tonal camo back in early/late) and black long pants with no cap on side -1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 6,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=125, f=462) show black long-sleeve top and light-blue shorts with no cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_04 & player_02; side +1: player_01 & player_03)."
+    },
+    "clip_068": {
+      "clip_idx": 68,
+      "clip_id": "video_000/clip_068",
+      "end_flipped_vs_clip000": true,
+      "is_end_change_boundary": false,
+      "wardrobe_regime": "post_layer_removal",
+      "players": [
+        {
+          "local_player_id": 0,
+          "scene_track_id": 0,
+          "side": -1,
+          "gt_global_player_id": "player_04",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam0 f=16, f=358) show white short-sleeve t-shirt, black shorts, and white cap on side -1."
+        },
+        {
+          "local_player_id": 1,
+          "scene_track_id": 1,
+          "side": -1,
+          "gt_global_player_id": "player_02",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam1 f=0, f=402) show black short-sleeve t-shirt (white chest bar in cam2/cam3, tonal camo back in cam1/early/late) and black long pants with no cap on side -1 (player_04 partially visible behind left shoulder in cam0)."
+        },
+        {
+          "local_player_id": 2,
+          "scene_track_id": 3,
+          "side": 1,
+          "gt_global_player_id": "player_01",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam2 f=8, f=458) show dark cap, black short-sleeve t-shirt with white chest print, black shorts, and white socks on side +1."
+        },
+        {
+          "local_player_id": 3,
+          "scene_track_id": 7,
+          "side": 1,
+          "gt_global_player_id": "player_03",
+          "status": "confirmed",
+          "purity": "pure",
+          "confidence": "high",
+          "id_ambiguous_frames": 0,
+          "mixed_interval": null,
+          "visual_evidence": "All 4 views and early/late (cam3 f=48, f=458) show black long-sleeve top and light-blue shorts with no cap on side +1."
+        }
+      ],
+      "notes": "Bijective mapping with valid doubles pairing (side -1: player_04 & player_02; side +1: player_01 & player_03)."
+    }
+  }
+}
