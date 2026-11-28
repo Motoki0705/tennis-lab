@@ -1,0 +1,2277 @@
+{
+  "condition_sha256": "0614d199cfa7a676b1645faa55e8fab0451794ad1a9612c590ef73ffb52055c3",
+  "conditions": {
+    "C1_serial_pt16": {
+      "batch_dispatches": {},
+      "change_vs_previous": null,
+      "cli_wall_seconds": 2186.313835958019,
+      "forward_batches": {
+        "clip": {
+          "batches": 1748,
+          "fill_fraction": 0.9975328947368421,
+          "items": 27899,
+          "total_capacity": 27968
+        },
+        "dino": {
+          "batches": 3532,
+          "fill_fraction": 1.0,
+          "items": 3532,
+          "total_capacity": 3532
+        },
+        "gvhmr": {
+          "batches": 3,
+          "fill_fraction": 1.0,
+          "items": 12,
+          "total_capacity": 12
+        },
+        "hmr2": {
+          "batches": 120,
+          "fill_fraction": 0.9145833333333333,
+          "items": 1756,
+          "total_capacity": 1920
+        },
+        "vitpose": {
+          "batches": 3390,
+          "fill_fraction": 0.9980457227138643,
+          "items": 27067,
+          "total_capacity": 27120
+        }
+      },
+      "gpu_active_fraction": 0.6121099014216655,
+      "gpu_mean_utilization_percent": 47.501383069364884,
+      "gpu_observed_wall_seconds": 1980.545999036,
+      "managed_model_loads": 18,
+      "managed_model_unloads": 18,
+      "model_wall_seconds": {
+        "AFLink": 0.545325573,
+        "SMPL-COCO17": 0.8109175430000001,
+        "SMPL-vertices": 0.9400442920000001,
+        "appearance": 10.322477701,
+        "body_geometry": 6.529860170999999,
+        "clip": 28.45872742,
+        "clip_reid_union": 38.781205121,
+        "dino": 709.993348722,
+        "gvhmr": 18.674609936,
+        "hmr2": 90.235989928,
+        "vitpose": 546.543817948
+      },
+      "models": {
+        "AFLink": {
+          "load_count": 12,
+          "load_seconds": 0.520857814,
+          "unload_count": 0,
+          "unload_seconds": 0.0
+        },
+        "appearance": {
+          "load_count": 3,
+          "load_seconds": 9.346662804,
+          "unload_count": 3,
+          "unload_seconds": 0.975814897
+        },
+        "body_geometry": {
+          "load_count": 3,
+          "load_seconds": 5.567218832,
+          "unload_count": 3,
+          "unload_seconds": 0.9626413390000002
+        },
+        "dino": {
+          "load_count": 3,
+          "load_seconds": 63.814705564,
+          "unload_count": 3,
+          "unload_seconds": 1.890568015
+        },
+        "gvhmr": {
+          "load_count": 3,
+          "load_seconds": 6.871786740000001,
+          "unload_count": 3,
+          "unload_seconds": 1.966254289
+        },
+        "hmr2": {
+          "load_count": 3,
+          "load_seconds": 66.495548789,
+          "unload_count": 3,
+          "unload_seconds": 2.2355577159999998
+        },
+        "vitpose": {
+          "load_count": 3,
+          "load_seconds": 84.09944705299999,
+          "unload_count": 3,
+          "unload_seconds": 2.280141436
+        }
+      },
+      "outside_recorder_wall_seconds": 35.139857457018934,
+      "peak_rss_gib": 7.6061553955078125,
+      "peak_rss_mib": 7788.703125,
+      "peak_vram_gib": 4.494235992431641,
+      "peak_vram_mib": 4602.09765625,
+      "processes": [
+        {
+          "batch_dispatches": {},
+          "cli_exit_code": 0,
+          "cli_wall_seconds": 858.1254374260316,
+          "clips": [
+            "video_000/clip_000"
+          ],
+          "directory": "C1_serial_pt16/clip_000",
+          "forward_batches": {
+            "clip": {
+              "batches": 683,
+              "fill_fraction": 0.9968887262079063,
+              "items": 10894,
+              "total_capacity": 10928
+            },
+            "dino": {
+              "batches": 1424,
+              "fill_fraction": 1.0,
+              "items": 1424,
+              "total_capacity": 1424
+            },
+            "gvhmr": {
+              "batches": 1,
+              "fill_fraction": 1.0,
+              "items": 4,
+              "total_capacity": 4
+            },
+            "hmr2": {
+              "batches": 48,
+              "fill_fraction": 0.921875,
+              "items": 708,
+              "total_capacity": 768
+            },
+            "vitpose": {
+              "batches": 1328,
+              "fill_fraction": 0.9983057228915663,
+              "items": 10606,
+              "total_capacity": 10624
+            }
+          },
+          "lifecycle": {
+            "AFLink": {
+              "dtype": "float32",
+              "load_count": 4,
+              "load_seconds": 0.161526283,
+              "unload_count": 0,
+              "unload_seconds": 0.0
+            },
+            "appearance": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 3.116556366,
+              "unload_count": 1,
+              "unload_seconds": 0.320450055
+            },
+            "body_geometry": {
+              "dtype": "float32",
+              "load_count": 1,
+              "load_seconds": 1.849652254,
+              "unload_count": 1,
+              "unload_seconds": 0.314273181
+            },
+            "dino": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 30.763869592,
+              "unload_count": 1,
+              "unload_seconds": 0.601820618
+            },
+            "gvhmr": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 2.262770996,
+              "unload_count": 1,
+              "unload_seconds": 0.638792827
+            },
+            "hmr2": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 24.082080935,
+              "unload_count": 1,
+              "unload_seconds": 0.740854949
+            },
+            "vitpose": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 36.384872757,
+              "unload_count": 1,
+              "unload_seconds": 0.677647608
+            }
+          },
+          "model_wall_seconds": {
+            "AFLink": 0.176146976,
+            "SMPL-COCO17": 0.320502463,
+            "SMPL-vertices": 0.38367193,
+            "appearance": 3.437006421,
+            "body_geometry": 2.163925435,
+            "clip": 11.119249565,
+            "clip_reid_union": 14.556255986,
+            "dino": 299.5422162,
+            "gvhmr": 5.736433458,
+            "hmr2": 32.492601519,
+            "vitpose": 217.537186569
+          },
+          "progress": "C1_serial_pt16/clip_000/progress/3d44506fa47c4294b3f58932e4519548/progress.json",
+          "progress_sha256": "b20dd897a94fa3c56c32591204141afd9d4afcc40695105abc5c5f1736c5ea22",
+          "recorder_wall_seconds": 845.485327806,
+          "recording": "C1_serial_pt16/clip_000/progress/3d44506fa47c4294b3f58932e4519548/recording.json",
+          "recording_sha256": "195c215d9550b0df5de323f184145088bed9fc5279933ae48c969cb430b8b4fa",
+          "resources": {
+            "cuda": {
+              "cuda:0": {
+                "allocated_peak_bytes": 4177110016,
+                "reserved_peak_bytes": 4374659072
+              }
+            },
+            "nvml": {
+              "cuda:0": {
+                "total_bytes": 17103323136,
+                "used_peak_bytes": 4825649152
+              }
+            },
+            "ram_process_lifetime_peak_bytes": 8151711744,
+            "ram_rss_sampled_peak_bytes": 8084504576,
+            "system_memory_available_min_bytes": 29325795328,
+            "system_memory_total_bytes": 42061246464,
+            "temporary_disk_peak_bytes": 120310354
+          },
+          "sample_stats": {
+            "count": 1576,
+            "duration_median_ms": 2.5272575
+          },
+          "stage_wall_seconds": {
+            "artifact_load": 3.675170434,
+            "decode": 9.641502625,
+            "inference": 282.181397311,
+            "measurement": 98.958619296,
+            "model_load": 98.621329183,
+            "model_unload": 3.293839238,
+            "planning": 0.043256762,
+            "postprocess": 121.746540564,
+            "preprocess": 46.303557678,
+            "progress_write": 6.989817247,
+            "publication": 15.113223412,
+            "save": 3.214757939,
+            "transfer": 149.970095944,
+            "unattributed": 5.25323316,
+            "video_read": 0.478987013
+          },
+          "video_pass": {
+            "gpu_active_fraction": 0.6171051173457472,
+            "gpu_mean_utilization_percent": 47.90250780322944,
+            "gpu_observed_wall_seconds": 780.42718066,
+            "process_cpu_seconds": 951.519599858,
+            "thread_cpu_seconds": 759.910956207,
+            "wall_seconds": 780.42718066
+          }
+        },
+        {
+          "batch_dispatches": {},
+          "cli_exit_code": 0,
+          "cli_wall_seconds": 719.6904585119919,
+          "clips": [
+            "video_000/clip_037"
+          ],
+          "directory": "C1_serial_pt16/clip_037",
+          "forward_batches": {
+            "clip": {
+              "batches": 602,
+              "fill_fraction": 0.9983388704318937,
+              "items": 9616,
+              "total_capacity": 9632
+            },
+            "dino": {
+              "batches": 1168,
+              "fill_fraction": 1.0,
+              "items": 1168,
+              "total_capacity": 1168
+            },
+            "gvhmr": {
+              "batches": 1,
+              "fill_fraction": 1.0,
+              "items": 4,
+              "total_capacity": 4
+            },
+            "hmr2": {
+              "batches": 40,
+              "fill_fraction": 0.90625,
+              "items": 580,
+              "total_capacity": 640
+            },
+            "vitpose": {
+              "batches": 1172,
+              "fill_fraction": 0.9982935153583617,
+              "items": 9360,
+              "total_capacity": 9376
+            }
+          },
+          "lifecycle": {
+            "AFLink": {
+              "dtype": "float32",
+              "load_count": 4,
+              "load_seconds": 0.163002273,
+              "unload_count": 0,
+              "unload_seconds": 0.0
+            },
+            "appearance": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 3.0861666,
+              "unload_count": 1,
+              "unload_seconds": 0.325750659
+            },
+            "body_geometry": {
+              "dtype": "float32",
+              "load_count": 1,
+              "load_seconds": 1.854702541,
+              "unload_count": 1,
+              "unload_seconds": 0.325496351
+            },
+            "dino": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 16.703432161,
+              "unload_count": 1,
+              "unload_seconds": 0.626895311
+            },
+            "gvhmr": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 2.259282531,
+              "unload_count": 1,
+              "unload_seconds": 0.661098618
+            },
+            "hmr2": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 21.958505588,
+              "unload_count": 1,
+              "unload_seconds": 0.759617343
+            },
+            "vitpose": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 26.651328154,
+              "unload_count": 1,
+              "unload_seconds": 0.79793197
+            }
+          },
+          "model_wall_seconds": {
+            "AFLink": 0.16871329,
+            "SMPL-COCO17": 0.263887667,
+            "SMPL-vertices": 0.298999688,
+            "appearance": 3.411917259,
+            "body_geometry": 2.180198892,
+            "clip": 9.770838708,
+            "clip_reid_union": 13.182755967,
+            "dino": 225.294603613,
+            "gvhmr": 7.661592008,
+            "hmr2": 31.061639329,
+            "vitpose": 186.532525589
+          },
+          "progress": "C1_serial_pt16/clip_037/progress/3f7092ae369e4401acdab6d55f4ad7c6/progress.json",
+          "progress_sha256": "af9b2ad351fe74206ae0661a89e6580a251b3e7fd6b0cf0f9f5b015981b34540",
+          "recorder_wall_seconds": 707.706164989,
+          "recording": "C1_serial_pt16/clip_037/progress/3f7092ae369e4401acdab6d55f4ad7c6/recording.json",
+          "recording_sha256": "57ad95676c5dc25ccdfca619c1ee256425765e6201f3b9375620a361638d12b2",
+          "resources": {
+            "cuda": {
+              "cuda:0": {
+                "allocated_peak_bytes": 4177110016,
+                "reserved_peak_bytes": 4374659072
+              }
+            },
+            "nvml": {
+              "cuda:0": {
+                "total_bytes": 17103323136,
+                "used_peak_bytes": 4825649152
+              }
+            },
+            "ram_process_lifetime_peak_bytes": 8167047168,
+            "ram_rss_sampled_peak_bytes": 8167657472,
+            "system_memory_available_min_bytes": 29534580736,
+            "system_memory_total_bytes": 42061246464,
+            "temporary_disk_peak_bytes": 98700931
+          },
+          "sample_stats": {
+            "count": 1302,
+            "duration_median_ms": 3.5037575
+          },
+          "stage_wall_seconds": {
+            "artifact_load": 2.883023076,
+            "decode": 8.149726,
+            "inference": 222.408128945,
+            "measurement": 86.758526298,
+            "model_load": 72.676419848,
+            "model_unload": 3.496790252,
+            "planning": 0.04449439,
+            "postprocess": 108.23470738,
+            "preprocess": 40.035459714,
+            "progress_write": 7.191657631,
+            "publication": 13.057542193,
+            "save": 3.590667971,
+            "transfer": 133.538435478,
+            "unattributed": 5.160521376,
+            "video_read": 0.480064437
+          },
+          "video_pass": {
+            "gpu_active_fraction": 0.6215530648386164,
+            "gpu_mean_utilization_percent": 48.5380454967526,
+            "gpu_observed_wall_seconds": 654.374180981,
+            "process_cpu_seconds": 793.918596419,
+            "thread_cpu_seconds": 635.805381468,
+            "wall_seconds": 654.374180981
+          }
+        },
+        {
+          "batch_dispatches": {},
+          "cli_exit_code": 0,
+          "cli_wall_seconds": 608.4979400199954,
+          "clips": [
+            "video_000/clip_027"
+          ],
+          "directory": "C1_serial_pt16/clip_027",
+          "forward_batches": {
+            "clip": {
+              "batches": 463,
+              "fill_fraction": 0.9974352051835853,
+              "items": 7389,
+              "total_capacity": 7408
+            },
+            "dino": {
+              "batches": 940,
+              "fill_fraction": 1.0,
+              "items": 940,
+              "total_capacity": 940
+            },
+            "gvhmr": {
+              "batches": 1,
+              "fill_fraction": 1.0,
+              "items": 4,
+              "total_capacity": 4
+            },
+            "hmr2": {
+              "batches": 32,
+              "fill_fraction": 0.9140625,
+              "items": 468,
+              "total_capacity": 512
+            },
+            "vitpose": {
+              "batches": 890,
+              "fill_fraction": 0.9973314606741573,
+              "items": 7101,
+              "total_capacity": 7120
+            }
+          },
+          "lifecycle": {
+            "AFLink": {
+              "dtype": "float32",
+              "load_count": 4,
+              "load_seconds": 0.196329258,
+              "unload_count": 0,
+              "unload_seconds": 0.0
+            },
+            "appearance": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 3.143939838,
+              "unload_count": 1,
+              "unload_seconds": 0.329614183
+            },
+            "body_geometry": {
+              "dtype": "float32",
+              "load_count": 1,
+              "load_seconds": 1.862864037,
+              "unload_count": 1,
+              "unload_seconds": 0.322871807
+            },
+            "dino": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 16.347403811,
+              "unload_count": 1,
+              "unload_seconds": 0.661852086
+            },
+            "gvhmr": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 2.349733213,
+              "unload_count": 1,
+              "unload_seconds": 0.666362844
+            },
+            "hmr2": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 20.454962266,
+              "unload_count": 1,
+              "unload_seconds": 0.735085424
+            },
+            "vitpose": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 21.063246142,
+              "unload_count": 1,
+              "unload_seconds": 0.804561858
+            }
+          },
+          "model_wall_seconds": {
+            "AFLink": 0.200465307,
+            "SMPL-COCO17": 0.226527413,
+            "SMPL-vertices": 0.257372674,
+            "appearance": 3.473554021,
+            "body_geometry": 2.185735844,
+            "clip": 7.568639147,
+            "clip_reid_union": 11.042193168,
+            "dino": 185.156528909,
+            "gvhmr": 5.27658447,
+            "hmr2": 26.68174908,
+            "vitpose": 142.47410579
+          },
+          "progress": "C1_serial_pt16/clip_027/progress/debd68dd83c044129e68421d292eeeab/progress.json",
+          "progress_sha256": "81c0e2014261f0c37dcc07b73edce6a1def98bf68bf3d0312a2cc152e6ddaab7",
+          "recorder_wall_seconds": 597.982485706,
+          "recording": "C1_serial_pt16/clip_027/progress/debd68dd83c044129e68421d292eeeab/recording.json",
+          "recording_sha256": "12604761a25413e7f11de2428d53d6faa051e4d7a0049462c4d12eeb98ffec55",
+          "resources": {
+            "cuda": {
+              "cuda:0": {
+                "allocated_peak_bytes": 4177110016,
+                "reserved_peak_bytes": 4370464768
+              }
+            },
+            "nvml": {
+              "cuda:0": {
+                "total_bytes": 17103323136,
+                "used_peak_bytes": 4821454848
+              }
+            },
+            "ram_process_lifetime_peak_bytes": 8070451200,
+            "ram_rss_sampled_peak_bytes": 8046497792,
+            "system_memory_available_min_bytes": 29647495168,
+            "system_memory_total_bytes": 42061246464,
+            "temporary_disk_peak_bytes": 79459314
+          },
+          "sample_stats": {
+            "count": 1089,
+            "duration_median_ms": 3.721364
+          },
+          "stage_wall_seconds": {
+            "artifact_load": 2.453001763,
+            "decode": 6.683941414,
+            "inference": 178.882734512,
+            "measurement": 85.858685364,
+            "model_load": 65.418478565,
+            "model_unload": 3.520348202,
+            "planning": 0.045203732,
+            "postprocess": 94.991340578,
+            "preprocess": 34.288786083,
+            "progress_write": 6.976336618,
+            "publication": 11.566415565,
+            "save": 2.094695196,
+            "transfer": 99.622913229,
+            "unattributed": 5.110848916,
+            "video_read": 0.468755969
+          },
+          "video_pass": {
+            "gpu_active_fraction": 0.5936438205539538,
+            "gpu_mean_utilization_percent": 45.68475729957108,
+            "gpu_observed_wall_seconds": 545.744637395,
+            "process_cpu_seconds": 655.633353696,
+            "thread_cpu_seconds": 528.530018696,
+            "wall_seconds": 545.744637395
+          }
+        }
+      ],
+      "recorder_wall_seconds": 2151.173978501,
+      "speedup_vs_c1": 1.0,
+      "stage_wall_seconds": {
+        "artifact_load": 9.011195273,
+        "decode": 24.475170038999998,
+        "inference": 683.4722607680001,
+        "measurement": 271.575830958,
+        "model_load": 236.716227596,
+        "model_unload": 10.310977692,
+        "planning": 0.132954884,
+        "postprocess": 324.972588522,
+        "preprocess": 120.62780347499998,
+        "progress_write": 21.157811496,
+        "publication": 39.73718117,
+        "save": 8.900121106,
+        "transfer": 383.13144465100004,
+        "unattributed": 15.524603452,
+        "video_read": 1.427807419
+      },
+      "video_pass_wall_seconds": 1980.545999036
+    },
+    "C2_shared_pt16": {
+      "batch_dispatches": {},
+      "change_vs_previous": {
+        "saved_seconds": 500.1658712649951,
+        "speedup": 1.2966322539529052
+      },
+      "cli_wall_seconds": 1686.1479646930238,
+      "forward_batches": {
+        "clip": {
+          "batches": 1748,
+          "fill_fraction": 0.9975328947368421,
+          "items": 27899,
+          "total_capacity": 27968
+        },
+        "dino": {
+          "batches": 3532,
+          "fill_fraction": 1.0,
+          "items": 3532,
+          "total_capacity": 3532
+        },
+        "gvhmr": {
+          "batches": 3,
+          "fill_fraction": 1.0,
+          "items": 12,
+          "total_capacity": 12
+        },
+        "hmr2": {
+          "batches": 120,
+          "fill_fraction": 0.9145833333333333,
+          "items": 1756,
+          "total_capacity": 1920
+        },
+        "vitpose": {
+          "batches": 3390,
+          "fill_fraction": 0.9980457227138643,
+          "items": 27067,
+          "total_capacity": 27120
+        }
+      },
+      "gpu_active_fraction": 0.7465662957967217,
+      "gpu_mean_utilization_percent": 58.52267183748837,
+      "gpu_observed_wall_seconds": 1606.44757875,
+      "managed_model_loads": 6,
+      "managed_model_unloads": 6,
+      "model_wall_seconds": {
+        "AFLink": 0.500463914,
+        "SMPL-COCO17": 0.819789864,
+        "SMPL-vertices": 0.914462109,
+        "appearance": 3.348288663,
+        "body_geometry": 2.186955467,
+        "clip": 30.600926285,
+        "clip_reid_union": 33.949214948,
+        "dino": 638.406658735,
+        "gvhmr": 8.448276303,
+        "hmr2": 36.621075973,
+        "vitpose": 480.728252514
+      },
+      "models": {
+        "AFLink": {
+          "load_count": 12,
+          "load_seconds": 0.48398429300000007,
+          "unload_count": 0,
+          "unload_seconds": 0.0
+        },
+        "appearance": {
+          "load_count": 1,
+          "load_seconds": 3.008321742,
+          "unload_count": 1,
+          "unload_seconds": 0.339966921
+        },
+        "body_geometry": {
+          "load_count": 1,
+          "load_seconds": 1.856186629,
+          "unload_count": 1,
+          "unload_seconds": 0.330768838
+        },
+        "dino": {
+          "load_count": 1,
+          "load_seconds": 16.397865707,
+          "unload_count": 1,
+          "unload_seconds": 0.66824128
+        },
+        "gvhmr": {
+          "load_count": 1,
+          "load_seconds": 2.266347609,
+          "unload_count": 1,
+          "unload_seconds": 0.6665012
+        },
+        "hmr2": {
+          "load_count": 1,
+          "load_seconds": 19.54403089,
+          "unload_count": 1,
+          "unload_seconds": 0.715984751
+        },
+        "vitpose": {
+          "load_count": 1,
+          "load_seconds": 21.086785905,
+          "unload_count": 1,
+          "unload_seconds": 0.848877477
+        }
+      },
+      "outside_recorder_wall_seconds": 13.625083245023916,
+      "peak_rss_gib": 7.764442443847656,
+      "peak_rss_mib": 7950.7890625,
+      "peak_vram_gib": 4.494235992431641,
+      "peak_vram_mib": 4602.09765625,
+      "processes": [
+        {
+          "batch_dispatches": {},
+          "cli_exit_code": 0,
+          "cli_wall_seconds": 1686.1479646930238,
+          "clips": [
+            "video_000/clip_000",
+            "video_000/clip_037",
+            "video_000/clip_027"
+          ],
+          "directory": "C2_shared_pt16/video",
+          "forward_batches": {
+            "clip": {
+              "batches": 1748,
+              "fill_fraction": 0.9975328947368421,
+              "items": 27899,
+              "total_capacity": 27968
+            },
+            "dino": {
+              "batches": 3532,
+              "fill_fraction": 1.0,
+              "items": 3532,
+              "total_capacity": 3532
+            },
+            "gvhmr": {
+              "batches": 3,
+              "fill_fraction": 1.0,
+              "items": 12,
+              "total_capacity": 12
+            },
+            "hmr2": {
+              "batches": 120,
+              "fill_fraction": 0.9145833333333333,
+              "items": 1756,
+              "total_capacity": 1920
+            },
+            "vitpose": {
+              "batches": 3390,
+              "fill_fraction": 0.9980457227138643,
+              "items": 27067,
+              "total_capacity": 27120
+            }
+          },
+          "lifecycle": {
+            "AFLink": {
+              "dtype": "float32",
+              "load_count": 12,
+              "load_seconds": 0.48398429300000007,
+              "unload_count": 0,
+              "unload_seconds": 0.0
+            },
+            "appearance": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 3.008321742,
+              "unload_count": 1,
+              "unload_seconds": 0.339966921
+            },
+            "body_geometry": {
+              "dtype": "float32",
+              "load_count": 1,
+              "load_seconds": 1.856186629,
+              "unload_count": 1,
+              "unload_seconds": 0.330768838
+            },
+            "dino": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 16.397865707,
+              "unload_count": 1,
+              "unload_seconds": 0.66824128
+            },
+            "gvhmr": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 2.266347609,
+              "unload_count": 1,
+              "unload_seconds": 0.6665012
+            },
+            "hmr2": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 19.54403089,
+              "unload_count": 1,
+              "unload_seconds": 0.715984751
+            },
+            "vitpose": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 21.086785905,
+              "unload_count": 1,
+              "unload_seconds": 0.848877477
+            }
+          },
+          "model_wall_seconds": {
+            "AFLink": 0.500463914,
+            "SMPL-COCO17": 0.819789864,
+            "SMPL-vertices": 0.914462109,
+            "appearance": 3.348288663,
+            "body_geometry": 2.186955467,
+            "clip": 30.600926285,
+            "clip_reid_union": 33.949214948,
+            "dino": 638.406658735,
+            "gvhmr": 8.448276303,
+            "hmr2": 36.621075973,
+            "vitpose": 480.728252514
+          },
+          "progress": "C2_shared_pt16/video/progress/461117bf0ea54b2494f831a700314ad4/progress.json",
+          "progress_sha256": "31b32d378df4c1254541a6e287ce49689b9002e2126195edb7fd4304104122dc",
+          "recorder_wall_seconds": 1672.522881448,
+          "recording": "C2_shared_pt16/video/progress/461117bf0ea54b2494f831a700314ad4/recording.json",
+          "recording_sha256": "8b2e25e6585342f020b727d45ed9aaf0c68e6c5ecc4ce35db6dc10140539600c",
+          "resources": {
+            "cuda": {
+              "cuda:0": {
+                "allocated_peak_bytes": 4177110016,
+                "reserved_peak_bytes": 4374659072
+              }
+            },
+            "nvml": {
+              "cuda:0": {
+                "total_bytes": 17103323136,
+                "used_peak_bytes": 4825649152
+              }
+            },
+            "ram_process_lifetime_peak_bytes": 8337006592,
+            "ram_rss_sampled_peak_bytes": 8251932672,
+            "system_memory_available_min_bytes": 29438906368,
+            "system_memory_total_bytes": 42061246464,
+            "temporary_disk_peak_bytes": 120310342
+          },
+          "sample_stats": {
+            "count": 3187,
+            "duration_median_ms": 2.699126
+          },
+          "stage_wall_seconds": {
+            "artifact_load": 8.992874413,
+            "decode": 24.535674317,
+            "inference": 655.0502963819999,
+            "measurement": 87.758027047,
+            "model_load": 64.64352277500001,
+            "model_unload": 3.570340467,
+            "planning": 0.161864351,
+            "postprocess": 231.714168315,
+            "preprocess": 114.226032338,
+            "progress_write": 26.15506045,
+            "publication": 40.087695921,
+            "save": 11.62779903,
+            "transfer": 385.444853791,
+            "unattributed": 17.135781138,
+            "video_read": 1.418890713
+          },
+          "video_pass": {
+            "gpu_active_fraction": 0.7465662957967217,
+            "gpu_mean_utilization_percent": 58.52267183748837,
+            "gpu_observed_wall_seconds": 1606.44757875,
+            "process_cpu_seconds": 2016.470516455,
+            "thread_cpu_seconds": 1547.442876097,
+            "wall_seconds": 1606.44757875
+          }
+        }
+      ],
+      "recorder_wall_seconds": 1672.522881448,
+      "speedup_vs_c1": 1.2966322539529052,
+      "stage_wall_seconds": {
+        "artifact_load": 8.992874413,
+        "decode": 24.535674317,
+        "inference": 655.0502963819999,
+        "measurement": 87.758027047,
+        "model_load": 64.64352277500001,
+        "model_unload": 3.570340467,
+        "planning": 0.161864351,
+        "postprocess": 231.714168315,
+        "preprocess": 114.226032338,
+        "progress_write": 26.15506045,
+        "publication": 40.087695921,
+        "save": 11.62779903,
+        "transfer": 385.444853791,
+        "unattributed": 17.135781138,
+        "video_read": 1.418890713
+      },
+      "video_pass_wall_seconds": 1606.44757875
+    },
+    "C3_batched_pt16": {
+      "batch_dispatches": {
+        "clip": {
+          "batches": 1693,
+          "cross_clip_batches": 1616,
+          "fill_fraction": 0.999224748966332,
+          "items": 27067,
+          "total_capacity": 27088
+        },
+        "dino": {
+          "batches": 3532,
+          "cross_clip_batches": 0,
+          "fill_fraction": 1.0,
+          "items": 3532,
+          "total_capacity": 3532
+        },
+        "hmr2": {
+          "batches": 110,
+          "cross_clip_batches": 102,
+          "fill_fraction": 0.9977272727272727,
+          "items": 1756,
+          "total_capacity": 1760
+        },
+        "vitpose": {
+          "batches": 3384,
+          "cross_clip_batches": 3232,
+          "fill_fraction": 0.9998153073286052,
+          "items": 27067,
+          "total_capacity": 27072
+        }
+      },
+      "change_vs_previous": {
+        "saved_seconds": -20.664761617954355,
+        "speedup": 0.9878927773976597
+      },
+      "cli_wall_seconds": 1706.8127263109782,
+      "forward_batches": {
+        "clip": {
+          "batches": 1745,
+          "fill_fraction": 0.9992478510028653,
+          "items": 27899,
+          "total_capacity": 27920
+        },
+        "dino": {
+          "batches": 3532,
+          "fill_fraction": 1.0,
+          "items": 3532,
+          "total_capacity": 3532
+        },
+        "gvhmr": {
+          "batches": 3,
+          "fill_fraction": 1.0,
+          "items": 12,
+          "total_capacity": 12
+        },
+        "hmr2": {
+          "batches": 110,
+          "fill_fraction": 0.9977272727272727,
+          "items": 1756,
+          "total_capacity": 1760
+        },
+        "vitpose": {
+          "batches": 3384,
+          "fill_fraction": 0.9998153073286052,
+          "items": 27067,
+          "total_capacity": 27072
+        }
+      },
+      "gpu_active_fraction": 0.7490579428516034,
+      "gpu_mean_utilization_percent": 58.17652518567086,
+      "gpu_observed_wall_seconds": 1619.403855272,
+      "managed_model_loads": 6,
+      "managed_model_unloads": 6,
+      "model_wall_seconds": {
+        "AFLink": 0.518306534,
+        "SMPL-COCO17": 0.838011129,
+        "SMPL-vertices": 0.908896686,
+        "appearance": 3.725904569,
+        "body_geometry": 2.190539947,
+        "clip": 45.459316741,
+        "clip_reid_union": 45.78458376,
+        "dino": 674.34280719,
+        "gvhmr": 8.587086397,
+        "hmr2": 75.295719463,
+        "vitpose": 527.980451491
+      },
+      "models": {
+        "AFLink": {
+          "load_count": 12,
+          "load_seconds": 0.502313062,
+          "unload_count": 0,
+          "unload_seconds": 0.0
+        },
+        "appearance": {
+          "load_count": 1,
+          "load_seconds": 3.40063755,
+          "unload_count": 1,
+          "unload_seconds": 0.325267019
+        },
+        "body_geometry": {
+          "load_count": 1,
+          "load_seconds": 1.85039647,
+          "unload_count": 1,
+          "unload_seconds": 0.340143477
+        },
+        "dino": {
+          "load_count": 1,
+          "load_seconds": 16.545603153,
+          "unload_count": 1,
+          "unload_seconds": 0.700391846
+        },
+        "gvhmr": {
+          "load_count": 1,
+          "load_seconds": 2.294096471,
+          "unload_count": 1,
+          "unload_seconds": 0.652734411
+        },
+        "hmr2": {
+          "load_count": 1,
+          "load_seconds": 25.19163841,
+          "unload_count": 1,
+          "unload_seconds": 0.881508431
+        },
+        "vitpose": {
+          "load_count": 1,
+          "load_seconds": 22.694135862,
+          "unload_count": 1,
+          "unload_seconds": 0.953786916
+        }
+      },
+      "outside_recorder_wall_seconds": 20.708042091978086,
+      "peak_rss_gib": 8.157665252685547,
+      "peak_rss_mib": 8353.44921875,
+      "peak_vram_gib": 4.490329742431641,
+      "peak_vram_mib": 4598.09765625,
+      "processes": [
+        {
+          "batch_dispatches": {
+            "clip": {
+              "batches": 1693,
+              "cross_clip_batches": 1616,
+              "cross_source_batches": 1634,
+              "failed": 0,
+              "fill_fraction": 0.999224748966332,
+              "items": 27067,
+              "peak_active_sources": 4,
+              "peak_queued_items": 16,
+              "sizes": {
+                "11": 1,
+                "16": 1690,
+                "8": 2
+              },
+              "total_capacity": 27088
+            },
+            "dino": {
+              "batches": 3532,
+              "cross_clip_batches": 0,
+              "cross_source_batches": 0,
+              "failed": 0,
+              "fill_fraction": 1.0,
+              "items": 3532,
+              "peak_active_sources": 4,
+              "peak_queued_items": 1,
+              "sizes": {
+                "1": 3532
+              },
+              "total_capacity": 3532
+            },
+            "hmr2": {
+              "batches": 110,
+              "cross_clip_batches": 102,
+              "cross_source_batches": 102,
+              "failed": 0,
+              "fill_fraction": 0.9977272727272727,
+              "items": 1756,
+              "peak_active_sources": 3,
+              "peak_queued_items": 16,
+              "sizes": {
+                "12": 1,
+                "16": 109
+              },
+              "total_capacity": 1760
+            },
+            "vitpose": {
+              "batches": 3384,
+              "cross_clip_batches": 3232,
+              "cross_source_batches": 3268,
+              "failed": 0,
+              "fill_fraction": 0.9998153073286052,
+              "items": 27067,
+              "peak_active_sources": 4,
+              "peak_queued_items": 8,
+              "sizes": {
+                "3": 1,
+                "8": 3383
+              },
+              "total_capacity": 27072
+            }
+          },
+          "cli_exit_code": 0,
+          "cli_wall_seconds": 1706.8127263109782,
+          "clips": [
+            "video_000/clip_000",
+            "video_000/clip_037",
+            "video_000/clip_027"
+          ],
+          "directory": "C3_batched_pt16/video",
+          "forward_batches": {
+            "clip": {
+              "batches": 1745,
+              "fill_fraction": 0.9992478510028653,
+              "items": 27899,
+              "total_capacity": 27920
+            },
+            "dino": {
+              "batches": 3532,
+              "fill_fraction": 1.0,
+              "items": 3532,
+              "total_capacity": 3532
+            },
+            "gvhmr": {
+              "batches": 3,
+              "fill_fraction": 1.0,
+              "items": 12,
+              "total_capacity": 12
+            },
+            "hmr2": {
+              "batches": 110,
+              "fill_fraction": 0.9977272727272727,
+              "items": 1756,
+              "total_capacity": 1760
+            },
+            "vitpose": {
+              "batches": 3384,
+              "fill_fraction": 0.9998153073286052,
+              "items": 27067,
+              "total_capacity": 27072
+            }
+          },
+          "lifecycle": {
+            "AFLink": {
+              "dtype": "float32",
+              "load_count": 12,
+              "load_seconds": 0.502313062,
+              "unload_count": 0,
+              "unload_seconds": 0.0
+            },
+            "appearance": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 3.40063755,
+              "unload_count": 1,
+              "unload_seconds": 0.325267019
+            },
+            "body_geometry": {
+              "dtype": "float32",
+              "load_count": 1,
+              "load_seconds": 1.85039647,
+              "unload_count": 1,
+              "unload_seconds": 0.340143477
+            },
+            "dino": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 16.545603153,
+              "unload_count": 1,
+              "unload_seconds": 0.700391846
+            },
+            "gvhmr": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 2.294096471,
+              "unload_count": 1,
+              "unload_seconds": 0.652734411
+            },
+            "hmr2": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 25.19163841,
+              "unload_count": 1,
+              "unload_seconds": 0.881508431
+            },
+            "vitpose": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 22.694135862,
+              "unload_count": 1,
+              "unload_seconds": 0.953786916
+            }
+          },
+          "model_wall_seconds": {
+            "AFLink": 0.518306534,
+            "SMPL-COCO17": 0.838011129,
+            "SMPL-vertices": 0.908896686,
+            "appearance": 3.725904569,
+            "body_geometry": 2.190539947,
+            "clip": 45.459316741,
+            "clip_reid_union": 45.78458376,
+            "dino": 674.34280719,
+            "gvhmr": 8.587086397,
+            "hmr2": 75.295719463,
+            "vitpose": 527.980451491
+          },
+          "progress": "C3_batched_pt16/video/progress/16b235faf47a4402b162ac2bf58fcfb8/progress.json",
+          "progress_sha256": "a88087d85d080822d76aaebe73d54da93d5d80c7d352e5542325e70b3c67ee7e",
+          "recorder_wall_seconds": 1686.104684219,
+          "recording": "C3_batched_pt16/video/progress/16b235faf47a4402b162ac2bf58fcfb8/recording.json",
+          "recording_sha256": "1fa045597744e09ffeab4cb2af396f380c86d8e19e556f0c15fae76fd8b3a9df",
+          "resources": {
+            "cuda": {
+              "cuda:0": {
+                "allocated_peak_bytes": 4204340224,
+                "reserved_peak_bytes": 4370464768
+              }
+            },
+            "nvml": {
+              "cuda:0": {
+                "total_bytes": 17103323136,
+                "used_peak_bytes": 4821454848
+              }
+            },
+            "ram_process_lifetime_peak_bytes": 8759226368,
+            "ram_rss_sampled_peak_bytes": 8759418880,
+            "system_memory_available_min_bytes": 29069455360,
+            "system_memory_total_bytes": 42061246464,
+            "temporary_disk_peak_bytes": 120310350
+          },
+          "sample_stats": {
+            "count": 3202,
+            "duration_median_ms": 5.2308995
+          },
+          "stage_wall_seconds": {
+            "artifact_load": 9.408113319,
+            "batch_dispatch": 33.703637557,
+            "decode": 23.816560373999998,
+            "inference": 656.1493451059999,
+            "measurement": 89.232477628,
+            "model_load": 72.478820978,
+            "model_unload": 3.8538321,
+            "planning": 0.132361198,
+            "postprocess": 173.87456701899998,
+            "preprocess": 133.851005345,
+            "progress_write": 16.769415138,
+            "publication": 41.772229644999996,
+            "save": 12.183584958,
+            "transfer": 383.342028983,
+            "unattributed": 34.241977571999996,
+            "video_read": 1.2947272989999998
+          },
+          "video_pass": {
+            "gpu_active_fraction": 0.7490579428516034,
+            "gpu_mean_utilization_percent": 58.17652518567086,
+            "gpu_observed_wall_seconds": 1619.403855272,
+            "process_cpu_seconds": 2150.434039818,
+            "thread_cpu_seconds": 1567.613202341,
+            "wall_seconds": 1619.403855272
+          }
+        }
+      ],
+      "recorder_wall_seconds": 1686.104684219,
+      "speedup_vs_c1": 1.280933638620923,
+      "stage_wall_seconds": {
+        "artifact_load": 9.408113319,
+        "batch_dispatch": 33.703637557,
+        "decode": 23.816560373999998,
+        "inference": 656.1493451059999,
+        "measurement": 89.232477628,
+        "model_load": 72.478820978,
+        "model_unload": 3.8538321,
+        "planning": 0.132361198,
+        "postprocess": 173.87456701899998,
+        "preprocess": 133.851005345,
+        "progress_write": 16.769415138,
+        "publication": 41.772229644999996,
+        "save": 12.183584958,
+        "transfer": 383.342028983,
+        "unattributed": 34.241977571999996,
+        "video_read": 1.2947272989999998
+      },
+      "video_pass_wall_seconds": 1619.403855272
+    },
+    "C4_batched_trt16": {
+      "batch_dispatches": {
+        "clip": {
+          "batches": 1692,
+          "cross_clip_batches": 1614,
+          "fill_fraction": 0.9993351063829787,
+          "items": 27054,
+          "total_capacity": 27072
+        },
+        "dino": {
+          "batches": 3532,
+          "cross_clip_batches": 0,
+          "fill_fraction": 1.0,
+          "items": 3532,
+          "total_capacity": 3532
+        },
+        "hmr2": {
+          "batches": 110,
+          "cross_clip_batches": 102,
+          "fill_fraction": 0.9977272727272727,
+          "items": 1756,
+          "total_capacity": 1760
+        },
+        "vitpose": {
+          "batches": 3383,
+          "cross_clip_batches": 3228,
+          "fill_fraction": 0.9996674549216672,
+          "items": 27055,
+          "total_capacity": 27064
+        }
+      },
+      "change_vs_previous": {
+        "saved_seconds": 387.504136122996,
+        "speedup": 1.2937175873824807
+      },
+      "cli_wall_seconds": 1319.3085901879822,
+      "forward_batches": {
+        "clip": {
+          "batches": 1743,
+          "fill_fraction": 0.9993545611015491,
+          "items": 27870,
+          "total_capacity": 27888
+        },
+        "dino": {
+          "batches": 3532,
+          "fill_fraction": 1.0,
+          "items": 3532,
+          "total_capacity": 3532
+        },
+        "gvhmr": {
+          "batches": 3,
+          "fill_fraction": 1.0,
+          "items": 12,
+          "total_capacity": 12
+        },
+        "hmr2": {
+          "batches": 110,
+          "fill_fraction": 0.9977272727272727,
+          "items": 1756,
+          "total_capacity": 1760
+        },
+        "vitpose": {
+          "batches": 3383,
+          "fill_fraction": 0.9996674549216672,
+          "items": 27055,
+          "total_capacity": 27064
+        }
+      },
+      "gpu_active_fraction": 0.57660693759138,
+      "gpu_mean_utilization_percent": 38.71516297170045,
+      "gpu_observed_wall_seconds": 1190.787181431,
+      "managed_model_loads": 6,
+      "managed_model_unloads": 6,
+      "model_wall_seconds": {
+        "AFLink": 0.509004311,
+        "SMPL-COCO17": 0.810125621,
+        "SMPL-vertices": 0.860973832,
+        "appearance": 5.083195979,
+        "body_geometry": 2.825531681,
+        "clip": 34.73566346,
+        "clip_reid_union": 35.074088699,
+        "dino": 444.327983283,
+        "gvhmr": 12.089662356,
+        "hmr2": 101.644620707,
+        "vitpose": 284.638306449
+      },
+      "models": {
+        "AFLink": {
+          "load_count": 12,
+          "load_seconds": 0.48189390399999993,
+          "unload_count": 0,
+          "unload_seconds": 0.0
+        },
+        "appearance": {
+          "load_count": 1,
+          "load_seconds": 4.74477074,
+          "unload_count": 1,
+          "unload_seconds": 0.338425239
+        },
+        "body_geometry": {
+          "load_count": 1,
+          "load_seconds": 2.506707758,
+          "unload_count": 1,
+          "unload_seconds": 0.318823923
+        },
+        "dino": {
+          "load_count": 1,
+          "load_seconds": 19.734021262,
+          "unload_count": 1,
+          "unload_seconds": 0.752482369
+        },
+        "gvhmr": {
+          "load_count": 1,
+          "load_seconds": 3.836486445,
+          "unload_count": 1,
+          "unload_seconds": 0.682513685
+        },
+        "hmr2": {
+          "load_count": 1,
+          "load_seconds": 29.350366532,
+          "unload_count": 1,
+          "unload_seconds": 0.88633056
+        },
+        "vitpose": {
+          "load_count": 1,
+          "load_seconds": 27.179161743,
+          "unload_count": 1,
+          "unload_seconds": 0.795053288
+        }
+      },
+      "outside_recorder_wall_seconds": 19.85237156698213,
+      "peak_rss_gib": 3.7743797302246094,
+      "peak_rss_mib": 3864.96484375,
+      "peak_vram_gib": 1.7618141174316406,
+      "peak_vram_mib": 1804.09765625,
+      "processes": [
+        {
+          "batch_dispatches": {
+            "clip": {
+              "batches": 1692,
+              "cross_clip_batches": 1614,
+              "cross_source_batches": 1633,
+              "failed": 0,
+              "fill_fraction": 0.9993351063829787,
+              "items": 27054,
+              "peak_active_sources": 4,
+              "peak_queued_items": 16,
+              "sizes": {
+                "12": 1,
+                "14": 1,
+                "16": 1689,
+                "4": 1
+              },
+              "total_capacity": 27072
+            },
+            "dino": {
+              "batches": 3532,
+              "cross_clip_batches": 0,
+              "cross_source_batches": 0,
+              "failed": 0,
+              "fill_fraction": 1.0,
+              "items": 3532,
+              "peak_active_sources": 4,
+              "peak_queued_items": 1,
+              "sizes": {
+                "1": 3532
+              },
+              "total_capacity": 3532
+            },
+            "hmr2": {
+              "batches": 110,
+              "cross_clip_batches": 102,
+              "cross_source_batches": 102,
+              "failed": 0,
+              "fill_fraction": 0.9977272727272727,
+              "items": 1756,
+              "peak_active_sources": 3,
+              "peak_queued_items": 16,
+              "sizes": {
+                "12": 1,
+                "16": 109
+              },
+              "total_capacity": 1760
+            },
+            "vitpose": {
+              "batches": 3383,
+              "cross_clip_batches": 3228,
+              "cross_source_batches": 3266,
+              "failed": 0,
+              "fill_fraction": 0.9996674549216672,
+              "items": 27055,
+              "peak_active_sources": 4,
+              "peak_queued_items": 8,
+              "sizes": {
+                "4": 2,
+                "7": 1,
+                "8": 3380
+              },
+              "total_capacity": 27064
+            }
+          },
+          "cli_exit_code": 0,
+          "cli_wall_seconds": 1319.3085901879822,
+          "clips": [
+            "video_000/clip_000",
+            "video_000/clip_037",
+            "video_000/clip_027"
+          ],
+          "directory": "C4_batched_trt16/video",
+          "forward_batches": {
+            "clip": {
+              "batches": 1743,
+              "fill_fraction": 0.9993545611015491,
+              "items": 27870,
+              "total_capacity": 27888
+            },
+            "dino": {
+              "batches": 3532,
+              "fill_fraction": 1.0,
+              "items": 3532,
+              "total_capacity": 3532
+            },
+            "gvhmr": {
+              "batches": 3,
+              "fill_fraction": 1.0,
+              "items": 12,
+              "total_capacity": 12
+            },
+            "hmr2": {
+              "batches": 110,
+              "fill_fraction": 0.9977272727272727,
+              "items": 1756,
+              "total_capacity": 1760
+            },
+            "vitpose": {
+              "batches": 3383,
+              "fill_fraction": 0.9996674549216672,
+              "items": 27055,
+              "total_capacity": 27064
+            }
+          },
+          "lifecycle": {
+            "AFLink": {
+              "dtype": "float32",
+              "load_count": 12,
+              "load_seconds": 0.48189390399999993,
+              "unload_count": 0,
+              "unload_seconds": 0.0
+            },
+            "appearance": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 4.74477074,
+              "unload_count": 1,
+              "unload_seconds": 0.338425239
+            },
+            "body_geometry": {
+              "dtype": "float32",
+              "load_count": 1,
+              "load_seconds": 2.506707758,
+              "unload_count": 1,
+              "unload_seconds": 0.318823923
+            },
+            "dino": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 19.734021262,
+              "unload_count": 1,
+              "unload_seconds": 0.752482369
+            },
+            "gvhmr": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 3.836486445,
+              "unload_count": 1,
+              "unload_seconds": 0.682513685
+            },
+            "hmr2": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 29.350366532,
+              "unload_count": 1,
+              "unload_seconds": 0.88633056
+            },
+            "vitpose": {
+              "dtype": "float16",
+              "load_count": 1,
+              "load_seconds": 27.179161743,
+              "unload_count": 1,
+              "unload_seconds": 0.795053288
+            }
+          },
+          "model_wall_seconds": {
+            "AFLink": 0.509004311,
+            "SMPL-COCO17": 0.810125621,
+            "SMPL-vertices": 0.860973832,
+            "appearance": 5.083195979,
+            "body_geometry": 2.825531681,
+            "clip": 34.73566346,
+            "clip_reid_union": 35.074088699,
+            "dino": 444.327983283,
+            "gvhmr": 12.089662356,
+            "hmr2": 101.644620707,
+            "vitpose": 284.638306449
+          },
+          "progress": "C4_batched_trt16/video/progress/f56f4effe13043d7be2ac54de05fab5b/progress.json",
+          "progress_sha256": "b9f884d72ead942c2f5932021ff3c5a674211a3ef52096a6591d19052ef2b0cd",
+          "recorder_wall_seconds": 1299.456218621,
+          "recording": "C4_batched_trt16/video/progress/f56f4effe13043d7be2ac54de05fab5b/recording.json",
+          "recording_sha256": "c445f1abb49d0ec5706b8dd6f9cec08410d0d2bd0488bdaecd8fbe46b2f3e306",
+          "resources": {
+            "cuda": {
+              "cuda:0": {
+                "allocated_peak_bytes": 155129344,
+                "reserved_peak_bytes": 167772160
+              }
+            },
+            "nvml": {
+              "cuda:0": {
+                "total_bytes": 17103323136,
+                "used_peak_bytes": 1891733504
+              }
+            },
+            "ram_process_lifetime_peak_bytes": 4052709376,
+            "ram_rss_sampled_peak_bytes": 4053716992,
+            "system_memory_available_min_bytes": 34027720704,
+            "system_memory_total_bytes": 42061246464,
+            "temporary_disk_peak_bytes": 120310519
+          },
+          "sample_stats": {
+            "count": 2377,
+            "duration_median_ms": 4.252935
+          },
+          "stage_wall_seconds": {
+            "artifact_load": 9.287003948,
+            "batch_dispatch": 65.09598914200001,
+            "cuda_sync": 0.12372668,
+            "decode": 27.55554751,
+            "inference": 41.537715656,
+            "measurement": 163.053672566,
+            "model_load": 87.833408384,
+            "model_unload": 3.773629064,
+            "planning": 0.24368902,
+            "postprocess": 425.328620687,
+            "preprocess": 153.53201718999998,
+            "progress_write": 20.259957895,
+            "publication": 43.539152259000005,
+            "save": 8.838200148,
+            "transfer": 195.20613061,
+            "unattributed": 52.924407681999995,
+            "video_read": 1.32335018
+          },
+          "video_pass": {
+            "gpu_active_fraction": 0.57660693759138,
+            "gpu_mean_utilization_percent": 38.71516297170045,
+            "gpu_observed_wall_seconds": 1190.787181431,
+            "process_cpu_seconds": 1730.027783447,
+            "thread_cpu_seconds": 1131.040734991,
+            "wall_seconds": 1190.787181431
+          }
+        }
+      ],
+      "recorder_wall_seconds": 1299.456218621,
+      "speedup_vs_c1": 1.6571663765537228,
+      "stage_wall_seconds": {
+        "artifact_load": 9.287003948,
+        "batch_dispatch": 65.09598914200001,
+        "cuda_sync": 0.12372668,
+        "decode": 27.55554751,
+        "inference": 41.537715656,
+        "measurement": 163.053672566,
+        "model_load": 87.833408384,
+        "model_unload": 3.773629064,
+        "planning": 0.24368902,
+        "postprocess": 425.328620687,
+        "preprocess": 153.53201718999998,
+        "progress_write": 20.259957895,
+        "publication": 43.539152259000005,
+        "save": 8.838200148,
+        "transfer": 195.20613061,
+        "unattributed": 52.924407681999995,
+        "video_read": 1.32335018
+      },
+      "video_pass_wall_seconds": 1190.787181431
+    }
+  },
+  "dino_extension_sha256": "68580f2e5b0454dba630ba3d37e55e383d5babd86b15cda92d4e7c104f5797b7",
+  "engine_preparation": {
+    "command": [
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2627-issue-2696-primary/.venv/bin/python",
+      "-B",
+      "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2627-issue-2696-primary/knowledge/runs/run-i2696-exec-system-ablation/prepare_engines.py",
+      "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2363-primary",
+      "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2627-issue-2696-primary",
+      "/mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2627-issue-2696-primary/i2696/ablation-v1"
+    ],
+    "engines": {
+      "changed_network_sources_since_qualification": [],
+      "cuda": "13.0",
+      "environment": {
+        "compute_capability": [
+          12,
+          0
+        ],
+        "device_name": "NVIDIA GeForce RTX 5060 Ti",
+        "tensorrt_version": "10.14.1.48.post1"
+      },
+      "models": {
+        "clip": {
+          "directory": "i2696/ablation-v1/engines/clip/256x128",
+          "engine": {
+            "environment": {
+              "compute_capability": [
+                12,
+                0
+              ],
+              "device_name": "NVIDIA GeForce RTX 5060 Ti",
+              "tensorrt_version": "10.14.1.48.post1"
+            },
+            "export_sha256": "7e8b0c6d9ba781d748443419da16fc7f7a472f0e0093e8a8014466bfeeef679d",
+            "plan_sha256": "7dbe850f271f6df5458e6c8f35a657e7dc6654781533c177466f9e9e89eea279",
+            "profiles": {
+              "pixels": {
+                "maximum": [
+                  16,
+                  3,
+                  256,
+                  128
+                ],
+                "minimum": [
+                  1,
+                  3,
+                  256,
+                  128
+                ],
+                "optimum": [
+                  16,
+                  3,
+                  256,
+                  128
+                ]
+              }
+            },
+            "version": 1
+          },
+          "engine_manifest_sha256": "6cb40218d9c734dda7346f46a9a58bdfe5a2591b269805f3a98760a8ee69d736",
+          "export": {
+            "inputs": {
+              "pixels": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  3,
+                  256,
+                  128
+                ]
+              }
+            },
+            "model": "clipreid_vitb16_market1501",
+            "onnx_files": {
+              "model.onnx": "ac738689d8f55fa66e900a257e5fd02e759aac156864a54d7d82591874136aca"
+            },
+            "outputs": {
+              "features": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  -1
+                ]
+              }
+            },
+            "precision": "fp16",
+            "settings": {},
+            "sources": {
+              "checkpoint": "bedc8fcc37f296045df19d901b162dd032bfa85d9b4f2406eff8313536d444dc"
+            },
+            "version": 1
+          },
+          "operations": [],
+          "rebuild_reason": null,
+          "reused": true
+        },
+        "dino": {
+          "directory": "i2696/ablation-v1/engines/dino/750x1333",
+          "engine": {
+            "environment": {
+              "compute_capability": [
+                12,
+                0
+              ],
+              "device_name": "NVIDIA GeForce RTX 5060 Ti",
+              "tensorrt_version": "10.14.1.48.post1"
+            },
+            "export_sha256": "acc19d7172a187f1c7c8543c1060878710cc4716ddb07a07cd473ae704227b0c",
+            "plan_sha256": "ab910d326ea2006d5de7f740025cff0c817dc05b397fef612641b2223272e3f1",
+            "profiles": {
+              "pixels": {
+                "maximum": [
+                  2,
+                  3,
+                  750,
+                  1333
+                ],
+                "minimum": [
+                  1,
+                  3,
+                  750,
+                  1333
+                ],
+                "optimum": [
+                  2,
+                  3,
+                  750,
+                  1333
+                ]
+              }
+            },
+            "version": 1
+          },
+          "engine_manifest_sha256": "f9d0d183961243ef0bbfa2a9b770852e897182373fa9de3351f19198f42d050b",
+          "export": {
+            "inputs": {
+              "pixels": {
+                "dtype": "float32",
+                "shape": [
+                  -1,
+                  3,
+                  750,
+                  1333
+                ]
+              }
+            },
+            "model": "dino_4scale_swin_l",
+            "onnx_files": {
+              "model.onnx": "010e8868ce59c0f772d6bf00f68836aa2f24e6d4ca96ac5b330ad261182441bf",
+              "model.onnx.data": "a9839bb54d25bb4165d0ff2ca381de6d24a6bcc3272f13758fda3be3b408d4a4"
+            },
+            "outputs": {
+              "pred_boxes": {
+                "dtype": "float32",
+                "shape": [
+                  -1,
+                  -1,
+                  4
+                ]
+              },
+              "pred_logits": {
+                "dtype": "float32",
+                "shape": [
+                  -1,
+                  -1,
+                  91
+                ]
+              }
+            },
+            "precision": "fp16",
+            "settings": {
+              "max_long_side": 1333,
+              "sampling": "grid_sample",
+              "short_side": 800
+            },
+            "sources": {
+              "checkpoint": "e61688afe3af91b25955e9f9601d04b42068327a2e076ee871828089aa4ffed5",
+              "dino_source/config/DINO/DINO_4scale.py": "1b2b02a9561a1304ee396c9490d4d874eb836213b1a37993353e1d1c2ec6a787",
+              "dino_source/config/DINO/DINO_4scale_convnext.py": "e5815eb424bf0b2af1b6fba31d267942631228a390c5243bb7b1b74d73da7e96",
+              "dino_source/config/DINO/DINO_4scale_swin.py": "534e4b157a05e618d7c36df3b186dda8d28abd3595ac00083da638cab78d4a21",
+              "dino_source/config/DINO/DINO_5scale.py": "fbe67771c6e9e55b7911921cb1f062235eafaa213c1629ecccf0c59490bed359",
+              "dino_source/config/DINO/coco_transformer.py": "1d165b74a1bd2e0d745fa8a1baec78eb98ef5227d9aaf84736016ad8f8d6d657",
+              "dino_source/datasets/__init__.py": "af8a8a8e4b4c5ac78d3c4a1d4748526aadff15c6ebfca7b4cf7d7a1d30d71a00",
+              "dino_source/datasets/coco.py": "3caac28b3f088260069a4c8658463f48ce886259594500697f2de27f6e722043",
+              "dino_source/datasets/coco_eval.py": "a80b849f2af5221fa79c391fa7b2ae1ae016a68c0a6c664b5c7d7f0e030a64e8",
+              "dino_source/datasets/coco_panoptic.py": "589b5eb175ad0e713ac3548314f653c96fc2e0be93f36d0f10a9d1f85c4bf145",
+              "dino_source/datasets/data_util.py": "5ce0f467c09e5d333bb4f2f1ad76b5b8f09c0604ceb9b1743f4ac8738f13fb8b",
+              "dino_source/datasets/dataset.py": "282f5b4b8880450c58a968fd60b3f8024350bc429adf6485884548ec20efe9d6",
+              "dino_source/datasets/panoptic_eval.py": "a8d7117160f57f25d35270d50a17be84dcfa75d3b4903a13bc1f41aeebe05b0c",
+              "dino_source/datasets/random_crop.py": "5ee8b7d1752ad10e6d22603c739ea6599a77aea3228afb5ebae489f6005e82d6",
+              "dino_source/datasets/sltransform.py": "464485f08fe3524fcce41eed248e7676374a27c4092f5bb674c140b43b477d45",
+              "dino_source/datasets/transforms.py": "3257fc69dd2b8386bcb9211b2e06893a0aa861e6a3007d9b41a13fb75da4698f",
+              "dino_source/engine.py": "9e22a18b76b45e33e485c21063d49cb03b87f1b9d8ad97640a2e504b35e07323",
+              "dino_source/main.py": "bdcaba8f4b503967baf340b344cf7d2d32ad2d9835958bb77654c379e9635899",
+              "dino_source/models/__init__.py": "f20802a4f4758ffffea791281dac2b3664837979454e1c43b5d47931856bbcab",
+              "dino_source/models/dino/__init__.py": "14ad68ba01e276c94280addb55701b165851a9b380d5183c2b2807c9f97c0671",
+              "dino_source/models/dino/attention.py": "19e851db1df38cac0fdfe5c03a5b486217fcea4593ffaf6a55e566f39264c395",
+              "dino_source/models/dino/backbone.py": "d2441647670458426de67ba9c6dc8e78b9e02b772fe982713a0e3ffdc8a77882",
+              "dino_source/models/dino/convnext.py": "a4d1d7fe2c3a7caf8f9edd52553c2dc675403f9dbfc24f9b805c9ddd769fa45b",
+              "dino_source/models/dino/deformable_transformer.py": "c41d55c3590720b52be4f68174b992c252a313335c8941ac00e079e414049fad",
+              "dino_source/models/dino/dino.py": "4a845bbd4491124bb80c55fcd85efe10da63959d028959e68b0945b49bdc4a50",
+              "dino_source/models/dino/dn_components.py": "e30f682a40244609104abe7de42e9c78b72188f2126145bf72f82700ab3b29df",
+              "dino_source/models/dino/matcher.py": "4c263b3969298478e403711f664f57da41d2b21151543949e2f36f731968f21a",
+              "dino_source/models/dino/ops/functions/__init__.py": "e1a39c1cf23562b11d696d81f95cf8bef368c48149b681d1eadc7f6d188edd3a",
+              "dino_source/models/dino/ops/functions/ms_deform_attn_func.py": "dd9906037ce7dc45b9ef6f39d4934bb4dddefc3e09049024496827714b6738bc",
+              "dino_source/models/dino/ops/modules/__init__.py": "3a40cdcd146fc93c3f4ba9702924582f6502e5fcd1ceccf687e9d0e6ff2d7b5f",
+              "dino_source/models/dino/ops/modules/ms_deform_attn.py": "658e8180b715775b3f8d3fb9c25932ca4bc618bc94a74439ed0eecace4857156",
+              "dino_source/models/dino/ops/setup.py": "9675fc02e522204d6f3af59dca6dcad00b59a8b2b192e30e54f3e04279e279f2",
+              "dino_source/models/dino/ops/test.py": "6066519322d749265c9983117ba8b012b35b6fbd46505d5b7842751eeb706942",
+              "dino_source/models/dino/position_encoding.py": "fac739a516e2a561547e2889f14dfc4565e75d5d57b9de32441f68ac1118c26f",
+              "dino_source/models/dino/segmentation.py": "4275df453d8951be81e1247676a319d61b19976320d7122698c90fbe95614b55",
+              "dino_source/models/dino/swin_transformer.py": "e813c16d3e80d9de9ffea992a1964a14b556177af120a4072e62059520ca527e",
+              "dino_source/models/dino/transformer_deformable.py": "1918bcb9a093435d906b0118b73be2847ea847aaabc1d42318839aa29047aaf2",
+              "dino_source/models/dino/utils.py": "79badbc027dcf23efb6eb26ce83081ee10af3544847a8ef0a022e64841c76aca",
+              "dino_source/models/registry.py": "3d0d7c2ffb64ad5c1da57201623b0a0baca865f55f8026216a3a930830ea5253",
+              "dino_source/run_with_submitit.py": "110b5b839f4ee2f22a5002ef32b585f01b254c0f084a3dec3ae8abbe91f06042",
+              "dino_source/tools/benchmark.py": "c10790e25b3315ca0b15dad31bb810df776df1bf4c46938bbd8c8afe79666ac0",
+              "dino_source/util/__init__.py": "9e535c45af09ac24ef8d5631a151f77febafe72a92ad6bfeb2d941f0c4a54e35",
+              "dino_source/util/box_loss.py": "573d78428ba4f9d22c50b13368a33d708c057eedc82a7bb5ac69186ba732c019",
+              "dino_source/util/box_ops.py": "3d5e5317a8d211637bc4eb355e2d99650a494ca88895f7e3fa4fc7fb2db3a732",
+              "dino_source/util/get_param_dicts.py": "77fdb5c32d09ff563845538e108f1d183a4e673e69f0cb56929ae7452c99546a",
+              "dino_source/util/logger.py": "51aa569f90461ffb4bc0764ac64c7c54c98b4e9425ecbc780310c042e956f599",
+              "dino_source/util/misc.py": "b7802e9e4f33401b35d1bbcd1e0eb3ce958d8965cd4bca193b613f162b72bf2f",
+              "dino_source/util/plot_utils.py": "e01b015bd37fb663854bc97e374bf5126a639465deab4ebcd324a93b16febbad",
+              "dino_source/util/slconfig.py": "5a94b488bde824052f3882cff86e6037a18685058351d3b29e12e89c3ea47d9d",
+              "dino_source/util/slio.py": "0b6e7921914dfa45a0fe58a1ae6032aba1e741eb2f2ff66fa5ea3a339fd94a6f",
+              "dino_source/util/static_data_path.py": "7435e70273a1b44d0975155014c5ca00b0d15d90cec7745e8357daf7cf58fd58",
+              "dino_source/util/time_counter.py": "de96b9483ab4a18eee29f1c70826d541880d8bd8e5268b4b674cbe0b76475c85",
+              "dino_source/util/utils.py": "93a2036fab96b315dbf6f1e790e3ea5be7958cee90c39cfcf6a44df7665c1991",
+              "dino_source/util/vis_utils.py": "e8744a0e2e39ddec6728efcedc409ac17c26a7b379b1f095fda4db8c4a3ea3c9",
+              "dino_source/util/visualizer.py": "42df866582e237b2c6ce6ae01067018312e820a7760c361a5a060ed7bec53516"
+            },
+            "version": 1
+          },
+          "operations": [],
+          "rebuild_reason": null,
+          "reused": true
+        },
+        "gvhmr": {
+          "directory": "i2696/ablation-v1/engines/gvhmr/l2-177-1055",
+          "engine": {
+            "environment": {
+              "compute_capability": [
+                12,
+                0
+              ],
+              "device_name": "NVIDIA GeForce RTX 5060 Ti",
+              "tensorrt_version": "10.14.1.48.post1"
+            },
+            "export_sha256": "5f42b379c7c2fd2400503553bcfd2bedfa60dffa544772ebb4861153298187ac",
+            "plan_sha256": "a9fd68e29a5be557bf4ca1e31d87605dcba8c808072acafe436feb15bb74c556",
+            "profiles": {
+              "f_cam_angvel": {
+                "maximum": [
+                  4,
+                  1055,
+                  6
+                ],
+                "minimum": [
+                  1,
+                  2,
+                  6
+                ],
+                "optimum": [
+                  4,
+                  177,
+                  6
+                ]
+              },
+              "f_cliffcam": {
+                "maximum": [
+                  4,
+                  1055,
+                  3
+                ],
+                "minimum": [
+                  1,
+                  2,
+                  3
+                ],
+                "optimum": [
+                  4,
+                  177,
+                  3
+                ]
+              },
+              "f_imgseq": {
+                "maximum": [
+                  4,
+                  1055,
+                  1024
+                ],
+                "minimum": [
+                  1,
+                  2,
+                  1024
+                ],
+                "optimum": [
+                  4,
+                  177,
+                  1024
+                ]
+              },
+              "length": {
+                "maximum": [
+                  4
+                ],
+                "minimum": [
+                  1
+                ],
+                "optimum": [
+                  4
+                ]
+              },
+              "obs": {
+                "maximum": [
+                  4,
+                  1055,
+                  17,
+                  3
+                ],
+                "minimum": [
+                  1,
+                  2,
+                  17,
+                  3
+                ],
+                "optimum": [
+                  4,
+                  177,
+                  17,
+                  3
+                ]
+              }
+            },
+            "version": 1
+          },
+          "engine_manifest_sha256": "cb920c10cf7456e934529f523a685251fed3447a61cfcd334344f87b1fc523a9",
+          "export": {
+            "inputs": {
+              "f_cam_angvel": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  -1,
+                  6
+                ]
+              },
+              "f_cliffcam": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  -1,
+                  3
+                ]
+              },
+              "f_imgseq": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  -1,
+                  1024
+                ]
+              },
+              "length": {
+                "dtype": "int64",
+                "shape": [
+                  -1
+                ]
+              },
+              "obs": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  -1,
+                  17,
+                  3
+                ]
+              }
+            },
+            "model": "gvhmr_siga24_denoiser",
+            "onnx_files": {
+              "model.onnx": "2f2bac501e49c3fbe4ea7e59a3507ad69a7fb37690d25b67f56b480c4480fd3d"
+            },
+            "outputs": {
+              "length_out": {
+                "dtype": "int64",
+                "shape": [
+                  -1
+                ]
+              },
+              "mask_out": {
+                "dtype": "bool",
+                "shape": [
+                  -1,
+                  -1
+                ]
+              },
+              "pred_cam": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  -1,
+                  3
+                ]
+              },
+              "pred_x": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  -1,
+                  -1
+                ]
+              },
+              "static_conf_logits": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  -1,
+                  6
+                ]
+              }
+            },
+            "precision": "fp16",
+            "settings": {
+              "attention_mask": "additive-finite",
+              "attention_window": 120,
+              "max_rotary_frames": 4096
+            },
+            "sources": {
+              "checkpoint": "4fae7da2de388d5da3514cb27a2d003f364dacb280e9cf88972b710e589c6b91"
+            },
+            "version": 1
+          },
+          "operations": [],
+          "rebuild_reason": null,
+          "reused": true
+        },
+        "hmr2": {
+          "directory": "i2696/ablation-v1/engines/hmr2/256x256",
+          "engine": {
+            "environment": {
+              "compute_capability": [
+                12,
+                0
+              ],
+              "device_name": "NVIDIA GeForce RTX 5060 Ti",
+              "tensorrt_version": "10.14.1.48.post1"
+            },
+            "export_sha256": "1a1f3cfa851b9afd87ad1266ed6221547627995b96f3c894dd583598fc2297a3",
+            "plan_sha256": "c5da603c765fc45dd2d34a5215270df734e4731a4b4af9f21a06431a537d31ed",
+            "profiles": {
+              "pixels": {
+                "maximum": [
+                  16,
+                  3,
+                  256,
+                  256
+                ],
+                "minimum": [
+                  1,
+                  3,
+                  256,
+                  256
+                ],
+                "optimum": [
+                  16,
+                  3,
+                  256,
+                  256
+                ]
+              }
+            },
+            "version": 1
+          },
+          "engine_manifest_sha256": "76ab92e5ba5d9ed5f98c23531ac42ac77f20aeacc68df3d1f0694738a7a5cb3f",
+          "export": {
+            "inputs": {
+              "pixels": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  3,
+                  256,
+                  256
+                ]
+              }
+            },
+            "model": "hmr2_vit_huge",
+            "onnx_files": {
+              "model.onnx": "21402a762c5b1f1715452ed36c50dbe8e627eeba5ecff34f261de8ce7ed0a6b9"
+            },
+            "outputs": {
+              "features": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  1024
+                ]
+              }
+            },
+            "precision": "fp16",
+            "settings": {},
+            "sources": {
+              "checkpoint": "2dcf79638109781d1ae5f5c44fee5f55bc83291c210653feead9b7f04fa6f20e",
+              "mean_params": "6fd6dd687800da946d0a0492383f973b92ec20f166a0b829775882868c35fcdd"
+            },
+            "version": 1
+          },
+          "operations": [],
+          "rebuild_reason": null,
+          "reused": true
+        },
+        "vitpose": {
+          "directory": "i2696/ablation-v1/engines/vitpose/256x192",
+          "engine": {
+            "environment": {
+              "compute_capability": [
+                12,
+                0
+              ],
+              "device_name": "NVIDIA GeForce RTX 5060 Ti",
+              "tensorrt_version": "10.14.1.48.post1"
+            },
+            "export_sha256": "16af3f0378de48ad390b16c174e7201525d2d27fd49b8527d2b23a52ceab3e4f",
+            "plan_sha256": "e67fd615d17ed7c8cb56f62b7f5491601dca260f3913f6cb5303a003684e8366",
+            "profiles": {
+              "pixels": {
+                "maximum": [
+                  16,
+                  3,
+                  256,
+                  192
+                ],
+                "minimum": [
+                  2,
+                  3,
+                  256,
+                  192
+                ],
+                "optimum": [
+                  16,
+                  3,
+                  256,
+                  192
+                ]
+              }
+            },
+            "version": 1
+          },
+          "engine_manifest_sha256": "ae14fd37aadafbefff96300dae951db5c14dc32f383015be7d7e1cec8db79ca3",
+          "export": {
+            "inputs": {
+              "pixels": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  3,
+                  256,
+                  192
+                ]
+              }
+            },
+            "model": "vitpose_huge_coco17",
+            "onnx_files": {
+              "model.onnx": "258c162d07161cf66f0cceaf50ef5d53128314461458da32346fc67453f15267"
+            },
+            "outputs": {
+              "heatmaps": {
+                "dtype": "float16",
+                "shape": [
+                  -1,
+                  17,
+                  -1,
+                  -1
+                ]
+              }
+            },
+            "precision": "fp16",
+            "settings": {
+              "flip_test": true,
+              "head": {
+                "final_conv_kernel": 1,
+                "in_channels": 1280,
+                "num_conv_kernels": [],
+                "num_conv_layers": 0,
+                "num_deconv_filters": [
+                  256,
+                  256
+                ],
+                "num_deconv_kernels": [
+                  4,
+                  4
+                ],
+                "num_deconv_layers": 2,
+                "out_channels": 17
+              }
+            },
+            "sources": {
+              "checkpoint": "50e33f4077ef2a6bcfd7110c58742b24c5859b7798fb0eedd6d2215e0a8980bc"
+            },
+            "version": 1
+          },
+          "operations": [],
+          "rebuild_reason": null,
+          "reused": true
+        }
+      },
+      "qualification_commit": "d640589ef2913455aa0c294531a6cb8f129d7bcd",
+      "torch": "2.13.0+cu130"
+    },
+    "exit_code": 0,
+    "wall_seconds": 188.74897741898894
+  },
+  "measurement_head": "2dbd8c355faa2d530b8b0e17164f691e60a57d07",
+  "queue_job": "0-8204212722975544204_2026-11-27T13-47-57-024455795Z_973716_i2696-ablation-v1.job",
+  "source_sha256": "7738434fcfae85b904392689efa6c915cee99a3c77cbc47b69e5a0587f2666e5"
+}

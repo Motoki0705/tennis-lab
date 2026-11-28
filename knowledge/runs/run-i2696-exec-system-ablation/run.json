@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8204212722975544204_2026-11-27T13-47-57-024455795Z_973716_i2696-ablation-v1",
+  "name": "i2696-ablation-v1",
+  "command": "env CUDA_VISIBLE_DEVICES=0 PYTHONPATH=/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2627-issue-2696-primary OMP_NUM_THREADS=2 MKL_NUM_THREADS=2 OPENBLAS_NUM_THREADS=2 .venv/bin/python -B -u knowledge/runs/run-i2696-exec-system-ablation/run.py ablation-v1 --expect-head 2dbd8c355faa2d530b8b0e17164f691e60a57d07 --dataset data/tennis_multiview/processed/meiji_4cam/dataset --prior /mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2278-issue-2363-primary --dino-extension /home/kamimura/projects/tennis-lab/.worktree-outputs/video-batch-cli/tennis_scene/evaluate/video-batch-runtime-20261117/dino-extension-a2/lib/MultiScaleDeformableAttention.so ",
+  "provider": "codex",
+  "session": "01a21d37-57e6-7ff2-9ab1-33d5bcf8b8e9",
+  "issue": "2696",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "2dbd8c355faa2d530b8b0e17164f691e60a57d07",
+  "branch": "codex/parent-2627-issue-2696-primary",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2627-issue-2696-primary",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2627-issue-2696-primary",
+  "captured_at": "2026-11-27T22:47:57+09:00"
+}
