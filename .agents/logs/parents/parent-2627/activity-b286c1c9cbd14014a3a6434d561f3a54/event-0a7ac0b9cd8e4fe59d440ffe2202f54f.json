@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "f54999ae334746dc8d7b92af6aa34037",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=parent.delegate; artifact=command response; content_sha256=b31e0280d36d10ff346e6a1cfcee40eaa1539ad605b3eee242e528a06444e22e; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": null,
+      "repeat": null,
+      "status": "failure",
+      "summary": "parent.delegate: post-start failure; ValueError; details in private evidence",
+      "verifies": []
+    },
+    "id": "0a7ac0b9cd8e4fe59d440ffe2202f54f",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "b286c1c9cbd14014a3a6434d561f3a54",
+      "delegation": null,
+      "issue": 2638,
+      "parent": 2627,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-27T21:01:55.754803+00:00"
+      },
+      "recorded_at": "2026-11-27T21:01:55.754840+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}

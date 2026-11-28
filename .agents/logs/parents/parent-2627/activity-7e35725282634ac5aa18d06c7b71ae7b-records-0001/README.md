@@ -1,4 +1,4 @@
-# parent.review-request・parent.record-result / 親 &#35;2627 の直接活動 / 全記録（1 / 2）
+# parent.review-request・parent.record-result / 親 &#35;2627 の直接活動 / 全記録（1 / 3）
 
 結果 → 親の判断と理由 → 実際の行動 → 次の結果を、参照で辿る表示です。
 

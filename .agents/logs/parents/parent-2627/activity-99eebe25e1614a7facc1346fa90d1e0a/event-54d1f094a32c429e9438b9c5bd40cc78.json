@@ -1,0 +1,79 @@
+{
+  "record": {
+    "data": {
+      "action_id": "4722de62f3e54627940d1820ab9a44a3",
+      "auxiliary": {
+        "effective_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "elapsed_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "selected_model": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "usage": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        },
+        "wait_seconds": {
+          "reason": "not reported by this source",
+          "status": "unavailable"
+        }
+      },
+      "changes": {
+        "code": "unconfirmed",
+        "conditions": "unconfirmed",
+        "instruction": "unconfirmed",
+        "requirements": "unconfirmed",
+        "verified_scope": "unconfirmed"
+      },
+      "evidence": [
+        {
+          "kind": "unavailable",
+          "reason": "capture_source=merge.progression; artifact=progression state; content_sha256=081bc057dea3788d7d2e7a46ef339737d9799c1ff232914fee135ffe4bd6fd41; private evidence"
+        }
+      ],
+      "final_report": {
+        "reason": "not a final-report observation",
+        "status": "unavailable"
+      },
+      "observer": "machine",
+      "previous_result_id": "c2a6bb126c1648e2ad90ba9079d7faef",
+      "repeat": null,
+      "status": "success",
+      "summary": "Automatic progression: completed; None",
+      "verifies": []
+    },
+    "id": "54d1f094a32c429e9438b9c5bd40cc78",
+    "kind": "result",
+    "schema_version": 1,
+    "scope": {
+      "activity_key": "99eebe25e1614a7facc1346fa90d1e0a",
+      "delegation": null,
+      "issue": null,
+      "parent": 2627,
+      "repo": "Motoki0705/tennis-lab",
+      "review_key": null
+    },
+    "time": {
+      "occurred_at": {
+        "reason": "source occurrence time unavailable",
+        "status": "unavailable"
+      },
+      "received_at": {
+        "status": "observed",
+        "value": "2026-11-27T13:25:57.945591+00:00"
+      },
+      "recorded_at": "2026-11-27T13:25:57.945605+00:00"
+    }
+  },
+  "sanitization": {
+    "local_paths": {},
+    "replacements": 0,
+    "version": 2
+  }
+}
