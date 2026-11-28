@@ -650,7 +650,7 @@ camera scopeはnode名（例`ball_detection/cam0`）と実行identityに含む�
 出力は一時directoryで完了してから公開し、clip単位のlockを取って`scene.json`を更新する。
 中断途中の出力を下流へ渡さず、既存の完成artifactを上書きしない。
 `scene.json`の`artifacts`は採用版、`exports.scene`は完成した統合出力とその生成元を指す。
-v2では`scene_assembly`、v3では`scene_assembly`に依存する`event_detection`を生成元とする。
+v2では`scene_assembly`、v3・v4では`scene_assembly`に依存する`event_detection`を生成元とする。
 採用componentが差し替わった時点で旧exportへの公開参照を外す。既存のimmutableなexportファイルは保持し、
 `scene.json`から統合sceneを読む際にも上流artifactの依存鎖が現採用版と一致するか検証する。
 `scene.npz`は派生した統合結果で、component間の受け渡しには使わない。

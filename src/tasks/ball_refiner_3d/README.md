@@ -113,7 +113,7 @@ dataset reviewはこれらの配列を表示する。
 
 ## 実映像でのモーション付きイベント追加学習
 
-Meiji `multiview-v3` の公開SceneResult v3を使う。事前学習済みの3クラス回帰checkpointから球embedding・Temporal Transformer・座標head・イベントheadを読み込み、evalモードで固定する。1フレームにつき1トークンを保ち、球embeddingへ選手の残差を加える。
+Meiji `multiview-v3`（SceneResult v3）および `multiview-v4`（SceneResult v4）の公開アーカイブに対応する。v4 では検出対象イベントのみが収録され、`unknown` 大分類フレームは前後±2フレームを3クラスとも損失・FP集計から除外する。事前学習済みの3クラス回帰checkpointから球embedding・Temporal Transformer・座標head・イベントheadを読み込み、evalモードで固定する。1フレームにつき1トークンを保ち、球embeddingへ選手の残差を加える。
 
 | `--mode` | 入力融合 |
 |---|---|

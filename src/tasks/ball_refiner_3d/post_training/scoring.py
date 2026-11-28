@@ -14,7 +14,11 @@ from src.tasks.ball_refiner_3d.inference.segmentation import (
     DEFAULT_PICKING,
     pick_class_event_frames,
 )
-from src.tasks.ball_refiner_3d.post_training.labels import MATCH_TOLERANCE, Annotations
+from src.tasks.ball_refiner_3d.post_training.labels import (
+    MATCH_TOLERANCE,
+    VOLLEY_SUBTYPES,
+    Annotations,
+)
 from src.tasks.ball_refiner_3d.post_training.motion import MotionFeatures
 from src.utils.physics.ball.events import match_event_pairs
 
@@ -120,7 +124,7 @@ def _conditions(
     frame: int,
     subtype: str | None,
 ) -> tuple[str, ...]:
-    tags = ["volley"] if subtype == "volley" else []
+    tags = ["volley"] if subtype in VOLLEY_SUBTYPES else []
     if motion is not None:
         present = np.asarray([identity is not None for identity in motion.track_ids])
         valid = motion.smpl_valid[frame, present]

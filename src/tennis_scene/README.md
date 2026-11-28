@@ -172,7 +172,7 @@ sideはball観測だけで決め、最低evidence、referenceとの接続性、�
 
 [schema.py](schema.py)と[archive.py](archive.py)がスキーマ・I/Oを所有します。
 
-`metadata.scene_schema_version=2` と `3` のsceneは、再構成の有効性を次のmaskで明示します。
+`metadata.scene_schema_version=2`、`3`、`4` のsceneは、再構成の有効性を次のmaskで明示します。
 versionのない旧archiveはv1で、maskを持ちません（v1にmaskがあれば拒否します）。
 maskや理由コードが欠けた・矛盾したarchiveは保存・読込とも拒否します。
 
@@ -214,16 +214,36 @@ v2の配列に、元フレーム軸の疎なイベント表を加えます。E�
 判定不能フレームにも既知の注釈イベントがあり得ます。既知イベントとcoverageの両方を保存します。
 方式の設定と実行入口は[パイプライン](pipeline/README.md#ボールイベントの設定)を参照してください。
 
+## SceneResult v4
+
+v3の疎なイベント配列を詳細イベント検出向けに拡張し、ポイント中の検出対象イベント（終了原因接触およびサービスレット直後の初回バウンドを含む）のみを保持します。ポイント外の球扱いは配列から除外し、`event_detection` コンポーネントの根拠 (`excluded_events`) へ理由付きで保全します。
+
+| 配列 | shape / dtype | 内容 |
+|---|---|---|
+| `ball_event_frame` | E / int32 | 0始まりの元フレーム番号 |
+| `ball_event_kind` | E / uint8 | 0 `shot`、1 `bounce`、2 `net`、3 `unknown`（大分類自体が判別不能な場合のみ） |
+| `ball_event_coverage` | T / bool | イベントの有無を判定できたフレーム |
+| `ball_event_status` | E / uint8 | `certain`、`probable`、`uncertain` の順 |
+| `ball_event_frame_uncertainty` | E / uint8 | 中心フレームからの±幅 |
+| `ball_event_subtype` | E / uint8 | 13クラス（`serve_overhead`, `serve_underhand`, `groundstroke_forehand`, `groundstroke_backhand`, `volley_forehand`, `volley_backhand`, `volley_center`, `smash`, `service_let`, `net_in`, `net_fault`, `bounce`, `unknown`） |
+| `ball_event_side` | E / int8 | 打者のコート側（`shot` は -1/+1/0、それ以外は 0） |
+
+v4 では `ball_event_in_point` および `ball_event_score` を持ちません（`source="annotation"`、`metadata.ball_events.version=2`）。`rule`・`refiner` 経路および既存 `multiview-v3` は引き続き SceneResult v3（`metadata.ball_events.version=1`）を維持し、`load_scene_result` は v1〜v4 の全版を読み込めます。利用側は `metadata.ball_events.classes`・`metadata.ball_events.subtypes` に記録された版ごとの列挙順で読み出せます。
+
 ### 明治4カメラのイベント注釈版
 
-固定したmultiview-v2と69クリップの注釈からCPUで派生版を作ります。
+固定した `multiview-v2`（v3生成）または `multiview-v3`（v4生成）と69クリップの注釈からCPUで派生版を作ります。
 動画、既存のコンポーネント、既存のexportはhard linkで共有し、クリップごとのscene indexで新しいexportを採用します。
 
 ```bash
-.venv/bin/python -m src.tennis_scene.scripts.build_meiji_event_benchmark
+# multiview-v3（SceneResult v3）の生成・再検証
+.venv/bin/python -m src.tennis_scene.scripts.build_meiji_event_benchmark --version v3
+
+# multiview-v4（SceneResult v4・13クラス詳細ラベル）の生成・再検証
+.venv/bin/python -m src.tennis_scene.scripts.build_meiji_event_benchmark --version v4
 ```
 
-`data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v3` に、注釈・基準入力・
+`data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v3`（および `multiview-v4`）に、注釈・基準入力・
 ハッシュ・集計・train/val/testのclip IDを記したmanifestと `SHA256SUMS` を保存します。
 同じcommitと入力で既存の派生版を再検証できます。`--output` で新しい同一ファイルシステム上の出力先を指定できます。
 

@@ -127,7 +127,7 @@ def load_scene_result(path: str | Path) -> SceneResult:
 
     _validate_observation_order(metadata)
     with np.load(archive_path, allow_pickle=False) as archive:
-        if metadata.get("scene_schema_version", 1) in (2, 3):
+        if metadata.get("scene_schema_version", 1) in (2, 3, 4):
             for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS):
                 expected = np.bool_ if name in SCENE_MASK_FIELDS else np.uint8
                 if name not in archive.files or archive[name].dtype != expected:

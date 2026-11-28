@@ -353,11 +353,12 @@ def _read_scene(store: StoreReader, source: ClipSource) -> AdoptedScene | None:
         version = 2
     elif (
         events is not None
-        and (events["schema"], events["version"]) == ("scene_result", 3)
+        and events["schema"] == "scene_result"
+        and events["version"] in (3, 4)
         and export["inputs"] == {EVENT_DETECTION: events}
         and store.descriptor(EVENT_DETECTION)["dependencies"].get("scene") == assembly
     ):
-        version = 3
+        version = events["version"]
     else:
         raise ValueError(
             f"The adopted scene and its export disagree: {store.index_path}"

@@ -104,7 +104,7 @@ class SceneResult:
     ball_rejection_code: NDArray[np.uint8] | None = None
 
     # Optional in the dataclass so historical v1/v2 archives and artifacts can
-    # omit these fields. The v3 validator enforces the columns for each source.
+    # omit these fields. The v3/v4 validator enforces the columns for each source.
     ball_event_frame: NDArray[np.int32] | None = field(default=None, metadata={"artifact_optional": True})
     ball_event_kind: NDArray[np.uint8] | None = field(default=None, metadata={"artifact_optional": True})
     ball_event_coverage: NDArray[np.bool_] | None = field(default=None, metadata={"artifact_optional": True})
@@ -120,7 +120,7 @@ class SceneResult:
         if not isinstance(self.metadata, dict):
             raise TypeError("Scene metadata must be a dictionary")
         value = self.metadata.get("scene_schema_version", 1)
-        if type(value) is not int or value not in (1, 2, 3):
+        if type(value) is not int or value not in (1, 2, 3, 4):
             raise ValueError("Unsupported SceneResult schema version")
         return value
 

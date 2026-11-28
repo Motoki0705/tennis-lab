@@ -1,4 +1,4 @@
-"""Build the fixed Meiji multiview-v3 release on CPU."""
+"""Build the fixed Meiji multiview-v3 or multiview-v4 release on CPU."""
 
 from __future__ import annotations
 
@@ -6,7 +6,10 @@ import argparse
 import json
 from pathlib import Path
 
-from src.tennis_scene.ball_events.meiji_benchmark import build_meiji_benchmark
+from src.tennis_scene.ball_events.meiji_benchmark import (
+    build_meiji_benchmark,
+    build_meiji_v4_benchmark,
+)
 from src.utils.configuration import (
     BoundaryPathField,
     NonHydraPathBoundary,
@@ -40,13 +43,24 @@ PATH_BOUNDARY = NonHydraPathBoundary(
 def main(argv: list[str] | None = None) -> None:
     meiji = PROJECT_ROOT / "data/tennis_multiview/processed/meiji_4cam"
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--base", type=Path, default=meiji / "benchmarks/multiview-v2")
-    parser.add_argument("--annotations", type=Path, default=meiji / "dataset/videos/video_000/clip_000-068_ball_events")
-    parser.add_argument("--output", type=Path, default=meiji / "benchmarks/multiview-v3")
+    parser.add_argument("--version", choices=("v3", "v4"), default="v3")
+    parser.add_argument("--base", type=Path, default=None)
+    parser.add_argument("--annotations", type=Path, default=None)
+    parser.add_argument("--output", type=Path, default=None)
     args = parser.parse_args(argv)
-    base = args.base.expanduser().resolve()
-    annotations = args.annotations.expanduser().resolve()
-    output = args.output.expanduser().resolve()
+    if args.version == "v4":
+        default_base = meiji / "benchmarks/multiview-v3"
+        default_annotations = meiji / "dataset/videos/video_000/clip_000-068_ball_events_v2"
+        default_output = meiji / "benchmarks/multiview-v4"
+        builder = build_meiji_v4_benchmark
+    else:
+        default_base = meiji / "benchmarks/multiview-v2"
+        default_annotations = meiji / "dataset/videos/video_000/clip_000-068_ball_events"
+        default_output = meiji / "benchmarks/multiview-v3"
+        builder = build_meiji_benchmark
+    base = (args.base or default_base).expanduser().resolve()
+    annotations = (args.annotations or default_annotations).expanduser().resolve()
+    output = (args.output or default_output).expanduser().resolve()
     roots = RuntimePathRoots(
         project_root=PROJECT_ROOT,
         data_root=base,
@@ -62,11 +76,12 @@ def main(argv: list[str] | None = None) -> None:
     )
     output = paths.declared("output").path
     existed = output.exists()
-    manifest = build_meiji_benchmark(
+    manifest = builder(
         paths.declared("base").path, paths.declared("annotations").path, output,
     )
     print(json.dumps({
         "status": "verified" if existed else "created",
+        "version": args.version,
         "output": str(output),
         "provenance": manifest["provenance"],
         "verification": manifest["verification"],

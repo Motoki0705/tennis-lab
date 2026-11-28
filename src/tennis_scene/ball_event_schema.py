@@ -23,56 +23,127 @@ EVENT_SUBTYPES_BY_KIND = (
     (4, 5, 6, 7),  # net
 )
 
+EVENT_CLASSES_V4 = ("shot", "bounce", "net", "unknown")
+EVENT_SUBTYPES_V4 = (
+    "serve_overhead",
+    "serve_underhand",
+    "groundstroke_forehand",
+    "groundstroke_backhand",
+    "volley_forehand",
+    "volley_backhand",
+    "volley_center",
+    "smash",
+    "service_let",
+    "net_in",
+    "net_fault",
+    "bounce",
+    "unknown",
+)
+EVENT_SUBTYPES_BY_KIND_V4 = (
+    (0, 1, 2, 3, 4, 5, 6, 7),  # shot
+    (11,),  # bounce
+    (8, 9, 10),  # net
+    (12,),  # unknown
+)
+
 _COMMON = {
     "ball_event_frame": np.int32,
     "ball_event_kind": np.uint8,
     "ball_event_coverage": np.bool_,
 }
-_ANNOTATION = {
+_ANNOTATION_V3 = {
     "ball_event_status": np.uint8,
     "ball_event_frame_uncertainty": np.uint8,
     "ball_event_in_point": np.bool_,
     "ball_event_subtype": np.uint8,
     "ball_event_side": np.int8,
 }
+_ANNOTATION_V4 = {
+    "ball_event_status": np.uint8,
+    "ball_event_frame_uncertainty": np.uint8,
+    "ball_event_subtype": np.uint8,
+    "ball_event_side": np.int8,
+}
 _PREDICTION = {"ball_event_score": np.float32}
-BALL_EVENT_FIELDS = tuple((*_COMMON, *_ANNOTATION, *_PREDICTION))
+BALL_EVENT_FIELDS = tuple((*_COMMON, *_ANNOTATION_V3, *_PREDICTION))
 
 
-def ball_event_metadata(source: EventSource, provenance: dict[str, Any]) -> dict[str, Any]:
-    return {
-        "version": 1,
-        "source": source,
-        "classes": list(EVENT_CLASSES),
-        "statuses": list(EVENT_STATUS),
-        "subtypes": list(EVENT_SUBTYPES),
-        "provenance": provenance,
-    }
+def event_classes_for_version(scene_version: int) -> tuple[str, ...]:
+    if scene_version == 3:
+        return tuple(str(name) for name in EVENT_CLASSES)
+    if scene_version == 4:
+        return EVENT_CLASSES_V4
+    raise ValueError(f"Unsupported ball-event scene schema version: {scene_version}")
+
+
+def event_subtypes_for_version(scene_version: int) -> tuple[str | None, ...]:
+    if scene_version == 3:
+        return EVENT_SUBTYPES
+    if scene_version == 4:
+        return EVENT_SUBTYPES_V4
+    raise ValueError(f"Unsupported ball-event scene schema version: {scene_version}")
+
+
+def ball_event_metadata(
+    source: EventSource,
+    provenance: dict[str, Any],
+    *,
+    scene_version: int = 3,
+) -> dict[str, Any]:
+    if scene_version == 3:
+        return {
+            "version": 1,
+            "source": source,
+            "classes": list(EVENT_CLASSES),
+            "statuses": list(EVENT_STATUS),
+            "subtypes": list(EVENT_SUBTYPES),
+            "provenance": provenance,
+        }
+    if scene_version == 4:
+        if source != "annotation":
+            raise ValueError("SceneResult v4 ball events require source='annotation'")
+        return {
+            "version": 2,
+            "source": source,
+            "classes": list(EVENT_CLASSES_V4),
+            "statuses": list(EVENT_STATUS),
+            "subtypes": list(EVENT_SUBTYPES_V4),
+            "provenance": provenance,
+        }
+    raise ValueError(f"Unsupported ball-event scene schema version: {scene_version}")
 
 
 def validate_scene_ball_events(scene: SceneResult, *, version: int) -> None:
     present = {name for name in BALL_EVENT_FIELDS if getattr(scene, name) is not None}
     if version < 3:
         if present or "ball_events" in scene.metadata:
-            raise ValueError("Ball-event columns and metadata require SceneResult v3")
+            raise ValueError("Ball-event columns and metadata require SceneResult v3 or v4")
         return
+    if version not in (3, 4):
+        raise ValueError(f"Unsupported SceneResult schema version for ball events: {version}")
 
     metadata = scene.metadata.get("ball_events")
     if not isinstance(metadata, dict):
-        raise ValueError("v3 requires metadata.ball_events")
+        raise ValueError(f"v{version} requires metadata.ball_events")
     source = metadata.get("source")
     if source not in EVENT_SOURCES:
         raise ValueError("Unknown ball-event source")
+    if version == 4 and source != "annotation":
+        raise ValueError("SceneResult v4 ball events require source='annotation'")
     provenance = metadata.get("provenance")
     if (
         not isinstance(provenance, dict)
         or type(metadata.get("version")) is not int
-        or metadata != ball_event_metadata(source, provenance)
+        or metadata != ball_event_metadata(source, provenance, scene_version=version)
     ):
         raise ValueError("Invalid ball-event version, provenance or enum order")
     _validate_provenance(source, provenance)
 
-    required = {**_COMMON, **(_ANNOTATION if source == "annotation" else _PREDICTION)}
+    if source == "annotation":
+        annotation_cols = _ANNOTATION_V4 if version == 4 else _ANNOTATION_V3
+        required = {**_COMMON, **annotation_cols}
+    else:
+        required = {**_COMMON, **_PREDICTION}
     if present != set(required):
         raise ValueError(
             f"Ball-event columns disagree with source {source}: "
@@ -86,17 +157,19 @@ def validate_scene_ball_events(scene: SceneResult, *, version: int) -> None:
         arrays[name] = value
     frames = arrays["ball_event_frame"]
     kinds = arrays["ball_event_kind"]
+    classes = event_classes_for_version(version)
+    subtypes_by_kind = EVENT_SUBTYPES_BY_KIND_V4 if version == 4 else EVENT_SUBTYPES_BY_KIND
     for name, value in arrays.items():
         length = scene.num_frames if name == "ball_event_coverage" else len(frames)
         if len(value) != length:
             raise ValueError(f"{name} must have length {length}")
     if np.any((frames < 0) | (frames >= scene.num_frames)):
         raise ValueError("Ball-event frame is outside the scene timeline")
-    if np.any(kinds >= len(EVENT_CLASSES)):
+    if np.any(kinds >= len(classes)):
         raise ValueError("Unknown ball-event kind")
     if np.any(frames[1:] < frames[:-1]):
         raise ValueError("Ball events must be in frame order")
-    keys = frames.astype(np.int64) * len(EVENT_CLASSES) + kinds
+    keys = frames.astype(np.int64) * len(classes) + kinds
     if len(np.unique(keys)) != len(frames):
         raise ValueError("Duplicate ball-event kind and frame")
 
@@ -104,7 +177,7 @@ def validate_scene_ball_events(scene: SceneResult, *, version: int) -> None:
         if np.any(arrays["ball_event_status"] >= len(EVENT_STATUS)):
             raise ValueError("Unknown ball-event status")
         subtypes = arrays["ball_event_subtype"]
-        for kind, allowed in enumerate(EVENT_SUBTYPES_BY_KIND):
+        for kind, allowed in enumerate(subtypes_by_kind):
             if not np.isin(subtypes[kinds == kind], allowed).all():
                 raise ValueError("Unknown or incompatible ball-event subtype")
         sides = arrays["ball_event_side"]

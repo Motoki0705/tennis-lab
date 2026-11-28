@@ -70,25 +70,44 @@ def verify_archive_extension(base: Path, derived: Path) -> int:
     return len(original)
 
 
+def _base_v2_archive(store_root: Path, index: dict[str, Any], assembly: Any) -> Path:
+    """Resolve the immutable v2 scene archive from either a v2 or v3 adopted store."""
+    index_path = store_root / "scene.json"
+    current_archive = Path(indexed_scene_path(index_path))
+    export_inputs = index["exports"]["scene"]["inputs"]
+    if export_inputs == {"scene_assembly": json_value(assembly)}:
+        return current_archive
+    event_ref = index["artifacts"].get(EVENT_DETECTION)
+    if (
+        isinstance(event_ref, dict)
+        and (event_ref.get("schema"), event_ref.get("version")) == ("scene_result", 3)
+        and export_inputs == {EVENT_DETECTION: event_ref}
+    ):
+        base_archive = Path(store_root / "exports" / str(assembly.artifact_id) / "scene.npz")
+        if not base_archive.is_file():
+            raise ValueError(f"Missing immutable v2 scene export for replay: {base_archive}")
+        verify_archive_extension(base_archive, current_archive)
+        return base_archive
+    raise ValueError("Event replay requires an adopted SceneResult v2 assembly or v3 event export")
+
+
 def replay_scene_events(
     store_root: Path, config: EventDetectionConfig, *,
     code_commit: str, code_identity: str,
 ) -> tuple[EventDetectionResult, Path, dict[str, Any]]:
-    """Adopt v3 in a writable copy of a v2 store, reusing its assembly arrays.
+    """Adopt v3 or v4 in a writable copy of a v2/v3 store, reusing its assembly arrays.
 
-    Its current v2 export and component must agree. The saved lineage continues
-    to refer to the original upstream artifacts and their execution identities.
+    Its immutable v2 assembly export and component must agree. The saved lineage
+    continues to refer to the original upstream artifacts and their execution identities.
     """
     index_path = store_root / "scene.json"
-    base_archive = indexed_scene_path(index_path)
     index = json.loads(index_path.read_text(encoding="utf-8"))
     store = ClipStore(store_root, index["source"], memory_entries=0)
     source = cast(ClipSource, restore_type(index["source"], ClipSource))
     assembly = store.references()["scene_assembly"]
-    if (assembly.schema, assembly.version) != ("scene_result", 2) or index["exports"]["scene"]["inputs"] != {
-        "scene_assembly": json_value(assembly)
-    }:
+    if (assembly.schema, assembly.version) != ("scene_result", 2):
         raise ValueError("Event replay requires the adopted SceneResult v2 assembly export")
+    base_archive = _base_v2_archive(store_root, index, assembly)
     base = store.load(assembly, ArtifactCodec(SceneResult))
     validate_scene_export(base, base_archive)
     module = EventDetectionModule(config, source.clip_id, code_commit=code_commit)
@@ -100,6 +119,8 @@ def replay_scene_events(
         value = getattr(base, item.name)
         if isinstance(value, np.memmap) and value.filename is not None:
             paths[id(value)] = Path(value.filename)
+    from src.utils.checksum import dual_sha256
+
     identity = {
         "component": EVENT_DETECTION,
         "schema": module.io.output_schema,
@@ -108,7 +129,7 @@ def replay_scene_events(
         "settings": module.cache_identity(),
         "source_sha256": store.source_key,
         "dependencies": {"scene": json_value(assembly)},
-        "base_export_sha256": index["exports"]["scene"]["files"]["scene"]["sha256"],
+        "base_export_sha256": dual_sha256(base_archive),
     }
     reference = store.publish(
         EVENT_DETECTION, result, ArtifactCodec(EventDetectionResult, linked_arrays=paths),
@@ -126,11 +147,24 @@ def replay_scene_events(
     return result, derived, adopted
 
 
-def verify_replayed_scene(base: Path, derived: Path) -> SceneResult:
+def verify_replayed_scene(
+    base: Path,
+    derived: Path,
+    *,
+    expected_version: int | None = None,
+) -> SceneResult:
     """Recheck a published archive against its pinned predecessor."""
     path = indexed_scene_path(derived)
-    verify_archive_extension(indexed_scene_path(base), path)
+    base_index = json.loads(base.read_text(encoding="utf-8"))
+    assembly = base_index["artifacts"]["scene_assembly"]
+    if base_index["exports"]["scene"]["inputs"] == {"scene_assembly": assembly}:
+        base_archive = indexed_scene_path(base)
+    else:
+        base_archive = base.parent / "exports" / assembly["artifact_id"] / "scene.npz"
+        verify_archive_extension(base_archive, indexed_scene_path(base))
+    verify_archive_extension(base_archive, path)
     scene = load_scene_result(path)
-    if scene.schema_version != 3:
-        raise ValueError("Expected an adopted SceneResult v3 archive")
+    allowed = (3, 4) if expected_version is None else (expected_version,)
+    if scene.schema_version not in allowed:
+        raise ValueError(f"Expected an adopted SceneResult v{allowed} archive, got v{scene.schema_version}")
     return scene

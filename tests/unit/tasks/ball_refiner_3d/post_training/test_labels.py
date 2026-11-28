@@ -114,3 +114,96 @@ def test_known_events_are_scored_inside_unlabelable_frames() -> None:
     assert (shots["events"], shots["tp"], shots["fp"], shots["fn"]) == (2, 1, 1, 1)
     assert shots["excluded_predictions"] == 1 and shots["excluded_labels"] == 0
     assert metrics["in_point"]["by_class"]["shot"]["fn"] == 1
+
+
+def test_v4_scene_annotations_support_detailed_subtypes_and_mask_unknown_kind() -> None:
+    from src.tennis_scene.ball_event_schema import (
+        EVENT_CLASSES_V4,
+        EVENT_SUBTYPES_V4,
+        ball_event_metadata,
+    )
+    from src.tennis_scene.schema import SceneResult
+
+    frames = 18
+    valid: NDArray[np.bool_] = np.ones(frames, dtype=np.bool_)
+    joints_valid: NDArray[np.bool_] = np.zeros((1, frames, 17), dtype=np.bool_)
+    scene = SceneResult(
+        frames,
+        60.0,
+        640,
+        360,
+        np.zeros((2, frames, 14, 2), np.float32),
+        np.ones((2, frames, 14), np.float32),
+        np.zeros((1, frames, 3), np.float32),
+        np.zeros((1, frames), np.float32),
+        ball_uv=np.zeros((2, frames, 2), np.float32),
+        ball_vis=np.ones((2, frames), dtype=np.bool_),
+        ball_3d=np.zeros((frames, 3), np.float32),
+        ball_3d_valid=valid,
+        ball_rejection_code=np.zeros(frames, np.uint8),
+        human_kp_2d=np.zeros((1, 2, frames, 17, 2), np.float32),
+        human_kp_vis=np.ones((1, 2, frames, 17), np.float32),
+        player_kp_3d=np.zeros((1, frames, 17, 3), np.float32),
+        player_kp_3d_vis=joints_valid,
+        player_kp_3d_rejection_code=np.ones((1, frames, 17), np.uint8),
+        player_observed=np.ones((1, frames), dtype=np.bool_),
+        player_valid=np.ones((1, frames), dtype=np.bool_),
+        player_rejection_code=np.zeros((1, frames), np.uint8),
+        player_heading_valid=np.zeros((1, frames), dtype=np.bool_),
+        player_smpl_valid=np.zeros((1, frames), dtype=np.bool_),
+        metadata={
+            "scene_schema_version": 4,
+            "court_reference": {},
+            "ball_events": ball_event_metadata(
+                "annotation",
+                {
+                    "code_commit": "a" * 40,
+                    "annotation_sha256": "b" * 64,
+                    "labeler": "codex",
+                    "labeler_original": "Codex",
+                },
+                scene_version=4,
+            ),
+        },
+        ball_event_frame=np.array([2, 6, 10, 14], np.int32),
+        ball_event_kind=np.array(
+            [EVENT_CLASSES_V4.index(k) for k in ("shot", "shot", "bounce", "unknown")],
+            np.uint8,
+        ),
+        ball_event_coverage=np.ones(frames, dtype=np.bool_),
+        ball_event_status=np.array([0, 0, 0, 2], np.uint8),
+        ball_event_frame_uncertainty=np.array([1, 1, 1, 2], np.uint8),
+        ball_event_subtype=np.array(
+            [
+                EVENT_SUBTYPES_V4.index(s)
+                for s in ("serve_overhead", "volley_center", "bounce", "unknown")
+            ],
+            np.uint8,
+        ),
+        ball_event_side=np.array([-1, 1, 0, 0], np.int8),
+    )
+
+    labels = Annotations.from_scene(scene)
+    assert [e.subtype for e in labels.events] == [
+        "serve_overhead",
+        "volley_center",
+        "bounce",
+    ]
+    assert all(e.in_point for e in labels.events)
+    assert labels.unknown_frames == (14,)
+
+    # Unknown frame masks +-2 across all three channels
+    _, mask = labels.targets(2.0)
+    assert not mask[12:17, :].any()
+    assert mask[11, :].all() and mask[17, :].all()
+
+    # Volley condition matches v4 volley_center subtype; serve_overhead splits point spans
+    probability: NDArray[np.float32] = np.full((frames, 3), 0.01, dtype=np.float32)
+    probability[[2, 6], 0] = 0.9
+    probability[10, 1] = 0.9
+    probability[14, 0] = 0.9  # near unknown_frame -> near_uncertain, not FP
+    rows = score_clip(probability, labels, 60.0)
+    metrics = report(rows)
+    assert metrics["conditions"]["volley"]["by_class"]["shot"]["recall"] == 1.0
+    assert metrics["all"]["by_class"]["shot"]["fp"] == 0
+    assert metrics["all"]["by_class"]["shot"]["excluded_predictions"] == 1

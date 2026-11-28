@@ -97,8 +97,8 @@ class ScenePointers:
                 raise ValueError("Saved scene export has no annotation marker")
             return None
         version = marker.get("scene_schema_version")
-        if type(version) is not int or version not in (2, 3):
-            raise ValueError("Saved annotation must declare SceneResult v2 or v3")
+        if type(version) is not int or version not in (2, 3, 4):
+            raise ValueError("Saved annotation must declare SceneResult v2, v3 or v4")
         artifacts = index["artifacts"]
         assembly = artifacts.get("scene_assembly")
         if not isinstance(assembly, dict) or (
@@ -122,7 +122,7 @@ class ScenePointers:
         path: Path = resolve_indexed_scene(
             index, root, required_components={"scene_assembly": assembly}
         )
-        if version == 3:
+        if version in (3, 4):
             descriptor = read_component_descriptor(
                 root, reference, node=node, source_sha256=index["source_sha256"]
             )
