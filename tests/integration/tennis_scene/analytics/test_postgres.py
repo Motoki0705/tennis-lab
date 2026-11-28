@@ -14,11 +14,17 @@ from alembic.config import Config
 from psycopg import Error
 from sqlalchemy import Connection, Engine, Table, inspect, select
 from sqlalchemy.exc import IntegrityError
+from sqlalchemy.orm import Session
 
 from src.tennis_scene.analytics.__main__ import main
-from src.tennis_scene.analytics.db.models import Base
+from src.tennis_scene.analytics.db.models import Base, MetricSnapshot
+from src.tennis_scene.analytics.db.snapshots import insert_metric_snapshot
 from src.tennis_scene.analytics.export import DOMAIN_TABLES
-from src.tennis_scene.analytics.metrics import MetricRecord
+from src.tennis_scene.analytics.metrics import (
+    MatchPointId,
+    MetricRecord,
+    unique_point_bins,
+)
 from src.tennis_scene.ball_event_schema import (
     EVENT_CLASSES_V4,
     EVENT_SUBTYPES_BY_KIND_V4,
@@ -102,22 +108,50 @@ def _match(connection: Connection, team: int, run: int, profile: int, key: str) 
     )
 
 
-def _clip(connection: Connection, team: int, match: int) -> int:
+def _clip(
+    connection: Connection,
+    team: int,
+    match: int,
+    clip_key: str = "clip_012",
+    *,
+    num_frames: int = 90,
+) -> int:
     return _insert(
         connection,
         "clips",
         owner_team_id=team,
         match_context_id=match,
-        clip_id="clip_012",
-        clip_name="Point 12",
+        clip_id=clip_key,
+        clip_name=clip_key,
         split="val",
         global_start_sec=91.5,
-        global_end_sec=94.5,
+        global_end_sec=91.5 + num_frames / 30,
         fps=30,
-        num_frames=90,
+        num_frames=num_frames,
         scene_schema_version=4,
         scene_npz_sha256="a" * 64,
         annotation_sha256="b" * 64,
+    )
+
+
+def _point(
+    connection: Connection,
+    team: int,
+    match: int,
+    clip: int,
+    key: str,
+    match_point_key: str,
+    **details: Any,
+) -> int:
+    return _insert(
+        connection,
+        "points",
+        owner_team_id=team,
+        match_context_id=match,
+        clip_id=clip,
+        point_key=key,
+        match_point_key=match_point_key,
+        **details,
     )
 
 
@@ -137,12 +171,13 @@ def _graph(connection: Connection, team: int) -> dict[str, int]:
     )
     match = _match(connection, team, run, profile, "match-1")
     clip = _clip(connection, team, match)
-    point = _insert(
+    point = _point(
         connection,
-        "points",
-        owner_team_id=team,
-        clip_id=clip,
-        point_key="point-11",
+        team,
+        match,
+        clip,
+        "clip-point-1",
+        "match-point-11",
         start_frame=1,
         end_frame=43,
         completeness="complete",
@@ -169,6 +204,7 @@ def _graph(connection: Connection, team: int) -> dict[str, int]:
         status="certain",
         court_side=-1,
         event_source="annotation",
+        adopted_in_v4=True,
         in_point=True,
         provenance_json={"frame": 9, "label": "確認済み"},
     )
@@ -205,6 +241,7 @@ def _graph(connection: Connection, team: int) -> dict[str, int]:
         connection,
         "shot_geometry_features",
         owner_team_id=team,
+        clip_id=clip,
         ball_event_id=shot,
         flight_arc_id=arc,
         profile_id=profile,
@@ -214,13 +251,13 @@ def _graph(connection: Connection, team: int) -> dict[str, int]:
         contact_frame_uncertainty=1,
         contact_height_m=1.4,
         outgoing_speed_mps=14.5,
-        landing_result="uncertain",
         landing_missing_reason="tracking_gap",
     )
     crossing = _insert(
         connection,
         "net_plane_crossings",
         owner_team_id=team,
+        clip_id=clip,
         flight_arc_id=arc,
         ball_event_id=shot,
         crossing_index=0,
@@ -259,6 +296,7 @@ def _graph(connection: Connection, team: int) -> dict[str, int]:
         connection,
         "serve_attempts",
         owner_team_id=team,
+        clip_id=clip,
         point_id=point,
         ball_event_id=shot,
         attempt_index=1,
@@ -268,12 +306,11 @@ def _graph(connection: Connection, team: int) -> dict[str, int]:
         fault_cause="net",
         source_kind="manual_confirmed",
     )
-    metric = _insert(
+    metric = insert_metric_snapshot(
         connection,
-        "metric_snapshots",
         owner_team_id=team,
         match_context_id=match,
-        **MetricRecord(
+        record=MetricRecord(
             metric_id="serve.double_fault_count",
             definition_version="1",
             subject_type="team",
@@ -292,7 +329,7 @@ def _graph(connection: Connection, team: int) -> dict[str, int]:
                 "numerator_point_ids": [point],
                 "denominator_point_ids": [point],
             },
-        ).to_record(),
+        ),
     )
     return {
         "court_net_profiles": profile,
@@ -394,16 +431,51 @@ def test_postgres_rejects_bad_ownership_and_invalid_domain_states(
         )
         graph = _graph(connection, team)
         foreign_profile = _profile(connection, other_team, "foreign")
-        other_clip = _clip(
+        other_match = _match(
             connection,
             team,
-            _match(
-                connection,
-                team,
-                graph["ingest_runs"],
-                graph["court_net_profiles"],
-                "sibling",
-            ),
+            graph["ingest_runs"],
+            graph["court_net_profiles"],
+            "sibling",
+        )
+        other_clip = _clip(connection, team, other_match)
+        other_point = _point(
+            connection, team, other_match, other_clip, "p2", "match-point-11"
+        )
+        other_shot = _insert(
+            connection,
+            "ball_events",
+            owner_team_id=team,
+            clip_id=other_clip,
+            point_id=other_point,
+            source_event_id="serve-1",
+            frame=10,
+            time_s=10 / 30,
+            kind="shot",
+            event_source="rule",
+            in_point=True,
+        )
+        other_arc = _insert(
+            connection,
+            "flight_arcs",
+            owner_team_id=team,
+            clip_id=other_clip,
+            point_id=other_point,
+            shot_event_id=other_shot,
+            arc_index=0,
+            start_frame=10,
+            end_frame=20,
+            valid_frame_count=11,
+            total_frame_count=11,
+            source_kind="observed",
+        )
+        same_clip_other_point = _point(
+            connection,
+            team,
+            graph["match_contexts"],
+            graph["clips"],
+            "p2",
+            "match-point-12",
         )
         for name in DOMAIN_TABLES:
             _rejected(connection, name, graph[name], "23514", visibility="shared")
@@ -428,6 +500,45 @@ def test_postgres_rejects_bad_ownership_and_invalid_domain_states(
         )
         _rejected(
             connection, "ball_events", graph["ball_events"], "23514", subtype="bounce"
+        )
+        for table_name in ("shot_geometry_features", "net_plane_crossings"):
+            _rejected(
+                connection,
+                table_name,
+                graph[table_name],
+                "23503",
+                flight_arc_id=other_arc,
+            )
+            _rejected(
+                connection,
+                table_name,
+                graph[table_name],
+                "23503",
+                ball_event_id=other_shot,
+            )
+        _rejected(
+            connection,
+            "serve_attempts",
+            graph["serve_attempts"],
+            "23503",
+            ball_event_id=other_shot,
+        )
+        _rejected(
+            connection,
+            "serve_attempts",
+            graph["serve_attempts"],
+            "23503",
+            point_id=other_point,
+        )
+        _rejected(
+            connection,
+            "serve_attempts",
+            graph["serve_attempts"],
+            "23503",
+            point_id=same_clip_other_point,
+        )
+        _rejected(
+            connection, "points", graph["points"], "23503", match_context_id=other_match
         )
         _rejected(
             connection,
@@ -466,6 +577,31 @@ def test_postgres_rejects_bad_ownership_and_invalid_domain_states(
         assert (
             _row(connection, TABLES["points"], graph["points"])["terminal_cause"]
             == "double_fault"
+        )
+        for cause in (
+            "out_long",
+            "out_wide",
+            "out_both",
+            "unreturned",
+            "other",
+            "unknown",
+        ):
+            _rejected(
+                connection, "points", graph["points"], "23514", terminal_cause=cause
+            )
+        confirmed = _point(
+            connection,
+            team,
+            other_match,
+            other_clip,
+            "p3",
+            "match-point-13",
+            terminal_cause="out_long",
+            terminal_cause_source="manual_confirmed",
+        )
+        assert (
+            _row(connection, TABLES["points"], confirmed)["terminal_cause"]
+            == "out_long"
         )
 
 
@@ -507,6 +643,7 @@ def test_postgres_preserves_ingest_and_v4_source_identity(migrated_db: Engine) -
                     "subtype",
                     "status",
                     "event_source",
+                    "adopted_in_v4",
                     "court_side",
                     "in_point",
                 ),
@@ -544,6 +681,7 @@ def test_postgres_preserves_ingest_and_v4_source_identity(migrated_db: Engine) -
                 "status": "probable",
                 "court_side": 0,
                 "event_source": "annotation",
+                "adopted_in_v4": True,
                 "in_point": True,
             }
             for index, (kind, subtype) in enumerate(cases)
@@ -570,13 +708,49 @@ def test_postgres_preserves_ingest_and_v4_source_identity(migrated_db: Engine) -
             time_s=64 / 30,
             kind="shot",
             event_source="annotation",
+            adopted_in_v4=False,
             in_point=False,
             excluded_reason="Outside point.",
             provenance_json={"old_subtype": "other"},
         )
         lineage = _row(connection, events, excluded)
+        assert lineage["adopted_in_v4"] is False and lineage["in_point"] is False
         assert lineage["subtype"] is None and lineage["status"] is None
         assert lineage["provenance_json"] == {"old_subtype": "other"}
+        _rejected(connection, "ball_events", excluded, "23514", excluded_reason=None)
+        _rejected(connection, "ball_events", excluded, "23514", excluded_reason=" ")
+        _rejected(connection, "ball_events", excluded, "23514", in_point=True)
+
+        # The first bounce after a let in the fixed V4 adopted-events ledger.
+        let_clip = _clip(
+            connection, team, graph["match_contexts"], "clip_009", num_frames=200
+        )
+        bounce = _insert(
+            connection,
+            "ball_events",
+            owner_team_id=team,
+            clip_id=let_clip,
+            source_event_id="e003",
+            frame=132,
+            time_s=132 / 30,
+            frame_uncertainty=1,
+            kind="bounce",
+            subtype="bounce",
+            status="probable",
+            court_side=0,
+            event_source="annotation",
+            adopted_in_v4=True,
+            in_point=False,
+            provenance_json={"review_source": "service_let_first_bounce"},
+        )
+        recorded = _row(connection, events, bounce)
+        assert recorded["adopted_in_v4"] is True and recorded["in_point"] is False
+        assert recorded["excluded_reason"] is None
+        _rejected(connection, "ball_events", bounce, "23514", adopted_in_v4=None)
+        _rejected(connection, "ball_events", bounce, "23514", status=None)
+        _rejected(
+            connection, "ball_events", bounce, "23514", excluded_reason="not adopted"
+        )
 
 
 def _check_same_rows(
@@ -611,11 +785,21 @@ def test_cli_query_and_scoped_exports_agree_with_the_persisted_rows(
         foreign = _graph(connection, other_team)
         added_profile = _profile(connection, team, "same-team-unreferenced")
         used_profile = _profile(connection, team, "venue-profile")
+        crossing_profile = _profile(connection, team, "crossing-only-profile")
         geometry = TABLES["shot_geometry_features"]
         connection.execute(
             geometry.update()
             .where(geometry.c.id == own[geometry.name])
             .values(profile_id=used_profile)
+        )
+        crossings = TABLES["net_plane_crossings"]
+        connection.execute(
+            crossings.update()
+            .where(crossings.c.id == own[crossings.name])
+            .values(
+                court_net_profile_id=crossing_profile,
+                profile_source_kind="rule_default",
+            )
         )
         sibling = _match(
             connection, team, own["ingest_runs"], own["court_net_profiles"], "match-2"
@@ -660,6 +844,7 @@ def test_cli_query_and_scoped_exports_agree_with_the_persisted_rows(
     assert [row["id"] for row in data["court_net_profiles"]] == [
         own["court_net_profiles"],
         used_profile,
+        crossing_profile,
     ]
     assert added_profile not in [row["id"] for row in data["court_net_profiles"]]
     assert all(
@@ -669,10 +854,13 @@ def test_cli_query_and_scoped_exports_agree_with_the_persisted_rows(
     )
     assert data["shot_geometry_features"][0]["landing_depth_m"] is None
     assert data["net_plane_crossings"][0]["time_s"] is None
+    assert data["net_plane_crossings"][0]["court_net_profile_id"] == crossing_profile
     assert data["ingest_runs"][0]["manual_supplement_sha256"] is None
     assert data["metric_snapshots"][0]["source_ids"]["numerator_point_ids"] == [
         own["points"]
     ]
+    assert main(["query", "metric_snapshots", "--owner-team", str(team)]) == 0
+    assert json.loads(capsys.readouterr().out) == data["metric_snapshots"]
 
     destination = tmp_path / "match"
     assert (
@@ -705,3 +893,268 @@ def test_cli_query_and_scoped_exports_agree_with_the_persisted_rows(
     )
     output = capsys.readouterr()
     assert output.out == "" and "No ingest_runs record" in output.err
+
+
+def test_landing_states_and_crossing_profile_are_enforced(migrated_db: Engine) -> None:
+    with migrated_db.begin() as connection:
+        access = _access_rows(connection)
+        team = access["teams"]
+        graph = _graph(connection, team)
+        other_team = _insert(
+            connection,
+            "teams",
+            organization_id=access["organizations"],
+            slug="other",
+            name="Other",
+        )
+        foreign_profile = _profile(connection, other_team, "foreign")
+        geometry = TABLES["shot_geometry_features"]
+        missing = graph[geometry.name]
+        assert _row(connection, geometry, missing)["landing_source_kind"] is None
+        _rejected(
+            connection, geometry.name, missing, "23514", landing_missing_reason=None
+        )
+        _rejected(connection, geometry.name, missing, "23514", first_bounce_time_s=0.6)
+        _rejected(
+            connection, geometry.name, missing, "23514", landing_result="out_long"
+        )
+        _rejected(
+            connection,
+            geometry.name,
+            missing,
+            "23514",
+            first_bounce_frame=18,
+            landing_depth_m=2.1,
+        )
+        _rejected(
+            connection,
+            geometry.name,
+            missing,
+            "23514",
+            landing_source_kind="observed",
+            first_bounce_frame=18,
+            landing_depth_m=2.1,
+        )
+        _rejected(
+            connection,
+            geometry.name,
+            missing,
+            "23514",
+            landing_source_kind="observed",
+            landing_missing_reason=None,
+        )
+
+        ids = {}
+        for source, depth in (("observed", -0.45), ("estimated", 1.2)):
+            ids[source] = _insert(
+                connection,
+                geometry.name,
+                owner_team_id=team,
+                clip_id=graph["clips"],
+                ball_event_id=graph["ball_events"],
+                profile_id=graph["court_net_profiles"],
+                definition_version=f"geometry-{source}",
+                contact_frame=9,
+                contact_time_s=0.3,
+                first_bounce_frame=18,
+                first_bounce_time_s=0.6,
+                first_bounce_x_m=0.7,
+                first_bounce_y_m=4.0,
+                first_bounce_z_m=0.033,
+                landing_source_kind=source,
+                landing_depth_m=depth,
+            )
+        observed = connection.execute(
+            select(geometry.c.id, geometry.c.landing_depth_m).where(
+                geometry.c.landing_source_kind == "observed"
+            )
+        ).one()
+        assert tuple(observed) == (ids["observed"], -0.45)
+        assert _row(connection, geometry, ids["estimated"])["landing_depth_m"] == 1.2
+        _rejected(
+            connection,
+            geometry.name,
+            ids["observed"],
+            "23514",
+            landing_missing_reason="tracking_gap",
+        )
+
+        crossings = TABLES["net_plane_crossings"]
+        crossing_id = graph[crossings.name]
+        crossing = {
+            "status": "crossed",
+            "fractional_frame": 12.5,
+            "time_s": 12.5 / 30,
+            "x_m": 0.7,
+            "y_m": 0.0,
+            "z_center_m": 1.42,
+            "crossing_in_net_span": True,
+            "direction_y": 1,
+            "net_height_m": 1.07,
+            "net_clearance_center_m": 0.35,
+            "net_clearance_bottom_m": 0.317,
+        }
+        _rejected(connection, crossings.name, crossing_id, "23514", **crossing)
+        _rejected(
+            connection,
+            crossings.name,
+            crossing_id,
+            "23503",
+            **crossing,
+            court_net_profile_id=foreign_profile,
+            profile_source_kind="rule_default",
+        )
+        profile = graph["court_net_profiles"]
+        _rejected(
+            connection,
+            crossings.name,
+            crossing_id,
+            "23503",
+            **crossing,
+            court_net_profile_id=profile,
+            profile_source_kind="measured",
+        )
+        connection.execute(
+            crossings.update()
+            .where(crossings.c.id == crossing_id)
+            .values(
+                **crossing,
+                court_net_profile_id=profile,
+                profile_source_kind="rule_default",
+            )
+        )
+        observed_crossing = _row(connection, crossings, crossing_id)
+        assert observed_crossing["court_net_profile_id"] == profile
+        assert observed_crossing["net_clearance_center_m"] == 0.35
+
+
+def test_canonical_match_points_deduplicate_overlapping_clips(
+    migrated_db: Engine,
+) -> None:
+    with migrated_db.begin() as connection:
+        team = _access_rows(connection)["teams"]
+        graph = _graph(connection, team)
+        match = graph["match_contexts"]
+        overlap_clip = _clip(connection, team, match, "clip_overlap")
+        overlap = _point(connection, team, match, overlap_clip, "p2", "match-point-11")
+        other_point = _point(
+            connection, team, match, overlap_clip, "p3", "match-point-12"
+        )
+        other_match = _match(
+            connection,
+            team,
+            graph["ingest_runs"],
+            graph["court_net_profiles"],
+            "match-2",
+        )
+        other_clip = _clip(connection, team, other_match)
+        other_match_point = _point(
+            connection, team, other_match, other_clip, "p1", "match-point-11"
+        )
+        points = TABLES["points"]
+        rows = connection.execute(
+            select(points.c.id, points.c.match_context_id, points.c.match_point_key)
+        ).all()
+        assert {row.id for row in rows} == {
+            graph["points"],
+            overlap,
+            other_point,
+            other_match_point,
+        }
+        assert unique_point_bins(
+            (MatchPointId(row.match_context_id, row.match_point_key), "A", "low")
+            for row in rows
+        ) == {
+            (MatchPointId(match, "match-point-11"), "A", "low"),
+            (MatchPointId(match, "match-point-12"), "A", "low"),
+            (MatchPointId(other_match, "match-point-11"), "A", "low"),
+        }
+
+
+def test_snapshot_writes_and_cli_validate_metric_evidence(
+    migrated_db: Engine,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    table = TABLES["metric_snapshots"]
+    with migrated_db.begin() as connection:
+        team = _access_rows(connection)["teams"]
+        graph = _graph(connection, team)
+        snapshot_id = graph["metric_snapshots"]
+        match = graph["match_contexts"]
+        good_row = _row(connection, table, snapshot_id)
+        good_record = MetricRecord.from_record(good_row)
+        _rejected(connection, table.name, snapshot_id, "23514", source_ids={})
+        _rejected(
+            connection,
+            table.name,
+            snapshot_id,
+            "23514",
+            metric_id="point.played_count",
+            numerator=3,
+            value=3,
+        )
+        changed_record = MetricRecord.from_record(_row(connection, table, snapshot_id))
+        changed_record.source_ids.clear()
+        with pytest.raises(ValueError, match="Missing source_ids"):
+            insert_metric_snapshot(
+                connection,
+                owner_team_id=team,
+                match_context_id=match,
+                record=changed_record,
+            )
+        assert connection.scalars(select(table.c.id)).all() == [snapshot_id]
+
+    with Session(migrated_db) as session:
+        snapshot = session.get(MetricSnapshot, snapshot_id)
+        assert snapshot is not None
+        snapshot.source_ids = {}
+        with pytest.raises(ValueError, match="Missing source_ids"):
+            session.flush()
+        session.rollback()
+
+        invalid = good_record.to_record()
+        invalid.update(metric_id="point.played_count", numerator=3, value=3)
+        session.add(
+            MetricSnapshot(owner_team_id=team, match_context_id=match, **invalid)
+        )
+        with pytest.raises(ValueError, match="Exact count"):
+            session.flush()
+        session.rollback()
+
+    with migrated_db.begin() as connection:
+        assert connection.scalars(select(table.c.id)).all() == [snapshot_id]
+        # Insert malformed evidence through Core to exercise the defensive read path.
+        point = graph["points"]
+        connection.execute(
+            table.update()
+            .where(table.c.id == snapshot_id)
+            .values(
+                source_ids={
+                    "numerator_point_ids": [point],
+                    "denominator_point_ids": [point, point],
+                }
+            )
+        )
+
+    destination = tmp_path / "invalid-export"
+    for args in (
+        ["query", "metric_snapshots"],
+        ["query", "metric_snapshots", "--format", "csv"],
+        ["export", "--match-context", str(match)],
+        [
+            "export",
+            "--match-context",
+            str(match),
+            "--format",
+            "csv",
+            "--output-dir",
+            str(destination),
+        ],
+    ):
+        assert main(args) == 1
+        output = capsys.readouterr()
+        assert output.out == ""
+        assert f"Invalid metric_snapshots row {snapshot_id}" in output.err
+        assert "must contain unique IDs" in output.err
+    assert not destination.exists()

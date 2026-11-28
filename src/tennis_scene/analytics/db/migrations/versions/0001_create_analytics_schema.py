@@ -150,6 +150,12 @@ def upgrade() -> None:
         ),
         sa.UniqueConstraint(
             "owner_team_id",
+            "source_kind",
+            "id",
+            name=op.f("uq_court_net_profiles_owner_team_id_source_kind_id"),
+        ),
+        sa.UniqueConstraint(
+            "owner_team_id",
             "sport_type",
             "id",
             name=op.f("uq_court_net_profiles_owner_team_id_sport_type_id"),
@@ -437,6 +443,12 @@ def upgrade() -> None:
             "clip_id",
             name=op.f("uq_clips_owner_team_id_match_context_id_clip_id"),
         ),
+        sa.UniqueConstraint(
+            "owner_team_id",
+            "match_context_id",
+            "id",
+            name=op.f("uq_clips_owner_team_id_match_context_id_id"),
+        ),
     )
     op.create_index(
         op.f("ix_clips_owner_team_id_match_context_id_global_start_sec"),
@@ -492,6 +504,14 @@ def upgrade() -> None:
         sa.CheckConstraint(
             "(denominator = 0 AND numerator = 0 AND value IS NULL AND status = 'unavailable') OR (denominator > 0 AND value IS NOT NULL AND ((unknown_count = 0 AND status = 'complete') OR (unknown_count > 0 AND status = 'partial')))",
             name=op.f("ck_metric_snapshots_availability"),
+        ),
+        sa.CheckConstraint(
+            "definition_version <> '1' OR ((metric_id IN ('rally.contact_count', 'rally.completed_shot_count') OR numerator <= denominator) AND (metric_id NOT IN ('point.played_count', 'shot.count') OR numerator = denominator))",
+            name=op.f("ck_metric_snapshots_count_relation"),
+        ),
+        sa.CheckConstraint(
+            "jsonb_typeof(source_ids) = 'object' AND (denominator = 0 OR source_ids <> '{}'::jsonb)",
+            name=op.f("ck_metric_snapshots_source_ids"),
         ),
         sa.CheckConstraint(
             "status IN ('complete', 'partial', 'unavailable')",
@@ -607,7 +627,9 @@ def upgrade() -> None:
     op.create_table(
         "points",
         sa.Column("clip_id", sa.BigInteger(), nullable=False),
+        sa.Column("match_context_id", sa.BigInteger(), nullable=False),
         sa.Column("point_key", sa.Text(), nullable=False),
+        sa.Column("match_point_key", sa.Text(), nullable=True),
         sa.Column("start_frame", sa.Integer(), nullable=True),
         sa.Column("end_frame", sa.Integer(), nullable=True),
         sa.Column("completeness", sa.Text(), server_default="unknown", nullable=False),
@@ -652,6 +674,10 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
+            "(terminal_cause, terminal_cause_source) IN (('net_error', 'manual_confirmed'), ('out_long', 'manual_confirmed'), ('out_wide', 'manual_confirmed'), ('out_both', 'manual_confirmed'), ('double_fault', 'manual_confirmed'), ('unreturned', 'manual_confirmed'), ('other', 'manual_confirmed'), ('net_error', 'derived_v4_score'), ('double_fault', 'derived_v4_score'), ('unknown', 'unknown'))",
+            name=op.f("ck_points_terminal_cause_provenance"),
+        ),
+        sa.CheckConstraint(
             "completeness IN ('complete', 'truncated_start', 'truncated_end', 'truncated_both', 'unknown')",
             name=op.f("ck_points_completeness"),
         ),
@@ -660,23 +686,15 @@ def upgrade() -> None:
             name=op.f("ck_points_error_assessment"),
         ),
         sa.CheckConstraint(
+            "match_point_key IS NULL OR btrim(match_point_key) <> ''",
+            name=op.f("ck_points_match_point_key"),
+        ),
+        sa.CheckConstraint(
             "score_status IN ('confirmed', 'auto', 'unknown', 'not_point', 'multiple_points')",
             name=op.f("ck_points_score_status"),
         ),
         sa.CheckConstraint(
             "server_team IN ('A', 'B')", name=op.f("ck_points_server_team")
-        ),
-        sa.CheckConstraint(
-            "terminal_cause = 'unknown' OR terminal_cause_source <> 'unknown'",
-            name=op.f("ck_points_terminal_cause_provenance"),
-        ),
-        sa.CheckConstraint(
-            "terminal_cause IN ('net_error', 'out_long', 'out_wide', 'out_both', 'double_fault', 'unreturned', 'other', 'unknown')",
-            name=op.f("ck_points_terminal_cause"),
-        ),
-        sa.CheckConstraint(
-            "terminal_cause_source IN ('manual_confirmed', 'derived_v4_score', 'unknown')",
-            name=op.f("ck_points_terminal_cause_source"),
         ),
         sa.CheckConstraint(
             "visibility IN ('private', 'team', 'org', 'public')",
@@ -690,9 +708,9 @@ def upgrade() -> None:
             name=op.f("ck_points_frame_bounds"),
         ),
         sa.ForeignKeyConstraint(
-            ["owner_team_id", "clip_id"],
-            ["clips.owner_team_id", "clips.id"],
-            name=op.f("fk_points_owner_team_id_clip_id"),
+            ["owner_team_id", "match_context_id", "clip_id"],
+            ["clips.owner_team_id", "clips.match_context_id", "clips.id"],
+            name=op.f("fk_points_owner_team_id_match_context_id_clip_id"),
         ),
         sa.ForeignKeyConstraint(
             ["owner_team_id"], ["teams.id"], name=op.f("fk_points_owner_team_id")
@@ -710,14 +728,17 @@ def upgrade() -> None:
             "point_key",
             name=op.f("uq_points_owner_team_id_clip_id_point_key"),
         ),
-        sa.UniqueConstraint(
-            "owner_team_id", "id", name=op.f("uq_points_owner_team_id_id")
-        ),
     )
     op.create_index(
         op.f("ix_points_owner_team_id_clip_id_start_frame"),
         "points",
         ["owner_team_id", "clip_id", "start_frame"],
+        unique=False,
+    )
+    op.create_index(
+        op.f("ix_points_owner_team_id_match_context_id_match_point_key"),
+        "points",
+        ["owner_team_id", "match_context_id", "match_point_key"],
         unique=False,
     )
     op.create_table(
@@ -733,6 +754,7 @@ def upgrade() -> None:
         sa.Column("status", sa.Text(), nullable=True),
         sa.Column("court_side", sa.Integer(), nullable=True),
         sa.Column("event_source", sa.Text(), nullable=False),
+        sa.Column("adopted_in_v4", sa.Boolean(), nullable=True),
         sa.Column("in_point", sa.Boolean(), nullable=False),
         sa.Column("excluded_reason", sa.Text(), nullable=True),
         sa.Column(
@@ -757,8 +779,12 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
-            "event_source <> 'annotation' OR NOT in_point OR (subtype IS NOT NULL AND status IS NOT NULL AND court_side IS NOT NULL AND frame_uncertainty IS NOT NULL)",
-            name=op.f("ck_ball_events_annotation_resolution"),
+            "(adopted_in_v4 IS FALSE AND NOT in_point AND nullif(btrim(excluded_reason), '') IS NOT NULL) OR (adopted_in_v4 IS TRUE AND excluded_reason IS NULL) OR (adopted_in_v4 IS NULL AND (NOT in_point OR excluded_reason IS NULL))",
+            name=op.f("ck_ball_events_exclusion"),
+        ),
+        sa.CheckConstraint(
+            "(event_source = 'annotation') = (adopted_in_v4 IS NOT NULL)",
+            name=op.f("ck_ball_events_v4_adoption_source"),
         ),
         sa.CheckConstraint(
             "event_source IN ('annotation', 'rule', 'refiner')",
@@ -781,8 +807,8 @@ def upgrade() -> None:
             name=op.f("ck_ball_events_visibility"),
         ),
         sa.CheckConstraint(
-            "NOT in_point OR excluded_reason IS NULL",
-            name=op.f("ck_ball_events_exclusion"),
+            "adopted_in_v4 IS NOT TRUE OR (subtype IS NOT NULL AND status IS NOT NULL AND court_side IS NOT NULL AND frame_uncertainty IS NOT NULL)",
+            name=op.f("ck_ball_events_annotation_resolution"),
         ),
         sa.CheckConstraint(
             "court_side IN (-1, 0, 1)", name=op.f("ck_ball_events_court_side")
@@ -810,6 +836,13 @@ def upgrade() -> None:
             "clip_id",
             "id",
             name=op.f("uq_ball_events_owner_team_id_clip_id_id"),
+        ),
+        sa.UniqueConstraint(
+            "owner_team_id",
+            "clip_id",
+            "point_id",
+            "id",
+            name=op.f("uq_ball_events_owner_team_id_clip_id_point_id_id"),
         ),
         sa.UniqueConstraint(
             "owner_team_id",
@@ -1009,7 +1042,10 @@ def upgrade() -> None:
             name=op.f("uq_flight_arcs_owner_team_id_clip_id_arc_index"),
         ),
         sa.UniqueConstraint(
-            "owner_team_id", "id", name=op.f("uq_flight_arcs_owner_team_id_id")
+            "owner_team_id",
+            "clip_id",
+            "id",
+            name=op.f("uq_flight_arcs_owner_team_id_clip_id_id"),
         ),
     )
     op.create_index(
@@ -1020,6 +1056,7 @@ def upgrade() -> None:
     )
     op.create_table(
         "serve_attempts",
+        sa.Column("clip_id", sa.BigInteger(), nullable=False),
         sa.Column("point_id", sa.BigInteger(), nullable=False),
         sa.Column("ball_event_id", sa.BigInteger(), nullable=True),
         sa.Column("attempt_index", sa.Integer(), nullable=False),
@@ -1069,14 +1106,19 @@ def upgrade() -> None:
             "serve_number IN (1, 2)", name=op.f("ck_serve_attempts_serve_number")
         ),
         sa.ForeignKeyConstraint(
-            ["owner_team_id", "ball_event_id"],
-            ["ball_events.owner_team_id", "ball_events.id"],
-            name=op.f("fk_serve_attempts_owner_team_id_ball_event_id"),
+            ["owner_team_id", "clip_id", "point_id", "ball_event_id"],
+            [
+                "ball_events.owner_team_id",
+                "ball_events.clip_id",
+                "ball_events.point_id",
+                "ball_events.id",
+            ],
+            name=op.f("fk_serve_attempts_owner_team_id_clip_id_point_id_ball_event_id"),
         ),
         sa.ForeignKeyConstraint(
-            ["owner_team_id", "point_id"],
-            ["points.owner_team_id", "points.id"],
-            name=op.f("fk_serve_attempts_owner_team_id_point_id"),
+            ["owner_team_id", "clip_id", "point_id"],
+            ["points.owner_team_id", "points.clip_id", "points.id"],
+            name=op.f("fk_serve_attempts_owner_team_id_clip_id_point_id"),
         ),
         sa.ForeignKeyConstraint(
             ["owner_team_id"],
@@ -1175,6 +1217,7 @@ def upgrade() -> None:
     )
     op.create_table(
         "net_plane_crossings",
+        sa.Column("clip_id", sa.BigInteger(), nullable=False),
         sa.Column("flight_arc_id", sa.BigInteger(), nullable=False),
         sa.Column("ball_event_id", sa.BigInteger(), nullable=True),
         sa.Column("crossing_index", sa.Integer(), nullable=False),
@@ -1193,6 +1236,7 @@ def upgrade() -> None:
         sa.Column("net_height_m", sa.Double(), nullable=True),
         sa.Column("net_clearance_center_m", sa.Double(), nullable=True),
         sa.Column("net_clearance_bottom_m", sa.Double(), nullable=True),
+        sa.Column("court_net_profile_id", sa.BigInteger(), nullable=True),
         sa.Column("profile_source_kind", sa.Text(), nullable=True),
         sa.Column("source_kind", sa.Text(), nullable=False),
         sa.Column(
@@ -1226,7 +1270,7 @@ def upgrade() -> None:
             name=op.f("ck_net_plane_crossings_source_kind"),
         ),
         sa.CheckConstraint(
-            "status <> 'crossed' OR (fractional_frame IS NOT NULL AND time_s IS NOT NULL AND x_m IS NOT NULL AND y_m IS NOT NULL AND z_center_m IS NOT NULL)",
+            "status <> 'crossed' OR (fractional_frame IS NOT NULL AND time_s IS NOT NULL AND x_m IS NOT NULL AND y_m IS NOT NULL AND z_center_m IS NOT NULL AND court_net_profile_id IS NOT NULL)",
             name=op.f("ck_net_plane_crossings_crossing_observation"),
         ),
         sa.CheckConstraint(
@@ -1242,17 +1286,32 @@ def upgrade() -> None:
             name=op.f("ck_net_plane_crossings_visibility"),
         ),
         sa.CheckConstraint(
+            "(court_net_profile_id IS NULL) = (profile_source_kind IS NULL)",
+            name=op.f("ck_net_plane_crossings_profile_provenance"),
+        ),
+        sa.CheckConstraint(
             "direction_y IN (-1, 1)", name=op.f("ck_net_plane_crossings_direction_y")
         ),
         sa.ForeignKeyConstraint(
-            ["owner_team_id", "ball_event_id"],
-            ["ball_events.owner_team_id", "ball_events.id"],
-            name=op.f("fk_net_plane_crossings_owner_team_id_ball_event_id"),
+            ["owner_team_id", "clip_id", "ball_event_id"],
+            ["ball_events.owner_team_id", "ball_events.clip_id", "ball_events.id"],
+            name=op.f("fk_net_plane_crossings_owner_team_id_clip_id_ball_event_id"),
         ),
         sa.ForeignKeyConstraint(
-            ["owner_team_id", "flight_arc_id"],
-            ["flight_arcs.owner_team_id", "flight_arcs.id"],
-            name=op.f("fk_net_plane_crossings_owner_team_id_flight_arc_id"),
+            ["owner_team_id", "clip_id", "flight_arc_id"],
+            ["flight_arcs.owner_team_id", "flight_arcs.clip_id", "flight_arcs.id"],
+            name=op.f("fk_net_plane_crossings_owner_team_id_clip_id_flight_arc_id"),
+        ),
+        sa.ForeignKeyConstraint(
+            ["owner_team_id", "profile_source_kind", "court_net_profile_id"],
+            [
+                "court_net_profiles.owner_team_id",
+                "court_net_profiles.source_kind",
+                "court_net_profiles.id",
+            ],
+            name=op.f(
+                "fk_net_plane_crossings_owner_team_id_profile_source_kind_court_net_profile_id"
+            ),
         ),
         sa.ForeignKeyConstraint(
             ["owner_team_id"],
@@ -1277,6 +1336,7 @@ def upgrade() -> None:
     )
     op.create_table(
         "shot_geometry_features",
+        sa.Column("clip_id", sa.BigInteger(), nullable=False),
         sa.Column("ball_event_id", sa.BigInteger(), nullable=False),
         sa.Column("flight_arc_id", sa.BigInteger(), nullable=True),
         sa.Column("profile_id", sa.BigInteger(), nullable=False),
@@ -1307,6 +1367,7 @@ def upgrade() -> None:
         sa.Column("landing_course", sa.Text(), nullable=True),
         sa.Column("line_margin_m", sa.Double(), nullable=True),
         sa.Column("landing_result", sa.Text(), nullable=True),
+        sa.Column("landing_source_kind", sa.Text(), nullable=True),
         sa.Column("landing_missing_reason", sa.Text(), nullable=True),
         sa.Column("bin_version", sa.Text(), nullable=True),
         sa.Column(
@@ -1337,26 +1398,30 @@ def upgrade() -> None:
             nullable=False,
         ),
         sa.CheckConstraint(
-            "first_bounce_frame IS NOT NULL OR (landing_depth_m IS NULL AND landing_lane IS NULL AND landing_course IS NULL AND line_margin_m IS NULL AND (landing_result IS NULL OR landing_result IN ('uncertain', 'not_applicable')))",
-            name=op.f("ck_shot_geometry_features_observed_landing"),
+            "(landing_source_kind IS NOT NULL AND landing_missing_reason IS NULL AND first_bounce_frame IS NOT NULL) OR (landing_source_kind IS NULL AND nullif(btrim(landing_missing_reason), '') IS NOT NULL AND first_bounce_frame IS NULL AND first_bounce_time_s IS NULL AND first_bounce_x_m IS NULL AND first_bounce_y_m IS NULL AND first_bounce_z_m IS NULL AND landing_depth_m IS NULL AND landing_lane IS NULL AND landing_course IS NULL AND line_margin_m IS NULL AND (landing_result IS NULL OR landing_result = 'not_applicable'))",
+            name=op.f("ck_shot_geometry_features_landing_presence"),
         ),
         sa.CheckConstraint(
             "landing_result IN ('in', 'out_long', 'out_wide', 'out_both', 'uncertain', 'not_applicable')",
             name=op.f("ck_shot_geometry_features_landing_result"),
         ),
         sa.CheckConstraint(
+            "landing_source_kind IN ('observed', 'estimated')",
+            name=op.f("ck_shot_geometry_features_landing_source_kind"),
+        ),
+        sa.CheckConstraint(
             "visibility IN ('private', 'team', 'org', 'public')",
             name=op.f("ck_shot_geometry_features_visibility"),
         ),
         sa.ForeignKeyConstraint(
-            ["owner_team_id", "ball_event_id"],
-            ["ball_events.owner_team_id", "ball_events.id"],
-            name=op.f("fk_shot_geometry_features_owner_team_id_ball_event_id"),
+            ["owner_team_id", "clip_id", "ball_event_id"],
+            ["ball_events.owner_team_id", "ball_events.clip_id", "ball_events.id"],
+            name=op.f("fk_shot_geometry_features_owner_team_id_clip_id_ball_event_id"),
         ),
         sa.ForeignKeyConstraint(
-            ["owner_team_id", "flight_arc_id"],
-            ["flight_arcs.owner_team_id", "flight_arcs.id"],
-            name=op.f("fk_shot_geometry_features_owner_team_id_flight_arc_id"),
+            ["owner_team_id", "clip_id", "flight_arc_id"],
+            ["flight_arcs.owner_team_id", "flight_arcs.clip_id", "flight_arcs.id"],
+            name=op.f("fk_shot_geometry_features_owner_team_id_clip_id_flight_arc_id"),
         ),
         sa.ForeignKeyConstraint(
             ["owner_team_id", "profile_id"],

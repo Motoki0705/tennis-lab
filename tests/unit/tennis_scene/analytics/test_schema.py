@@ -16,7 +16,7 @@ REFERENCES = {
     "shot_hitter_estimates": {"ball_events"},
     "flight_arcs": {"clips", "points", "ball_events"},
     "shot_geometry_features": {"ball_events", "flight_arcs", "court_net_profiles"},
-    "net_plane_crossings": {"flight_arcs", "ball_events"},
+    "net_plane_crossings": {"flight_arcs", "ball_events", "court_net_profiles"},
     "player_identity_maps": {"clips"},
     "team_pair_assignments": {"clips", "player_identity_maps"},
     "serve_attempts": {"points", "ball_events"},

@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import json
 from dataclasses import replace
+from typing import Any
 
 import pytest
 
 from src.tennis_scene.analytics.metrics import (
     METRIC_DEFINITIONS,
+    MatchPointId,
     MetricRecord,
+    SourceId,
+    TerminalCause,
     counted_error_assessment,
     counted_terminal_cause,
     unique_point_bins,
@@ -60,6 +64,13 @@ def test_metric_dictionary_covers_the_required_ids_with_versioned_definitions() 
         assert definition["definition_version"] == "1"
         assert definition["unit"] in {"point", "game", "serve_attempt", "shot_attempt"}
         assert definition["subject_types"]
+        assert definition["count_relation"] in {
+            "exact_count",
+            "subset_count",
+            "ratio",
+            "multi_per_unit",
+        }
+        assert set(definition["evidence_keys"]) == {"numerator", "denominator"}
         assert definition["rules"]["availability"]["empty_denominator"] == {
             "value": None,
             "status": "unavailable",
@@ -96,24 +107,43 @@ def test_serves_and_the_two_rally_lengths_preserve_the_fault_and_let_rules() -> 
 
 
 def test_conditional_point_keys_deduplicate_only_within_subject_and_bin() -> None:
+    point = MatchPointId(10, "point-5")
+    same_point_from_other_clip = MatchPointId(10, "point-5")
+    next_point = MatchPointId(10, "point-6")
+    same_key_in_other_match = MatchPointId(20, "point-5")
     assert unique_point_bins(
         [
-            ("p-5", "team-A", "low"),
-            ("p-5", "team-A", "low"),
-            ("p-5", "team-A", "low"),
-            ("p-5", "team-A", "high"),
-            ("p-5", "player-2", "low"),
-            ("p-6", "team-A", "low"),
+            (point, "team-A", "low"),
+            (same_point_from_other_clip, "team-A", "low"),
+            (point, "team-A", "high"),
+            (point, "player-2", "low"),
+            (next_point, "team-A", "low"),
+            (same_key_in_other_match, "team-A", "low"),
         ]
     ) == {
-        ("p-5", "team-A", "low"),
-        ("p-5", "team-A", "high"),
-        ("p-5", "player-2", "low"),
-        ("p-6", "team-A", "low"),
+        (point, "team-A", "low"),
+        (point, "team-A", "high"),
+        (point, "player-2", "low"),
+        (next_point, "team-A", "low"),
+        (same_key_in_other_match, "team-A", "low"),
     }
+    clip_point_row_id: Any = 15
+    with pytest.raises(ValueError, match="Pass MatchPointId"):
+        unique_point_bins([(clip_point_row_id, "team-A", "low")])
+    with pytest.raises(ValueError, match="canonical point requires"):
+        MatchPointId(10, " ")
+    unresolved_key: Any = None
+    with pytest.raises(ValueError, match="canonical point requires"):
+        MatchPointId(10, unresolved_key)
     points = METRIC_DEFINITIONS["conditional.point_win_rate"].to_record()
     assert points["unit"] == "point"
     assert points["rules"]["conditional_points"]["additive_across_bins"] is False
+    assert points["rules"]["conditional_points"]["idempotency_key"] == [
+        "match_context_id",
+        "match_point_key",
+        "subject_id",
+        "bin_id",
+    ]
     assert METRIC_DEFINITIONS["conditional.shot_error_rate"].unit == "shot_attempt"
 
 
@@ -124,15 +154,24 @@ def test_landing_bins_are_used_only_for_observed_landing_metrics() -> None:
         "conditional.landing_out_rate",
         "conditional.landing_point_win_rate",
     ):
-        assert (
-            METRIC_DEFINITIONS[metric_id].to_record()["rules"]["observed_landing"][
-                "population"
-            ]
-            == "shots_with_observed_landing"
+        rule = METRIC_DEFINITIONS[metric_id].to_record()["rules"]["observed_landing"]
+        assert rule["population"] == "shots_with_observed_landing"
+        assert rule["landing_source_kind"] == "observed"
+        source_ids: dict[str, list[SourceId]] = (
+            {
+                "numerator_ball_event_ids": [11],
+                "denominator_ball_event_ids": [11, 12, 13, 14],
+            }
+            if metric_id == "conditional.landing_out_rate"
+            else record.source_ids
         )
         assert (
             replace(
-                record, metric_id=metric_id, filters=filters, bin_version="bins-v1"
+                record,
+                metric_id=metric_id,
+                filters=filters,
+                bin_version="bins-v1",
+                source_ids=source_ids,
             ).value
             == 0.25
         )
@@ -140,7 +179,7 @@ def test_landing_bins_are_used_only_for_observed_landing_metrics() -> None:
         replace(
             record,
             metric_id="conditional.shot_error_rate",
-            filters=filters,
+            filters={"shot_role": "rally", **filters},
             bin_version="bins-v1",
         )
     with pytest.raises(ValueError, match="require condition bins and bin_version"):
@@ -154,11 +193,22 @@ def test_terminal_cause_and_manual_error_assessment_keep_their_provenance() -> N
     }
     assert counts == {"double_fault": 1, "net_error": 0}
     assert counted_terminal_cause("net_error", "manual_confirmed") == "net_error"
+    assert counted_terminal_cause("net_error", "derived_v4_score") == "net_error"
     assert counted_terminal_cause("net_error", "unknown") is None
     assert counted_terminal_cause("unknown", "manual_confirmed") is None
     assert counted_error_assessment("undetermined", "manual_confirmed") is None
     assert counted_error_assessment("unforced", "derived_v4_score") is None
     assert counted_error_assessment("forced", "manual_confirmed") == "forced"
+
+
+@pytest.mark.parametrize(
+    "cause", ["out_long", "out_wide", "out_both", "unreturned", "other"]
+)
+def test_unconfirmed_terminal_causes_cannot_be_counted_as_derived(
+    cause: TerminalCause,
+) -> None:
+    assert counted_terminal_cause(cause, "derived_v4_score") is None
+    assert counted_terminal_cause(cause, "manual_confirmed") == cause
 
 
 def _partial_win_rate() -> MetricRecord:
@@ -231,6 +281,10 @@ def test_count_metrics_distinguish_unassessed_from_confirmed_zero() -> None:
         unknown_count=0,
         value=0,
         status="complete",
+        source_ids={
+            "numerator_point_ids": [],
+            "denominator_point_ids": ["p-1", "p-2", "p-3"],
+        },
     )
     assert confirmed.value == 0
     assert (
@@ -243,6 +297,10 @@ def test_count_metrics_distinguish_unassessed_from_confirmed_zero() -> None:
             candidate_count=1,
             metric_id="rally.contact_count",
             subject_type="point",
+            source_ids={
+                "numerator_ball_event_ids": [31, 33],
+                "denominator_point_ids": ["p-1"],
+            },
         ).value
         == 2
     )
@@ -272,8 +330,142 @@ def test_count_metrics_distinguish_unassessed_from_confirmed_zero() -> None:
             },
             "requires a known terminal cause",
         ),
+        ({"source_ids": {}}, "Missing source_ids"),
+        (
+            {
+                "source_ids": {
+                    "numerator_point_ids": ["p-1"],
+                    "denominator_point_ids": [],
+                }
+            },
+            "count must match denominator",
+        ),
+        (
+            {
+                "source_ids": {
+                    "numerator_point_ids": ["p-1"],
+                    "denominator_point_ids": ["p-1", "p-2", "p-1", "p-3"],
+                }
+            },
+            "must contain unique IDs",
+        ),
+        (
+            {
+                "source_ids": {
+                    "numerator_point_ids": ["p-9"],
+                    "denominator_point_ids": ["p-1", "p-2", "p-3", "p-4"],
+                }
+            },
+            "must be a subset",
+        ),
+        ({"source_ids": {"numerator_point_ids": [True]}}, "must contain valid IDs"),
+        ({"metric_id": "point.played_count"}, "Exact count"),
+        (
+            {"metric_id": "point.unforced_error_count", "numerator": 5},
+            "exceeds denominator",
+        ),
     ],
 )
 def test_metric_record_rejects_inconsistent_inputs(changes: dict, error: str) -> None:
     with pytest.raises(ValueError, match=error):
         replace(_partial_win_rate(), **changes)
+
+
+def test_exact_count_uses_each_resolved_point_once() -> None:
+    record = _partial_win_rate()
+    evidence = record.source_ids["denominator_point_ids"]
+    counted = replace(
+        record,
+        metric_id="point.played_count",
+        numerator=4,
+        value=4,
+        source_ids={"numerator_point_ids": evidence, "denominator_point_ids": evidence},
+    )
+    assert counted.numerator == counted.denominator == counted.value == 4
+    with pytest.raises(ValueError, match="Exact count"):
+        replace(
+            counted,
+            numerator=3,
+            denominator=1,
+            value=3,
+            candidate_count=1,
+            resolved_count=1,
+            status="complete",
+            unknown_count=0,
+            excluded_by_reason={},
+            source_ids={},
+        )
+
+
+def test_conditional_shot_error_rate_requires_a_single_role_population() -> None:
+    metric = METRIC_DEFINITIONS["conditional.shot_error_rate"]
+    bins = {"contact_height": "low"}
+    with pytest.raises(ValueError, match="Missing required metric filter shot_role"):
+        replace(
+            _partial_win_rate(),
+            metric_id=metric.metric_id,
+            filters={"bins": bins},
+            bin_version="b1",
+        )
+    with pytest.raises(ValueError, match="shot_role must be"):
+        replace(
+            _partial_win_rate(),
+            metric_id=metric.metric_id,
+            filters={"shot_role": "all", "bins": bins},
+            bin_version="b1",
+        )
+
+    # Each attempt below is from the same subject and height bin.
+    attempts = [
+        (11, "serve", "fault"),
+        (12, "rally", "legal"),
+        (13, "serve", "let"),
+        (14, "return", "net_error"),
+    ]
+    rules = metric.to_record()["rules"]["shot_error_role"]
+    expected = {
+        "serve": (1, 1, 1.0, [11], [11]),
+        "rally": (0, 1, 0.0, [], [12]),
+        "return": (1, 1, 1.0, [14], [14]),
+        "non_serve": (1, 2, 0.5, [14], [12, 14]),
+    }
+    for role, hand_count in expected.items():
+        scoped = [
+            (idx, outcome)
+            for idx, kind, outcome in attempts
+            if kind in rules["roles_by_filter"][role]
+        ]
+        outcomes = rules["serve" if role == "serve" else "non_serve"]
+        resolved: list[SourceId] = [
+            idx for idx, outcome in scoped if outcome in outcomes["resolved_outcomes"]
+        ]
+        errors: list[SourceId] = [
+            idx for idx, outcome in scoped if outcome in outcomes["error_outcomes"]
+        ]
+        record = MetricRecord(
+            metric_id=metric.metric_id,
+            definition_version="1",
+            subject_type="team",
+            subject_id="A",
+            filters={"shot_role": role, "bins": bins},
+            bin_version="b1",
+            numerator=len(errors),
+            denominator=len(resolved),
+            value=len(errors) / len(resolved),
+            candidate_count=len(scoped),
+            resolved_count=len(resolved),
+            unknown_count=0,
+            status="complete",
+            excluded_by_reason={"let": 1} if role == "serve" else {},
+            source_ids={
+                "numerator_ball_event_ids": errors,
+                "denominator_ball_event_ids": resolved,
+            },
+        )
+        assert (
+            record.numerator,
+            record.denominator,
+            record.value,
+            errors,
+            resolved,
+        ) == hand_count

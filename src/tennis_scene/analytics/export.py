@@ -13,6 +13,7 @@ from typing import Any, TextIO
 from sqlalchemy import ColumnElement, Connection, Select, Table, select, union_all
 
 from src.tennis_scene.analytics.db.models import Base
+from src.tennis_scene.analytics.metrics import MetricRecord
 
 Record = dict[str, Any]
 DOMAIN_TABLES = {
@@ -72,8 +73,17 @@ def write_records(
         raise ValueError(f"Unsupported export format: {format}")
 
 
-def _rows(connection: Connection, statement: Select[Any]) -> list[Record]:
-    return [dict(row) for row in connection.execute(statement).mappings()]
+def _rows(connection: Connection, table: Table, statement: Select[Any]) -> list[Record]:
+    rows = [dict(row) for row in connection.execute(statement).mappings()]
+    if table.name == "metric_snapshots":
+        for row in rows:
+            try:
+                MetricRecord.from_record(row)
+            except ValueError as error:
+                raise ValueError(
+                    f"Invalid metric_snapshots row {row['id']}: {error}"
+                ) from error
+    return rows
 
 
 def query_records(
@@ -89,7 +99,7 @@ def query_records(
         statement = statement.where(table.c.owner_team_id == owner_team_id)
     if row_id is not None:
         statement = statement.where(table.c.id == row_id)
-    return _rows(connection, statement.limit(limit))
+    return _rows(connection, table, statement.limit(limit))
 
 
 def export_records(
@@ -143,9 +153,12 @@ def export_records(
     point_ids = select(points.c.id).where(points.c.clip_id.in_(clip_ids))
     event_ids = select(events.c.id).where(events.c.clip_id.in_(clip_ids))
     arc_ids = select(arcs.c.id).where(arcs.c.clip_id.in_(clip_ids))
+    crossings = tables["net_plane_crossings"]
+    crossing_scope = crossings.c.flight_arc_id.in_(arc_ids)
     profile_ids = union_all(
         select(matches.c.court_net_profile_id).where(matches.c.id.in_(match_ids)),
         select(geometry.c.profile_id).where(geometry.c.ball_event_id.in_(event_ids)),
+        select(crossings.c.court_net_profile_id).where(crossing_scope),
     )
 
     conditions: dict[str, ColumnElement[bool]] = {
@@ -160,9 +173,7 @@ def export_records(
         ),
         "flight_arcs": arcs.c.clip_id.in_(clip_ids),
         "shot_geometry_features": geometry.c.ball_event_id.in_(event_ids),
-        "net_plane_crossings": tables["net_plane_crossings"].c.flight_arc_id.in_(
-            arc_ids
-        ),
+        "net_plane_crossings": crossing_scope,
         "player_identity_maps": tables["player_identity_maps"].c.clip_id.in_(clip_ids),
         "team_pair_assignments": tables["team_pair_assignments"].c.clip_id.in_(
             clip_ids
@@ -177,6 +188,7 @@ def export_records(
         if name == root.name
         else _rows(
             connection,
+            table,
             select(table)
             .where(table.c.owner_team_id == owner_team_id, conditions[name])
             .order_by(table.c.id),

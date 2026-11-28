@@ -8,6 +8,7 @@ from typing import Any, get_args
 from sqlalchemy import (
     BigInteger,
     CheckConstraint,
+    Connection,
     DateTime,
     Double,
     ForeignKey,
@@ -17,16 +18,21 @@ from sqlalchemy import (
     MetaData,
     Text,
     UniqueConstraint,
+    event,
     false,
     func,
     text,
     true,
 )
 from sqlalchemy.dialects.postgresql import JSONB
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
+from sqlalchemy.orm import DeclarativeBase, Mapped, Mapper, mapped_column
 
 from src.tennis_scene.analytics.metrics import (
+    DEFINITION_VERSION,
+    METRIC_DEFINITIONS,
+    TERMINAL_CAUSES_BY_SOURCE,
     ErrorAssessment,
+    MetricRecord,
     MetricStatus,
     TerminalCause,
     TerminalCauseSource,
@@ -146,6 +152,7 @@ class CourtNetProfile(_OwnedRecord, Base):
     __table_args__ = (
         _choices("visibility", VISIBILITIES),
         UniqueConstraint("owner_team_id", "id"),
+        UniqueConstraint("owner_team_id", "source_kind", "id"),
         UniqueConstraint("owner_team_id", "sport_type", "id"),
         UniqueConstraint("owner_team_id", "profile_key"),
         _owned_index("sport_type"),
@@ -240,6 +247,7 @@ class Clip(_OwnedRecord, Base):
         _choices("visibility", VISIBILITIES),
         _ref("match_context_id", "match_contexts"),
         UniqueConstraint("owner_team_id", "id"),
+        UniqueConstraint("owner_team_id", "match_context_id", "id"),
         UniqueConstraint("owner_team_id", "match_context_id", "clip_id"),
         _owned_index("match_context_id", "global_start_sec"),
         _choices("split", ("train", "val", "test", "unassigned")),
@@ -268,16 +276,27 @@ class Clip(_OwnedRecord, Base):
     )
 
 
+_TERMINAL_CAUSE_SOURCE_PAIRS = ", ".join(
+    f"({cause!r}, {source!r})"
+    for source, causes in TERMINAL_CAUSES_BY_SOURCE.items()
+    for cause in causes
+)
+
+
 class Point(_OwnedRecord, Base):
     __tablename__ = "points"
     __table_args__ = (
         _choices("visibility", VISIBILITIES),
-        _ref("clip_id", "clips"),
-        UniqueConstraint("owner_team_id", "id"),
+        _ref("clip_id", "clips", "match_context_id"),
         UniqueConstraint("owner_team_id", "clip_id", "id"),
         UniqueConstraint("owner_team_id", "clip_id", "point_key"),
         _owned_index("clip_id", "start_frame"),
+        _owned_index("match_context_id", "match_point_key"),
         _frame_bounds(),
+        CheckConstraint(
+            "match_point_key IS NULL OR btrim(match_point_key) <> ''",
+            name="match_point_key",
+        ),
         _choices(
             "completeness",
             (
@@ -294,17 +313,17 @@ class Point(_OwnedRecord, Base):
         ),
         _choices("server_team", ("A", "B")),
         _choices("winner_team", ("A", "B")),
-        _choices("terminal_cause", get_args(TerminalCause)),
-        _choices("terminal_cause_source", get_args(TerminalCauseSource)),
         _choices("error_assessment", get_args(ErrorAssessment)),
         CheckConstraint(
-            "terminal_cause = 'unknown' OR terminal_cause_source <> 'unknown'",
+            f"(terminal_cause, terminal_cause_source) IN ({_TERMINAL_CAUSE_SOURCE_PAIRS})",
             name="terminal_cause_provenance",
         ),
     )
 
     clip_id: Mapped[int] = mapped_column(BigInteger)
+    match_context_id: Mapped[int] = mapped_column(BigInteger)
     point_key: Mapped[str] = mapped_column(Text)
+    match_point_key: Mapped[str | None] = mapped_column(Text)
     start_frame: Mapped[int | None]
     end_frame: Mapped[int | None]
     completeness: Mapped[str] = mapped_column(Text, server_default="unknown")
@@ -342,6 +361,7 @@ class BallEvent(_OwnedRecord, Base):
         _ref("point_id", "points", "clip_id"),
         UniqueConstraint("owner_team_id", "id"),
         UniqueConstraint("owner_team_id", "clip_id", "id"),
+        UniqueConstraint("owner_team_id", "clip_id", "point_id", "id"),
         UniqueConstraint("owner_team_id", "clip_id", "source_event_id"),
         _owned_index("clip_id", "frame"),
         _choices("kind", EVENT_CLASSES_V4),
@@ -353,12 +373,21 @@ class BallEvent(_OwnedRecord, Base):
             name="kind_subtype",
         ),
         CheckConstraint(
-            "event_source <> 'annotation' OR NOT in_point OR "
+            "(event_source = 'annotation') = (adopted_in_v4 IS NOT NULL)",
+            name="v4_adoption_source",
+        ),
+        CheckConstraint(
+            "adopted_in_v4 IS NOT TRUE OR "
             "(subtype IS NOT NULL AND status IS NOT NULL AND court_side IS NOT NULL "
             "AND frame_uncertainty IS NOT NULL)",
             name="annotation_resolution",
         ),
-        CheckConstraint("NOT in_point OR excluded_reason IS NULL", name="exclusion"),
+        CheckConstraint(
+            "(adopted_in_v4 IS FALSE AND NOT in_point AND nullif(btrim(excluded_reason), '') IS NOT NULL) "
+            "OR (adopted_in_v4 IS TRUE AND excluded_reason IS NULL) "
+            "OR (adopted_in_v4 IS NULL AND (NOT in_point OR excluded_reason IS NULL))",
+            name="exclusion",
+        ),
         CheckConstraint(
             "frame >= 0 AND time_s >= 0 AND frame_uncertainty >= 0",
             name="event_time",
@@ -376,6 +405,7 @@ class BallEvent(_OwnedRecord, Base):
     status: Mapped[str | None] = mapped_column(Text)
     court_side: Mapped[int | None]
     event_source: Mapped[str] = mapped_column(Text)
+    adopted_in_v4: Mapped[bool | None]
     in_point: Mapped[bool]
     excluded_reason: Mapped[str | None] = mapped_column(Text)
     provenance_json: Mapped[dict[str, Any]] = mapped_column(
@@ -420,7 +450,7 @@ class FlightArc(_OwnedRecord, Base):
         _ref("shot_event_id", "ball_events", "clip_id"),
         _ref("start_event_id", "ball_events", "clip_id"),
         _ref("end_event_id", "ball_events", "clip_id"),
-        UniqueConstraint("owner_team_id", "id"),
+        UniqueConstraint("owner_team_id", "clip_id", "id"),
         UniqueConstraint("owner_team_id", "clip_id", "arc_index"),
         _owned_index("clip_id", "start_frame"),
         _frame_bounds(),
@@ -452,8 +482,8 @@ class ShotGeometryFeature(_OwnedRecord, Base):
     __tablename__ = "shot_geometry_features"
     __table_args__ = (
         _choices("visibility", VISIBILITIES),
-        _ref("ball_event_id", "ball_events"),
-        _ref("flight_arc_id", "flight_arcs"),
+        _ref("ball_event_id", "ball_events", "clip_id"),
+        _ref("flight_arc_id", "flight_arcs", "clip_id"),
         _ref("profile_id", "court_net_profiles"),
         UniqueConstraint(
             "owner_team_id",
@@ -464,19 +494,24 @@ class ShotGeometryFeature(_OwnedRecord, Base):
             postgresql_nulls_not_distinct=True,
         ),
         _owned_index("profile_id", "definition_version"),
+        _choices("landing_source_kind", GEOMETRY_SOURCES),
         _choices(
             "landing_result",
             ("in", "out_long", "out_wide", "out_both", "uncertain", "not_applicable"),
         ),
         CheckConstraint(
-            "first_bounce_frame IS NOT NULL OR "
-            "(landing_depth_m IS NULL AND landing_lane IS NULL AND landing_course IS NULL "
-            "AND line_margin_m IS NULL "
-            "AND (landing_result IS NULL OR landing_result IN ('uncertain', 'not_applicable')))",
-            name="observed_landing",
+            "(landing_source_kind IS NOT NULL AND landing_missing_reason IS NULL "
+            "AND first_bounce_frame IS NOT NULL) "
+            "OR (landing_source_kind IS NULL AND nullif(btrim(landing_missing_reason), '') IS NOT NULL "
+            "AND first_bounce_frame IS NULL AND first_bounce_time_s IS NULL "
+            "AND first_bounce_x_m IS NULL AND first_bounce_y_m IS NULL AND first_bounce_z_m IS NULL "
+            "AND landing_depth_m IS NULL AND landing_lane IS NULL AND landing_course IS NULL "
+            "AND line_margin_m IS NULL AND (landing_result IS NULL OR landing_result = 'not_applicable'))",
+            name="landing_presence",
         ),
     )
 
+    clip_id: Mapped[int] = mapped_column(BigInteger)
     ball_event_id: Mapped[int] = mapped_column(BigInteger)
     flight_arc_id: Mapped[int | None] = mapped_column(BigInteger)
     profile_id: Mapped[int] = mapped_column(BigInteger)
@@ -503,6 +538,7 @@ class ShotGeometryFeature(_OwnedRecord, Base):
     landing_course: Mapped[str | None] = mapped_column(Text)
     line_margin_m: Mapped[float | None] = mapped_column(Double)
     landing_result: Mapped[str | None] = mapped_column(Text)
+    landing_source_kind: Mapped[str | None] = mapped_column(Text)
     landing_missing_reason: Mapped[str | None] = mapped_column(Text)
     bin_version: Mapped[str | None] = mapped_column(Text)
     bins_json: Mapped[dict[str, Any]] = mapped_column(
@@ -517,8 +553,16 @@ class NetPlaneCrossing(_OwnedRecord, Base):
     __tablename__ = "net_plane_crossings"
     __table_args__ = (
         _choices("visibility", VISIBILITIES),
-        _ref("flight_arc_id", "flight_arcs"),
-        _ref("ball_event_id", "ball_events"),
+        _ref("flight_arc_id", "flight_arcs", "clip_id"),
+        _ref("ball_event_id", "ball_events", "clip_id"),
+        ForeignKeyConstraint(
+            ["owner_team_id", "profile_source_kind", "court_net_profile_id"],
+            [
+                "court_net_profiles.owner_team_id",
+                "court_net_profiles.source_kind",
+                "court_net_profiles.id",
+            ],
+        ),
         UniqueConstraint("owner_team_id", "flight_arc_id", "crossing_index"),
         _owned_index("ball_event_id", "is_primary"),
         _choices(
@@ -538,11 +582,17 @@ class NetPlaneCrossing(_OwnedRecord, Base):
         ),
         CheckConstraint(
             "status <> 'crossed' OR (fractional_frame IS NOT NULL AND time_s IS NOT NULL "
-            "AND x_m IS NOT NULL AND y_m IS NOT NULL AND z_center_m IS NOT NULL)",
+            "AND x_m IS NOT NULL AND y_m IS NOT NULL AND z_center_m IS NOT NULL "
+            "AND court_net_profile_id IS NOT NULL)",
             name="crossing_observation",
+        ),
+        CheckConstraint(
+            "(court_net_profile_id IS NULL) = (profile_source_kind IS NULL)",
+            name="profile_provenance",
         ),
     )
 
+    clip_id: Mapped[int] = mapped_column(BigInteger)
     flight_arc_id: Mapped[int] = mapped_column(BigInteger)
     ball_event_id: Mapped[int | None] = mapped_column(BigInteger)
     crossing_index: Mapped[int]
@@ -559,6 +609,7 @@ class NetPlaneCrossing(_OwnedRecord, Base):
     net_height_m: Mapped[float | None] = mapped_column(Double)
     net_clearance_center_m: Mapped[float | None] = mapped_column(Double)
     net_clearance_bottom_m: Mapped[float | None] = mapped_column(Double)
+    court_net_profile_id: Mapped[int | None] = mapped_column(BigInteger)
     profile_source_kind: Mapped[str | None] = mapped_column(Text)
     source_kind: Mapped[str] = mapped_column(Text)
     used_frames_json: Mapped[list[int]] = mapped_column(
@@ -637,8 +688,8 @@ class ServeAttempt(_OwnedRecord, Base):
     __tablename__ = "serve_attempts"
     __table_args__ = (
         _choices("visibility", VISIBILITIES),
-        _ref("point_id", "points"),
-        _ref("ball_event_id", "ball_events"),
+        _ref("point_id", "points", "clip_id"),
+        _ref("ball_event_id", "ball_events", "clip_id", "point_id"),
         UniqueConstraint("owner_team_id", "point_id", "attempt_index"),
         _owned_index("ball_event_id", "serve_number"),
         _choices("serve_number", (1, 2)),
@@ -647,6 +698,7 @@ class ServeAttempt(_OwnedRecord, Base):
         CheckConstraint("result = 'fault' OR fault_cause IS NULL", name="fault_cause"),
     )
 
+    clip_id: Mapped[int] = mapped_column(BigInteger)
     point_id: Mapped[int] = mapped_column(BigInteger)
     ball_event_id: Mapped[int | None] = mapped_column(BigInteger)
     attempt_index: Mapped[int]
@@ -660,6 +712,25 @@ class ServeAttempt(_OwnedRecord, Base):
     )
 
 
+def _metric_count_relation() -> CheckConstraint:
+    exact_counts = ", ".join(
+        repr(metric.metric_id)
+        for metric in METRIC_DEFINITIONS.values()
+        if metric.count_relation == "exact_count"
+    )
+    multi_per_unit = ", ".join(
+        repr(metric.metric_id)
+        for metric in METRIC_DEFINITIONS.values()
+        if metric.count_relation == "multi_per_unit"
+    )
+    return CheckConstraint(
+        f"definition_version <> {DEFINITION_VERSION!r} OR "
+        f"((metric_id IN ({multi_per_unit}) OR numerator <= denominator) "
+        f"AND (metric_id NOT IN ({exact_counts}) OR numerator = denominator))",
+        name="count_relation",
+    )
+
+
 class MetricSnapshot(_OwnedRecord, Base):
     __tablename__ = "metric_snapshots"
     __table_args__ = (
@@ -667,6 +738,12 @@ class MetricSnapshot(_OwnedRecord, Base):
         _ref("match_context_id", "match_contexts"),
         _owned_index("match_context_id", "metric_id"),
         _choices("status", get_args(MetricStatus)),
+        _metric_count_relation(),
+        CheckConstraint(
+            "jsonb_typeof(source_ids) = 'object' AND "
+            "(denominator = 0 OR source_ids <> '{}'::jsonb)",
+            name="source_ids",
+        ),
         CheckConstraint(
             "numerator >= 0 AND denominator >= 0 AND unknown_count >= 0 "
             "AND resolved_count = denominator "
@@ -698,3 +775,15 @@ class MetricSnapshot(_OwnedRecord, Base):
     excluded_by_reason: Mapped[dict[str, int]] = mapped_column(_JSON)
     status: Mapped[MetricStatus] = mapped_column(Text)
     source_ids: Mapped[dict[str, list[int | str]]] = mapped_column(_JSON)
+
+
+def _validate_metric_snapshot(
+    _mapper: Mapper[MetricSnapshot], _connection: Connection, snapshot: MetricSnapshot
+) -> None:
+    MetricRecord.from_record(
+        {name: getattr(snapshot, name) for name in MetricRecord.__dataclass_fields__}
+    )
+
+
+event.listen(MetricSnapshot, "before_insert", _validate_metric_snapshot)
+event.listen(MetricSnapshot, "before_update", _validate_metric_snapshot)
