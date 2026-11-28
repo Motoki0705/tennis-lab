@@ -24,6 +24,9 @@ work-type:
   - name: research
     color: "0E8A16"
     description: "Research task"
+  - name: ablation
+    color: "BFD4F2"
+    description: "Ablation studies that isolate the effects of individual changes"
   - name: documentation
     color: "0075CA"
     description: "Improvements or additions to documentation"
