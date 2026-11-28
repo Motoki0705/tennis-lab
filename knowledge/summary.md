@@ -1,6 +1,6 @@
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-11-26
+更新日: 2026-11-28
 
 研究トピックごとの**現在の判断**（採用中の構成とその根拠、未解決の課題、次の実験）をまとめた入口です。数値・条件・考察の正本は各[ノード](nodes/)、再現手順は[runs](runs/)にあります。2026-11-05までの日付順の記録は、[凍結アーカイブ](history/summary-2026-11-05.md)に原文のまま残しています。
 
@@ -31,11 +31,13 @@
 - **人物モデルの共通速度基準**　固定6 clipで現行DINO、ViTPose-Hのflipあり・なし、HMR2特徴＋GVHMRのPT16・TRT16を再計測し、全22条件で計時が完了しました。parityは未判定です。検出・姿勢の比較図には疑似GTによる精度と実測速度を使います。PT32の暫定速度と初回parityは初回記録を参照してください。 [再計測の基準値](nodes/tennis_scene/000086-run-person-model-speed-low-precision.md) · [初回記録](nodes/tennis_scene/000085-run-person-model-speed-baseline.md)
 - **身体復元の採否**　共通ハーネスの実測で速度優位を確認できなかったため、FastHMRへの置き換えを見送りました。標準recipeはGVHMRを使い、`recipe=fasthmr` で別経路を選べます。 [速度と採否の記録](nodes/tennis_scene/000095-run-fasthmr-camerahmr-pt16-speed.md)
 - **2D姿勢の置換候補**　固定疑似BBoxではRTMPose-X TRT16が、ViTPose-H flipありTRT16に対しbatch 1のwall P50を28.7%、P95を10.1%、NVMLピークを60.2%削減し、平均OKSは0.95ポイント低下しました。実DINO BBoxと3D再構成で下流品質を確認する優先候補です。採用にはconfidenceの較正と重み・engineの利用条件の確認が残ります。 [固定疑似GTと実測の比較](nodes/tennis_scene/000091-run-meiji-topdown-pose-comparison.md)
+- **明示選択の人物検出・2D姿勢checkpoint**　PR #2681（#2492）で `src/tennis_scene/configs/pipeline.yaml` に追加された `people_models.rfdetr_checkpoint`（`rfdetr-l`）と `people_models.rtmpose_checkpoint`（`rtmpose-x`）を [deployments.yaml](registry/deployments.yaml) へ登録しました。いずれも明示指定時のみ利用する公開重みであり、既定の `dino`・`vitpose-h` は変更していません。 [RF-DETR-L比較](nodes/player_detection/000009-run-meiji-rfdetr-large-accuracy.md) · [2D姿勢比較](nodes/tennis_scene/000091-run-meiji-topdown-pose-comparison.md)
 
 ## Court Detection
 
 - **現行**: `multiscale_depth3` のcheckpointと、画像だけによる領域探索を組み合わせ、各カメラの先頭frameだけを推論します。[Meiji 3cameraの校正が通った](nodes/court_detection/000032-run-court-meiji-model-only-regions-20260922.md)ことが採用の根拠です。このcheckpointを学習したrunのノードはなく、独立したheld-out testでの精度も未確立です。
 - **合成データのscene組合せ**（#1581）: [全6ペアと共通4scene評価](nodes/court_detection/000067-group-court-scene-pair-s42.md)が完了しました。固定5,500枚・33,160更新・seed42では、同群2ペアの実画像KP中央値平均57.36 pxに対し、異群4ペアは4.57 px（δ=+52.80 px）で、全5指標が同群側で悪い向きでした。P03（B00+B03）が実画像KP中央値で最良（2.97 px）、共通合成の4scene平均ではscene-4が最良です。単一seed・再開・会場とsurface等の交絡があり、一般的な因果効果や採用変更にはしません。旧[1〜4scene比較](nodes/court_detection/000055-group-court-scene-diversity-colab-s42.md)は当時の4条件の証拠として保持します。
+- **視点軌道の分布**（#2633）　B00〜B03各128枚で撮影近傍と広分布を比較しました。`real-video-v1` test 4,372枚の2 seed平均は広分布でKP誤差103.50→111.07 px、H成立率32.41→22.19%。seed 43のKPは改善し、事前基準では部分的支持でした。難視点439枚でも平均KP誤差とH成立率は悪化しました。 [固定6,000更新の比較と層別](nodes/court_detection/000084-group-i2633-court-viewpoint-diversity.md)
 - **backbone**（#983）: [凍結DINOv3 S/S+/B/Lの比較](nodes/court_detection/000044-group-i983-court-dinov3-shared1024-s42.md)では、出力ごとに最良のサイズが異なり、サイズによる一様な改善は見られませんでした（1 seed）。
 - **後処理**（#2190）: revision 4で1frameの精度目標を動画共有へ移した。[旧処理復元](nodes/court_detection/000075-run-court-legacy-default-20261117.md)は全3545画像・8530領域の採否・Hが旧処理と完全一致。clip既定は`legacy`・RGB無効のまま、白線・品質部品と[run 69〜74](nodes/court_detection/000074-run-court-semantic-support-20261117.md)の負の結果を保持する。
 - **動画共有**（#2191）: [人間が共通Hを承認](nodes/court_detection/000078-run-court-video-drift-lines-20261117.md)し、検査不能を警告にする明示方針 `unobservable_policy=warn` を既定にした。H・測定値・hashは維持し、全69clip×4cameraを利用可能（159/276件warning、失敗0）。確認範囲は3clip×4camera＋原寸crop。信頼できるmean10/max25px超過は失敗を維持する。自動診断は人工24/24一致だが、実データの隣接線誤抽出等が残り、clip途中のcamera移動を見逃す可能性がある。候補保持・線配置による対応検証は将来の改善。一括CLI接続は#1752が担当する。

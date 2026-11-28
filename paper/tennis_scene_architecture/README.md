@@ -7,12 +7,12 @@
 | ファイル | 用途 |
 | --- | --- |
 | [main.tex](main.tex)、[preamble.tex](preamble.tex) | 表題・要旨と原稿の接続、共通の組版設定 |
-| [chapters/](chapters/)、[appendix/](appendix/) | 本文と付録。各ファイルの見出しに続けて本文を記入 |
+| [chapters/](chapters/)、[appendix/](appendix/) | 本文と再現手順 |
 | [figures/](figures/)、[tables/](tables/) | 掲載図版と生成した LaTeX 表 |
-| [evidence/](evidence/) | [主張と数値の出典の対応表](evidence/claims.md)、図表の来歴、最終版のビルド記録 |
+| [evidence/](evidence/) | [主張と数値の出典の対応表](evidence/claims.md)、[図版の来歴](evidence/figures.md)、[ビルド記録](evidence/build.md) |
 | [references.bib](references.bib) | 一次資料で確認した書誌情報 |
 
-初めて本文に `\cite{...}` を使うときは、対応する書誌を `references.bib` に登録し、`main.tex` 末尾の参考文献用の二行を有効にします。図表のパスはこのディレクトリを基準に指定します。
+図表のパスはこのディレクトリを基準に指定します。本文と実験の構成を組み立てる際はDINOv3の技術報告を参照しました。[DINOv3 arXiv v1](https://arxiv.org/html/2508.10104v1)
 
 ## PDF をビルド
 
@@ -24,9 +24,25 @@ LuaLaTeX、LuaTeX-ja、latexmk、BibTeX、`pdfinfo`（Poppler）を使用しま�
 bash paper/tennis_scene_architecture/build.sh
 ```
 
-PDF と最終ログは `paper/tennis_scene_architecture/build/main.pdf` と `build/main.log` に出力します。スクリプトは latexmk で参考文献と相互参照を解決し、最終ログに未解決の参照・引用、文字欠落、はみ出しがある場合は失敗します。成功時は PDF のページ数を表示します。雛形は見出しだけで組版でき、実験データや参考にした DINOv3 のソースの配置を要しません。
+PDF と最終ログは `paper/tennis_scene_architecture/build/main.pdf` と `build/main.log` に出力します。スクリプトは latexmk で参考文献と相互参照を解決し、最終ログに未解決の参照・引用、文字欠落、はみ出しがある場合は失敗します。成功時は PDF のページ数を表示します。組版には追跡済みの図表を使用します。
 
-最終版の組版と目視確認は [制作手順](../../.agents/skills/paper-writing/SKILL.md#5-ビルドと最終確認) に従い、`evidence/build.md` に記録します。
+## 図表の再生成と出典の照合
+
+リポジトリrootで実行します。数値表の生成と照合は [固定資料](evidence/sources.tsv) のGitオブジェクトとSHA-256を使います。未マージの記録のオブジェクトが手元にない場合は、対応するPRのrefを取得します。
+
+```bash
+paper=paper/tennis_scene_architecture
+git fetch origin refs/pull/2671/head refs/pull/2698/head refs/pull/2719/head
+.venv/bin/python -B "$paper/scripts/make_tables.py" --check
+.venv/bin/python -B "$paper/scripts/check_evidence.py"
+.venv/bin/python -B "$paper/scripts/prepare_figures.py"
+```
+
+`make_tables.py` は `--check` を省くと測定表を再生成します。`prepare_figures.py --restore` は固定元と同じ図版を配置します。模式図を再生成するときはTikZとstandaloneクラスが必要です。
+
+```bash
+bash paper/tennis_scene_architecture/scripts/make_diagrams.sh
+```
 
 ## Gitへの登録
 
