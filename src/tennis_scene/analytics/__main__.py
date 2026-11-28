@@ -20,6 +20,7 @@ from src.tennis_scene.analytics.export import (
     write_json,
     write_records,
 )
+from src.tennis_scene.analytics.ingest import cli as ingest_cli
 from src.tennis_scene.analytics.metrics import (
     METRIC_DEFINITION_FIELDS,
     METRIC_DEFINITIONS,
@@ -100,10 +101,14 @@ def _parser() -> argparse.ArgumentParser:
         help="new directory for CSV tables (relative paths use the working directory)",
     )
     _format_arg(export)
+    ingest_cli.add_commands(commands, _positive_int)
     return parser
 
 
 def _run(args: argparse.Namespace) -> None:
+    if args.command in ("audit", "ingest"):
+        ingest_cli.run(args)
+        return
     if args.command == "db":
         config = migration_config()
         if args.db_command == "upgrade":

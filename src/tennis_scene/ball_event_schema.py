@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import re
+from collections.abc import Mapping
 from typing import TYPE_CHECKING, Any
 
 import numpy as np
@@ -64,7 +65,8 @@ def event_classes_for_version(scene_version: int) -> tuple[str, ...]:
     if scene_version == 3:
         return tuple(str(name) for name in EVENT_CLASSES)
     if scene_version == 4:
-        return EVENT_CLASSES_V4
+        classes: tuple[str, ...] = EVENT_CLASSES_V4
+        return classes
     raise ValueError(f"Unsupported ball-event scene schema version: {scene_version}")
 
 
@@ -72,7 +74,8 @@ def event_subtypes_for_version(scene_version: int) -> tuple[str | None, ...]:
     if scene_version == 3:
         return EVENT_SUBTYPES
     if scene_version == 4:
-        return EVENT_SUBTYPES_V4
+        subtypes: tuple[str, ...] = EVENT_SUBTYPES_V4
+        return subtypes
     raise ValueError(f"Unsupported ball-event scene schema version: {scene_version}")
 
 
@@ -106,15 +109,35 @@ def ball_event_metadata(
 
 
 def validate_scene_ball_events(scene: SceneResult, *, version: int) -> None:
-    present = {name for name in BALL_EVENT_FIELDS if getattr(scene, name) is not None}
+    validate_ball_event_columns(
+        scene.metadata,
+        scene.num_frames,
+        {
+            name: value
+            for name in BALL_EVENT_FIELDS
+            if (value := getattr(scene, name)) is not None
+        },
+        version=version,
+    )
+
+
+def validate_ball_event_columns(
+    scene_metadata: Mapping[str, Any],
+    num_frames: int,
+    columns: Mapping[str, NDArray[Any]],
+    *,
+    version: int,
+) -> None:
+    """Validate sparse event columns without requiring the scene's geometry arrays."""
+    present = set(columns)
     if version < 3:
-        if present or "ball_events" in scene.metadata:
+        if present or "ball_events" in scene_metadata:
             raise ValueError("Ball-event columns and metadata require SceneResult v3 or v4")
         return
     if version not in (3, 4):
         raise ValueError(f"Unsupported SceneResult schema version for ball events: {version}")
 
-    metadata = scene.metadata.get("ball_events")
+    metadata = scene_metadata.get("ball_events")
     if not isinstance(metadata, dict):
         raise ValueError(f"v{version} requires metadata.ball_events")
     source = metadata.get("source")
@@ -143,7 +166,7 @@ def validate_scene_ball_events(scene: SceneResult, *, version: int) -> None:
         )
     arrays: dict[str, NDArray[Any]] = {}
     for name, dtype in required.items():
-        value = getattr(scene, name)
+        value = columns[name]
         if not isinstance(value, np.ndarray) or value.ndim != 1 or value.dtype != dtype:
             raise ValueError(f"{name} must be a one-dimensional {dtype.__name__} array")
         arrays[name] = value
@@ -152,10 +175,10 @@ def validate_scene_ball_events(scene: SceneResult, *, version: int) -> None:
     classes = event_classes_for_version(version)
     subtypes_by_kind = EVENT_SUBTYPES_BY_KIND_V4 if version == 4 else EVENT_SUBTYPES_BY_KIND
     for name, value in arrays.items():
-        length = scene.num_frames if name == "ball_event_coverage" else len(frames)
+        length = num_frames if name == "ball_event_coverage" else len(frames)
         if len(value) != length:
             raise ValueError(f"{name} must have length {length}")
-    if np.any((frames < 0) | (frames >= scene.num_frames)):
+    if np.any((frames < 0) | (frames >= num_frames)):
         raise ValueError("Ball-event frame is outside the scene timeline")
     if np.any(kinds >= len(classes)):
         raise ValueError("Unknown ball-event kind")
