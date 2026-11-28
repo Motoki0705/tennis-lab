@@ -40,14 +40,29 @@ def _make_clip_rows(
     rows = []
     for shot in shots:
         event = events[shot.source_event_id]
-        if (
-            event["frame"],
-            event["subtype"],
-            event["frame_uncertainty"],
-            event["court_side"],
-        ) != (shot.frame, shot.subtype, shot.frame_uncertainty, shot.court_side):
+        source = f"{clip.clip_id}/{shot.source_event_id}"
+        expected = {
+            "frame": shot.frame,
+            "kind": "shot",
+            "subtype": shot.subtype,
+            "status": shot.status,
+            "frame_uncertainty": shot.frame_uncertainty,
+            "court_side": shot.court_side,
+        }
+        mismatches = [
+            field for field, value in expected.items() if event[field] != value
+        ]
+        if mismatches:
             raise ValueError(
-                f"{clip.clip_id}/{shot.source_event_id}: ingested shot differs from V4"
+                f"{source}: ingested shot differs from V4: {', '.join(mismatches)}"
+            )
+        provenance = event["provenance_json"]
+        if (
+            "event_component_sha256" in provenance
+            and provenance["event_component_sha256"] != clip.event_component.sha256
+        ):
+            raise ValueError(
+                f"{source}: ingested shot event component SHA-256 differs from V4"
             )
         estimate = estimate_hitter(
             scene,
@@ -124,6 +139,14 @@ def store_v4_hitters(
     benchmark = V4Benchmark.load(benchmark_root, manifest_sha256)
     if benchmark.benchmark_id.split("/")[0] != run["dataset_id"]:
         raise ValueError("Ingest run and V4 manifest have different dataset IDs")
+    video_id = run["video_id"]
+    expected_clips = {
+        clip_id: clip
+        for clip_id, clip in benchmark.clips.items()
+        if clip_id.split("/")[0] == video_id
+    }
+    if not expected_clips:
+        raise ValueError(f"V4 manifest has no clips for video {video_id!r}")
     clip_rows = (
         connection.execute(
             select(clips)
@@ -138,8 +161,15 @@ def store_v4_hitters(
         .mappings()
         .all()
     )
-    if not clip_rows or len({row["clip_id"] for row in clip_rows}) != len(clip_rows):
-        raise ValueError("An ingest run must have a nonempty set of distinct V4 clips")
+    actual_clips = {row["clip_id"] for row in clip_rows}
+    if len(actual_clips) != len(clip_rows):
+        raise ValueError("An ingest run must have distinct V4 clip IDs")
+    if actual_clips != expected_clips.keys():
+        missing = sorted(expected_clips.keys() - actual_clips)
+        extra = sorted(actual_clips - expected_clips.keys())
+        raise ValueError(
+            f"Ingested clips differ from V4 for {video_id!r}: missing={missing}, extra={extra}"
+        )
     shot_rows = connection.execute(
         select(events)
         .where(
@@ -158,22 +188,29 @@ def store_v4_hitters(
     rows = []
     for row in clip_rows:
         clip_id = row["clip_id"]
-        clip = benchmark.clips.get(clip_id)
+        clip = expected_clips[clip_id]
         if (
-            clip is None
-            or clip_id.split("/")[0] != run["video_id"]
-            or (
-                row["scene_schema_version"],
-                row["scene_npz_sha256"],
-                row["annotation_sha256"],
-            )
-            != (4, clip.scene.sha256, clip.annotation_sha256)
-            or (row["num_frames"], row["fps"], row["split"])
-            != (clip.frames, clip.fps, clip.split)
-        ):
+            row["scene_schema_version"],
+            row["scene_npz_sha256"],
+            row["annotation_sha256"],
+        ) != (4, clip.scene.sha256, clip.annotation_sha256) or (
+            row["num_frames"],
+            row["fps"],
+            row["split"],
+        ) != (clip.frames, clip.fps, clip.split):
             raise ValueError(
                 f"{clip_id}: ingested clip does not match the pinned V4 manifest"
             )
+        metadata = row["metadata_json"]
+        if "event_detection" in metadata:
+            component = metadata["event_detection"]
+            if (
+                not isinstance(component, dict)
+                or component.get("sha256") != clip.event_component.sha256
+            ):
+                raise ValueError(
+                    f"{clip_id}: ingested clip event component SHA-256 differs from V4"
+                )
         rows.extend(
             _make_clip_rows(clip, by_clip[row["id"]], owner_team_id, manifest_sha256)
         )

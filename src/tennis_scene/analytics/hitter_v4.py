@@ -12,7 +12,11 @@ from typing import Any
 
 import numpy as np
 
-from src.tennis_scene.ball_event_labels import EVENT_CLASSES_V4, EVENT_SUBTYPES_V4
+from src.tennis_scene.ball_event_labels import (
+    EVENT_CLASSES_V4,
+    EVENT_STATUS,
+    EVENT_SUBTYPES_V4,
+)
 
 SPLITS = ("train", "val", "test")
 _CLIP_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
@@ -59,6 +63,7 @@ class V4Shot:
     source_event_id: str
     frame: int
     subtype: str
+    status: str
     frame_uncertainty: int
     court_side: int
 
@@ -84,9 +89,16 @@ class V4Clip:
         events = evidence["events"]
         columns = tuple(
             archive[f"ball_event_{field}"]
-            for field in ("frame", "kind", "subtype", "frame_uncertainty", "side")
+            for field in (
+                "frame",
+                "kind",
+                "subtype",
+                "status",
+                "frame_uncertainty",
+                "side",
+            )
         )
-        dtypes = (np.int32, np.uint8, np.uint8, np.uint8, np.int8)
+        dtypes = (np.int32, np.uint8, np.uint8, np.uint8, np.uint8, np.int8)
         if (int(archive["num_frames"]), float(archive["fps"])) != (
             self.frames,
             self.fps,
@@ -98,7 +110,7 @@ class V4Clip:
         shots = []
         seen: set[str] = set()
         sides = evidence["player_hint_reference"]
-        for event, (frame, kind, subtype, uncertainty, side) in zip(
+        for event, (frame, kind, subtype, status, uncertainty, side) in zip(
             events, zip(*columns, strict=True), strict=True
         ):
             source_id = event["source_event_id"]
@@ -111,16 +123,19 @@ class V4Clip:
                 or side not in (-1, 0, 1)
                 or not 0 <= kind < len(EVENT_CLASSES_V4)
                 or not 0 <= subtype < len(EVENT_SUBTYPES_V4)
+                or not 0 <= status < len(EVENT_STATUS)
                 or (
                     event["frame"],
                     event["kind"],
                     event["subtype"],
+                    event["status"],
                     event["frame_uncertainty"],
                 )
                 != (
                     frame,
                     EVENT_CLASSES_V4[kind],
                     EVENT_SUBTYPES_V4[subtype],
+                    EVENT_STATUS[status],
                     uncertainty,
                 )
                 or sides.get(event.get("player_hint"), 0) != side
@@ -135,6 +150,7 @@ class V4Clip:
                         source_id,
                         int(frame),
                         event["subtype"],
+                        event["status"],
                         int(uncertainty),
                         int(side),
                     )

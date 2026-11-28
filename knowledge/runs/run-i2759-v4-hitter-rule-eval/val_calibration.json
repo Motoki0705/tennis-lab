@@ -16,7 +16,7 @@
       "search_radius_s": 0.035,
       "motion_window_s": 0.05
     },
-    "rule_version": "court-hitter-v1.217835f4f9d0",
+    "rule_version": "court-hitter-v2.217835f4f9d0",
     "resolved": 59,
     "correct": 59,
     "wrong": 0
@@ -33,7 +33,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.7e521b8e0ba7",
+      "rule_version": "court-hitter-v2.7e521b8e0ba7",
       "resolved": 55,
       "correct": 55,
       "wrong": 0
@@ -49,7 +49,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.813f94638099",
+      "rule_version": "court-hitter-v2.813f94638099",
       "resolved": 55,
       "correct": 55,
       "wrong": 0
@@ -65,7 +65,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.a8932f24ee14",
+      "rule_version": "court-hitter-v2.a8932f24ee14",
       "resolved": 55,
       "correct": 55,
       "wrong": 0
@@ -81,7 +81,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.e80965aed452",
+      "rule_version": "court-hitter-v2.e80965aed452",
       "resolved": 55,
       "correct": 55,
       "wrong": 0
@@ -97,7 +97,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.62b957724e98",
+      "rule_version": "court-hitter-v2.62b957724e98",
       "resolved": 56,
       "correct": 56,
       "wrong": 0
@@ -113,7 +113,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.365a8d632157",
+      "rule_version": "court-hitter-v2.365a8d632157",
       "resolved": 56,
       "correct": 56,
       "wrong": 0
@@ -129,7 +129,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.520bcabb6cb1",
+      "rule_version": "court-hitter-v2.520bcabb6cb1",
       "resolved": 56,
       "correct": 56,
       "wrong": 0
@@ -145,7 +145,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.6988971017b3",
+      "rule_version": "court-hitter-v2.6988971017b3",
       "resolved": 56,
       "correct": 56,
       "wrong": 0
@@ -161,7 +161,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.de4a9d5fb511",
+      "rule_version": "court-hitter-v2.de4a9d5fb511",
       "resolved": 59,
       "correct": 59,
       "wrong": 0
@@ -177,7 +177,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.73ca9fee5006",
+      "rule_version": "court-hitter-v2.73ca9fee5006",
       "resolved": 59,
       "correct": 59,
       "wrong": 0
@@ -193,7 +193,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.2a8ab9a3e6cb",
+      "rule_version": "court-hitter-v2.2a8ab9a3e6cb",
       "resolved": 59,
       "correct": 59,
       "wrong": 0
@@ -209,7 +209,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.217835f4f9d0",
+      "rule_version": "court-hitter-v2.217835f4f9d0",
       "resolved": 59,
       "correct": 59,
       "wrong": 0
@@ -225,7 +225,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.e53f7fc43d15",
+      "rule_version": "court-hitter-v2.e53f7fc43d15",
       "resolved": 59,
       "correct": 59,
       "wrong": 0
@@ -241,7 +241,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.3da29e01ecad",
+      "rule_version": "court-hitter-v2.3da29e01ecad",
       "resolved": 59,
       "correct": 59,
       "wrong": 0
@@ -257,7 +257,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.c8ef4c58d332",
+      "rule_version": "court-hitter-v2.c8ef4c58d332",
       "resolved": 59,
       "correct": 59,
       "wrong": 0
@@ -273,7 +273,7 @@
         "search_radius_s": 0.035,
         "motion_window_s": 0.05
       },
-      "rule_version": "court-hitter-v1.99a41ddd7c32",
+      "rule_version": "court-hitter-v2.99a41ddd7c32",
       "resolved": 59,
       "correct": 59,
       "wrong": 0

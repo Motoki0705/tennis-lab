@@ -27,7 +27,9 @@ MISSING = 23
 ANNOTATION_SHA = "b" * 64
 
 
-def _synthetic_v4(root: Path) -> tuple[str, str, str]:
+def _synthetic_v4(
+    root: Path, *, extra_clip_id: str | None = None
+) -> tuple[str, str, str]:
     scene = root / "scene.npz"
     roots: NDArray[np.float32] = np.empty((2, FRAMES, 3), dtype=np.float32)
     roots[0] = (4, -6, 1.0)
@@ -50,6 +52,7 @@ def _synthetic_v4(root: Path) -> tuple[str, str, str]:
         ball_event_frame=np.array([CONTACT, MISSING], dtype=np.int32),
         ball_event_kind=np.array([0, 0], dtype=np.uint8),
         ball_event_subtype=np.array([0, 0], dtype=np.uint8),
+        ball_event_status=np.array([1, 0], dtype=np.uint8),
         ball_event_frame_uncertainty=np.array([1, 1], dtype=np.uint8),
         ball_event_side=np.array([-1, -1], dtype=np.int8),
     )
@@ -65,12 +68,13 @@ def _synthetic_v4(root: Path) -> tuple[str, str, str]:
                                 "frame": frame,
                                 "kind": "shot",
                                 "subtype": "serve_overhead",
+                                "status": status,
                                 "frame_uncertainty": 1,
                                 "player_hint": "near",
                             }
-                            for event_id, frame in (
-                                ("e011", CONTACT),
-                                ("e029", MISSING),
+                            for event_id, frame, status in (
+                                ("e011", CONTACT, "probable"),
+                                ("e029", MISSING, "certain"),
                             )
                         ],
                         "player_hint_reference": {"near": -1, "far": 1},
@@ -82,7 +86,7 @@ def _synthetic_v4(root: Path) -> tuple[str, str, str]:
     scene_sha = file_sha256(scene)
     event_sha = file_sha256(evidence)
     placeholder = {"path": "unused.json", "sha256": "a" * 64}
-    manifest = {
+    manifest: dict[str, Any] = {
         "schema": "tennis_multiview_benchmark_v1",
         "benchmark_id": "meiji_4cam/multiview-v4",
         "scene_schema_version": 4,
@@ -111,6 +115,9 @@ def _synthetic_v4(root: Path) -> tuple[str, str, str]:
             }
         ],
     }
+    if extra_clip_id is not None:
+        manifest["splits"]["val"] = {"clips": 2, "clip_ids": [CLIP_ID, extra_clip_id]}
+        manifest["clips"].append({**manifest["clips"][0], "clip_id": extra_clip_id})
     manifest_path = root / "manifest.json"
     manifest_path.write_text(json.dumps(manifest))
     return file_sha256(manifest_path), scene_sha, event_sha
@@ -126,7 +133,7 @@ def _insert(connection: Connection, table_name: str, **values: Any) -> int:
 
 
 def _seed_run(
-    connection: Connection, manifest_sha: str, scene_sha: str
+    connection: Connection, manifest_sha: str, scene_sha: str, event_sha: str
 ) -> tuple[int, int, int, int]:
     organization = _insert(connection, "organizations", slug="club", name="Club")
     team = _insert(
@@ -171,6 +178,7 @@ def _seed_run(
         scene_schema_version=4,
         scene_npz_sha256=scene_sha,
         annotation_sha256=ANNOTATION_SHA,
+        metadata_json={"event_detection": {"sha256": event_sha}},
     )
     common = {
         "owner_team_id": team,
@@ -178,7 +186,6 @@ def _seed_run(
         "frame_uncertainty": 1,
         "kind": "shot",
         "subtype": "serve_overhead",
-        "status": "certain",
         "court_side": -1,
         "event_source": "annotation",
     }
@@ -188,6 +195,7 @@ def _seed_run(
         **common,
         source_event_id="e011",
         frame=CONTACT,
+        status="probable",
         time_s=CONTACT / FPS,
         adopted_in_v4=True,
         in_point=True,
@@ -198,7 +206,8 @@ def _seed_run(
         "ball_events",
         **common,
         source_event_id="e029",
-        frame=MISSING - 1,
+        frame=MISSING,
+        status="certain",
         time_s=MISSING / FPS,
         adopted_in_v4=True,
         in_point=True,
@@ -209,12 +218,25 @@ def _seed_run(
         **common,
         source_event_id="e099",
         frame=CONTACT + 1,
+        status="certain",
         time_s=(CONTACT + 1) / FPS,
         adopted_in_v4=False,
         in_point=False,
         excluded_reason="dead_ball",
     )
     return team, run, resolved, unresolved
+
+
+def _store_command(root: Path, team: int, run: int) -> list[str]:
+    return [
+        "hitter",
+        "--benchmark",
+        str(root),
+        "--ingest-run",
+        str(run),
+        "--owner-team",
+        str(team),
+    ]
 
 
 def test_hitter_writer_validates_pin_and_round_trips_cli_exports(
@@ -224,27 +246,30 @@ def test_hitter_writer_validates_pin_and_round_trips_cli_exports(
     capsys.readouterr()
     root = tmp_path / "v4"
     root.mkdir()
-    manifest_sha, scene_sha, event_sha = _synthetic_v4(root)
+    manifest_sha, scene_sha, event_sha = _synthetic_v4(
+        root, extra_clip_id="video_001/clip_001"
+    )
+    events = TABLES["ball_events"]
     with postgres_db.begin() as connection:
-        team, run, resolved, unresolved = _seed_run(connection, manifest_sha, scene_sha)
-    store = [
-        "hitter",
-        "--benchmark",
-        str(root),
-        "--ingest-run",
-        str(run),
-        "--owner-team",
-        str(team),
-    ]
+        team, run, resolved, unresolved = _seed_run(
+            connection, manifest_sha, scene_sha, event_sha
+        )
+        connection.execute(
+            events.update().where(events.c.id == unresolved).values(frame=MISSING - 1)
+        )
+    store = _store_command(root, team, run)
     table = TABLES["shot_hitter_estimates"]
 
     assert main(store) == 1
     assert "ingested shot differs" in capsys.readouterr().err
     with postgres_db.begin() as connection:
         assert connection.scalar(select(func.count()).select_from(table)) == 0
-        events = TABLES["ball_events"]
         connection.execute(
-            events.update().where(events.c.id == unresolved).values(frame=MISSING)
+            events.update()
+            .where(events.c.id == unresolved)
+            .values(
+                frame=MISSING, provenance_json={"event_component_sha256": event_sha}
+            )
         )
 
     archive = root / "scene.npz"
@@ -308,3 +333,57 @@ def test_hitter_writer_validates_pin_and_round_trips_cli_exports(
                 local_player_index=1,
             )
         )
+
+
+@pytest.mark.parametrize(
+    ("mismatch", "error"),
+    [
+        ("missing_clip", "missing=['video_000/clip_002']"),
+        ("shot_status", "ingested shot differs from V4: status"),
+        ("clip_component_sha", "ingested clip event component SHA-256 differs"),
+        ("event_component_sha", "ingested shot event component SHA-256 differs"),
+    ],
+)
+def test_hitter_writer_rejects_incomplete_or_stale_ingest_without_storing_estimates(
+    postgres_db: Engine,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    mismatch: str,
+    error: str,
+) -> None:
+    assert main(["db", "upgrade"]) == 0
+    capsys.readouterr()
+    extra_clip_id = "video_000/clip_002" if mismatch == "missing_clip" else None
+    manifest_sha, scene_sha, event_sha = _synthetic_v4(
+        tmp_path, extra_clip_id=extra_clip_id
+    )
+    events = TABLES["ball_events"]
+    clips = TABLES["clips"]
+    with postgres_db.begin() as connection:
+        team, run, _, unresolved = _seed_run(
+            connection, manifest_sha, scene_sha, event_sha
+        )
+        if mismatch == "shot_status":
+            connection.execute(
+                events.update()
+                .where(events.c.id == unresolved)
+                .values(status="uncertain")
+            )
+        elif mismatch == "clip_component_sha":
+            connection.execute(
+                clips.update()
+                .where(clips.c.clip_id == CLIP_ID)
+                .values(metadata_json={"event_detection": {"sha256": "d" * 64}})
+            )
+        elif mismatch == "event_component_sha":
+            connection.execute(
+                events.update()
+                .where(events.c.id == unresolved)
+                .values(provenance_json={"event_component_sha256": "d" * 64})
+            )
+
+    assert main(_store_command(tmp_path, team, run)) == 1
+    assert error in capsys.readouterr().err
+    with postgres_db.connect() as connection:
+        table = TABLES["shot_hitter_estimates"]
+        assert connection.scalar(select(func.count()).select_from(table)) == 0

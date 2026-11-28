@@ -18,7 +18,7 @@ from src.tennis_scene.ball_events.observations import (
     side_velocities,
 )
 
-RULE_REVISION = "court-hitter-v1"
+RULE_REVISION = "court-hitter-v2"
 
 Resolution = Literal["resolved", "ambiguous", "unresolved"]
 
@@ -277,38 +277,49 @@ def _player_candidate(
 
 
 def _decision(
-    first: ContactEvidence | None,
+    best: HitterCandidate | None,
     second: ContactEvidence | None,
     margin: float | None,
-    ball_frames: list[int],
+    window: _ContactWindow,
     event_frame: int,
     uncertainty_s: float,
     rules: HitterThresholds,
 ) -> tuple[Resolution, str | None]:
-    if not ball_frames:
+    ball_count = int(window.ball_valid.sum())
+    if ball_count == 0:
         return "unresolved", "ball_3d_invalid"
-    if first is None:
+    if best is None or best.contact is None:
         return "unresolved", "no_valid_player"
+    first = best.contact
     if first.relative_distance > 1:
         return "unresolved", "too_far"
     if uncertainty_s > rules.max_frame_uncertainty_s:
         return "ambiguous", "high_time_uncertainty"
-    if abs(first.ball_y_m) <= rules.net_zone_m and (
-        first.player_side == 0
-        or (
-            second is not None
-            and second.relative_distance <= 1
-            and first.player_side != second.player_side
-        )
-    ):
-        return "ambiguous", "net_area_ambiguous"
+    rivals = np.arange(len(window.distances)) != best.local_player_index
+    rival_distances = window.distances[rivals]
+    rival_sides = window.player_sides[rivals]
+    if abs(first.ball_y_m) <= rules.net_zone_m:
+        reach = (rules.root_reach_m, rules.wrist_reach_m, rules.wrist_reach_m)
+        reachable = (rival_distances <= reach).any(axis=-1)
+        if (
+            first.player_side == 0
+            or (reachable & (rival_sides != first.player_side)).any()
+        ):
+            return "ambiguous", "net_area_ambiguous"
     if first.side_alignment == "mismatch":
         return "unresolved", "side_mismatch"
     if first.side_alignment == "unknown":
         return "unresolved", "player_side_unavailable"
     if first.landmark == "root":
         return "unresolved", "root_only_low_confidence"
-    if len(ball_frames) == 1 and first.frame != event_frame:
+    if first.player_side != 0 and (
+        ball_count == 1 or first.velocity_change_xy_mps is None
+    ):
+        nearby_root = rival_distances[..., 0] <= rules.root_reach_m
+        missing_wrists = ~np.isfinite(rival_distances[..., 1:]).any(axis=-1)
+        if (nearby_root & missing_wrists & (rival_sides == first.player_side)).any():
+            return "ambiguous", "same_side_competitor_wrists_missing"
+    if ball_count == 1 and first.frame != event_frame:
         return "unresolved", "sparse_ball_observations"
     if margin is not None and margin < rules.min_margin and second is not None:
         if first.player_side != 0 and first.player_side == second.player_side:
@@ -360,7 +371,7 @@ def estimate_hitter(
     ball_frames = window.frames[window.ball_valid].tolist()
     uncertainty_s = frame_uncertainty / scene.fps
     status, reason = _decision(
-        first, second, margin, ball_frames, frame, uncertainty_s, thresholds
+        best, second, margin, window, frame, uncertainty_s, thresholds
     )
     selected = best if status == "resolved" else None
     return ShotHitter(

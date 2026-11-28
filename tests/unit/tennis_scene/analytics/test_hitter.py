@@ -110,6 +110,40 @@ def test_opposing_near_net_players_can_compete_despite_side_annotation(
     }
 
 
+def test_near_net_opponent_can_be_reachable_below_the_top_two(
+    scene: HitterScene,
+) -> None:
+    scene.ball[:, 1] += 5.9
+    positions: NDArray[np.float32] = np.empty(
+        (4, len(scene.ball), 3, 3), dtype=np.float32
+    )
+    positions[:, :, 0] = np.array(
+        [(0, -0.8, 0.9), (0.5, -0.8, 0.9), (0.65, 0.9, 0.9), (4, 1, 0.9)]
+    )[:, None]
+    positions[:, :, 1:] = np.array(
+        [(0.20, -0.10, 1.5), (0.90, -0.10, 1.5), (0.78, -0.10, 1.5), (4, 1, 1.5)]
+    )[:, None, None]
+    scene = replace(
+        scene,
+        players=PlayerEvidence(
+            positions, np.ones(positions.shape[:-1], dtype=np.bool_), np.arange(4)
+        ),
+    )
+
+    estimate = estimate_hitter(scene, frame=CONTACT, frame_uncertainty=1, court_side=-1)
+
+    best, second, opponent, _ = estimate.candidates
+    assert best.contact is not None and best.contact.player_side == -1
+    assert second.contact is not None and second.contact.player_side == -1
+    assert opponent.contact is not None and opponent.contact.player_side == 1
+    assert opponent.contact.distance_m == pytest.approx(0.78)
+    assert estimate.margin_to_second is not None
+    assert estimate.margin_to_second > HitterThresholds().min_margin
+    assert estimate.resolution_status == "ambiguous"
+    assert estimate.rejection_reason == "net_area_ambiguous"
+    assert estimate.local_player_id is None
+
+
 @pytest.mark.parametrize(
     ("missing", "reason"),
     [
@@ -142,6 +176,39 @@ def test_missing_observation_keeps_status_and_candidate_evidence(
         assert best.contact is not None and best.contact.landmark == "root"
     else:
         assert best.contact is not None and best.contact.root_y_m is None
+
+
+@pytest.mark.parametrize("ball_motion", ["single_frame", "after_only", "both_sides"])
+def test_missing_rival_wrists_require_ball_motion_to_resolve(
+    scene: HitterScene, ball_motion: str
+) -> None:
+    scene.players.positions[0, :, 0] = (1.32, -6, 1.5)
+    scene.players.valid[0, :, 1:] = False
+    scene.players.positions[1, :, 2] = (0.20, -6, 1.5)
+    if ball_motion == "single_frame":
+        scene.ball_valid[:] = False
+        scene.ball_valid[CONTACT] = True
+    elif ball_motion == "after_only":
+        scene.ball_valid[:CONTACT] = False
+
+    estimate = estimate_hitter(scene, frame=CONTACT, frame_uncertainty=1, court_side=-1)
+
+    best, rival = estimate.candidates
+    assert best.contact is not None and best.contact.frame == CONTACT
+    assert best.contact.distance_m == pytest.approx(0.20)
+    assert rival.contact is not None and rival.contact.landmark == "root"
+    assert rival.contact.distance_m == pytest.approx(1.32)
+    assert rival.contact.player_side == best.contact.player_side == -1
+    assert estimate.margin_to_second is not None
+    assert estimate.margin_to_second > HitterThresholds().min_margin
+    if ball_motion == "both_sides":
+        assert estimate.resolution_status == "resolved"
+        assert estimate.local_player_id == 7
+    else:
+        assert best.contact.velocity_change_xy_mps is None
+        assert estimate.resolution_status == "ambiguous"
+        assert estimate.rejection_reason == "same_side_competitor_wrists_missing"
+        assert estimate.local_player_id is None
 
 
 def test_court_side_conflict_cannot_select_a_player(scene: HitterScene) -> None:

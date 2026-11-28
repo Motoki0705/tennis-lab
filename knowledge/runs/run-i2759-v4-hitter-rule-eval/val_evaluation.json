@@ -25,7 +25,7 @@
       "confirmed_with_track_gap": 1
     }
   },
-  "rule_version": "court-hitter-v1.217835f4f9d0",
+  "rule_version": "court-hitter-v2.217835f4f9d0",
   "schema": "v4_hitter_evaluation.v1",
   "split": "val",
   "split_audit": {
