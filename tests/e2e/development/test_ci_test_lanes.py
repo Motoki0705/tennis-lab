@@ -37,6 +37,7 @@ def _ci_job() -> dict[str, Any]:
         "lint",
         "tests",
         "system-deps",
+        "postgres",
         "python",
     }
     return cast(dict[str, Any], workflow["jobs"]["tests"])
@@ -361,7 +362,27 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
         == "${{ always() && needs.scope.outputs.shared_memory_only != 'true' "
         "&& needs.scope.outputs.knowledge_records_only != 'true' }}"
     )
-    assert set(aggregate["needs"]) == {"scope", "plan", "lint", "tests", "system-deps"}
+    assert set(aggregate["needs"]) == {
+        "scope",
+        "plan",
+        "lint",
+        "tests",
+        "system-deps",
+        "postgres",
+    }
+    postgres = workflow["jobs"]["postgres"]
+    assert postgres["needs"] == ["scope"] and postgres["if"] == lint["if"]
+    assert postgres["services"]["postgres"]["image"] == "postgres:17"
+    postgres_test = next(
+        step for step in postgres["steps"] if step["name"] == "Run PostgreSQL tests"
+    )
+    assert postgres_test["env"]["CI_REQUIRE_POSTGRES"] == "1"
+    assert "job.services.postgres.ports[5432]" in postgres_test["env"]["DATABASE_URL"]
+    assert shlex.split(postgres_test["run"])[-3:] == [
+        "-m",
+        "postgres",
+        "tests/integration/tennis_scene/analytics",
+    ]
     runtime = workflow["jobs"]["system-deps"]
     assert runtime["needs"] == ["plan"]
     assert any(
@@ -455,6 +476,7 @@ def test_actions_parallelize_lint_and_cpu_shards_and_always_aggregate() -> None:
     verification_command = shlex.split(
         verification["run"].replace("$CI_SHARD_COUNT", default)
     )
+    assert "--require-postgres" in verification_command
     assert verification_command[verification_command.index("--count") + 1] == str(
         len(shards)
     )
@@ -604,6 +626,8 @@ def test_actions_test_command_discovers_tests_preserves_exclusions_and_exit_code
             "def test_local_data(): raise AssertionError('local data must be excluded')\n"
             "@pytest.mark.cuda\n"
             "def test_cuda(): raise AssertionError('CUDA must be excluded')\n"
+            "@pytest.mark.postgres\n"
+            "def test_postgres(): raise AssertionError('PostgreSQL must run separately')\n"
         ),
         **dict.fromkeys(restored_files, "def test_court_contract(): pass\n"),
     }

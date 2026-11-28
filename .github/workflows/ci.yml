@@ -26,7 +26,7 @@ on:
   workflow_dispatch:
     inputs:
       shards:
-        description: Ordinary CPU job count (plus one required system dependency job)
+        description: Ordinary CPU job count (system dependency and PostgreSQL jobs run separately)
         type: choice
         options: ["1", "2", "4", "6", "8", "10"]
         default: "10"
@@ -358,10 +358,49 @@ jobs:
           include-hidden-files: true
           if-no-files-found: error
 
+  postgres:
+    name: PostgreSQL analytics integration tests
+    needs: [scope]
+    if: ${{ !cancelled() && needs.scope.outputs.shared_memory_only != 'true' && needs.scope.outputs.knowledge_records_only != 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: tennis_analytics
+          POSTGRES_USER: tennis_analytics
+          POSTGRES_PASSWORD: tennis_analytics
+        ports:
+          - 5432/tcp
+        options: >-
+          --health-cmd "pg_isready -h 127.0.0.1 -U tennis_analytics -d tennis_analytics"
+          --health-interval 2s --health-timeout 3s --health-retries 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          submodules: false
+      - name: Set up uv and Python 3.11
+        uses: astral-sh/setup-uv@v7
+        with:
+          python-version: "3.11"
+          prune-cache: false
+          cache-dependency-glob: uv.lock
+          cache-suffix: cpu
+      - name: Install locked CPU environment
+        run: uv sync --locked --no-group gpu --group cpu
+      - name: Run PostgreSQL tests
+        env:
+          DATABASE_URL: postgresql+psycopg://tennis_analytics:tennis_analytics@127.0.0.1:${{ job.services.postgres.ports[5432] }}/tennis_analytics
+          CI_REQUIRE_POSTGRES: "1"
+          CUDA_VISIBLE_DEVICES: ""
+        run: .venv/bin/python -m pytest -n 0 -m postgres tests/integration/tennis_scene/analytics
+
   python:
     name: Python
     if: ${{ always() && needs.scope.outputs.shared_memory_only != 'true' && needs.scope.outputs.knowledge_records_only != 'true' }}
-    needs: [scope, plan, lint, tests, system-deps]
+    needs: [scope, plan, lint, tests, system-deps, postgres]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -402,6 +441,7 @@ jobs:
           python3 -m scripts.ci_metrics.shards --root .ci-results --count "$CI_SHARD_COUNT"
           --lane-plan .ci-plan/plan.json
           --artifact-manifest .ci-results/artifacts.json
+          --require-postgres
           --timing-profile scripts/ci_metrics/cpu-file-times.json
       - name: Upload CPU coverage result
         if: always()

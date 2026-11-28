@@ -1154,7 +1154,7 @@ def test_storage_boundary_files_pass_the_case_split_collection_guard(
             "--collect-only",
             "-q",
             "-m",
-            "not local_data and not cuda",
+            "not local_data and not cuda and not postgres",
             "-p",
             "scripts.ci_metrics.pytest_plugin",
             "-p",
@@ -1316,3 +1316,16 @@ def test_aggregation_requires_all_upstream_jobs(
 ) -> None:
     needs = {**SUCCESS, job: {"result": outcome}}
     assert not verify_shards(observed_shards, 2, needs=needs, **CONTEXT)["success"]
+
+
+@pytest.mark.parametrize("result", ["success", "failure", "skipped", None])
+def test_postgres_job_is_required_by_the_current_workflow(
+    observed_shards: Path, result: str | None
+) -> None:
+    needs = dict(SUCCESS)
+    if result is not None:
+        needs["postgres"] = {"result": result}
+    audit = verify_shards(
+        observed_shards, 2, needs=needs, require_postgres=True, **CONTEXT
+    )
+    assert audit["success"] is (result == "success")
