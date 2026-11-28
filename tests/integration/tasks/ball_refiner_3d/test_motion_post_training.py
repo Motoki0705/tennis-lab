@@ -185,3 +185,161 @@ def test_motion_runner_uses_worktree_links_and_scores_two_label_sources(
         np.testing.assert_array_equal(prediction["frame"], np.arange(scene.num_frames))
         assert not prediction["ball_valid"][4]
         assert prediction["event_logits"].shape == (scene.num_frames, 3)
+
+
+def test_meiji_benchmark_loader_accepts_multiview_v4_manifest(tmp_path: Path) -> None:
+    from src.tasks.ball_refiner_3d.post_training.dataset import (
+        INDEPENDENT_TEST,
+        MeijiBenchmark,
+    )
+    from src.tennis_scene.ball_event_schema import (
+        EVENT_CLASSES_V4,
+        EVENT_SUBTYPES_V4,
+        ball_event_metadata,
+    )
+
+    root = tmp_path / "multiview-v4"
+    clips_rows = []
+    train_ids: list[str] = []
+    val_ids: list[str] = []
+    test_ids: list[str] = list(sorted(INDEPENDENT_TEST))
+    all_ids = [f"video_000/clip_{i:03d}" for i in range(69)]
+    rest = [c for c in all_ids if c not in INDEPENDENT_TEST]
+    test_ids.extend(rest[:5])
+    val_ids.extend(rest[5:16])
+    train_ids.extend(rest[16:])
+
+    frames = 12
+    frame_valid: NDArray[np.bool_] = np.ones(frames, dtype=np.bool_)
+    joints_valid: NDArray[np.bool_] = np.zeros((1, frames, 17), dtype=np.bool_)
+    ann_sha = "c" * 64
+    for idx, clip_id in enumerate(all_ids):
+        clip_dir = root / "videos" / "video_000" / "clips" / f"clip_{idx:03d}"
+        clip_dir.mkdir(parents=True)
+        clip_json = clip_dir / "clip.json"
+        clip_json.write_text(
+            json.dumps(
+                {
+                    "clip_id": clip_id,
+                    "video_id": "video_000",
+                    "fps": 60.0,
+                    "num_frames": frames,
+                    "global_start_sec": float(idx * 10),
+                    "global_end_sec": float(idx * 10 + frames / 60.0),
+                }
+            )
+        )
+        scene_index = clip_dir / "scene" / "scene.json"
+        scene_index.parent.mkdir(parents=True)
+        scene_index.write_text("{}")
+        archive = clip_dir / "scene" / "exports" / "v4" / "scene.npz"
+        if idx == 0:
+            scene = SceneResult(
+                frames,
+                60.0,
+                640,
+                360,
+                np.zeros((2, frames, 14, 2), np.float32),
+                np.ones((2, frames, 14), np.float32),
+                np.zeros((1, frames, 3), np.float32),
+                np.zeros((1, frames), np.float32),
+                ball_uv=np.zeros((2, frames, 2), np.float32),
+                ball_vis=np.ones((2, frames), dtype=np.bool_),
+                ball_3d=np.zeros((frames, 3), np.float32),
+                ball_3d_valid=frame_valid,
+                ball_rejection_code=np.zeros(frames, np.uint8),
+                human_kp_2d=np.zeros((1, 2, frames, 17, 2), np.float32),
+                human_kp_vis=np.ones((1, 2, frames, 17), np.float32),
+                player_kp_3d=np.zeros((1, frames, 17, 3), np.float32),
+                player_kp_3d_vis=joints_valid,
+                player_kp_3d_rejection_code=np.ones((1, frames, 17), np.uint8),
+                player_observed=np.ones((1, frames), dtype=np.bool_),
+                player_valid=np.ones((1, frames), dtype=np.bool_),
+                player_rejection_code=np.zeros((1, frames), np.uint8),
+                player_heading_valid=np.zeros((1, frames), dtype=np.bool_),
+                player_smpl_valid=np.zeros((1, frames), dtype=np.bool_),
+                metadata={
+                    "scene_schema_version": 4,
+                    "dataset_clip_id": clip_id,
+                    "court_reference": {},
+                    "ball_events": ball_event_metadata(
+                        "annotation",
+                        {
+                            "code_commit": "a" * 40,
+                            "annotation_sha256": ann_sha,
+                            "labeler": "codex",
+                            "labeler_original": "Codex",
+                        },
+                        scene_version=4,
+                    ),
+                },
+                ball_event_frame=np.array([2], np.int32),
+                ball_event_kind=np.array([EVENT_CLASSES_V4.index("shot")], np.uint8),
+                ball_event_coverage=np.ones(frames, dtype=np.bool_),
+                ball_event_status=np.array([0], np.uint8),
+                ball_event_frame_uncertainty=np.array([1], np.uint8),
+                ball_event_subtype=np.array(
+                    [EVENT_SUBTYPES_V4.index("serve_overhead")], np.uint8
+                ),
+                ball_event_side=np.array([-1], np.int8),
+            )
+            save_scene_result(scene, archive)
+        clips_rows.append(
+            {
+                "clip_id": clip_id,
+                "fps": 60.0,
+                "frames": frames,
+                "clip_json": {
+                    "path": str(clip_json.relative_to(root)),
+                    "sha256": sha256_file(clip_json),
+                },
+                "scene": {
+                    "path": str(scene_index.relative_to(root)),
+                    "sha256": sha256_file(scene_index),
+                },
+                "exports": {
+                    "scene/scene": {
+                        "path": str(archive.relative_to(root)),
+                        "sha256": sha256_file(archive) if archive.exists() else "0" * 64,
+                    },
+                    "scene/metadata": {
+                        "path": str(archive.with_suffix(".metadata.json").relative_to(root)),
+                        "sha256": sha256_file(archive.with_suffix(".metadata.json"))
+                        if archive.exists()
+                        else "0" * 64,
+                    },
+                },
+                "ball_events": {"annotation_sha256": ann_sha},
+            }
+        )
+    manifest_path = root / "manifest.json"
+    manifest_path.write_text(
+        json.dumps(
+            {
+                "schema": "tennis_multiview_benchmark_v1",
+                "benchmark_id": "meiji_4cam/multiview-v4",
+                "scene_schema_version": 4,
+                "base": {
+                    "benchmark_id": "meiji_4cam/multiview-v3",
+                    "manifest_sha256": "1" * 64,
+                    "v2_manifest_sha256": "2" * 64,
+                },
+                "provenance": {"method": "annotation"},
+                "splits": {
+                    "seed": 42,
+                    "pinned_test_clips": sorted(INDEPENDENT_TEST),
+                    "train": {"clip_ids": sorted(train_ids)},
+                    "val": {"clip_ids": sorted(val_ids)},
+                    "test": {"clip_ids": sorted(test_ids)},
+                },
+                "clips": clips_rows,
+            }
+        )
+    )
+    bench = MeijiBenchmark.load(root, sha256_file(manifest_path))
+    assert bench.scene_schema_version == 4
+    assert bench.base_sha256 == "2" * 64
+    loaded = bench.scene("video_000/clip_000")
+    assert loaded.schema_version == 4
+    labels = Annotations.from_scene(loaded)
+    assert len(labels.events) == 1 and labels.events[0].subtype == "serve_overhead"

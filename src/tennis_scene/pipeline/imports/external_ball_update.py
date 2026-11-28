@@ -110,16 +110,18 @@ def _saved_event_annotations(
     index: dict[str, Any],
     source: ClipSource,
     court_reference: dict[str, Any],
+    *,
+    expected_version: int = 3,
 ) -> tuple[ArtifactRef, EventDetectionResult]:
     reference, _, result = _read_fixed(
-        store, index, EVENT_DETECTION, "scene_result", 3, EventDetectionResult
+        store, index, EVENT_DETECTION, "scene_result", expected_version, EventDetectionResult
     )
-    if result.schema_version != 3:
-        raise ValueError("Saved event_detection must contain SceneResult v3")
-    validate_scene_ball_events(result, version=3)
+    if result.schema_version != expected_version:
+        raise ValueError(f"Saved event_detection must contain SceneResult v{expected_version}")
+    validate_scene_ball_events(result, version=expected_version)
     if result.metadata["ball_events"]["source"] != "annotation":
         raise ValueError(
-            "Saved v3 contains inferred events. External ball import can retain "
+            f"Saved v{expected_version} contains inferred events. External ball import can retain "
             "frame annotations on the same clip; inferred events require a new event_detection run."
         )
     if (
@@ -141,7 +143,7 @@ def _attach_event_annotations(
     values.update({name: getattr(previous, name) for name in BALL_EVENT_FIELDS})
     values["metadata"] = {
         **scene.metadata,
-        "scene_schema_version": 3,
+        "scene_schema_version": previous.schema_version,
         "ball_events": previous.metadata["ball_events"],
         "external_ball": {
             **scene.metadata["external_ball"],
@@ -335,8 +337,14 @@ def update_clip(
         }
     before.verify(root)
     saved_events = (
-        _saved_event_annotations(store, index, source, geometry.document)
-        if marker is not None and marker["scene_schema_version"] == 3
+        _saved_event_annotations(
+            store,
+            index,
+            source,
+            geometry.document,
+            expected_version=marker["scene_schema_version"],
+        )
+        if marker is not None and marker["scene_schema_version"] in (3, 4)
         else None
     )
     assert_current_component_lineage(
@@ -506,7 +514,7 @@ def update_clip(
             EventDetectionResult,
             "scene_result",
             {"scene": scene_ref},
-            version=3,
+            version=event_scene.schema_version,
             origin="import",
             linked_arrays=paths,
         )

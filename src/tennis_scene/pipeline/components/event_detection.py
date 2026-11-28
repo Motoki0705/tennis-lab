@@ -16,13 +16,16 @@ from src.tennis_scene.ball_event_schema import (
     EVENT_SOURCES,
     EventSource,
     ball_event_metadata,
+    event_classes_for_version,
     validate_scene_ball_events,
 )
 from src.tennis_scene.ball_events import analyze_scene_events
 from src.tennis_scene.ball_events.annotation import (
-    ANNOTATION_SCHEMA_FILENAME,
     annotation_path,
+    annotation_schema_filename,
+    annotation_schema_version,
     meiji_v2_manifest_asset,
+    meiji_v3_manifest_asset,
     read_ball_annotations,
 )
 from src.tennis_scene.ball_events.rules import DEFAULT_THRESHOLDS, RuleThresholds
@@ -114,12 +117,18 @@ class EventDetectionConfig:
 
 
 def annotation_assets(directory: Path, clip_id: str, *, benchmark_manifest: Path) -> dict[str, dict[str, str]]:
-    manifest = meiji_v2_manifest_asset(benchmark_manifest)
-    if file_identity(benchmark_manifest) != manifest:
-        raise ValueError(f"Event annotation requires the fixed Meiji multiview-v2 manifest SHA-256: {benchmark_manifest}")
+    version = annotation_schema_version(directory)
+    if version == 2:
+        manifest = meiji_v3_manifest_asset(benchmark_manifest)
+        if file_identity(benchmark_manifest) != manifest:
+            raise ValueError(f"Event annotation v2 requires the fixed Meiji multiview-v3 manifest SHA-256: {benchmark_manifest}")
+    else:
+        manifest = meiji_v2_manifest_asset(benchmark_manifest)
+        if file_identity(benchmark_manifest) != manifest:
+            raise ValueError(f"Event annotation requires the fixed Meiji multiview-v2 manifest SHA-256: {benchmark_manifest}")
     return {
         "annotation": file_identity(annotation_path(directory, clip_id)),
-        "schema": file_identity(directory / ANNOTATION_SCHEMA_FILENAME),
+        "schema": file_identity(directory / annotation_schema_filename(version)),
         "benchmark_manifest": manifest,
     }
 
@@ -140,7 +149,7 @@ class EventDetectionInput:
 
 @dataclass(kw_only=True)
 class EventDetectionResult(SceneResult):
-    """The v3 scene and evidence persisted only in the component descriptor."""
+    """The v3/v4 scene and evidence persisted only in the component descriptor."""
 
     event_evidence: dict[str, Any] = field(default_factory=dict)
 
@@ -162,11 +171,18 @@ class EventDetectionModule(InferenceComponent[EventDetectionInput, EventDetectio
         self.config, self.clip_id, self.code_commit = config, clip_id, code_commit
         self._specs = config.model_specs()
         self._assets: dict[str, dict[str, str]] = {}
+        self._scene_version = 3
         if config.annotation_directory is not None:
             assert config.annotation_benchmark_manifest is not None
+            schema_version = annotation_schema_version(config.annotation_directory)
+            self._scene_version = 4 if schema_version == 2 else 3
             self._assets = annotation_assets(
                 config.annotation_directory, clip_id, benchmark_manifest=config.annotation_benchmark_manifest,
             )
+        self.io = ComponentIO(
+            EVENT_DETECTION, EventDetectionInput, EventDetectionResult,
+            {"scene": InputPort("scene_result", 2)}, "scene_result", self._scene_version,
+        )
 
     def model_specs(self) -> Mapping[str, ModelSpec[Any]]:
         return self._specs
@@ -184,9 +200,9 @@ class EventDetectionModule(InferenceComponent[EventDetectionInput, EventDetectio
         self.config.require_checkpoint()
 
     def validate_output(self, result: EventDetectionResult, settings: Mapping[str, Any]) -> None:
-        if result.schema_version != 3:
-            raise ValueError("event_detection must produce SceneResult v3")
-        validate_scene_ball_events(result, version=3)
+        if result.schema_version != self._scene_version:
+            raise ValueError(f"event_detection must produce SceneResult v{self._scene_version}")
+        validate_scene_ball_events(result, version=self._scene_version)
         events = result.metadata["ball_events"]
         provenance = events["provenance"]
         if events["source"] != settings["method"] or any(
@@ -206,9 +222,13 @@ class EventDetectionModule(InferenceComponent[EventDetectionInput, EventDetectio
 
         config = self.config
         provenance = {key: value for key, value in self.cache_identity().items() if key != "method"}
+        classes: tuple[str, ...] = EVENT_CLASSES
         if config.method == "annotation":
             labels = read_ball_annotations(scene, source, **self._assets)
+            if labels.scene_schema_version != self._scene_version:
+                raise ValueError("Event annotation schema version disagrees with module configuration")
             events, coverage, columns, evidence = labels.events, labels.coverage, labels.columns, labels.evidence
+            classes = labels.classes
             provenance.update(labels.provenance)
         elif config.method == "rule":
             candidates, coverage = analyze_scene_events(scene, thresholds=config.thresholds)
@@ -228,11 +248,18 @@ class EventDetectionModule(InferenceComponent[EventDetectionInput, EventDetectio
             evidence = {"events": events}
         provenance["code_commit"] = source_commit() if self.code_commit is None else self.code_commit
         values = {item.name: getattr(scene, item.name) for item in fields(SceneResult)}
+        expected_classes = event_classes_for_version(self._scene_version)
+        if classes != expected_classes:
+            raise ValueError("Event class list disagrees with target SceneResult version")
         values.update(
             columns,
-            metadata={**scene.metadata, "scene_schema_version": 3, "ball_events": ball_event_metadata(config.method, provenance)},
+            metadata={
+                **scene.metadata,
+                "scene_schema_version": self._scene_version,
+                "ball_events": ball_event_metadata(config.method, provenance, scene_version=self._scene_version),
+            },
             ball_event_frame=np.asarray([row["frame"] for row in events], dtype=np.int32),
-            ball_event_kind=np.asarray([EVENT_CLASSES.index(row["kind"]) for row in events], dtype=np.uint8),
+            ball_event_kind=np.asarray([expected_classes.index(row["kind"]) for row in events], dtype=np.uint8),
             ball_event_coverage=coverage,
         )
         result = EventDetectionResult(**values, event_evidence=evidence)

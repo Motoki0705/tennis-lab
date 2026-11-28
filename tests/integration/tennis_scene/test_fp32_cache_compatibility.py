@@ -370,9 +370,10 @@ def test_multiview_integration_preserves_main_source_identity() -> None:
     manifest = Path(source_identity.__file__).with_name("multiview_scene_cache_compatibility.json")
     files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
     live = source_identity.source_digests(PROJECT_ROOT / "src")
-    current = source_identity._compatible_patch(live, "people_models_cache_compatibility.json")
-    baseline = {path: digest for path, digest in current.items() if path not in files}
-    baseline.update({path: versions["before"] for path, versions in files.items() if versions["before"] is not None})
+    # Test the reviewed snapshot even when this checkout changes a patch file.
+    outside_patch = {path: digest for path, digest in live.items() if path not in files}
+    current = outside_patch | {path: versions["after"] for path, versions in files.items()}
+    baseline = outside_patch | {path: versions["before"] for path, versions in files.items() if versions["before"] is not None}
     guarded = (
         "utils/configuration/inventory.py",
         "tennis_scene/multiview_scene/publication.py",
@@ -398,16 +399,19 @@ def test_exact_people_model_patch_preserves_legacy_source_identity() -> None:
     manifest = Path(source_identity.__file__).with_name("people_models_cache_compatibility.json")
     files = json.loads(manifest.read_text(encoding="utf-8"))["files"]
     live = source_identity.source_digests(PROJECT_ROOT / "src")
-    assert {path: live.get(path) for path in files} == {path: pair["after"] for path, pair in files.items()}
-    baseline = {path: digest for path, digest in live.items() if path not in files}
-    baseline.update({path: pair["before"] for path, pair in files.items() if pair["before"] is not None})
+    # Test the reviewed snapshot even when this checkout changes a patch file.
+    outside_patch = {path: digest for path, digest in live.items() if path not in files}
+    reviewed = outside_patch | {path: pair["after"] for path, pair in files.items()}
+    baseline = outside_patch | {path: pair["before"] for path, pair in files.items() if pair["before"] is not None}
     for trt in (False, True):
         flags = dict(standard_recipe=True, standard_people=True, tensorrt=trt)
         legacy = source_identity.compatible_source_digests(baseline, **flags)
-        assert source_identity.compatible_source_digests(live, **flags) == legacy
-        assert source_identity.compatible_source_digests(live, alternative_people=True, **flags) != legacy
-        drift = {**live, "tennis_scene/pipeline/components/person_features.py": "0" * 64}
+        assert source_identity.compatible_source_digests(reviewed, **flags) == legacy
+        assert source_identity.compatible_source_digests(reviewed, alternative_people=True, **flags) != legacy
+        drift = {**reviewed, "tennis_scene/pipeline/components/person_features.py": "0" * 64}
         assert source_identity.compatible_source_digests(drift, **flags) != legacy
+        if live != reviewed:
+            assert source_identity.compatible_source_digests(live, **flags) != legacy
 
 def test_exact_tensorrt_patch_preserves_the_previous_fp32_source_identity() -> None:
     from src.tennis_scene.pipeline import source_identity

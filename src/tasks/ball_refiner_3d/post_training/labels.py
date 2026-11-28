@@ -10,11 +10,16 @@ from numpy.typing import NDArray
 
 from src.tasks.ball_refiner_3d.data.targets.events import gaussian_event_target
 from src.tasks.ball_refiner_3d.events import EVENT_CLASS_BITS, EVENT_CLASSES
+from src.tennis_scene.ball_event_schema import EVENT_CLASSES_V4
 from src.tennis_scene.schema import SceneResult
 
 MATCH_TOLERANCE = 2
 UNCERTAIN_RADIUS = 2
 STATUSES = ("certain", "probable", "uncertain")
+SERVE_SUBTYPES = frozenset({"serve", "serve_overhead", "serve_underhand"})
+VOLLEY_SUBTYPES = frozenset(
+    {"volley", "volley_forehand", "volley_backhand", "volley_center"}
+)
 
 
 @dataclass(frozen=True, slots=True)
@@ -35,6 +40,7 @@ class Event:
 class Annotations:
     events: tuple[Event, ...]
     coverage: NDArray[np.bool_]
+    unknown_frames: tuple[int, ...] = ()
 
     def __post_init__(self) -> None:
         seen: set[tuple[int, str]] = set()
@@ -50,24 +56,28 @@ class Annotations:
             ):
                 raise ValueError(f"Invalid or duplicate event: {event}")
             seen.add(key)
+        for frame in self.unknown_frames:
+            if type(frame) is not int or not 0 <= frame < len(self.coverage):
+                raise ValueError(f"Invalid unknown event frame: {frame}")
         if self.coverage.ndim != 1 or self.coverage.dtype != np.bool_:
             raise ValueError("Coverage must be a boolean frame vector")
 
     @classmethod
     def from_scene(cls, scene: SceneResult) -> Annotations:
-        meta = scene.metadata["ball_events"]
+        meta = scene.metadata.get("ball_events")
         if (
-            scene.schema_version != 3
-            or meta["source"] != "annotation"
-            or meta["classes"] != list(EVENT_CLASSES)
-            or meta["statuses"] != list(STATUSES)
+            not isinstance(meta, dict)
+            or scene.schema_version not in (3, 4)
+            or meta.get("source") != "annotation"
+            or meta.get("statuses") != list(STATUSES)
         ):
-            raise ValueError("Post-training requires three-class v3 human annotations")
-        frames, kinds, statuses, in_point, subtypes, coverage = (
+            raise ValueError(
+                "Post-training requires v3 or v4 human event annotations"
+            )
+        frames, kinds, statuses, subtypes, coverage = (
             scene.ball_event_frame,
             scene.ball_event_kind,
             scene.ball_event_status,
-            scene.ball_event_in_point,
             scene.ball_event_subtype,
             scene.ball_event_coverage,
         )
@@ -75,24 +85,58 @@ class Annotations:
             frames is None
             or kinds is None
             or statuses is None
-            or in_point is None
             or subtypes is None
             or coverage is None
         ):
             raise ValueError("Scene has incomplete annotation arrays")
-        events = tuple(
-            Event(
-                int(frame),
-                EVENT_CLASSES[kind],
-                STATUSES[status],
-                bool(inside),
-                meta["subtypes"][subtype],
+
+        if scene.schema_version == 3:
+            if meta.get("classes") != list(EVENT_CLASSES):
+                raise ValueError(
+                    "Post-training requires three-class v3 human annotations"
+                )
+            in_point = scene.ball_event_in_point
+            if in_point is None:
+                raise ValueError("Scene has incomplete annotation arrays")
+            events = tuple(
+                Event(
+                    int(frame),
+                    EVENT_CLASSES[kind],
+                    STATUSES[status],
+                    bool(inside),
+                    meta["subtypes"][subtype],
+                )
+                for frame, kind, status, inside, subtype in zip(
+                    frames, kinds, statuses, in_point, subtypes, strict=True
+                )
             )
-            for frame, kind, status, inside, subtype in zip(
-                frames, kinds, statuses, in_point, subtypes, strict=True
+            return cls(events, coverage)
+
+        if meta.get("classes") != list(EVENT_CLASSES_V4):
+            raise ValueError(
+                "Post-training requires v4 human annotations with standard classes"
             )
-        )
-        return cls(events, coverage)
+        if scene.ball_event_in_point is not None:
+            raise ValueError("SceneResult v4 must not include ball_event_in_point")
+        parsed_events: list[Event] = []
+        unknown_frames: list[int] = []
+        for frame, kind, status, subtype in zip(
+            frames, kinds, statuses, subtypes, strict=True
+        ):
+            kind_name = EVENT_CLASSES_V4[kind]
+            if kind_name == "unknown":
+                unknown_frames.append(int(frame))
+            else:
+                parsed_events.append(
+                    Event(
+                        int(frame),
+                        kind_name,
+                        STATUSES[status],
+                        True,
+                        meta["subtypes"][subtype],
+                    )
+                )
+        return cls(tuple(parsed_events), coverage, tuple(unknown_frames))
 
     @classmethod
     def from_document(cls, doc: dict[str, Any]) -> Annotations:
@@ -107,15 +151,22 @@ class Annotations:
             ):
                 raise ValueError("Invalid independent unlabelable interval")
             coverage[start : end + 1] = False
-        return cls(
-            tuple(
-                Event(
-                    e["frame"], e["kind"], e["status"], e["in_point"], e.get("subtype")
+        events: list[Event] = []
+        unknown_frames: list[int] = []
+        for e in doc["events"]:
+            if e["kind"] == "unknown":
+                unknown_frames.append(e["frame"])
+            else:
+                events.append(
+                    Event(
+                        e["frame"],
+                        e["kind"],
+                        e["status"],
+                        bool(e.get("in_point", True)),
+                        e.get("subtype"),
+                    )
                 )
-                for e in doc["events"]
-            ),
-            coverage,
-        )
+        return cls(tuple(events), coverage, tuple(unknown_frames))
 
     def ignored_near_uncertain(self) -> NDArray[np.bool_]:
         ignored: NDArray[np.bool_] = np.zeros(
@@ -127,6 +178,9 @@ class Annotations:
                 ignored[start : event.frame + UNCERTAIN_RADIUS + 1, event.channel] = (
                     True
                 )
+        for frame in self.unknown_frames:
+            start = max(0, frame - UNCERTAIN_RADIUS)
+            ignored[start : frame + UNCERTAIN_RADIUS + 1, :] = True
         return ignored
 
     def targets(self, sigma: float) -> tuple[NDArray[np.float32], NDArray[np.bool_]]:
@@ -147,7 +201,7 @@ class Annotations:
         for event in sorted(self.events, key=lambda e: (e.frame, e.in_point)):
             if start is not None and (
                 not event.in_point
-                or (event.subtype == "serve" and event.frame > previous)
+                or (event.subtype in SERVE_SUBTYPES and event.frame > previous)
             ):
                 inside[start : previous + 1] = True
                 start = None

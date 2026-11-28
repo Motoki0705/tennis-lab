@@ -65,18 +65,24 @@ class MeijiBenchmark:
     splits: dict[str, list[str]]
     clips: dict[str, dict[str, Any]]
     timeline: dict[str, tuple[float, float]]
+    scene_schema_version: int = 3
 
     @classmethod
     def load(cls, root: Path, manifest_sha256: str) -> MeijiBenchmark:
         manifest = read_pinned_json(root / "manifest.json", manifest_sha256)
+        supported = {
+            ("meiji_4cam/multiview-v3", 3),
+            ("meiji_4cam/multiview-v4", 4),
+        }
         if (
             manifest["schema"] != "tennis_multiview_benchmark_v1"
-            or manifest["benchmark_id"] != "meiji_4cam/multiview-v3"
-            or manifest["scene_schema_version"] != 3
+            or (manifest["benchmark_id"], manifest["scene_schema_version"])
+            not in supported
             or manifest["provenance"]["method"] != "annotation"
             or manifest["splits"]["seed"] != 42
         ):
-            raise ValueError("Require the published annotated Meiji v3 benchmark")
+            raise ValueError("Require the published annotated Meiji v3 or v4 benchmark")
+        scene_version = int(manifest["scene_schema_version"])
         rows = manifest["clips"]
         clips = {row["clip_id"]: row for row in rows}
         splits: dict[str, list[str]] = {
@@ -95,13 +101,17 @@ class MeijiBenchmark:
                 "Manifest must retain the disjoint 47/11/11 split and six independent test clips"
             )
         timeline = _timeline(root, clips, splits)
+        base_sha = manifest["base"].get(
+            "v2_manifest_sha256", manifest["base"]["manifest_sha256"]
+        )
         return cls(
             root,
             manifest_sha256,
-            manifest["base"]["manifest_sha256"],
+            base_sha,
             splits,
             clips,
             timeline,
+            scene_schema_version=scene_version,
         )
 
     def scene(self, clip_id: str) -> SceneResult:
@@ -117,7 +127,7 @@ class MeijiBenchmark:
         verify_file(sidecar, exports["scene/metadata"]["sha256"])
         scene = load_scene_result(archive)
         if (
-            scene.schema_version != 3
+            scene.schema_version != self.scene_schema_version
             or scene.metadata["dataset_clip_id"] != clip_id
             or scene.num_frames != row["frames"]
             or scene.fps != row["fps"]
@@ -215,7 +225,7 @@ def save_clip(path: Path, clip: Clip) -> dict[str, Any]:
     if clip.reference is not None:
         arrays["reference_coverage"] = clip.reference.coverage
     np.savez(path, **arrays)
-    return {
+    result: dict[str, Any] = {
         "path": path.name,
         "sha256": sha256_file(path),
         "fps": clip.fps,
@@ -226,6 +236,11 @@ def save_clip(path: Path, clip: Clip) -> dict[str, Any]:
         if clip.reference is None
         else [asdict(e) for e in clip.reference.events],
     }
+    if clip.labels.unknown_frames:
+        result["unknown_frames"] = list(clip.labels.unknown_frames)
+    if clip.reference is not None and clip.reference.unknown_frames:
+        result["reference_unknown_frames"] = list(clip.reference.unknown_frames)
+    return result
 
 
 def prepare_benchmark(
@@ -328,14 +343,18 @@ class PreparedDataset:
                 tuple(row["track_ids"]),
             )
             labels = Annotations(
-                tuple(Event(**e) for e in row["events"]), arrays["coverage"]
+                tuple(Event(**e) for e in row["events"]),
+                arrays["coverage"],
+                tuple(row.get("unknown_frames", ())),
             )
             refs = row["reference_events"]
             reference = (
                 None
                 if refs is None
                 else Annotations(
-                    tuple(Event(**e) for e in refs), arrays["reference_coverage"]
+                    tuple(Event(**e) for e in refs),
+                    arrays["reference_coverage"],
+                    tuple(row.get("reference_unknown_frames", ())),
                 )
             )
         return Clip(clip_id, row["fps"], motion, labels, reference)

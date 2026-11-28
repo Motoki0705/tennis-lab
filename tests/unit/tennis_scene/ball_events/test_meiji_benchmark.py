@@ -110,3 +110,107 @@ def test_saved_scene_replay_shares_inputs_and_publishes_only_v3_index(tmp_path: 
     assert path.is_file()
     saved = verify_replayed_scene(base.index_path, new / "scene.json")
     assert saved.ball_3d is not None and np.signbit(saved.ball_3d[0, 0])
+
+
+def test_saved_v3_scene_replay_produces_v4_with_bit_identical_v2_arrays(
+    tmp_path: Path, v2_scene: SceneResult, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from src.tennis_scene.ball_events import annotation as meiji_annotation
+
+    old = tmp_path / "v2"
+    v3_dir = tmp_path / "v3"
+    v4_dir = tmp_path / "v4"
+    clip = "video_000/clip_000"
+    source = ClipSource(clip, tuple(
+        SourceVideo(camera, tmp_path / f"{camera}.mp4", digit * 64, 3, 30.0, 640, 360)
+        for camera, digit in (("cam0", "a"), ("cam1", "b"))
+    ))
+    v2_scene.metadata["dataset_clip_id"] = clip
+    assert v2_scene.ball_3d is not None
+    v2_scene.ball_3d[0, 0] = -0.0
+    base = ClipStore(old, json_value(source))
+    ref = base.publish(
+        "scene_assembly", v2_scene, ArtifactCodec(SceneResult),
+        schema="scene_result", version=2,
+        identity={"assembly": "past checkpoint"}, dependencies={}, provenance={"origin": "component"},
+    )
+    export_scene(base, v2_scene, ref)
+
+    # Stage v2 -> v3
+    v2_files = {p.relative_to(old): sha256(p.read_bytes()).hexdigest() for p in old.rglob("*") if p.is_file()}
+    BenchmarkInputs(old, {}, v2_files).stage(v3_dir, {Path("scene.json")})
+    v3_result, _, _ = replay_scene_events(
+        v3_dir, EventDetectionConfig("rule"), code_commit="c" * 40, code_identity="d" * 64,
+    )
+    assert v3_result.schema_version == 3
+
+    # Build minimal v2 annotation + pinned v3 manifest, then replay v3 -> v4
+    ann_dir = tmp_path / "ann_v2"
+    ann_dir.mkdir()
+    (ann_dir / meiji_annotation.ANNOTATION_SCHEMA_FILENAME_V2).write_text("{}")
+    v1_sha = "f" * 64
+    v3_manifest = tmp_path / "v3_manifest.json"
+    v3_manifest.write_text(json.dumps({
+        "benchmark_id": "meiji_4cam/multiview-v3",
+        "clips": [{
+            "clip_id": clip,
+            "fps": 30.0,
+            "frames": 3,
+            "cameras": [
+                {"camera_id": "cam0", "sha256": "a" * 64},
+                {"camera_id": "cam1", "sha256": "b" * 64},
+            ],
+            "ball_events": {"annotation_sha256": v1_sha},
+        }],
+    }))
+    monkeypatch.setattr(meiji_annotation, "MEIJI_V3_MANIFEST_SHA256", sha256(v3_manifest.read_bytes()).hexdigest())
+    (ann_dir / "clip_000_ball_events.json").write_text(json.dumps({
+        "schema": "meiji_event_labels.v2",
+        "benchmark": "multiview-v3",
+        "clip_id": clip,
+        "fps": 30.0,
+        "frames": 3,
+        "source_v1_annotation_sha256": v1_sha,
+        "labeler": "Codex gpt-6.2-sol (xhigh)",
+        "unlabelable": [],
+        "events": [
+            {
+                "id": "e001", "source_event_id": "e001", "kind": "bounce", "subtype": "bounce",
+                "frame": 1, "frame_uncertainty": 1, "status": "certain",
+                "cameras": ["cam0"], "evidence": "Bounce.", "review_source": "mechanical_bounce",
+            },
+        ],
+        "excluded_events": [],
+    }))
+
+    v3_files = {p.relative_to(v3_dir): sha256(p.read_bytes()).hexdigest() for p in v3_dir.rglob("*") if p.is_file()}
+    BenchmarkInputs(v3_dir, {}, v3_files).stage(v4_dir, {Path("scene.json")})
+    v4_cfg = EventDetectionConfig(
+        "annotation", annotation_directory=ann_dir, annotation_benchmark_manifest=v3_manifest,
+    )
+    v4_result, v4_path, v4_index = replay_scene_events(
+        v4_dir, v4_cfg, code_commit="e" * 40, code_identity="1" * 64,
+    )
+    assert v4_result.schema_version == 4
+    assert v4_result.ball_event_in_point is None
+    assert v4_index["artifacts"]["event_detection"]["version"] == 4
+    assert v4_path.is_file()
+    saved_v4 = verify_replayed_scene(v3_dir / "scene.json", v4_dir / "scene.json", expected_version=4)
+    assert saved_v4.schema_version == 4
+    assert saved_v4.ball_3d is not None and np.signbit(saved_v4.ball_3d[0, 0])
+
+
+def test_stage_exclude_omits_release_metadata_files(tmp_path: Path) -> None:
+    src = tmp_path / "src"
+    dst = tmp_path / "dst"
+    src.mkdir()
+    (src / "README.md").write_text("old readme", encoding="utf-8")
+    (src / "manifest.json").write_text("{}", encoding="utf-8")
+    (src / "payload.bin").write_bytes(b"abc")
+    files = {p.relative_to(src): sha256(p.read_bytes()).hexdigest() for p in src.rglob("*") if p.is_file()}
+    shared = BenchmarkInputs(src, {}, files).stage(
+        dst, set(), exclude={Path("README.md"), Path("manifest.json")},
+    )
+    assert set(shared) == {Path("payload.bin")}
+    assert (dst / "payload.bin").samefile(src / "payload.bin")
+    assert not (dst / "README.md").exists() and not (dst / "manifest.json").exists()

@@ -401,3 +401,88 @@ def test_v1_scene_rejects_validity_fields(tmp_path: Path) -> None:
     scene.ball_3d_valid = np.ones(3, bool)
     with pytest.raises(ValueError, match="v1 scenes have no reconstruction validity"):
         save_scene_result(scene, tmp_path / "scene.npz")
+
+
+def _v4(scene: SceneResult) -> SceneResult:
+    from src.tennis_scene.ball_event_schema import (
+        EVENT_CLASSES_V4,
+        EVENT_SUBTYPES_V4,
+        ball_event_metadata,
+    )
+
+    provenance: dict[str, Any] = {
+        "code_commit": "a" * 40,
+        "annotation_sha256": "b" * 64,
+        "labeler": "codex",
+        "labeler_original": "Codex gpt-6.2-sol (xhigh)",
+    }
+    return replace(
+        scene,
+        metadata={
+            **scene.metadata,
+            "scene_schema_version": 4,
+            "ball_events": ball_event_metadata("annotation", provenance, scene_version=4),
+        },
+        ball_event_frame=np.array([0, 1, 1, 2], np.int32),
+        ball_event_kind=np.array(
+            [EVENT_CLASSES_V4.index(k) for k in ("shot", "bounce", "net", "unknown")],
+            np.uint8,
+        ),
+        ball_event_coverage=np.array([True, True, False]),
+        ball_event_status=np.array([0, 0, 1, 2], np.uint8),
+        ball_event_frame_uncertainty=np.array([1, 1, 2, 3], np.uint8),
+        ball_event_subtype=np.array(
+            [EVENT_SUBTYPES_V4.index(s) for s in ("serve_overhead", "bounce", "service_let", "unknown")],
+            np.uint8,
+        ),
+        ball_event_side=np.array([-1, 0, 0, 0], np.int8),
+    )
+
+
+def test_v4_roundtrip_preserves_detailed_subtypes_and_omits_in_point(
+    tmp_path: Path, v2_scene: SceneResult,
+) -> None:
+    expected = _v4(v2_scene)
+    path = tmp_path / "scene_v4.npz"
+    save_scene_result(expected, path)
+    actual = load_scene_result(path)
+    assert actual.schema_version == 4
+    assert actual.metadata == expected.metadata
+    assert actual.metadata["ball_events"]["version"] == 2
+    assert actual.ball_event_in_point is None
+    assert actual.ball_event_score is None
+    with np.load(path) as archive:
+        assert "ball_event_in_point" not in archive.files
+        assert "ball_event_score" not in archive.files
+        for name in (*SCENE_MASK_FIELDS, *SCENE_REASON_FIELDS, *BALL_EVENT_FIELDS):
+            value = getattr(actual, name)
+            if getattr(expected, name) is None:
+                assert value is None and name not in archive.files
+            else:
+                assert value.dtype == getattr(expected, name).dtype
+                np.testing.assert_array_equal(value, getattr(expected, name))
+
+
+@pytest.mark.parametrize(
+    ("overrides", "message"),
+    [
+        ({"ball_event_in_point": np.array([True, True, True, True])}, "columns disagree"),
+        ({"ball_event_subtype": np.array([11, 11, 8, 12], np.uint8)}, "subtype"),
+        ({"ball_event_subtype": np.array([0, 11, 0, 12], np.uint8)}, "subtype"),
+        ({"ball_event_subtype": np.array([0, 11, 8, 6], np.uint8)}, "subtype"),
+        ({"ball_event_side": np.array([-1, 0, 0, 1], np.int8)}, "hitter side"),
+    ],
+)
+def test_v4_rejects_in_point_or_incompatible_kind_subtype_pairs(
+    overrides: dict[str, Any], message: str, tmp_path: Path, v2_scene: SceneResult,
+) -> None:
+    scene = _v4(v2_scene)
+    with pytest.raises(ValueError, match=message):
+        save_scene_result(replace(scene, **overrides), tmp_path / "bad_v4.npz")
+
+
+def test_v4_rejects_non_annotation_source(tmp_path: Path, v2_scene: SceneResult) -> None:
+    scene = _v4(v2_scene)
+    scene.metadata["ball_events"]["source"] = "rule"
+    with pytest.raises(ValueError, match="require source='annotation'"):
+        save_scene_result(scene, tmp_path / "bad_source_v4.npz")

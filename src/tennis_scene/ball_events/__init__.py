@@ -43,7 +43,7 @@ def analyze_scene_events(
         or scene.player_kp_3d_vis is None
     ):
         raise ValueError(
-            "Event detection requires SceneResult v2 or v3 ball, player and validity arrays"
+            "Event detection requires SceneResult v2, v3 or v4 ball, player and validity arrays"
         )
     if scene.ball_3d.shape != (scene.num_frames, 3):
         raise ValueError("Ball positions disagree with the SceneResult frame count")
@@ -61,13 +61,14 @@ def analyze_scene_events(
         ),
         track_ids=scene.player_track_ids,
     )
-    return analyze_ball_events(
+    events, coverage = analyze_ball_events(
         scene.ball_3d,
         scene.ball_3d_valid,
         scene.fps,
         players=players,
         thresholds=thresholds,
     )
+    return list(events), np.asarray(coverage, dtype=np.bool_)
 
 
 __all__ = ["BallEvent", "RuleThresholds", "analyze_scene_events", "detect_ball_events", "detect_scene_events"]

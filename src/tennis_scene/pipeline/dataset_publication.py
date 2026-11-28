@@ -72,7 +72,7 @@ def annotation_root(clip_dir: Path, identity: Mapping[str, object]) -> Path:
         if not isinstance(models, Mapping) or set(models) != {"detector", "pose"}:
             raise ValueError("Publication requires the declared detector and pose models")
         selection = people_model_names(models)
-    return recipe_directory(clip_dir / ANNOTATION_RELATIVE_DIR, _publication_recipe(identity), people_models=selection)
+    return Path(recipe_directory(clip_dir / ANNOTATION_RELATIVE_DIR, _publication_recipe(identity), people_models=selection))
 
 
 def scene_array_manifest(result: SceneResult) -> dict[str, dict[str, object]]:
@@ -130,7 +130,7 @@ def validate_dataset_result(result: SceneResult, record: DatasetClipRecord) -> N
         "human_kp_vis": (None, expected_n, expected_t, 17),
     }
     if result.schema_version < 2 or result.metadata.get("pipeline_contract") != DECLARED_PIPELINE_CONTRACT:
-        problems.append(f"only {DECLARED_PIPELINE_CONTRACT} scene v2 and v3 results are published, got "
+        problems.append(f"only {DECLARED_PIPELINE_CONTRACT} scene v2, v3 and v4 results are published, got "
                         f"schema v{result.schema_version} / {result.metadata.get('pipeline_contract')!r}")
     # A v2 scene always carries ball arrays; disabled features are all-invalid masks.
     required_shapes.update({"ball_uv": (expected_n, expected_t, 2), "ball_vis": (expected_n, expected_t), "ball_3d": (expected_t, 3)})
@@ -182,8 +182,8 @@ def _required_publication_components(inputs: DatasetClipInputs, identity: Mappin
     event_settings = identity.get(EVENT_DETECTION)
     if isinstance(event_settings, Mapping):
         event_ref = document["exports"]["scene"]["inputs"].get(EVENT_DETECTION)
-        if not isinstance(event_ref, dict) or (event_ref["schema"], event_ref["version"]) != ("scene_result", 3):
-            raise ValueError("Publication requires an event_detection SceneResult v3 export")
+        if not isinstance(event_ref, dict) or (event_ref["schema"], event_ref["version"]) not in {("scene_result", 3), ("scene_result", 4)}:
+            raise ValueError("Publication requires an event_detection SceneResult v3 or v4 export")
         event = read_component_descriptor(root, event_ref, node=EVENT_DETECTION, source_sha256=document["source_sha256"])
         if event["identity"].get("implementation") != identity["code_sha256"]:
             raise ValueError("Published event_detection implementation differs from its declared source identity")

@@ -1,0 +1,59 @@
+{
+  "issue": 2733,
+  "benchmark_build_commit": "744504dbafe6296f99bfea26cb569454fa72f7d5",
+  "base_benchmark": {
+    "benchmark_id": "meiji_4cam/multiview-v3",
+    "scene_schema_version": 3,
+    "relative_path": "data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v3",
+    "manifest_sha256": "790f05016e31ff4eb3fa8fc7d681d1a22ff0540928672e2a274a64543cd2a28a",
+    "sha256sums_sha256": "c5f1ed00f27c1ff5666630018c2fd5100ed381eda5453c46bb3216ed99539929",
+    "clips": 69
+  },
+  "v1_annotations": {
+    "relative_path": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clip_000-068_ball_events",
+    "schema_version": "meiji_event_labels.v1",
+    "total_events": 913
+  },
+  "v2_annotations": {
+    "relative_path": "data/tennis_multiview/processed/meiji_4cam/dataset/videos/video_000/clip_000-068_ball_events_v2",
+    "schema_version": "meiji_event_labels.v2",
+    "schema_sha256": "72b22465d7a9d6728dc4fc8eb8d3f368c9de19a3feec5ab49a5d607e2407945c",
+    "adopted_events": 620,
+    "excluded_events": 293
+  },
+  "output_benchmark": {
+    "benchmark_id": "meiji_4cam/multiview-v4",
+    "scene_schema_version": 4,
+    "relative_path": "data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v4",
+    "manifest_sha256": "8e012944b1407d696a1ab1d325ae3c6b60cf26f071752510ea2fc688b031893c",
+    "sha256sums_sha256": "06a1ba201881cfe8cf873e721adc07d5367c0ae9e3893aaaf0570d098648eaae",
+    "clips": 69
+  },
+  "codex_annotation": {
+    "model": "gpt-6.2-sol",
+    "reasoning_effort": "xhigh",
+    "service_tier": "default",
+    "parallel_chunks": 8,
+    "primary_targets_per_chunk": [
+      44,
+      44,
+      45,
+      45,
+      45,
+      45,
+      44,
+      43
+    ],
+    "clips_per_chunk": [
+      8,
+      8,
+      9,
+      9,
+      9,
+      9,
+      9,
+      8
+    ],
+    "pass2_audit_events": 0
+  }
+}

@@ -245,3 +245,93 @@ def test_refiner_verifies_pin_and_uses_real_frame_grid(
     np.testing.assert_allclose(result.ball_event_score, [.6, .7, .8])
     np.testing.assert_array_equal(result.ball_event_coverage, [True, True, True])
     assert result.metadata["ball_events"]["provenance"]["checkpoint_sha256"] == digest
+
+
+def test_v2_annotation_produces_scene_v4_with_13_subtypes_and_excluded_lineage(
+    assembly: EventDetectionInput, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    v2_dir = tmp_path / "v2_annotations"
+    v2_dir.mkdir()
+    v1_sha = "d" * 64
+    manifest = tmp_path / "v3_manifest.json"
+    manifest.write_text(json.dumps({
+        "benchmark_id": "meiji_4cam/multiview-v3",
+        "clips": [{
+            "clip_id": assembly.source.clip_id,
+            "fps": 30.0,
+            "frames": 3,
+            "cameras": [
+                {"camera_id": "cam0", "sha256": "a" * 64},
+                {"camera_id": "cam1", "sha256": "b" * 64},
+            ],
+            "ball_events": {"annotation_sha256": v1_sha},
+        }],
+    }))
+    monkeypatch.setattr(meiji_annotation, "MEIJI_V3_MANIFEST_SHA256", sha256(manifest.read_bytes()).hexdigest())
+    (v2_dir / meiji_annotation.ANNOTATION_SCHEMA_FILENAME_V2).write_text("{}")
+    document = {
+        "schema": "meiji_event_labels.v2",
+        "benchmark": "multiview-v3",
+        "clip_id": assembly.source.clip_id,
+        "fps": 30.0,
+        "frames": 3,
+        "source_v1_annotation_sha256": v1_sha,
+        "labeler": "Codex gpt-6.2-sol (xhigh)",
+        "notes": "player_hint uses cam0.",
+        "unlabelable": [],
+        "events": [
+            {
+                "id": "e001", "source_event_id": "e001", "kind": "shot", "subtype": "volley_center",
+                "frame": 0, "frame_uncertainty": 1, "status": "certain", "player_hint": "near",
+                "cameras": ["cam0"], "evidence": "Body volley.", "review_source": "codex_visual_review",
+            },
+            {
+                "id": "e002", "source_event_id": "e002", "kind": "net", "subtype": "service_let",
+                "frame": 1, "frame_uncertainty": 1, "status": "probable",
+                "cameras": ["cam1"], "evidence": "Service let.", "review_source": "codex_visual_review",
+            },
+            {
+                "id": "e003", "source_event_id": "e003", "kind": "bounce", "subtype": "bounce",
+                "frame": 1, "frame_uncertainty": 1, "status": "certain",
+                "cameras": ["cam0"], "evidence": "First bounce after let.", "review_source": "service_let_first_bounce",
+            },
+            {
+                "id": "e004", "source_event_id": "e004", "kind": "unknown", "subtype": "unknown",
+                "frame": 2, "frame_uncertainty": 2, "status": "uncertain",
+                "cameras": ["cam0"], "evidence": "Major class indeterminate.", "review_source": "codex_visual_review",
+            },
+        ],
+        "excluded_events": [
+            {
+                "id": "e005", "source_event_id": "e005", "frame": 2,
+                "old_kind": "shot", "old_subtype": "other", "old_in_point": False,
+                "reason": "Outside point.",
+            },
+        ],
+    }
+    ann_path = v2_dir / "clip_012_ball_events.json"
+    ann_path.write_text(json.dumps(document))
+
+    _camera_center(assembly.scene, -18.0)
+    config = EventDetectionConfig(
+        "annotation", annotation_directory=v2_dir, annotation_benchmark_manifest=manifest,
+    )
+    module = EventDetectionModule(config, assembly.source.clip_id, code_commit=COMMIT)
+    assert module.io.version == 4
+    result = module.process(assembly)
+    assert result.schema_version == 4
+    assert result.ball_event_in_point is None
+    assert result.ball_event_score is None
+    np.testing.assert_array_equal(result.ball_event_frame, [0, 1, 1, 2])
+    np.testing.assert_array_equal(result.ball_event_kind, [0, 1, 2, 3])
+    np.testing.assert_array_equal(result.ball_event_subtype, [6, 11, 8, 12])
+    np.testing.assert_array_equal(result.ball_event_side, [-1, 0, 0, 0])
+    assert result.metadata["ball_events"]["version"] == 2
+    assert result.metadata["ball_events"]["provenance"]["source_v1_annotation_sha256"] == v1_sha
+    assert len(result.event_evidence["excluded_events"]) == 1
+
+    # Reject mismatched v1 provenance hash
+    ann_path.write_text(json.dumps({**document, "source_v1_annotation_sha256": "e" * 64}))
+    bad_module = EventDetectionModule(config, assembly.source.clip_id, code_commit=COMMIT)
+    with pytest.raises(ValueError, match="source_v1_annotation_sha256"):
+        bad_module.process(assembly)

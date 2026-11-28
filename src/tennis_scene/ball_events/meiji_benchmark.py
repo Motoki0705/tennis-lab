@@ -16,13 +16,21 @@ from typing import Any
 import numpy as np
 
 from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
-from src.tennis_scene.ball_event_schema import EVENT_STATUS
+from src.tennis_scene.ball_event_schema import (
+    EVENT_CLASSES_V4,
+    EVENT_STATUS,
+    EVENT_SUBTYPES_V4,
+)
 from src.tennis_scene.ball_events.annotation import (
     ANNOTATION_SCHEMA_FILENAME,
+    ANNOTATION_SCHEMA_FILENAME_V2,
     MEIJI_V2_MANIFEST_SHA256,
+    MEIJI_V3_MANIFEST_SHA256,
     annotation_path,
     meiji_v2_manifest_asset,
+    meiji_v3_manifest_asset,
     read_meiji_v2_manifest,
+    read_meiji_v3_manifest,
 )
 from src.tennis_scene.pipeline.artifacts import document_digest, write_json_atomic
 from src.tennis_scene.pipeline.components.event_detection import (
@@ -38,7 +46,9 @@ from src.tennis_scene.schema import SceneResult
 from src.utils.paths import PROJECT_ROOT
 
 BASE_SUMS_SHA256 = "cbdb16b047a18747cda008a285c773cd7c3aa894fbed469b79122576daf4d295"
+V3_SUMS_SHA256 = "c5f1ed00f27c1ff5666630018c2fd5100ed381eda5453c46bb3216ed99539929"
 ANNOTATION_SCHEMA_SHA256 = "bacedb5ef378ba50529cb3607600f3a54ae0902696fcb9d402a5e5fc64180779"
+ANNOTATION_SCHEMA_V2_SHA256 = "72b22465d7a9d6728dc4fc8eb8d3f368c9de19a3feec5ab49a5d607e2407945c"
 CLIP_IDS = tuple(f"video_000/clip_{index:03}" for index in range(69))
 SPLIT_SEED = 42
 SPLIT_SIZES = {"train": 47, "val": 11, "test": 11}
@@ -91,10 +101,30 @@ class BenchmarkInputs:
             raise ValueError("Expected the fixed 69-clip Meiji multiview-v2 manifest")
         return cls(root, manifest, _read_sums(sums_path))
 
-    def stage(self, destination: Path, index_paths: set[Path]) -> dict[Path, str]:
+    @classmethod
+    def read_v3(cls, root: Path) -> BenchmarkInputs:
+        root = root.resolve()
+        manifest_path = root / "manifest.json"
+        sums_path = root / "SHA256SUMS"
+        manifest = read_meiji_v3_manifest(meiji_v3_manifest_asset(manifest_path))
+        _require_digest(sums_path, V3_SUMS_SHA256)
+        if tuple(row["clip_id"] for row in manifest["clips"]) != CLIP_IDS:
+            raise ValueError("Expected the fixed 69-clip Meiji multiview-v3 manifest")
+        return cls(root, manifest, _read_sums(sums_path))
+
+    def stage(
+        self,
+        destination: Path,
+        index_paths: set[Path],
+        *,
+        exclude: set[Path] | None = None,
+    ) -> dict[Path, str]:
         """Copy writable indexes and hardlink all immutable benchmark data."""
+        skipped = exclude or set()
         shared: dict[Path, str] = {}
         for relative, digest in self.files.items():
+            if relative in skipped:
+                continue
             source, target = self.root / relative, destination / relative
             if source.resolve() != source or not source.is_file():
                 raise ValueError(f"Expected a regular base benchmark file: {source}")
@@ -287,7 +317,11 @@ def build_meiji_benchmark(base: Path, annotations: Path, output: Path) -> dict[s
                                   annotation_benchmark_manifest=base / "manifest.json")
     with tempfile.TemporaryDirectory(prefix=f".{output.name}-", dir=output.parent) as temporary:
         staging = Path(temporary)
-        shared = inputs.stage(staging, set(indexes.values()))
+        shared = inputs.stage(
+            staging,
+            set(indexes.values()),
+            exclude={Path("README.md"), Path("manifest.json")},
+        )
         changed: list[dict[str, Any]] = []
         for row in rows:
             clip_id = row["clip_id"]
@@ -376,5 +410,242 @@ def _verify_existing(
         net_counts[clip_id] = counts["by_kind"]["net"]
     if (manifest["ball_events"] != _summarize(manifest["clips"])
             or manifest["splits"] != make_splits({clip for clip, count in net_counts.items() if count}, net_counts)):
+        raise ValueError("Existing benchmark aggregate counts or splits mismatch")
+    return manifest
+
+
+def _counts_v4(result: SceneResult, *, excluded_count: int) -> dict[str, Any]:
+    kinds, statuses = result.ball_event_kind, result.ball_event_status
+    subtypes, coverage = result.ball_event_subtype, result.ball_event_coverage
+    assert kinds is not None and statuses is not None and subtypes is not None and coverage is not None
+    return {
+        "events": len(kinds),
+        "excluded_events": excluded_count,
+        "by_kind": {kind: int(np.count_nonzero(kinds == code)) for code, kind in enumerate(EVENT_CLASSES_V4)},
+        "by_status": {status: int(np.count_nonzero(statuses == code)) for code, status in enumerate(EVENT_STATUS)},
+        "by_subtype": {sub: int(np.count_nonzero(subtypes == code)) for code, sub in enumerate(EVENT_SUBTYPES_V4)},
+        "unlabelable_frames": int((~coverage).sum()),
+    }
+
+
+def _summarize_v4(rows: list[dict[str, Any]]) -> dict[str, Any]:
+    annotations = [row["ball_events"] for row in rows]
+    totals: dict[str, Any] = {
+        "events": sum(item["events"] for item in annotations),
+        "excluded_events": sum(item["excluded_events"] for item in annotations),
+        "unlabelable_frames": sum(item["unlabelable_frames"] for item in annotations),
+    }
+    for axis, keys in (
+        ("by_kind", EVENT_CLASSES_V4),
+        ("by_status", EVENT_STATUS),
+        ("by_subtype", EVENT_SUBTYPES_V4),
+    ):
+        counts: Counter[str] = Counter()
+        for item in annotations:
+            counts.update(item[axis])
+        totals[axis] = {key: int(counts[key]) for key in keys}
+    return totals
+
+
+def _splits_v4(base_splits: dict[str, Any], rows: list[dict[str, Any]]) -> dict[str, Any]:
+    by_clip = {row["clip_id"]: row["ball_events"] for row in rows}
+    result: dict[str, Any] = {
+        "seed": base_splits["seed"],
+        "rule": (
+            "Preserve the fixed 47/11/11 train/val/test clip assignments from multiview-v3 "
+            "for direct cross-version comparison; recompute per-split event and net counts for v4."
+        ),
+        "pinned_test_clips": list(base_splits["pinned_test_clips"]),
+        "excluded_from_test": list(base_splits["excluded_from_test"]),
+    }
+    for split in ("train", "val", "test"):
+        clip_ids = list(base_splits[split]["clip_ids"])
+        result[split] = {
+            "clip_ids": clip_ids,
+            "clips": len(clip_ids),
+            "events": sum(by_clip[cid]["events"] for cid in clip_ids),
+            "net_clips": sum(1 for cid in clip_ids if by_clip[cid]["by_kind"]["net"] > 0),
+            "net_events": sum(by_clip[cid]["by_kind"]["net"] for cid in clip_ids),
+        }
+    return result
+
+
+def _readme_v4(totals: dict[str, Any]) -> str:
+    return f"""# Meiji 4-camera multiview-v4
+
+The 69 fixed Meiji clips contain {totals["events"]} adopted detailed ball events
+(and {totals["excluded_events"]} excluded out-of-point/boundary events preserved in
+the event_detection component evidence) in SceneResult v4.
+The adoption pointer for each clip is its `scene/scene.json`. The adopted
+`event_detection` component (schema `scene_result` v4) contains event IDs,
+13-class detailed subtypes, visual evidence, cameras, and excluded-event lineage.
+Every original non-event scene array was compared byte for byte as NPY members
+against the immutable v2 assembly archive. Original immutable files are
+hardlinked to multiview-v3.
+
+`manifest.json` records input and output SHA-256, the code revision, v4 event
+counts by kind/status/subtype, coverage, the fixed multiview-v3 train/val/test
+split, and the four cam0 checks. Use `sha256sum -c SHA256SUMS` from this
+directory to check the release.
+
+Rebuild or verify from the repository with
+`.venv/bin/python -m src.tennis_scene.scripts.build_meiji_event_benchmark --version v4`.
+"""
+
+
+def build_meiji_v4_benchmark(base: Path, annotations: Path, output: Path) -> dict[str, Any]:
+    """Atomically publish the fixed multiview-v4 (SceneResult v4) release, or verify a completed copy."""
+    base, annotations, output = base.resolve(), annotations.resolve(), output.resolve()
+    if (output.is_relative_to(base) or base.is_relative_to(output)
+            or output.is_relative_to(annotations) or annotations.is_relative_to(output)):
+        raise ValueError("Use an output directory separate from the immutable input trees")
+    code = _code_identity()
+    inputs = BenchmarkInputs.read_v3(base)
+    _require_digest(annotations / ANNOTATION_SCHEMA_FILENAME_V2, ANNOTATION_SCHEMA_V2_SHA256)
+    digests = {key: _sha256(annotation_path(annotations, key)) for key in CLIP_IDS}
+    rows = inputs.manifest["clips"]
+    indexes = {row["clip_id"]: inputs.clip_paths(row) for row in rows}
+    pins = {
+        "base": {
+            "benchmark_id": inputs.manifest["benchmark_id"],
+            "manifest_sha256": MEIJI_V3_MANIFEST_SHA256,
+            "sha256sums_sha256": V3_SUMS_SHA256,
+            "v2_manifest_sha256": MEIJI_V2_MANIFEST_SHA256,
+            "shared_files": "hardlinks",
+        },
+        "provenance": {**code, "method": "annotation", "annotation_schema_sha256": ANNOTATION_SCHEMA_V2_SHA256},
+    }
+    if output.exists():
+        return _verify_existing_v4(output, inputs, annotations, indexes, digests, pins)
+
+    config = EventDetectionConfig(
+        "annotation",
+        annotation_directory=annotations,
+        annotation_benchmark_manifest=base / "manifest.json",
+    )
+    with tempfile.TemporaryDirectory(prefix=f".{output.name}-", dir=output.parent) as temporary:
+        staging = Path(temporary)
+        shared = inputs.stage(
+            staging,
+            set(indexes.values()),
+            exclude={Path("README.md"), Path("manifest.json")},
+        )
+        changed: list[dict[str, Any]] = []
+        for row in rows:
+            clip_id = row["clip_id"]
+            result, _, index = replay_scene_events(
+                staging / indexes[clip_id].parent,
+                config,
+                code_commit=code["code_commit"],
+                code_identity=code["code_sha256"],
+            )
+            if result.schema_version != 4:
+                raise ValueError(f"Expected SceneResult v4 for {clip_id}, got v{result.schema_version}")
+            info = result.metadata["ball_events"]["provenance"]
+            if (
+                info["annotation_sha256"] != digests[clip_id]
+                or info["annotation_schema_sha256"] != ANNOTATION_SCHEMA_V2_SHA256
+                or info["annotation_benchmark_sha256"] != MEIJI_V3_MANIFEST_SHA256
+                or info["source_v1_annotation_sha256"] != row["ball_events"]["annotation_sha256"]
+            ):
+                raise ValueError(f"Event annotation v2 provenance mismatch during generation: {clip_id}")
+            relative = indexes[clip_id]
+            excluded_count = len(result.event_evidence.get("excluded_events", ()))
+            counts = _counts_v4(result, excluded_count=excluded_count)
+            changed.append({
+                **row,
+                "scene": {**row["scene"], "sha256": _sha256(staging / relative), "revision": index["revision"]},
+                "exports": {
+                    f"scene/{role}": {**asset, "path": (relative.parent / asset["path"]).as_posix()}
+                    for role, asset in index["exports"]["scene"]["files"].items()
+                },
+                "ball_events": {
+                    **counts,
+                    "annotation_sha256": digests[clip_id],
+                    "annotation_file": annotation_path(annotations, clip_id).name,
+                    "source_v1_annotation_sha256": row["ball_events"]["annotation_sha256"],
+                    "component": index["artifacts"][EVENT_DETECTION],
+                    "court_side": result.event_evidence["player_hint_reference"],
+                },
+            })
+        splits = _splits_v4(inputs.manifest["splits"], changed)
+        totals = _summarize_v4(changed)
+        files = [path for path in staging.rglob("*") if path.is_file()]
+        manifest = {
+            **inputs.manifest,
+            **pins,
+            "benchmark_id": "meiji_4cam/multiview-v4",
+            "created": "2026-11-28",
+            "description": "Fixed multiview-v3 scenes re-annotated with 13-class detailed in-point Meiji ball events in SceneResult v4.",
+            "scene_schema_version": 4,
+            "clips": changed,
+            "ball_events": totals,
+            "splits": splits,
+            "cam0_visual_checks": CAM0_FRAME_CHECKS,
+            "totals": {**inputs.manifest["totals"], "files": len(files), "bytes": sum(path.stat().st_size for path in files)},
+            "verification": {"bit_identical_v2_clips": len(changed), "hardlinked_v3_files": len(shared)},
+        }
+        (staging / "README.md").write_text(_readme_v4(totals), encoding="utf-8")
+        write_json_atomic(staging / "manifest.json", manifest)
+        files.extend((staging / "README.md", staging / "manifest.json"))
+        relative_files = sorted(path.relative_to(staging) for path in files)
+        (staging / "SHA256SUMS").write_text(
+            "".join(f"{shared.get(path) or _sha256(staging / path)}  {path.as_posix()}\n" for path in relative_files),
+            encoding="utf-8",
+        )
+        if _code_identity() != code:
+            raise ValueError("Pipeline code changed during benchmark generation")
+        BenchmarkInputs.read_v3(base)
+        os.rename(staging, output)
+    return manifest
+
+
+def _verify_existing_v4(
+    output: Path,
+    base: BenchmarkInputs,
+    annotations: Path,
+    indexes: dict[str, Path],
+    digests: dict[str, str],
+    pins: dict[str, Any],
+) -> dict[str, Any]:
+    manifest: dict[str, Any] = json.loads((output / "manifest.json").read_text(encoding="utf-8"))
+    if manifest["benchmark_id"] != "meiji_4cam/multiview-v4" or manifest["scene_schema_version"] != 4:
+        raise ValueError("Existing benchmark is not Meiji multiview-v4")
+    if any(manifest[key] != value for key, value in pins.items()):
+        raise ValueError("Existing benchmark was built from different code or inputs")
+    if {row["clip_id"]: row["ball_events"]["annotation_sha256"] for row in manifest["clips"]} != digests:
+        raise ValueError("Existing benchmark was built from different event annotations")
+    sums = _read_sums(output / "SHA256SUMS")
+    actual = {path.relative_to(output) for path in output.rglob("*") if path.is_file()} - {Path("SHA256SUMS")}
+    if set(sums) != actual:
+        raise ValueError("Existing benchmark SHA256SUMS does not describe every file")
+    for path, digest in sums.items():
+        _require_digest(output / path, digest)
+    excluded_v3 = set(indexes.values()) | {Path("README.md"), Path("manifest.json")}
+    for path, digest in base.files.items():
+        if path not in excluded_v3 and path.name != ".scene.lock" and (
+            sums.get(path) != digest or not (output / path).samefile(base.root / path)
+        ):
+            raise ValueError(f"Existing benchmark changed a shared v3 file: {path}")
+    for row in manifest["clips"]:
+        clip_id = row["clip_id"]
+        index = indexes[clip_id]
+        scene = verify_replayed_scene(base.root / index, output / index, expected_version=4)
+        evidence = scene.metadata["ball_events"]
+        if (
+            evidence["source"] != "annotation"
+            or evidence["provenance"]["annotation_sha256"] != digests[clip_id]
+            or evidence["provenance"]["annotation_schema_sha256"] != ANNOTATION_SCHEMA_V2_SHA256
+            or evidence["provenance"]["annotation_benchmark_sha256"] != MEIJI_V3_MANIFEST_SHA256
+        ):
+            raise ValueError(f"Existing benchmark annotation provenance mismatch: {clip_id}")
+        ann_doc = json.loads(annotation_path(annotations, clip_id).read_text(encoding="utf-8"))
+        counts = _counts_v4(scene, excluded_count=len(ann_doc["excluded_events"]))
+        if any(row["ball_events"][key] != value for key, value in counts.items()):
+            raise ValueError(f"Existing benchmark annotation counts mismatch: {clip_id}")
+    if (
+        manifest["ball_events"] != _summarize_v4(manifest["clips"])
+        or manifest["splits"] != _splits_v4(base.manifest["splits"], manifest["clips"])
+    ):
         raise ValueError("Existing benchmark aggregate counts or splits mismatch")
     return manifest

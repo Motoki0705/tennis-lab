@@ -23,9 +23,9 @@ from src.utils.inference_recording import measured, temporary_directory
 
 def scene_export_node(version: int) -> str:
     """Return the producer for a declared SceneResult schema version."""
-    if type(version) is not int or version not in (1, 2, 3):
+    if type(version) is not int or version not in (1, 2, 3, 4):
         raise ValueError(f"Unsupported SceneResult version: {version}")
-    node: str = EVENT_DETECTION if version == 3 else "scene_assembly"
+    node: str = EVENT_DETECTION if version in (3, 4) else "scene_assembly"
     return node
 
 

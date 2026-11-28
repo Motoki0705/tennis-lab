@@ -1,0 +1,513 @@
+{
+  "v1_total_events": 913,
+  "ledger_unique_pairs": 913,
+  "v2_adopted_events": 620,
+  "v2_excluded_events": 293,
+  "duplicates": 0,
+  "unprocessed": 0,
+  "bijection_ok": true,
+  "review_role_counts": {
+    "bounce_in_point": 274,
+    "out_of_point": 273,
+    "primary_review": 355,
+    "smash_carryover": 11
+  },
+  "initial_primary_355_breakdown": {
+    "net/let_cord": 5,
+    "net/net_fault": 27,
+    "shot/groundstroke": 183,
+    "shot/other": 2,
+    "shot/serve": 94,
+    "shot/volley": 44
+  },
+  "v2_by_kind": {
+    "shot": 330,
+    "bounce": 259,
+    "net": 31
+  },
+  "v2_by_subtype": {
+    "bounce": 259,
+    "groundstroke_backhand": 24,
+    "groundstroke_forehand": 156,
+    "net_fault": 26,
+    "net_in": 1,
+    "serve_overhead": 78,
+    "serve_underhand": 16,
+    "service_let": 4,
+    "smash": 11,
+    "volley_backhand": 19,
+    "volley_center": 1,
+    "volley_forehand": 25
+  },
+  "v2_by_review_source": {
+    "codex_visual_review": 350,
+    "mechanical_bounce": 255,
+    "carryover_smash": 11,
+    "service_let_first_bounce": 4
+  },
+  "v1_to_v2_transitions": {
+    "bounce/none/in_point=False -> adopted:bounce/bounce": 2,
+    "bounce/none/in_point=False -> excluded": 181,
+    "bounce/none/in_point=True -> adopted:bounce/bounce": 257,
+    "bounce/none/in_point=True -> excluded": 17,
+    "net/let_cord/in_point=True -> adopted:net/net_in": 1,
+    "net/let_cord/in_point=True -> adopted:net/service_let": 4,
+    "net/net_fault/in_point=False -> excluded": 1,
+    "net/net_fault/in_point=True -> adopted:net/net_fault": 26,
+    "net/net_fault/in_point=True -> excluded": 1,
+    "net/other/in_point=False -> excluded": 2,
+    "shot/groundstroke/in_point=False -> excluded": 9,
+    "shot/groundstroke/in_point=True -> adopted:shot/groundstroke_backhand": 24,
+    "shot/groundstroke/in_point=True -> adopted:shot/groundstroke_forehand": 156,
+    "shot/groundstroke/in_point=True -> excluded": 3,
+    "shot/other/in_point=False -> excluded": 78,
+    "shot/other/in_point=True -> adopted:shot/volley_forehand": 1,
+    "shot/other/in_point=True -> excluded": 1,
+    "shot/serve/in_point=True -> adopted:shot/serve_overhead": 78,
+    "shot/serve/in_point=True -> adopted:shot/serve_underhand": 16,
+    "shot/smash/in_point=True -> adopted:shot/smash": 11,
+    "shot/volley/in_point=True -> adopted:shot/volley_backhand": 19,
+    "shot/volley/in_point=True -> adopted:shot/volley_center": 1,
+    "shot/volley/in_point=True -> adopted:shot/volley_forehand": 24
+  },
+  "adoption_changes_count": 24,
+  "adoption_changes": [
+    {
+      "clip_id": "video_000/clip_009",
+      "event_id": "e003",
+      "frame": 132,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": false,
+      "adopted": true,
+      "new_subtype": "bounce",
+      "source": "boundary_adjustment",
+      "reason": "白帯通過後の球が手前サービスエリアへ落ち、cam0の拡大で132前後の地表付近から白帽子選手側へ進む軌道を確認。接地像は影で小さいが、回収まで追えたサービスレット後の最初のバウンドとして採用する。"
+    },
+    {
+      "clip_id": "video_000/clip_011",
+      "event_id": "e003",
+      "frame": 188,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "cam2拡大でe002直後の球が赤シャツ側の網の手前で失速し、188付近でその側の地面から跳ねる。166のネット接触でサービスが終わったため除外。"
+    },
+    {
+      "clip_id": "video_000/clip_013",
+      "event_id": "e007",
+      "frame": 453,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "cam2・cam3で453前後に、426のネットフォルトで止まって戻った球が打者側ネット際で接地し、再び上がる。ポイントはネット接触で終了。"
+    },
+    {
+      "clip_id": "video_000/clip_014",
+      "event_id": "e009",
+      "frame": 427,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "cam2拡大で411の網への接触に続き、427付近に球が打者側のネット脇で初めて接地する。411でプレーが終わっているため除外。"
+    },
+    {
+      "clip_id": "video_000/clip_015",
+      "event_id": "e021",
+      "frame": 797,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "782のネットフォルト後、球がネットを越えず、cam0・cam2の790〜804で打者側に落ちて797付近で弾む。ポイントは782のネット接触で終わるため、この着地を除外。"
+    },
+    {
+      "clip_id": "video_000/clip_016",
+      "event_id": "e003",
+      "frame": 160,
+      "old_kind": "shot",
+      "old_subtype": "groundstroke",
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "audit_pass2",
+      "reason": "第1サーブがロングとなった後の返送。"
+    },
+    {
+      "clip_id": "video_000/clip_016",
+      "event_id": "e004",
+      "frame": 235,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "audit_pass2",
+      "reason": "フォルト後の返送球のバウンド。"
+    },
+    {
+      "clip_id": "video_000/clip_016",
+      "event_id": "e005",
+      "frame": 259,
+      "old_kind": "shot",
+      "old_subtype": "groundstroke",
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "audit_pass2",
+      "reason": "フォルト後の返送球に対する打ち返し。"
+    },
+    {
+      "clip_id": "video_000/clip_016",
+      "event_id": "e006",
+      "frame": 282,
+      "old_kind": "net",
+      "old_subtype": "net_fault",
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "audit_pass2",
+      "reason": "フォルト後の返送列で発生したネット接触。"
+    },
+    {
+      "clip_id": "video_000/clip_016",
+      "event_id": "e007",
+      "frame": 307,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "audit_pass2",
+      "reason": "フォルト後の返送球がネット接触した後の落下バウンド。"
+    },
+    {
+      "clip_id": "video_000/clip_019",
+      "event_id": "e003",
+      "frame": 187,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "cam2の165〜201で白帯下から黒シャツのサーバー側前衛の足元方向へ落下し、187前後で反発する球を追跡。e002のネットフォルトでサーブが終わった後の自陣バウンドなので除外。"
+    },
+    {
+      "clip_id": "video_000/clip_035",
+      "event_id": "e003",
+      "frame": 279,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": false,
+      "adopted": true,
+      "new_subtype": "bounce",
+      "source": "boundary_adjustment",
+      "reason": "白帯で上に跳ねて越えたサーブ球が、cam0の275〜286で受け手側に落下して初めて反発する。直後に返球せず、332以降も見送り、のちに打ち直したためサービスレット直後の初回バウンドを採用。"
+    },
+    {
+      "clip_id": "video_000/clip_050",
+      "event_id": "e016",
+      "frame": 770,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "cam2の762–777でボレー球がネットの打者側を下降し、771付近で低く跳ねる。e015のネットフォルト後の自陣側への落下なので、旧in_pointにかかわらず除外。"
+    },
+    {
+      "clip_id": "video_000/clip_055",
+      "event_id": "e003",
+      "frame": 140,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "cam0の137〜149で網に当たった球がサーバー側の網際に落ちて約140で跳ねる。サーブは122のネット接触で終わっており、着地を除外。"
+    },
+    {
+      "clip_id": "video_000/clip_056",
+      "event_id": "e003",
+      "frame": 221,
+      "old_kind": "shot",
+      "old_subtype": "groundstroke",
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "audit_pass2",
+      "reason": "第1サーブのフォルト着地後の返送。"
+    },
+    {
+      "clip_id": "video_000/clip_056",
+      "event_id": "e004",
+      "frame": 262,
+      "old_kind": "shot",
+      "old_subtype": "other",
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "audit_pass2",
+      "reason": "フォルト球を回収するためのポイント外のラケット接触。"
+    },
+    {
+      "clip_id": "video_000/clip_056",
+      "event_id": "e005",
+      "frame": 268,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "audit_pass2",
+      "reason": "フォルト球の返送・止球後のポイント外バウンド。"
+    },
+    {
+      "clip_id": "video_000/clip_056",
+      "event_id": "e012",
+      "frame": 696,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "681のネット接触で進行が止まり、cam0・cam1で696前後に打者側ネット際の地面に達して小さく上がる。ポイント終了後の自陣落下として除外。"
+    },
+    {
+      "clip_id": "video_000/clip_057",
+      "event_id": "e005",
+      "frame": 223,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "cam3の217〜230とcam0で、197の接触後にネットを越えず打者側の足元に落ちた球が223付近で反発する。終了原因は先行するネットフォルト。"
+    },
+    {
+      "clip_id": "video_000/clip_058",
+      "event_id": "e023",
+      "frame": 737,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "cam0の730〜744で707の網への接触後の球が打者側へ落ち、737付近で初めて跳ねる。707でボレーがネットフォルトになり、着地は終了後のため除外。"
+    },
+    {
+      "clip_id": "video_000/clip_060",
+      "event_id": "e008",
+      "frame": 260,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "236付近にネットで阻まれた返球が、260前後に打者側へ落ちて低く反発する。cam0・cam3の下降と折り返し、cam2の白帯付近の減速を照合し、ネットフォルト後の自陣バウンドとして除外。"
+    },
+    {
+      "clip_id": "video_000/clip_061",
+      "event_id": "e008",
+      "frame": 400,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "cam0・cam2で392のネット接触後の球がスマッシュした側の網際に落ち、400付近で跳ねる。392の接触で終了しており、その後の着地を除外。"
+    },
+    {
+      "clip_id": "video_000/clip_063",
+      "event_id": "e005",
+      "frame": 293,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "cam2・cam3の拡大で293付近に白帽子の打者側のネット下に落ちて弾む。プレーは269のネットフォルトで終了したため、旧in_point=trueから除外。"
+    },
+    {
+      "clip_id": "video_000/clip_064",
+      "event_id": "e015",
+      "frame": 1200,
+      "old_kind": "bounce",
+      "old_subtype": null,
+      "old_in_point": true,
+      "adopted": false,
+      "new_subtype": null,
+      "source": "boundary_adjustment",
+      "reason": "cam2拡大でスマッシュ球がネットに止められた後、打者側を落ちて1202前後に最初に跳ねる。cam0・cam1の手前黒短パン選手のスイングはこの球の軌道と離れている。e014で終了した後の同側接地として除外。"
+    }
+  ],
+  "pass2_audit_summary": {
+    "audited_events": 0,
+    "applied_decisions": [
+      [
+        "video_000/clip_000",
+        "e004",
+        225,
+        true,
+        "shot",
+        "volley_center"
+      ],
+      [
+        "video_000/clip_012",
+        "e018",
+        903,
+        true,
+        "shot",
+        "volley_backhand"
+      ],
+      [
+        "video_000/clip_016",
+        "e002",
+        135,
+        true,
+        "bounce",
+        "bounce"
+      ],
+      [
+        "video_000/clip_016",
+        "e003",
+        160,
+        false,
+        null,
+        null
+      ],
+      [
+        "video_000/clip_016",
+        "e004",
+        235,
+        false,
+        null,
+        null
+      ],
+      [
+        "video_000/clip_016",
+        "e005",
+        259,
+        false,
+        null,
+        null
+      ],
+      [
+        "video_000/clip_016",
+        "e006",
+        282,
+        false,
+        null,
+        null
+      ],
+      [
+        "video_000/clip_016",
+        "e007",
+        307,
+        false,
+        null,
+        null
+      ],
+      [
+        "video_000/clip_028",
+        "e020",
+        1088,
+        true,
+        "shot",
+        "volley_backhand"
+      ],
+      [
+        "video_000/clip_035",
+        "e041",
+        2045,
+        true,
+        "shot",
+        "volley_forehand"
+      ],
+      [
+        "video_000/clip_046",
+        "e006",
+        331,
+        true,
+        "shot",
+        "volley_forehand"
+      ],
+      [
+        "video_000/clip_056",
+        "e001",
+        115,
+        true,
+        "shot",
+        "serve_underhand"
+      ],
+      [
+        "video_000/clip_056",
+        "e002",
+        197,
+        true,
+        "bounce",
+        "bounce"
+      ],
+      [
+        "video_000/clip_056",
+        "e003",
+        221,
+        false,
+        null,
+        null
+      ],
+      [
+        "video_000/clip_056",
+        "e004",
+        262,
+        false,
+        null,
+        null
+      ],
+      [
+        "video_000/clip_056",
+        "e005",
+        268,
+        false,
+        null,
+        null
+      ],
+      [
+        "video_000/clip_056",
+        "e007",
+        488,
+        true,
+        "shot",
+        "serve_underhand"
+      ],
+      [
+        "video_000/clip_067",
+        "e008",
+        421,
+        true,
+        "shot",
+        "volley_forehand"
+      ]
+    ]
+  }
+}
