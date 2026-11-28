@@ -1,0 +1,16 @@
+{
+  "run_id": "0-8204305938240258536_2026-11-26T11-54-21-759741463Z_284942_i2633-viewpoint-narrow-s42",
+  "name": "i2633-viewpoint-narrow-s42",
+  "command": "timeout --foreground --signal=TERM --kill-after=30s 170m env PYTHONPATH=. OPENBLAS_NUM_THREADS=1 OMP_NUM_THREADS=1 .venv/bin/python -u knowledge/runs/run-i2633-court-viewpoint-comparison/train_and_evaluate.py --campaign /mnt/wsl/tennis-data/home/kamimura/projects/tennis-lab/.worktree-outputs/parent-2627-issue-2633-primary/court_detection/campaign/viewpoint-diversity-v1 --checkpoint-root /home/kamimura/projects/tennis-lab/ckpt --external-asset-root /home/kamimura/projects/tennis-lab/third_party --condition narrow --seed 42 ",
+  "provider": "codex",
+  "session": "01a21793-84f3-7432-b9eb-ca085882fa9c",
+  "issue": "2633",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "commit": "38eb91cde9d5667de2bd648b27c5cb593331c1b9",
+  "branch": "codex/parent-2627-issue-2633-primary",
+  "remote": "git@github.com:Motoki0705/tennis-lab.git",
+  "cwd": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2627-issue-2633-primary",
+  "repo_root": "/home/kamimura/projects/tennis-lab/.claude/worktrees/parent-2627-issue-2633-primary",
+  "captured_at": "2026-11-26T21:44:03+09:00"
+}
