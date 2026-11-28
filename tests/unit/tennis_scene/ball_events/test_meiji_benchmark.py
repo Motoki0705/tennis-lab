@@ -198,3 +198,19 @@ def test_saved_v3_scene_replay_produces_v4_with_bit_identical_v2_arrays(
     saved_v4 = verify_replayed_scene(v3_dir / "scene.json", v4_dir / "scene.json", expected_version=4)
     assert saved_v4.schema_version == 4
     assert saved_v4.ball_3d is not None and np.signbit(saved_v4.ball_3d[0, 0])
+
+
+def test_stage_exclude_omits_release_metadata_files(tmp_path: Path) -> None:
+    src = tmp_path / "src"
+    dst = tmp_path / "dst"
+    src.mkdir()
+    (src / "README.md").write_text("old readme", encoding="utf-8")
+    (src / "manifest.json").write_text("{}", encoding="utf-8")
+    (src / "payload.bin").write_bytes(b"abc")
+    files = {p.relative_to(src): sha256(p.read_bytes()).hexdigest() for p in src.rglob("*") if p.is_file()}
+    shared = BenchmarkInputs(src, {}, files).stage(
+        dst, set(), exclude={Path("README.md"), Path("manifest.json")},
+    )
+    assert set(shared) == {Path("payload.bin")}
+    assert (dst / "payload.bin").samefile(src / "payload.bin")
+    assert not (dst / "README.md").exists() and not (dst / "manifest.json").exists()

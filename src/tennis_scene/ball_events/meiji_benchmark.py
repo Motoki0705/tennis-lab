@@ -112,10 +112,19 @@ class BenchmarkInputs:
             raise ValueError("Expected the fixed 69-clip Meiji multiview-v3 manifest")
         return cls(root, manifest, _read_sums(sums_path))
 
-    def stage(self, destination: Path, index_paths: set[Path]) -> dict[Path, str]:
+    def stage(
+        self,
+        destination: Path,
+        index_paths: set[Path],
+        *,
+        exclude: set[Path] | None = None,
+    ) -> dict[Path, str]:
         """Copy writable indexes and hardlink all immutable benchmark data."""
+        skipped = exclude or set()
         shared: dict[Path, str] = {}
         for relative, digest in self.files.items():
+            if relative in skipped:
+                continue
             source, target = self.root / relative, destination / relative
             if source.resolve() != source or not source.is_file():
                 raise ValueError(f"Expected a regular base benchmark file: {source}")
@@ -308,7 +317,11 @@ def build_meiji_benchmark(base: Path, annotations: Path, output: Path) -> dict[s
                                   annotation_benchmark_manifest=base / "manifest.json")
     with tempfile.TemporaryDirectory(prefix=f".{output.name}-", dir=output.parent) as temporary:
         staging = Path(temporary)
-        shared = inputs.stage(staging, set(indexes.values()))
+        shared = inputs.stage(
+            staging,
+            set(indexes.values()),
+            exclude={Path("README.md"), Path("manifest.json")},
+        )
         changed: list[dict[str, Any]] = []
         for row in rows:
             clip_id = row["clip_id"]
@@ -512,7 +525,11 @@ def build_meiji_v4_benchmark(base: Path, annotations: Path, output: Path) -> dic
     )
     with tempfile.TemporaryDirectory(prefix=f".{output.name}-", dir=output.parent) as temporary:
         staging = Path(temporary)
-        shared = inputs.stage(staging, set(indexes.values()))
+        shared = inputs.stage(
+            staging,
+            set(indexes.values()),
+            exclude={Path("README.md"), Path("manifest.json")},
+        )
         changed: list[dict[str, Any]] = []
         for row in rows:
             clip_id = row["clip_id"]
@@ -604,8 +621,9 @@ def _verify_existing_v4(
         raise ValueError("Existing benchmark SHA256SUMS does not describe every file")
     for path, digest in sums.items():
         _require_digest(output / path, digest)
+    excluded_v3 = set(indexes.values()) | {Path("README.md"), Path("manifest.json")}
     for path, digest in base.files.items():
-        if path not in indexes.values() and path.name != ".scene.lock" and (
+        if path not in excluded_v3 and path.name != ".scene.lock" and (
             sums.get(path) != digest or not (output / path).samefile(base.root / path)
         ):
             raise ValueError(f"Existing benchmark changed a shared v3 file: {path}")
