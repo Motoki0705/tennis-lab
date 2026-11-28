@@ -1,0 +1,168 @@
+{
+  "benchmark_id": "meiji_4cam/multiview-v4",
+  "scene_schema_version": 4,
+  "clips_verified": 69,
+  "non_event_byte_identical_clips": 69,
+  "manifest_sha256": "8e012944b1407d696a1ab1d325ae3c6b60cf26f071752510ea2fc688b031893c",
+  "sha256sums_sha256": "06a1ba201881cfe8cf873e721adc07d5367c0ae9e3893aaaf0570d098648eaae",
+  "sha256sums_check": {
+    "total_entries": 21341,
+    "hardlinked_v3_files": 18786,
+    "newly_hashed_v4_files": 2555,
+    "duplicates": 0,
+    "mismatches": 0
+  },
+  "event_counts": {
+    "v1_total": 913,
+    "v2_adopted": 620,
+    "v2_excluded": 293,
+    "bijection_ok": true
+  },
+  "kind_counts": {
+    "bounce": 259,
+    "net": 31,
+    "shot": 330
+  },
+  "subtype_counts": {
+    "bounce": 259,
+    "groundstroke_backhand": 24,
+    "groundstroke_forehand": 156,
+    "net_fault": 26,
+    "net_in": 1,
+    "serve_overhead": 78,
+    "serve_underhand": 16,
+    "service_let": 4,
+    "smash": 11,
+    "volley_backhand": 19,
+    "volley_center": 1,
+    "volley_forehand": 25
+  },
+  "status_counts": {
+    "certain": 595,
+    "probable": 24,
+    "uncertain": 1
+  },
+  "split_counts": {
+    "train": {
+      "clips": 47,
+      "events": 414,
+      "shot": 219,
+      "bounce": 174,
+      "net": 21
+    },
+    "val": {
+      "clips": 11,
+      "events": 111,
+      "shot": 60,
+      "bounce": 45,
+      "net": 6
+    },
+    "test": {
+      "clips": 11,
+      "events": 95,
+      "shot": 51,
+      "bounce": 40,
+      "net": 4
+    }
+  },
+  "spotlight_checks": {
+    "clip_000_e004_volley_center": {
+      "frame": 225,
+      "kind": "shot",
+      "subtype": "volley_center"
+    },
+    "clip_009_service_let": {
+      "lets": [
+        {
+          "event_id": "e002",
+          "frame": 106,
+          "subtype": "service_let"
+        }
+      ],
+      "first_bounces": [
+        {
+          "event_id": "e003",
+          "frame": 132,
+          "subtype": "bounce",
+          "review_source": "service_let_first_bounce"
+        }
+      ]
+    },
+    "clip_012_service_let": {
+      "lets": [
+        {
+          "event_id": "e002",
+          "frame": 135,
+          "subtype": "service_let"
+        }
+      ],
+      "first_bounces": [
+        {
+          "event_id": "e003",
+          "frame": 152,
+          "subtype": "bounce",
+          "review_source": "service_let_first_bounce"
+        }
+      ]
+    },
+    "clip_023_service_let": {
+      "lets": [
+        {
+          "event_id": "e009",
+          "frame": 428,
+          "subtype": "service_let"
+        }
+      ],
+      "first_bounces": [
+        {
+          "event_id": "e010",
+          "frame": 460,
+          "subtype": "bounce",
+          "review_source": "service_let_first_bounce"
+        }
+      ]
+    },
+    "clip_026_net_in": {
+      "e006": {
+        "frame": 281,
+        "kind": "net",
+        "subtype": "net_in"
+      },
+      "e007": {
+        "frame": 298,
+        "kind": "bounce",
+        "subtype": "bounce",
+        "review_source": "mechanical_bounce"
+      }
+    },
+    "clip_035_service_let": {
+      "lets": [
+        {
+          "event_id": "e002",
+          "frame": 199,
+          "subtype": "service_let"
+        }
+      ],
+      "first_bounces": [
+        {
+          "event_id": "e003",
+          "frame": 279,
+          "subtype": "bounce",
+          "review_source": "service_let_first_bounce"
+        }
+      ]
+    },
+    "clip_035_e041_old_other": {
+      "adopted": true,
+      "frame": 2045,
+      "kind": "shot",
+      "subtype": "volley_forehand"
+    },
+    "clip_056_e004_old_other": {
+      "adopted": false,
+      "excluded": true,
+      "frame": 262,
+      "reason": "フォルト球を回収するためのポイント外のラケット接触。"
+    }
+  }
+}
