@@ -12,7 +12,9 @@ Codexの同一作業者が推定結果を閲覧する前に全111件を確認し
 
 ## 閾値の固定と結果
 
-valの60件で手首到達距離4値とスコア差4値の16通りを比較した。誤確定数が最小、正しい確定数が最多、既存の手首到達距離に近い、次点差が大きい、の順に選んだ。到達距離1.30 m、次点差0.18の `court-hitter-v1.217835f4f9d0` をコミットで固定し、testは固定版で最終評価した。 [val比較](val_calibration.json) · [ルール固定コミット](https://github.com/Motoki0705/tennis-lab/commit/2f16173d56864c88f5d4b580778d35135d411811)
+valの60件で手首到達距離4値とスコア差4値の16通りを比較した。誤確定数が最小、正しい確定数が最多、既存の手首到達距離に近い、次点差が大きい、の順に選んだ。 [val比較](val_calibration.json)
+
+レビュー後の `court-hitter-v2.217835f4f9d0` は、球の観測が不足し、両手首欠測の同側選手が到達圏内にいるときに `same_side_competitor_wrists_missing` で保留する。ネット際では順位にかかわらず到達可能な反対側・側不明の候補を調べる。既存の映像GTを使ったvalの再比較では手首到達距離1.30 m、次点差0.18が再び選ばれた。全閾値を引き継ぎ、ロジックを固定したコミットでtestを再評価した。 [ルール固定コミット](https://github.com/Motoki0705/tennis-lab/commit/4ec290e9758880374b3a9bff7cb8d5d90d596c73)
 
 | Split | 全shot | 評価可能 | 確定 | 曖昧 | 未確定 | Coverage | 確定時正解率 | 誤確定率 | 全体正解率 |
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|
@@ -55,4 +57,4 @@ done
 
 画像生成にはPython 3.11.15、NumPy 2.3.5、OpenCV 5.0.0を使った。描画環境を変更するとJPEGのバイト列が変わり得る。
 
-PostgreSQL 17.12の実データ動作確認では、凍結V4のshot識別子と仕様列を試験用ingest runに入れ、`hitter --benchmark "$benchmark" --ingest-run 1 --owner-team 1` で全69クリップの330件を保存した。確定321件、未確定9件。照会で330件を取得し、再実行の更新は0件。CLIのJSON/CSV往復、入力ハッシュ不一致時の拒否と一意制約は実PostgreSQL結合テストで検証した。 [DB CLI](../../../src/tennis_scene/analytics/README.md) · [結合テスト](../../../tests/integration/tennis_scene/analytics/test_hitter_postgres.py)
+PostgreSQL 17.12で #2767 の `ingest` CLIから凍結V4を取り込み、`hitter --benchmark "$benchmark" --ingest-run 1 --owner-team 1` で全69クリップの330件を保存した。確定321件、曖昧0件、未確定9件。照会で330件を取得し、全件で取込時のイベントcomponentのSHA-256と推定行の記録が一致した。再実行の更新は0件。実PostgreSQL結合テストでは、欠落クリップ、shotのstatus不一致、clipとshotの出典ハッシュ不一致で推定行が残らないことと、CLIのJSON/CSV往復・一意制約を確認した。 [取込コードの固定コミット](https://github.com/Motoki0705/tennis-lab/commit/521bc7a76da04296e7a0a0ef971313a76459ddd6) · [DB CLI](../../../src/tennis_scene/analytics/README.md) · [結合テスト](../../../tests/integration/tennis_scene/analytics/test_hitter_postgres.py)
