@@ -28,6 +28,12 @@ from src.tennis_scene.generate_dataset.manifest import ClipManifest, split_clip_
 
 SPLITS = ("train", "val", "test")
 SERVE_SUBTYPES = ("serve_overhead", "serve_underhand")
+MEIJI_V4_MANIFEST_SHA256 = (
+    "8e012944b1407d696a1ab1d325ae3c6b60cf26f071752510ea2fc688b031893c"
+)
+MEIJI_V4_SHA256SUMS_SHA256 = (
+    "06a1ba201881cfe8cf873e721adc07d5367c0ae9e3893aaaf0570d098648eaae"
+)
 
 
 @dataclass(frozen=True)
@@ -58,7 +64,8 @@ class V4Clip:
 
     @property
     def clip_id(self) -> str:
-        return self.clip.clip_id
+        clip_id: str = self.clip.clip_id
+        return clip_id
 
 
 @dataclass(frozen=True)
@@ -120,7 +127,8 @@ class _BenchmarkFiles:
         return raw
 
     def json(self, relative: Path) -> dict[str, Any]:
-        return json_object(self.read(relative), relative.as_posix())
+        document: dict[str, Any] = json_object(self.read(relative), relative.as_posix())
+        return document
 
     def reference(self, record: dict[str, Any], *, directory: Path = Path()) -> Path:
         relative = directory / _relative(record["path"])
@@ -494,15 +502,31 @@ def _event_counts(clips: tuple[V4Clip, ...]) -> dict[str, Any]:
 
 
 def read_v4(root: Path, *, manifest_sha256: str | None = None) -> V4Release:
-    """Verify every S1 input against the frozen release and read one video."""
+    """Verify the pinned Meiji release, or a release identified by an explicit hash."""
+    expected_manifest = (
+        MEIJI_V4_MANIFEST_SHA256
+        if manifest_sha256 is None
+        else sha256_value(manifest_sha256, "manifest_sha256")
+    )
     sums = (root / "SHA256SUMS").read_bytes()
+    sums_digest = sha256(sums).hexdigest()
     files = _BenchmarkFiles(root, sums)
     manifest_path = Path("manifest.json")
-    if manifest_sha256 is not None:
-        files.expected(manifest_path, sha256_value(manifest_sha256, "manifest_sha256"))
-    manifest = files.json(manifest_path)
+    raw_manifest = files.path(manifest_path).read_bytes()
+    actual_manifest = sha256(raw_manifest).hexdigest()
+    if actual_manifest != expected_manifest:
+        raise ValueError(
+            f"V4 manifest SHA-256 mismatch: expected {expected_manifest}, got {actual_manifest}"
+        )
+    if (
+        expected_manifest == MEIJI_V4_MANIFEST_SHA256
+        and sums_digest != MEIJI_V4_SHA256SUMS_SHA256
+    ):
+        raise ValueError("SHA256SUMS SHA-256 mismatch for the frozen Meiji V4 release")
+    files.check(manifest_path, actual_manifest)
+    manifest = json_object(raw_manifest, manifest_path.as_posix())
     try:
-        return _read_release(manifest, files, sha256(sums).hexdigest())
+        return _read_release(manifest, files, sums_digest)
     except (KeyError, TypeError, BadZipFile, EOFError) as error:
         raise ValueError(f"Invalid V4 release {root}: {error}") from error
 

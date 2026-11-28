@@ -7,7 +7,7 @@ from collections import Counter
 from dataclasses import dataclass
 from hashlib import sha256
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import numpy as np
 from numpy.typing import NDArray
@@ -39,8 +39,12 @@ class IngestFixture:
     projects: Path
     data_root: Path
 
-    def cli_args(self) -> list[str]:
-        return [
+    @property
+    def manifest_sha256(self) -> str:
+        return digest(self.root / "manifest.json")
+
+    def cli_args(self, *, alternate: bool = True) -> list[str]:
+        paths = [
             "--v4-root",
             str(self.root),
             "--projects",
@@ -48,6 +52,9 @@ class IngestFixture:
             "--data-root",
             str(self.data_root),
         ]
+        if alternate:
+            paths.extend(("--manifest-sha256", self.manifest_sha256))
+        return paths
 
     def resolver(self) -> PathResolver:
         return PathResolver(RuntimePathRoots(*(self.data_root,) * 7))
@@ -318,7 +325,13 @@ def _create_clip(
     }
 
 
-def make_ingest_fixture(data_root: Path, *, overlapping: bool = False) -> IngestFixture:
+def make_ingest_fixture(
+    data_root: Path,
+    *,
+    duplicate: Literal["shared_serve", "after_serve", "ambiguous"] | None = None,
+    duplicate_split: str = "train",
+    full_match: bool = False,
+) -> IngestFixture:
     root = data_root / "frozen"
     times = [10.0, 20.0, 30.0]
     names = ["clip_009", "clip_012", "clip_030"]
@@ -369,23 +382,47 @@ def make_ingest_fixture(data_root: Path, *, overlapping: bool = False) -> Ingest
         [],
     ]
     before_points, winners = [[0, 0], [1, 0], [1, 1]], ["A", "B", "B"]
-    if overlapping:
+    servers = ["A", "A", "A"]
+    if duplicate is not None:
+        trim = 1 if duplicate == "shared_serve" else 17
         names.append("clip_010")
-        times.append(10.0 + 1 / 30)
+        times.append(10.0 + trim / 30)
         point_events.append(
-            [{**row, "frame": row["frame"] - 1} for row in point_events[0]]
+            [
+                {
+                    **row,
+                    "frame": row["frame"] - trim,
+                    "status": "probable" if duplicate == "ambiguous" else row["status"],
+                }
+                for row in point_events[0]
+                if row["frame"] >= trim
+            ]
         )
         excluded.append([])
         unlabelable.append([])
         before_points.append([0, 0])
         winners.append("A")
+        servers.append("A")
+    if full_match:
+        for i in range(3, 7):
+            names.append(f"clip_{30 + i:03d}")
+            times.append(10.0 * (i + 1))
+            point_events.append([])
+            excluded.append([])
+            unlabelable.append([])
+        before_points = [[i, 0] for i in range(7)]
+        winners = ["A"] * 7
+        servers = ["A", "A", "B", "B", "A", "A", "B"]
     clips, project_clips = [], []
     splits: dict[str, list[str]] = {"train": [], "val": [], "test": []}
     for i, (name, start, events, omitted, gaps) in enumerate(
         zip(names, times, point_events, excluded, unlabelable, strict=True)
     ):
         clips.append(_create_clip(root, name, start, events, omitted, gaps))
-        splits[("train", "val", "test")[i % 3]].append(f"video_000/{name}")
+        split = (
+            duplicate_split if name == "clip_010" else ("train", "val", "test")[i % 3]
+        )
+        splits[split].append(f"video_000/{name}")
         project_clips.append(
             {
                 "name": name,
@@ -394,7 +431,7 @@ def make_ingest_fixture(data_root: Path, *, overlapping: bool = False) -> Ingest
                 "score": {
                     "status": "confirmed",
                     "before_source": "anchor" if i == 0 else "chain",
-                    "server": "A",
+                    "server": servers[i],
                     "server_source": "auto",
                     "winner": winners[i],
                     "before": {"games": [0, 0], "points": before_points[i]},
@@ -433,7 +470,10 @@ def make_ingest_fixture(data_root: Path, *, overlapping: bool = False) -> Ingest
                     "match": {
                         "sides": {"A": "Side A", "B": "Side B"},
                         "first_server": "A",
-                        "rules": {"type": "soft_tennis", "match_games": 3},
+                        "rules": {
+                            "type": "soft_tennis",
+                            "match_games": 1 if full_match else 3,
+                        },
                     },
                     "sources": [
                         {

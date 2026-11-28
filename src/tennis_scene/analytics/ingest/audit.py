@@ -22,7 +22,6 @@ from src.tennis_scene.analytics.ingest.terminal_cause import (
 )
 from src.tennis_scene.analytics.ingest.v4_reader import SPLITS
 from src.tennis_scene.analytics.metrics import (
-    DEFINITION_VERSION,
     ErrorAssessment,
     TerminalCause,
     TerminalCauseSource,
@@ -34,6 +33,8 @@ from src.tennis_scene.ball_event_labels import (
     EVENT_SUBTYPES_V4,
 )
 from src.tennis_scene.clip_studio.project import count_to_dict
+
+INGEST_DEFINITION_VERSION = "2"
 
 
 @dataclass(frozen=True)
@@ -101,9 +102,11 @@ def prepare_ingest(
             raise ValueError(
                 f"Manual supplement clip is outside the V4 release: {clip_id}"
             )
-        validate_supplement(supplement, scored)
         key = scored.match_point_key
-        assert key is not None
+        if key is None:
+            raise ValueError(
+                f"{clip_id}: a supplement requires a confirmed point with resolved identity"
+            )
         if key in by_point:
             raise ValueError(
                 f"Multiple manual supplements refer to the same match point: {key}"
@@ -139,11 +142,10 @@ def prepare_ingest(
             else:
                 terminal, evidence_clip_id = (resolved or evidence)[0]
             manual = by_point.get(key)
-        clips.append(
-            PreparedClip(
-                scored, terminal, evidence_clip_id, manual, supplements.get(clip_id)
-            )
-        )
+        attempts = supplements.get(clip_id)
+        if attempts is not None:
+            validate_supplement(attempts, scored, derived_cause=terminal.cause)
+        clips.append(PreparedClip(scored, terminal, evidence_clip_id, manual, attempts))
     return PreparedIngest(video, supplement_sha256, tuple(clips))
 
 
@@ -208,10 +210,16 @@ def _clip_report(clip: PreparedClip) -> dict[str, Any]:
         missing_reasons["manual_serve_attempts"] = (
             score_missing if score is None else "no_manual_serve_attempts"
         )
+    hold = scored.point_identity_hold
+    if scored.match_point_key is None:
+        missing_reasons["match_point_key"] = (
+            hold.reason if hold is not None else score_missing
+        )
     return {
         "clip_id": scored.v4.clip_id,
         "split": scored.v4.split,
         "match_point_key": scored.match_point_key,
+        "point_identity_hold": hold.to_dict() if hold is not None else None,
         "score_status": scored.score_status,
         "score_before": count_to_dict(score.before)
         if score is not None and score.before is not None
@@ -243,6 +251,7 @@ def audit_report(batch: PreparedIngest) -> dict[str, Any]:
     clips = [_clip_report(item) for item in batch.clips]
     columns = {}
     for field in (
+        "match_point_key",
         "score_before",
         "score_after",
         "server_team",
@@ -281,16 +290,27 @@ def audit_report(batch: PreparedIngest) -> dict[str, Any]:
         item["reason"] for row in clips for item in row["excluded_source_events"]
     )
     split_counts = Counter(item.scored.v4.split for item in batch.clips)
+    point_splits: dict[str, set[str]] = defaultdict(set)
+    for row in clips:
+        if row["match_point_key"] is not None:
+            point_splits[row["match_point_key"]].add(row["split"])
+    cross_split_points = sorted(
+        key for key, splits in point_splits.items() if len(splits) > 1
+    )
+    pending = [
+        row["clip_id"] for row in clips if row["point_identity_hold"] is not None
+    ]
     unresolved = [
         row["clip_id"]
         for row in clips
         if row["score_status"] not in ("confirmed", "not_point")
+        or row["point_identity_hold"] is not None
     ]
     return {
         "benchmark_id": release.benchmark_id,
         "dataset_id": release.dataset_id,
         "video_id": release.video_id,
-        "definition_version": DEFINITION_VERSION,
+        "definition_version": INGEST_DEFINITION_VERSION,
         "input_hashes": {
             "v4_manifest_sha256": release.manifest_sha256,
             "v4_sha256sums_sha256": release.sha256sums_sha256,
@@ -303,13 +323,10 @@ def audit_report(batch: PreparedIngest) -> dict[str, Any]:
             "files_listed": release.listed_files,
         },
         "clip_count": len(clips),
-        "match_point_count": len(
-            {
-                row["match_point_key"]
-                for row in clips
-                if row["match_point_key"] is not None
-            }
-        ),
+        "match_point_count": len(point_splits),
+        "cross_split_point_count": len(cross_split_points),
+        "cross_split_point_keys": cross_split_points,
+        "pending_point_identity_clip_ids": pending,
         "split_counts": {split: split_counts[split] for split in SPLITS},
         "time_alignment": {
             "matched_clips": len(clips),
@@ -319,11 +336,11 @@ def audit_report(batch: PreparedIngest) -> dict[str, Any]:
             "tolerance_sec": TIME_TOLERANCE_SEC,
         },
         "score_chain": {
-            "status": "continuous"
-            if video.chain_segments == 1 and not unresolved
-            else "partial",
+            "status": "continuous" if video.chain_continuous else "partial",
             "verified_links": video.chain_links,
             "confirmed_segments": video.chain_segments,
+            "starts_at_match_open": video.starts_at_match_open,
+            "reached_match_end": video.reached_match_end,
             "match_complete": video.match_complete,
             "unresolved_clip_ids": unresolved,
             "by_score_status": dict(

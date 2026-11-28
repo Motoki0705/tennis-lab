@@ -10,12 +10,12 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 
 from src.tennis_scene.analytics.db.models import SCHEMA_VERSION, Base
 from src.tennis_scene.analytics.ingest.audit import (
+    INGEST_DEFINITION_VERSION,
     PreparedClip,
     PreparedIngest,
     audit_report,
 )
 from src.tennis_scene.analytics.ingest.score_adapter import POINT_KEY
-from src.tennis_scene.analytics.metrics import DEFINITION_VERSION
 from src.tennis_scene.clip_studio.project import count_to_dict
 
 _TABLES = Base.metadata.tables
@@ -47,6 +47,8 @@ def _store_clip(
             "missing_reason": item.terminal.missing_reason,
         },
     }
+    if scored.point_identity_hold is not None:
+        metadata["point_identity_hold"] = scored.point_identity_hold.to_dict()
     if item.manual_point is not None:
         metadata["manual_point_supplement"] = {
             "clip_id": item.manual_point.clip_id,
@@ -186,7 +188,7 @@ def persist_ingest(
         "projects_json_sha256": video.projects_sha256,
         "manual_supplement_sha256": batch.manual_supplement_sha256,
         "schema_version": SCHEMA_VERSION,
-        "definition_version": DEFINITION_VERSION,
+        "definition_version": INGEST_DEFINITION_VERSION,
     }
     run = _TABLES["ingest_runs"]
     matches = _TABLES["match_contexts"]

@@ -177,28 +177,49 @@ def read_supplement(path: Path | None) -> tuple[str | None, dict[str, ManualPoin
     return sha256(raw).hexdigest(), points
 
 
-def _validate_following(previous: ManualServe, current: ManualServe) -> None:
-    number, replay = previous.serve_number, previous.replay_index
-    if previous.result == "in" or (previous.result == "fault" and number == 2):
-        raise ValueError("Manual serve attempts continue after a resolved outcome")
-    if previous.result == "fault" and (
-        current.serve_number == 1 or current.replay_index not in (None, 0)
-    ):
-        raise ValueError("The attempt after a first fault must start the second serve")
-    if previous.result == "let" and (
-        (number is not None and current.serve_number not in (None, number))
-        or (replay is not None and current.replay_index not in (None, replay + 1))
-    ):
-        raise ValueError(
-            "A let must repeat the same serve number with the next replay index"
-        )
+def _last_serve_numbers(attempts: tuple[ManualServe, ...]) -> set[int]:
+    """Check that the supplied prefix or excerpt can be one legal serve sequence."""
+    # A position gives the serve number, minimum replay index and whether
+    # that index is exact. A partial recording can begin on either serve.
+    positions = {(1, 0, False), (2, 0, False)}
+    for index, attempt in enumerate(attempts):
+        compatible = set()
+        for number, replay, exact in positions:
+            if attempt.serve_number not in (None, number):
+                continue
+            if attempt.replay_index is None:
+                compatible.add((number, replay, exact))
+            elif attempt.replay_index >= replay and (
+                not exact or attempt.replay_index == replay
+            ):
+                compatible.add((number, attempt.replay_index, True))
+        if not compatible:
+            raise ValueError(
+                f"Manual serve attempt {index + 1} conflicts with the preceding serve results, "
+                "serve numbers or replay indices"
+            )
+        if index == len(attempts) - 1:
+            return {number for number, _, _ in compatible}
+        positions = {
+            (number, replay + 1, exact)
+            for number, replay, exact in compatible
+            if attempt.result in ("let", "unknown")
+        }
+        if attempt.result in ("fault", "unknown") and any(
+            number == 1 for number, _, _ in compatible
+        ):
+            positions.add((2, 0, True))
+    return set()
 
 
-def validate_supplement(point: ManualPoint, scored: ScoredClip) -> None:
+def validate_supplement(
+    point: ManualPoint, scored: ScoredClip, *, derived_cause: TerminalCause
+) -> None:
     score = scored.confirmed
     if score is None:
         raise ValueError(f"{point.clip_id}: a supplement requires a confirmed point")
-    if point.terminal_cause == "double_fault" and score.server == score.winner:
+    cause = point.terminal_cause
+    if cause == "double_fault" and score.server == score.winner:
         raise ValueError(
             f"{point.clip_id}: a double fault must lose the point for the server"
         )
@@ -208,7 +229,6 @@ def validate_supplement(point: ManualPoint, scored: ScoredClip) -> None:
         if event.in_point and event.subtype in SERVE_SUBTYPES
     }
     frame = -1
-    previous = None
     for attempt in point.serve_attempts:
         if attempt.source_event_id is not None:
             new_frame = event_frames.get(attempt.source_event_id)
@@ -218,6 +238,33 @@ def validate_supplement(point: ManualPoint, scored: ScoredClip) -> None:
                     "an in-point V4 serve in frame order"
                 )
             frame = new_frame
-        if previous is not None:
-            _validate_following(previous, attempt)
-        previous = attempt
+    if not point.serve_attempts:
+        return
+
+    numbers = _last_serve_numbers(point.serve_attempts)
+    last = point.serve_attempts[-1]
+    if cause == "double_fault":
+        faults = {
+            attempt.serve_number
+            for attempt in point.serve_attempts
+            if attempt.result == "fault"
+        }
+        if faults != {1, 2}:
+            raise ValueError(
+                f"{point.clip_id}: double_fault with a supplied serve sequence requires "
+                "confirmed faults on both serve 1 and serve 2"
+            )
+    effective_cause = cause or derived_cause
+    if last.result == "fault" and numbers == {2}:
+        if score.server == score.winner:
+            raise ValueError(
+                f"{point.clip_id}: a second serve fault must lose the point for the server"
+            )
+        if effective_cause not in ("unknown", "double_fault"):
+            raise ValueError(
+                f"{point.clip_id}: a second serve fault conflicts with terminal cause {effective_cause}"
+            )
+    if effective_cause == "double_fault" and last.result == "in":
+        raise ValueError(
+            f"{point.clip_id}: a legal serve conflicts with terminal cause double_fault"
+        )

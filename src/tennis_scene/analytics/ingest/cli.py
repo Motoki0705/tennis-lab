@@ -69,7 +69,10 @@ def add_commands(
             help="root for Clip Studio's data-relative camera paths",
         )
         parser.add_argument("--manual-supplement", type=Path)
-        parser.add_argument("--manifest-sha256", help="expected V4 manifest SHA-256")
+        parser.add_argument(
+            "--manifest-sha256",
+            help="expected manifest SHA-256 for an alternate release (default: frozen Meiji V4)",
+        )
         parser.add_argument("--projects-sha256", help="expected projects.json SHA-256")
         if name == "ingest":
             parser.add_argument("--owner-team", required=True, type=positive_int)

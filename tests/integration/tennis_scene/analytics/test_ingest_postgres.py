@@ -59,7 +59,7 @@ def test_cli_ingest_query_export_and_replay_in_postgres(
 ) -> None:
     assert main(["db", "upgrade"]) == 0
     owner = _create_owner(postgres_db)
-    inputs = make_ingest_fixture(tmp_path, overlapping=True)
+    inputs = make_ingest_fixture(tmp_path, duplicate="shared_serve")
     ingest = ["ingest", *inputs.cli_args(), "--owner-team", str(owner)]
     original = _cli(capsys, ingest)
     run = json.loads(original)
@@ -182,7 +182,7 @@ def test_concurrent_identical_ingests_share_one_graph(
     assert main(["db", "upgrade"]) == 0
     owner = _create_owner(postgres_db)
     inputs = make_ingest_fixture(tmp_path)
-    release = read_v4(inputs.root)
+    release = read_v4(inputs.root, manifest_sha256=inputs.manifest_sha256)
     batch = prepare_ingest(
         read_scores(release, inputs.projects, inputs.resolver()), None, {}
     )
@@ -206,3 +206,88 @@ def test_concurrent_identical_ingests_share_one_graph(
         for table, count in counts.items():
             records = Base.metadata.tables[table]
             assert connection.scalar(select(func.count()).select_from(records)) == count
+
+
+def test_ingest_rejects_contradictory_manual_rows_before_any_insert(
+    postgres_db: Engine,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert main(["db", "upgrade"]) == 0
+    owner = _create_owner(postgres_db)
+    inputs = make_ingest_fixture(tmp_path)
+    manual = tmp_path / "contradiction.json"
+    write_json(
+        manual,
+        {
+            "version": 1,
+            "points": [
+                {
+                    "clip_id": "video_000/clip_012",
+                    "point_key": "point",
+                    "reviewer": "Reviewer",
+                    "terminal_cause": "double_fault",
+                    "serve_attempts": [{"serve_number": 2, "result": "in"}],
+                }
+            ],
+        },
+    )
+    assert (
+        main(
+            [
+                "ingest",
+                *inputs.cli_args(),
+                "--owner-team",
+                str(owner),
+                "--manual-supplement",
+                str(manual),
+            ]
+        )
+        == 1
+    )
+    assert "double_fault with a supplied serve sequence" in capsys.readouterr().err
+    with postgres_db.connect() as connection:
+        for name in (
+            "ingest_runs",
+            "match_contexts",
+            "clips",
+            "points",
+            "ball_events",
+            "serve_attempts",
+        ):
+            assert (
+                connection.scalar(
+                    select(func.count()).select_from(Base.metadata.tables[name])
+                )
+                == 0
+            )
+
+
+def test_ingest_persists_unresolved_identity_with_clip_local_score(
+    postgres_db: Engine,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    assert main(["db", "upgrade"]) == 0
+    owner = _create_owner(postgres_db)
+    inputs = make_ingest_fixture(
+        tmp_path, duplicate="ambiguous", duplicate_split="test"
+    )
+    ingest = ["ingest", *inputs.cli_args(), "--owner-team", str(owner)]
+    result = _cli(capsys, ingest)
+    run = json.loads(result)
+    assert _cli(capsys, ingest) == result
+    export = json.loads(
+        _cli(capsys, ["export", "--ingest-run", str(run["ingest_run_id"])])
+    )
+    clip = next(
+        row for row in export["clips"] if row["clip_id"] == "video_000/clip_010"
+    )
+    assert clip["metadata_json"]["point_identity_hold"] == {
+        "reason": "overlapping_same_score_without_shared_event",
+        "candidate_clip_ids": ["video_000/clip_009"],
+    }
+    point = next(row for row in export["points"] if row["clip_id"] == clip["id"])
+    assert point["match_point_key"] is None
+    assert point["score_status"] == "confirmed"
+    assert point["score_after_json"] == {"games": [0, 0], "points": [1, 0]}
