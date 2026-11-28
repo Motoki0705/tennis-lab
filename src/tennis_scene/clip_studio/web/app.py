@@ -10,10 +10,13 @@ from typing import Annotated, Any
 from urllib.parse import urlsplit
 
 import cv2
+from anyio import create_task_group
 from fastapi import FastAPI, HTTPException, Query, Request
 from fastapi.responses import FileResponse, JSONResponse, Response
 from starlette.middleware.base import RequestResponseEndpoint
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from starlette.requests import ClientDisconnect
+from starlette.types import Message, Receive, Scope, Send
 
 from src.tennis_scene.clip_studio.export import ExportSettings
 from src.tennis_scene.clip_studio.initialization import StartupNotice
@@ -32,6 +35,35 @@ from src.tennis_scene.clip_studio.web.service import (
 from src.tennis_scene.configuration import ClipStudioRuntimeConfig
 
 STATIC = Path(__file__).parent / "static"
+
+
+class _VideoFileResponse(FileResponse):
+    """Stop reading a video range once the browser closes the connection."""
+
+    async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+        disconnected = False
+
+        async def watch_disconnect() -> None:
+            nonlocal disconnected
+            while (await receive())["type"] != "http.disconnect":
+                pass
+            disconnected = True
+
+        async def send_until_disconnected(message: Message) -> None:
+            # Forward the headers through the middleware, then let FileResponse
+            # unwind its file context on disconnect, including the async close.
+            if disconnected and message["type"] == "http.response.body":
+                raise ClientDisconnect
+            await send(message)
+
+        async with create_task_group() as group:
+            group.start_soon(watch_disconnect)
+            try:
+                await super().__call__(scope, receive, send_until_disconnected)
+            except ClientDisconnect:
+                pass
+            finally:
+                group.cancel_scope.cancel()
 
 
 def create_app(
@@ -151,7 +183,8 @@ def create_app(
         return asdict(startup_notice) if startup_notice is not None else None
 
     def get_project() -> dict[str, Any]:
-        return editor.snapshot()
+        result: dict[str, Any] = editor.snapshot()
+        return result
 
     def get_review(revision: int) -> dict[str, Any]:
         with editor.lock:
@@ -172,7 +205,8 @@ def create_app(
             return result
 
     def edit(request: Edit) -> dict[str, Any]:
-        return editor.edit(request)
+        result: dict[str, Any] = editor.edit(request)
+        return result
 
     def preview_edit(request: Edit) -> EditPreview:
         return editor.preview(request)
@@ -191,7 +225,7 @@ def create_app(
     def media(camera: int) -> FileResponse:
         if not 0 <= camera < len(sources):
             raise HTTPException(404, "Camera not found")
-        return FileResponse(sources[camera].video_path)
+        return _VideoFileResponse(sources[camera].video_path)
 
     def frame(
         camera: int, time: Annotated[float, Query(allow_inf_nan=False)], revision: int
