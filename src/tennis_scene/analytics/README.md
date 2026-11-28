@@ -47,6 +47,23 @@ The metric dictionary supports JSON and CSV and runs without `DATABASE_URL`. Que
 
 A scoped export reads a single database snapshot. It includes the selected run or match, its descendant rows, the match's ingest provenance and referenced court profiles. JSON goes to stdout and CSV writes one file per domain table into a new directory. Both use database ID order per table, UTC timestamps and deterministic JSON encoding. CSV uses JSON cells for objects and arrays. A `\N` cell represents NULL, and literal text starting with a backslash gains an extra backslash.
 
+## Attribute V4 shots to local players
+
+After ingest, run the hitter rule for the selected team and run.
+
+```bash
+benchmark=data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v4
+.venv/bin/python -m src.tennis_scene.analytics hitter \
+  --benchmark "$benchmark" --ingest-run 1 --owner-team 1
+.venv/bin/python -m src.tennis_scene.analytics query shot_hitter_estimates --owner-team 1
+```
+
+The writer checks the manifest against the ingest run and verifies each clip archive and adopted shot against its V4 evidence. It saves results in one transaction and copies the event's visibility. Running again with the same evidence keeps the existing rows and timestamps. A changed rule version gets its own rows.
+
+The rule scores each player's root and COCO17 wrists over the uncertainty window. It uses three-dimensional ball-to-landmark distance, court-side agreement, observed motion before and after contact, and mask support. Each candidate carries the ball-and-landmark valid frames and the highest-scoring contact sample. The margin compares the two highest measured scores. `local_player_index` addresses the scene array and `local_player_id` stores the corresponding value in `player_track_ids`. Both fields and the selected landmark are NULL when the rule abstains. The row retains the leading evidence and the reason.
+
+The [rule version and thresholds](hitter.py) are tied to the [V4 visual audit and evaluation](../../../knowledge/runs/run-i2759-v4-hitter-rule-eval/README.md). Update the rule revision when changing the scoring or decision logic.
+
 ## Tests
 
 ```bash

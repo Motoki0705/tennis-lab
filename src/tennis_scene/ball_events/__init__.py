@@ -61,4 +61,10 @@ def analyze_scene_events(
     return list(events), np.asarray(coverage, dtype=np.bool_)
 
 
-__all__ = ["BallEvent", "RuleThresholds", "analyze_scene_events", "detect_ball_events", "detect_scene_events"]
+__all__ = [
+    "BallEvent",
+    "RuleThresholds",
+    "analyze_scene_events",
+    "detect_ball_events",
+    "detect_scene_events",
+]
