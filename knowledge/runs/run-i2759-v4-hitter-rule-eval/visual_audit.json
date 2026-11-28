@@ -1,0 +1,3182 @@
+{
+  "schema": "v4_hitter_visual_audit.v1",
+  "reviewer": "Codex implementation worker, single visual reviewer",
+  "label_method": "read racket preparation, extension and follow-through from synchronized cam0-cam3; use projected skeleton labels for clip-local identity",
+  "ground_truth_frozen_utc": "2026-11-28T18:17:00+00:00",
+  "hitter_rule_predictions_seen_at_freeze": false,
+  "manifest_sha256": "8e012944b1407d696a1ab1d325ae3c6b60cf26f071752510ea2fc688b031893c",
+  "benchmark_sha256sums_sha256": "06a1ba201881cfe8cf873e721adc07d5367c0ae9e3893aaaf0570d098648eaae",
+  "ground_truth_sha256": "036e3bd6b57b852a09d87a0631b7591d5978553d3cae9ee1f5de558df5e4af1f",
+  "reviewed_shots": {
+    "val": 60,
+    "test": 51
+  },
+  "clips": [
+    {
+      "clip_id": "video_000/clip_002",
+      "split": "val",
+      "camera_sha256": {
+        "cam0": "467f44f38104b4134b9c1425f0022515c9f2b2fa3b8309116ebd1bee35585113",
+        "cam1": "bcb1df13e99605297a427e77db5e59bd53744b87146d31156e17b7a727787fc7",
+        "cam2": "f4a216010f607157ea14d3ab62f617460452c175c5ffcc697a79f63a19114a5d",
+        "cam3": "2de4983837d196d0aa8bc2d92f86b9f4642db36fa020d7eada34a318691ca274"
+      },
+      "scene_npz_sha256": "5b36fcfd78df06d826ec94d808d74d5abb717515ab2b2bb3b7f645baacda3499",
+      "scene_metadata_sha256": "5e2c6e8ecb18c744276f85e4ac1c4404b933d9850fa46f64acc2875125697bbc",
+      "v4_event_component_sha256": "6c2d5719d9b25938d65556e185e8a3db137c97de5979129c12113a2926966d92",
+      "player_track_ids": [
+        0,
+        1,
+        2,
+        5
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 78,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            70,
+            78,
+            86
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "4d76d1ac02c771b6f44dca91533d9438116d7bd019023f3dbe001f316dd9000d"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "c703ddf6420cc62a29b40e99ba8b34d587aab916ae97bae507f17eec964c817e"
+            }
+          }
+        },
+        {
+          "source_event_id": "e015",
+          "frame": 659,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            651,
+            659,
+            667
+          ],
+          "panels": {
+            "wide": {
+              "file": "e015-wide.jpg",
+              "sha256": "48d37991db5e6aa79041c4753a45fafa1003e64fe699c4aaa07b7262de1d7e8c"
+            },
+            "close": {
+              "file": "e015-close.jpg",
+              "sha256": "bf2e3b7bc6c3310c3cf3bfa626e803432844dac8c47b17bc4bdaa7ef0167e8e8"
+            }
+          }
+        },
+        {
+          "source_event_id": "e017",
+          "frame": 745,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            737,
+            745,
+            753
+          ],
+          "panels": {
+            "wide": {
+              "file": "e017-wide.jpg",
+              "sha256": "fa4599ce7995f4cfb9060abcb7987c2f9822b9a018005fd9866a6dd6b068ab0e"
+            },
+            "close": {
+              "file": "e017-close.jpg",
+              "sha256": "8222948b26d9ef43a75f63f780467450bf1cc2547b01b8eee3557b66e0e3e851"
+            }
+          }
+        },
+        {
+          "source_event_id": "e019",
+          "frame": 820,
+          "subtype": "groundstroke_backhand",
+          "review_frames": [
+            812,
+            820,
+            828
+          ],
+          "panels": {
+            "wide": {
+              "file": "e019-wide.jpg",
+              "sha256": "5a3eabfa73d0fc859c0e53657df9ba0e094aea73813c1a282a59d0f2edfc2714"
+            },
+            "close": {
+              "file": "e019-close.jpg",
+              "sha256": "57bdf4301ed62dbbc213e98e1bcda174c5f83b879a8b6c002b0ca40b0ac7114b"
+            }
+          }
+        },
+        {
+          "source_event_id": "e020",
+          "frame": 875,
+          "subtype": "volley_forehand",
+          "review_frames": [
+            867,
+            875,
+            883
+          ],
+          "panels": {
+            "wide": {
+              "file": "e020-wide.jpg",
+              "sha256": "f2955171cce819909f1c9daa047aa6210493cdfb8813a94988db48cddca80b29"
+            },
+            "close": {
+              "file": "e020-close.jpg",
+              "sha256": "6e9fb6f2b7332b5feeb62984028bbecdc5826bdad2fda14a880fd46fb121a020"
+            }
+          }
+        },
+        {
+          "source_event_id": "e022",
+          "frame": 967,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            959,
+            967,
+            975
+          ],
+          "panels": {
+            "wide": {
+              "file": "e022-wide.jpg",
+              "sha256": "a8428c221fe3ddfbcb6634d84d153e51f09871637914129ece60abc1085ab40f"
+            },
+            "close": {
+              "file": "e022-close.jpg",
+              "sha256": "fbc13ad1748f69e46c1709072c8734556349d35062218594974cdb0c5cf4da81"
+            }
+          }
+        },
+        {
+          "source_event_id": "e023",
+          "frame": 1014,
+          "subtype": "volley_backhand",
+          "review_frames": [
+            1006,
+            1014,
+            1022
+          ],
+          "panels": {
+            "wide": {
+              "file": "e023-wide.jpg",
+              "sha256": "22d152c858c50c47b7ec53f7503d9129b3bb9327ab2c830fdd662b46bd1ce78f"
+            },
+            "close": {
+              "file": "e023-close.jpg",
+              "sha256": "62b60626250a3a644ccd43bb42585bae836f084d81fa298cd6ae4f347340ea38"
+            }
+          }
+        },
+        {
+          "source_event_id": "e025",
+          "frame": 1053,
+          "subtype": "groundstroke_backhand",
+          "review_frames": [
+            1045,
+            1053,
+            1061
+          ],
+          "panels": {
+            "wide": {
+              "file": "e025-wide.jpg",
+              "sha256": "0ede2d3e9a109dd10257aa60a308a16af5a395d693c0f7ced726e08d9a3ea45c"
+            },
+            "close": {
+              "file": "e025-close.jpg",
+              "sha256": "a01802d5ed4780fdf4c02d799cc09495a1c5a65a1e3e75592e8337ac7567fc7b"
+            }
+          }
+        },
+        {
+          "source_event_id": "e026",
+          "frame": 1144,
+          "subtype": "smash",
+          "review_frames": [
+            1136,
+            1144,
+            1152
+          ],
+          "panels": {
+            "wide": {
+              "file": "e026-wide.jpg",
+              "sha256": "8da8f72c82ef41df68d4c74fd368e79c312643a436d4e3af6e81253f7726584b"
+            },
+            "close": {
+              "file": "e026-close.jpg",
+              "sha256": "0e5b4e87ed0898c320b34a0cd7329034ba1af7992914655d4cec6b6fed3bc8a5"
+            }
+          }
+        },
+        {
+          "source_event_id": "e028",
+          "frame": 1191,
+          "subtype": "groundstroke_backhand",
+          "review_frames": [
+            1183,
+            1191,
+            1199
+          ],
+          "panels": {
+            "wide": {
+              "file": "e028-wide.jpg",
+              "sha256": "d2f388ddb6000dd43e24ef42c54cbc5a1fb9ed2817889bb8288d2733f2366117"
+            },
+            "close": {
+              "file": "e028-close.jpg",
+              "sha256": "a202079b64a352c5defddfc612d4657638e1273d77cad1c80fd2c930d36e698f"
+            }
+          }
+        },
+        {
+          "source_event_id": "e029",
+          "frame": 1270,
+          "subtype": "smash",
+          "review_frames": [
+            1262,
+            1270,
+            1278
+          ],
+          "panels": {
+            "wide": {
+              "file": "e029-wide.jpg",
+              "sha256": "19c5a9cd63bd74e14e052d126f1f394f8f2e7ba6ef2e7b8ea294964a5cd31b2c"
+            },
+            "close": {
+              "file": "e029-close.jpg",
+              "sha256": "c9af7f5a7b2532ddbb46f147806945a1264fefd5ba80600ca642daa3d7a5dbcf"
+            }
+          }
+        },
+        {
+          "source_event_id": "e031",
+          "frame": 1323,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            1315,
+            1323,
+            1331
+          ],
+          "panels": {
+            "wide": {
+              "file": "e031-wide.jpg",
+              "sha256": "ccc9ce02fc83d7c89078a21fc7b73974bbe151a8e2530d233efd5f9ff85853a0"
+            },
+            "close": {
+              "file": "e031-close.jpg",
+              "sha256": "a9394fbc80355617a0e609292b46c0337555b61492aa551e4ec4c660e0b5e44a"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "34d2058650962fe1a897e361f5c8128f40d95a74e6e7c1f28d9408255d4621eb",
+      "source_video_id": "video_000",
+      "global_start_sec": 196.53901,
+      "global_end_sec": 221.835543,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          12680,
+          14195
+        ],
+        "cam1": [
+          11800,
+          13315
+        ],
+        "cam2": [
+          13339,
+          14854
+        ],
+        "cam3": [
+          13992,
+          15507
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_012",
+      "split": "val",
+      "camera_sha256": {
+        "cam0": "b4b83f758fdec2dbab217044aca164e7a7978b11f809d4fb182954aa2367176f",
+        "cam1": "dca2c1c04e340b86f24a61ba19a7593614b296204e4b47457edbada79af8aa51",
+        "cam2": "0de314dcaf6d8208ae3d6c6c88d317587a104d296be8bda66a3d5a702834323a",
+        "cam3": "4792393a78685f9536c67cb9f2e8154c8976959dbdabf5d9814b4ae300262e46"
+      },
+      "scene_npz_sha256": "0c35e56ed2324f7f8d73acfcc95e5212af9e25c45a2389b83716371c6fed4780",
+      "scene_metadata_sha256": "a76006afeaf6fd6c66ca76387e6e2fb9732d8c36facfd0311b9d2fb10a83cd0f",
+      "v4_event_component_sha256": "0417b6418161b4079f545dad256704baa4787582a8229f1f30b10b6e7738d2b5",
+      "player_track_ids": [
+        0,
+        1,
+        3,
+        4
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 110,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            102,
+            110,
+            118
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "6db53aae50a2bbe05845b24636460cd38eddab936879dc8c7f82112830e3efcf"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "1b33be6572465f1fcac4176d57efb96fc99e0b07f0641caa61d79ab77faa9198"
+            }
+          }
+        },
+        {
+          "source_event_id": "e011",
+          "frame": 615,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            607,
+            615,
+            623
+          ],
+          "panels": {
+            "wide": {
+              "file": "e011-wide.jpg",
+              "sha256": "7d355472752c3784160c96cfd9db032c4fdedb0e91cda32f5c5be89e4a5eca17"
+            },
+            "close": {
+              "file": "e011-close.jpg",
+              "sha256": "4259b8ec887baa83ad803a9c62ce33c7aaae1944125b453e635ed02b7e06e4c4"
+            }
+          }
+        },
+        {
+          "source_event_id": "e013",
+          "frame": 689,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            681,
+            689,
+            697
+          ],
+          "panels": {
+            "wide": {
+              "file": "e013-wide.jpg",
+              "sha256": "5a73ba3243c8af0e5be618194db423116517528d0d3adefda57986ca2ac112b2"
+            },
+            "close": {
+              "file": "e013-close.jpg",
+              "sha256": "7e704cd4969e3de7108990c730b0c48a982ee063a7bc5909a20486d8a778f173"
+            }
+          }
+        },
+        {
+          "source_event_id": "e015",
+          "frame": 774,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            766,
+            774,
+            782
+          ],
+          "panels": {
+            "wide": {
+              "file": "e015-wide.jpg",
+              "sha256": "5085f9c072c2354a611ddc93e4a121a486fd584e9ecc6f6b98826bbba9b217e7"
+            },
+            "close": {
+              "file": "e015-close.jpg",
+              "sha256": "60353dcc92479bd3a1cf7b8bcc06aedeac7596b1cab0418cf10fcded6d0d1600"
+            }
+          }
+        },
+        {
+          "source_event_id": "e017",
+          "frame": 874,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            866,
+            874,
+            882
+          ],
+          "panels": {
+            "wide": {
+              "file": "e017-wide.jpg",
+              "sha256": "3ea21d2a22afa8f1930fbe1ee8d77c1a80f524b94c4d145999f679a7ee50121c"
+            },
+            "close": {
+              "file": "e017-close.jpg",
+              "sha256": "05930a67da2abbc9b93a67b003280416f1adf913106829dbe4018f4077902553"
+            }
+          }
+        },
+        {
+          "source_event_id": "e018",
+          "frame": 903,
+          "subtype": "volley_backhand",
+          "review_frames": [
+            895,
+            903,
+            911
+          ],
+          "panels": {
+            "wide": {
+              "file": "e018-wide.jpg",
+              "sha256": "159df55f062f2cf9d60b820727721a6391cbb17f4dab04642bcde148ec4ba94a"
+            },
+            "close": {
+              "file": "e018-close.jpg",
+              "sha256": "3ec14a449d11e8b9f045b24e380fe367ea9f601cb19e0d84056189d6bd30dc72"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "3723abae3182c33f6193a74790c49c7800347fb74cf1e717c818c9c73ae0a3d3",
+      "source_video_id": "video_000",
+      "global_start_sec": 456.96531,
+      "global_end_sec": 473.931999,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          28289,
+          29305
+        ],
+        "cam1": [
+          27410,
+          28426
+        ],
+        "cam2": [
+          28949,
+          29965
+        ],
+        "cam3": [
+          29602,
+          30618
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_022",
+      "split": "val",
+      "camera_sha256": {
+        "cam0": "bff413d8f9084fa42512f8335b4511b1ea2d51ef06ce61cac7218060ffdc4224",
+        "cam1": "61a14c8cdde6330ff83bd567036eee56d01509296fc048f4ad83850f95b35ab0",
+        "cam2": "0bbf0028e06a476a04b0236adc047a36c90b86e84fe818ed9e6f48d0d55ba8e3",
+        "cam3": "5a9a8e4a9a4b32a973cf25843dae9098ed707e4195b7c1d170eded2eae18fdf3"
+      },
+      "scene_npz_sha256": "75284e67c5c22e0bf9d90d10e3c0e439b274daa1386e4ecf8480f400052c5c58",
+      "scene_metadata_sha256": "514da8500e639a78bb1dab3e74e17b45911b1d43a0db6c5a8f869d9c55ae36b6",
+      "v4_event_component_sha256": "16e263de445f44cc75866c86abed93c657d5fc121a144b04c22ebc49838ea66b",
+      "player_track_ids": [
+        0,
+        2,
+        4,
+        20
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 155,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            147,
+            155,
+            163
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "56435456e158fd644b7c28a0ec5d46f1db2f51d645bf2be6ed35e106c2235c13"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "fb6db583842fcccdda37a9df22cb0cb86fd877714967b082416ec13941a88aa3"
+            }
+          }
+        },
+        {
+          "source_event_id": "e008",
+          "frame": 598,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            590,
+            598,
+            606
+          ],
+          "panels": {
+            "wide": {
+              "file": "e008-wide.jpg",
+              "sha256": "e1b172eec8c62be76466815d862e21b962bc5c0105afd53227502a89920a2344"
+            },
+            "close": {
+              "file": "e008-close.jpg",
+              "sha256": "00f7865c29dc33acbda732ef0b237da7ed2d978176d9650fe778af41bec955d4"
+            }
+          }
+        },
+        {
+          "source_event_id": "e010",
+          "frame": 688,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            680,
+            688,
+            696
+          ],
+          "panels": {
+            "wide": {
+              "file": "e010-wide.jpg",
+              "sha256": "18829bbe108424008d0541e98aabce247aeda1bbd86560690d622778b734f38e"
+            },
+            "close": {
+              "file": "e010-close.jpg",
+              "sha256": "932db11dd5a93222f84a31b7497d8992bfe158642705924581164530491ee045"
+            }
+          }
+        },
+        {
+          "source_event_id": "e012",
+          "frame": 754,
+          "subtype": "groundstroke_backhand",
+          "review_frames": [
+            746,
+            754,
+            762
+          ],
+          "panels": {
+            "wide": {
+              "file": "e012-wide.jpg",
+              "sha256": "14a986e32529f8ae914c23dfe3898c00d5fdc3ab7f4de530e527fe42728699f2"
+            },
+            "close": {
+              "file": "e012-close.jpg",
+              "sha256": "a9298e9add349586acd837c31ca0e412534a263fa3062febe00d0bc26290ff58"
+            }
+          }
+        },
+        {
+          "source_event_id": "e013",
+          "frame": 803,
+          "subtype": "volley_backhand",
+          "review_frames": [
+            795,
+            803,
+            811
+          ],
+          "panels": {
+            "wide": {
+              "file": "e013-wide.jpg",
+              "sha256": "415afbc54cfc4d3ec4b2e693e4155aa7e121ca08c9ce6d8460ef7f339e552221"
+            },
+            "close": {
+              "file": "e013-close.jpg",
+              "sha256": "c679e8a62e684c5fe304310784fdc69fc329a6c15723490da14fb82d00f7b0c7"
+            }
+          }
+        },
+        {
+          "source_event_id": "e015",
+          "frame": 915,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            907,
+            915,
+            923
+          ],
+          "panels": {
+            "wide": {
+              "file": "e015-wide.jpg",
+              "sha256": "271ba168c356ef40c3d91566ff6cf04251add74d057edca4d67bff5f84f50233"
+            },
+            "close": {
+              "file": "e015-close.jpg",
+              "sha256": "75e00cee72768cb5ad7b3a300885ea93c3fdb73c4098cc16e6f5f3a430b24a6f"
+            }
+          }
+        },
+        {
+          "source_event_id": "e016",
+          "frame": 966,
+          "subtype": "smash",
+          "review_frames": [
+            958,
+            966,
+            974
+          ],
+          "panels": {
+            "wide": {
+              "file": "e016-wide.jpg",
+              "sha256": "eae77d4401dd0c3dbc3c1daa47f3fe34185f9f2cc32723bf41aa6d17477740f2"
+            },
+            "close": {
+              "file": "e016-close.jpg",
+              "sha256": "900a2b8c93476b527c1807892f56ecfdf523ffbd4087ac5450c3ff2c385bef45"
+            }
+          }
+        },
+        {
+          "source_event_id": "e018",
+          "frame": 988,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            980,
+            988,
+            996
+          ],
+          "panels": {
+            "wide": {
+              "file": "e018-wide.jpg",
+              "sha256": "bec32f94ae0f64699cba642183aa9d0f6203501db87f556be2fde19dd09d2c9c"
+            },
+            "close": {
+              "file": "e018-close.jpg",
+              "sha256": "4927e32810bd2074ad4b5054131e5bf5df490c20c1f81ee2851cdb5a7c1311fb"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "63474fa845cc2cc03839d40e71c08996a11001ac08206843fb2d3f7fd7104bb3",
+      "source_video_id": "video_000",
+      "global_start_sec": 711.143276,
+      "global_end_sec": 728.559987,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          43525,
+          44568
+        ],
+        "cam1": [
+          42646,
+          43689
+        ],
+        "cam2": [
+          44184,
+          45227
+        ],
+        "cam3": [
+          44837,
+          45880
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_023",
+      "split": "val",
+      "camera_sha256": {
+        "cam0": "a171cc01ba975235689ee9e142830e139154723169599caab83e53096438f259",
+        "cam1": "7b95d134decd32593143566e630996599bc0030ba1abda58ee99bdf9ee3325ec",
+        "cam2": "65074af03a897b3717d922f2f850d8a7c3c51ff8ff2a98a0b719f72f3019841a",
+        "cam3": "4b7238a4c4e61d4d038437dc1ca597a093800952e8fec86af47190e3e500d3cd"
+      },
+      "scene_npz_sha256": "74a2cbc44db3153fb506d24727b672ad11e69fcef8fb0d98b0faf80f8d4ea128",
+      "scene_metadata_sha256": "b18e2676383c383480c348492cde6aef80a90df288be5695526016ae0194c778",
+      "v4_event_component_sha256": "7d70be6fe1012a7317b6423184071e69f5aeac413718d76c184877e6db9c7fc4",
+      "player_track_ids": [
+        0,
+        1,
+        4,
+        6
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 127,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            119,
+            127,
+            135
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "e14eed8a11c0b68e3229bc0c1b50de3357afb6d3303d18f870553244eb3f1a7f"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "8a67daa1e6f8a9b5fbf7fc9b61de353ab736959e3b4a30cfde5c3ad739b5cdc5"
+            }
+          }
+        },
+        {
+          "source_event_id": "e008",
+          "frame": 395,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            387,
+            395,
+            403
+          ],
+          "panels": {
+            "wide": {
+              "file": "e008-wide.jpg",
+              "sha256": "5cf472de3b172aaaf2d4ea2d88e7f058ad8412277568ffc3a19b289997516221"
+            },
+            "close": {
+              "file": "e008-close.jpg",
+              "sha256": "ff6a802848bb73e2bfd67f90ccde00f2a3e1cb7e429e9a857b3617eeb03b1263"
+            }
+          }
+        },
+        {
+          "source_event_id": "e019",
+          "frame": 916,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            908,
+            916,
+            924
+          ],
+          "panels": {
+            "wide": {
+              "file": "e019-wide.jpg",
+              "sha256": "8b003fb7c3d996db134a2499a711be95b24bccb1735eb6fa08c77a48d24a634a"
+            },
+            "close": {
+              "file": "e019-close.jpg",
+              "sha256": "80e826fa90c87f8d93883f7345a40d33bb024b485f73d76f17a8f16b5249bfb3"
+            }
+          }
+        },
+        {
+          "source_event_id": "e021",
+          "frame": 996,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            988,
+            996,
+            1004
+          ],
+          "panels": {
+            "wide": {
+              "file": "e021-wide.jpg",
+              "sha256": "ba797761e117a1ee9da790bb71b923893bed4770a6832f681dc534b9ee924fd9"
+            },
+            "close": {
+              "file": "e021-close.jpg",
+              "sha256": "935b11f663915a392ed777e95784f02d8941d82ba91759a3da04dd8c21ceac2b"
+            }
+          }
+        },
+        {
+          "source_event_id": "e023",
+          "frame": 1068,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            1060,
+            1068,
+            1076
+          ],
+          "panels": {
+            "wide": {
+              "file": "e023-wide.jpg",
+              "sha256": "b8b1baf0d6d8c38c605f21eb080a69435d5c4f16efbf19295b6edad331afceb2"
+            },
+            "close": {
+              "file": "e023-close.jpg",
+              "sha256": "df841304664dc0885de6fc6dde2e02d38eecaa4f0595cf8248a78aba5b21c63f"
+            }
+          }
+        },
+        {
+          "source_event_id": "e025",
+          "frame": 1225,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            1217,
+            1225,
+            1233
+          ],
+          "panels": {
+            "wide": {
+              "file": "e025-wide.jpg",
+              "sha256": "0cb0712692eb6e1ed30cdd9f040b2ab5a380687dbf839d30e2f702feda11a6cf"
+            },
+            "close": {
+              "file": "e025-close.jpg",
+              "sha256": "8b1fe2c046b0188d94a284b4d187616073f96832014b19f897c0b89d8732769d"
+            }
+          }
+        },
+        {
+          "source_event_id": "e026",
+          "frame": 1315,
+          "subtype": "smash",
+          "review_frames": [
+            1307,
+            1315,
+            1323
+          ],
+          "panels": {
+            "wide": {
+              "file": "e026-wide.jpg",
+              "sha256": "56573111731436241f4e07fdf3fbeea5a902d348a5dca9fff40b427734ad48be"
+            },
+            "close": {
+              "file": "e026-close.jpg",
+              "sha256": "52c5db691dbc544d9657189251a85c5104451d197df63364aac88d0335cbb926"
+            }
+          }
+        },
+        {
+          "source_event_id": "e027",
+          "frame": 1346,
+          "subtype": "volley_forehand",
+          "review_frames": [
+            1338,
+            1346,
+            1354
+          ],
+          "panels": {
+            "wide": {
+              "file": "e027-wide.jpg",
+              "sha256": "7d5d042a365c328b968b8c0d638159c2e56f6622c42a1a1ed89d0cf65f6c2365"
+            },
+            "close": {
+              "file": "e027-close.jpg",
+              "sha256": "ac469b8addb2c19ee4a3915ea09b01aba4afda70f06fe64569d7aaee2b971f88"
+            }
+          }
+        },
+        {
+          "source_event_id": "e029",
+          "frame": 1464,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            1456,
+            1464,
+            1472
+          ],
+          "panels": {
+            "wide": {
+              "file": "e029-wide.jpg",
+              "sha256": "737bda1d4d3cff040f1cc61d8155549df439d6a54f312e79c07cc2eff4422c3e"
+            },
+            "close": {
+              "file": "e029-close.jpg",
+              "sha256": "e7005c0522c150832b65e67b6ea2b946f134757903a5880e87b6f237138643e0"
+            }
+          }
+        },
+        {
+          "source_event_id": "e031",
+          "frame": 1564,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            1556,
+            1564,
+            1572
+          ],
+          "panels": {
+            "wide": {
+              "file": "e031-wide.jpg",
+              "sha256": "2f29ef90f0f4aa3fd4466978892e14ee967fdac7a489b4fb386d939c684e634a"
+            },
+            "close": {
+              "file": "e031-close.jpg",
+              "sha256": "f5dbcba0aaa7bde027bf6ee230857585bd8f6881fd46002a27818ace216d0a19"
+            }
+          }
+        },
+        {
+          "source_event_id": "e032",
+          "frame": 1587,
+          "subtype": "volley_forehand",
+          "review_frames": [
+            1579,
+            1587,
+            1595
+          ],
+          "panels": {
+            "wide": {
+              "file": "e032-wide.jpg",
+              "sha256": "aa420aca40117d849101bdd649ef7d390d0035154ff8cae6ba34934569220777"
+            },
+            "close": {
+              "file": "e032-close.jpg",
+              "sha256": "ccad6e103682546d1c0594e7c05ee613ecafbf0f05fa1fe5fa6c70bf5d367fe8"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "c150719d79d5ae1abc80da603d08273b6a929bb4596b685dfdd59d0c45d7e6cd",
+      "source_video_id": "video_000",
+      "global_start_sec": 740.114742,
+      "global_end_sec": 769.081385,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          45261,
+          46996
+        ],
+        "cam1": [
+          44382,
+          46117
+        ],
+        "cam2": [
+          45921,
+          47656
+        ],
+        "cam3": [
+          46574,
+          48309
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_024",
+      "split": "val",
+      "camera_sha256": {
+        "cam0": "4fea78f63d33e68f451d555fe2c5f11709e3be71f8615c95ab1f6d183cd57b7e",
+        "cam1": "2307495e0d5da698567f1ce6763148c4888b8adb849d11bb733a2b09d3c28721",
+        "cam2": "6a1801cfe728b6975f54e2334f9f414b2e5a3e5c2983a35e87d35f712a9f61a0",
+        "cam3": "960a9a05ed095c0eeacd3b52bbd1323baa24092e646fbf6034bc356937d8b786"
+      },
+      "scene_npz_sha256": "8d5a53ee593e8a100540d3f8a0d8adf6fa2d9c8e7f7826963ee88ec62d08fd83",
+      "scene_metadata_sha256": "6e201d04bb6db00a4a2921b5a5aac74c62bed5d0a34672fbc7fd3673a7acd9de",
+      "v4_event_component_sha256": "fd4281d2caa8520f0ac1cf569f46e58cee751c1feddbbba60b25e6030f446bf2",
+      "player_track_ids": [
+        0,
+        1,
+        3,
+        7
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 238,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            230,
+            238,
+            246
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "530089611eac5a30d4886d3fe7a418c98ee252b0dea0e7b5022eab0f3b9c710c"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "699b16b790b9f6f697c69d097be7e6b68ebdbaef928dcbdb9a5f1a0ede2edc2b"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "91d16c7996efbea3cfedd706bf34ec69a6a3a1e1c06b9a28cc1c22796e290ed4",
+      "source_video_id": "video_000",
+      "global_start_sec": 783.516657,
+      "global_end_sec": 790.133153,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          47863,
+          48259
+        ],
+        "cam1": [
+          46984,
+          47380
+        ],
+        "cam2": [
+          48522,
+          48918
+        ],
+        "cam3": [
+          49175,
+          49571
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_029",
+      "split": "val",
+      "camera_sha256": {
+        "cam0": "27d3a584f54d6c27390ae10c0af91890aeb7a9f3054cc4f6d20178b4b8a131fa",
+        "cam1": "549a7d6ef20986e872c1a0b4298c25689ba9179cd9111e19d9f22a5a4890fad2",
+        "cam2": "fe972fcbc29802da80c1ce01fee99cab92ffc5858dd18ba18f9a56b0a265247d",
+        "cam3": "9a45e98056e16af7cfcf1d46f78b8292a247e2565fdd7159a32a8fbcaf8c0fa9"
+      },
+      "scene_npz_sha256": "a5e9f502a445be8eb23868120b93fc9e775c363402233eb98d79fbd2c779a224",
+      "scene_metadata_sha256": "6ead2c25c0770fd6ff5d711fb7d8239286fab2b860a6a377926b0e114440b530",
+      "v4_event_component_sha256": "fe48c5bde83a60c11aa11afe2e4f7bd2a5c2ca3943259f896cc7a6cffb3f4e27",
+      "player_track_ids": [
+        0,
+        1,
+        6,
+        7
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 145,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            137,
+            145,
+            153
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "e800dcdf9d81fc3a16f14825617bd0b37394cc1deec045b43e960fb1631ec329"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "8ee109aca46fe23d067653e4e28b2c795e407701862de35043712b18f3a895ad"
+            }
+          }
+        },
+        {
+          "source_event_id": "e008",
+          "frame": 435,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            427,
+            435,
+            443
+          ],
+          "panels": {
+            "wide": {
+              "file": "e008-wide.jpg",
+              "sha256": "4c9d7d6103a3d04dddf320113bbdd7ac1468a9964d361f8005ca62dff225915f"
+            },
+            "close": {
+              "file": "e008-close.jpg",
+              "sha256": "4422e474a03f4ab4919d16615d17391de27dbd5ea4b77d3fdd0c63f9792cae9f"
+            }
+          }
+        },
+        {
+          "source_event_id": "e010",
+          "frame": 529,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            521,
+            529,
+            537
+          ],
+          "panels": {
+            "wide": {
+              "file": "e010-wide.jpg",
+              "sha256": "eedea7bcf57a79070049e33da4cd813d5c2a830e57345cb861fb9a5bf9aad555"
+            },
+            "close": {
+              "file": "e010-close.jpg",
+              "sha256": "973bd8ff3b4c5698f7151e2f0de19ef62dd6923762c3182aae08d26a1c93171d"
+            }
+          }
+        },
+        {
+          "source_event_id": "e012",
+          "frame": 615,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            607,
+            615,
+            623
+          ],
+          "panels": {
+            "wide": {
+              "file": "e012-wide.jpg",
+              "sha256": "2fc2f492239a6ac87be770563780b91cbaf34da05f7720af0604013ae3a112cd"
+            },
+            "close": {
+              "file": "e012-close.jpg",
+              "sha256": "7c21eb89696cf2dd8f2f165bad4bbf2510ad36f9183c32f56a390eb78240e6cb"
+            }
+          }
+        },
+        {
+          "source_event_id": "e013",
+          "frame": 679,
+          "subtype": "smash",
+          "review_frames": [
+            671,
+            679,
+            687
+          ],
+          "panels": {
+            "wide": {
+              "file": "e013-wide.jpg",
+              "sha256": "748feae410fa8ca459371c19e3268778af90393a3878cee9721bb51efb30c4de"
+            },
+            "close": {
+              "file": "e013-close.jpg",
+              "sha256": "5d92748e9f2d706ce2568ba0df42718c1d4a56ede381addcee257bc78c465d53"
+            }
+          }
+        },
+        {
+          "source_event_id": "e015",
+          "frame": 774,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            766,
+            774,
+            782
+          ],
+          "panels": {
+            "wide": {
+              "file": "e015-wide.jpg",
+              "sha256": "2522c455f066e54fa64f404aeb8a3566f5c70a9b5f014808041fa7e8aac3a7c7"
+            },
+            "close": {
+              "file": "e015-close.jpg",
+              "sha256": "f771aeb4d7f937871d8a67bc4c8d5a17384bc90dcfef2d75a036e1e9e95dbc46"
+            }
+          }
+        },
+        {
+          "source_event_id": "e017",
+          "frame": 854,
+          "subtype": "groundstroke_backhand",
+          "review_frames": [
+            846,
+            854,
+            862
+          ],
+          "panels": {
+            "wide": {
+              "file": "e017-wide.jpg",
+              "sha256": "833b77cbca36ff35112ba6a13e20865797eaf3c904018dfc1e44e1f5ea5373e9"
+            },
+            "close": {
+              "file": "e017-close.jpg",
+              "sha256": "8e192729132d341ec97c418679a4b834d4c0edfdccaf233b0fed8787967fa2ad"
+            }
+          }
+        },
+        {
+          "source_event_id": "e018",
+          "frame": 899,
+          "subtype": "volley_forehand",
+          "review_frames": [
+            891,
+            899,
+            907
+          ],
+          "panels": {
+            "wide": {
+              "file": "e018-wide.jpg",
+              "sha256": "360b0efc47eacb19628b0dee690edd66c98fa09555cddcfad476b56991e49d8d"
+            },
+            "close": {
+              "file": "e018-close.jpg",
+              "sha256": "bd931f90fcb9ffe72df57de249632e7a68d1befaa43ad7ceef7089b3fef672ce"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "7fb08e37976a129c903d289f97fd797dd4814ea63e5da70aaa377703bf04a552",
+      "source_video_id": "video_000",
+      "global_start_sec": 914.938442,
+      "global_end_sec": 931.456215,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          55740,
+          56729
+        ],
+        "cam1": [
+          54861,
+          55850
+        ],
+        "cam2": [
+          56400,
+          57389
+        ],
+        "cam3": [
+          57053,
+          58042
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_032",
+      "split": "val",
+      "camera_sha256": {
+        "cam0": "80ecad1e296fadee1f159a330e7a740c63306ccccf1f1efd71cb93ff2b6a3f98",
+        "cam1": "501c2c78da5444b2418a1a19d18402eab475091a8be0b1163d5bdfd42d1e4f8a",
+        "cam2": "3034807fade07eddc9ba98a5a7b561ec55ac741f6ec2502ba367c4e702ae3ec6",
+        "cam3": "fd9b6acda62fa9611cdeed6704971c021570d0ef18cec894e82227a33379bc33"
+      },
+      "scene_npz_sha256": "87208ae4906a2102e8af913c4ac483a759ac80ef110a2efbe3bcb4aa5a3a0d93",
+      "scene_metadata_sha256": "60e62d7ec445e55e2bee6e3f4a62c704e496be621aba54c255ac9604f3045cfb",
+      "v4_event_component_sha256": "883c85f12c173c5486c8603dfa7d3356b9e32154ec9b03eae8229ac5be838a38",
+      "player_track_ids": [
+        2,
+        3,
+        5,
+        6
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 135,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            127,
+            135,
+            143
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "be79ccff71d5da77b57f8eb722fb88ba8db51eec72bd34a896a56f036191774a"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "285f94bc5be430e7013a59275935b5dd840d0f47d0e28e86e0deb247c26108d0"
+            }
+          }
+        },
+        {
+          "source_event_id": "e003",
+          "frame": 217,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            209,
+            217,
+            225
+          ],
+          "panels": {
+            "wide": {
+              "file": "e003-wide.jpg",
+              "sha256": "b2b2a8e594f02a6a6b0821a059da1356c01ddfb95a2e94c0907d9698c304c106"
+            },
+            "close": {
+              "file": "e003-close.jpg",
+              "sha256": "af90117c91eef28591a6a1c3d29e233c3998b075f0bd28861964e979363e69c9"
+            }
+          }
+        },
+        {
+          "source_event_id": "e005",
+          "frame": 329,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            321,
+            329,
+            337
+          ],
+          "panels": {
+            "wide": {
+              "file": "e005-wide.jpg",
+              "sha256": "efc357e4d033cf580f4c76a6b261ea991273a735cfc35fed928ccc8d9e184a37"
+            },
+            "close": {
+              "file": "e005-close.jpg",
+              "sha256": "f40ded29d37aa8e5d7def4be973dd7be7208c875929868b571b05904a8184e96"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "768d632d08b11c3030d185429dc17e8910c05dcc46ba797eb6757ce5ca31496b",
+      "source_video_id": "video_000",
+      "global_start_sec": 973.669602,
+      "global_end_sec": 981.202038,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          59260,
+          59710
+        ],
+        "cam1": [
+          58381,
+          58831
+        ],
+        "cam2": [
+          59920,
+          60370
+        ],
+        "cam3": [
+          60573,
+          61023
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_033",
+      "split": "val",
+      "camera_sha256": {
+        "cam0": "34561f77ef94f8ac9a4efb47da7ddbc1e324b16ad0d2d4c42d543a6c4d50a8df",
+        "cam1": "95ea538d98f168ca880e70fbf1e62c08ab1ac0729cdd4eaf4f454c0feba6ae1d",
+        "cam2": "24ad0dcc2dcfb5cc5942c1f8753cb70b390939c151237904dc6fc7040041f45b",
+        "cam3": "265dd79fa1ba1892a8fe898d406a52d631285140f23f661aabb074da4567395e"
+      },
+      "scene_npz_sha256": "9a2498343252a9ca912460e1fa3dd0c28c7ac7aae1e00b7c3d50732a6876fe4e",
+      "scene_metadata_sha256": "a3c7297c7b00878171280061f2840b02482d5c3964d39b4181e42f091475316c",
+      "v4_event_component_sha256": "b2b3dc1e0eed377f3ba878f82a1fc908ca2f6c48fa036f9f211ea2cb4a027bb0",
+      "player_track_ids": [
+        0,
+        2,
+        4,
+        5
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 106,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            98,
+            106,
+            114
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "5bf40194991e04151fb552050660c0217aed10be2b8106c06d297f744d243fa8"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "831e509be0d5a764fb813ff9a8b9bef13cdbba37684d540720774cc50541c369"
+            }
+          }
+        },
+        {
+          "source_event_id": "e003",
+          "frame": 175,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            167,
+            175,
+            183
+          ],
+          "panels": {
+            "wide": {
+              "file": "e003-wide.jpg",
+              "sha256": "4c29ca68ff7b57668f29c1ea27244aac5d73a02822ad47c94753477791e11b32"
+            },
+            "close": {
+              "file": "e003-close.jpg",
+              "sha256": "8bafcc834b0ada1a45b10193fa33235470dba8a27196c6c8014a12a2c3abb0b0"
+            }
+          }
+        },
+        {
+          "source_event_id": "e005",
+          "frame": 250,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            242,
+            250,
+            258
+          ],
+          "panels": {
+            "wide": {
+              "file": "e005-wide.jpg",
+              "sha256": "b156953f1549317af39011724aa4869dfe80d35a15184224a5e19bcd47e75e80"
+            },
+            "close": {
+              "file": "e005-close.jpg",
+              "sha256": "d01932ba87710d3ecbeedbf95d9012b756bdd0be88added672b71842832ef13d"
+            }
+          }
+        },
+        {
+          "source_event_id": "e007",
+          "frame": 338,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            330,
+            338,
+            346
+          ],
+          "panels": {
+            "wide": {
+              "file": "e007-wide.jpg",
+              "sha256": "a5120199e4c41c42ed038ca0580f47450e3eb01a4e7dbbe3e581b9a3fff4611f"
+            },
+            "close": {
+              "file": "e007-close.jpg",
+              "sha256": "2a0a600a67352292ab9da9196e8493fac3f9ac0ad1368bc1cadfdf22f923e1a1"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "cd54a9735f55bbb848c13bcfd4db1318b3520fc9a729bfe0becc5cc1b1b398f5",
+      "source_video_id": "video_000",
+      "global_start_sec": 994.848901,
+      "global_end_sec": 1001.766793,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          60530,
+          60944
+        ],
+        "cam1": [
+          59651,
+          60065
+        ],
+        "cam2": [
+          61190,
+          61604
+        ],
+        "cam3": [
+          61843,
+          62257
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_045",
+      "split": "val",
+      "camera_sha256": {
+        "cam0": "6268baf349203dea438fbd82c6117983376fef8b46ce868c8d979d5c653153da",
+        "cam1": "7c5886c9197fa6c5dbeca917ed33715837fd765dca37ecb71e2d88f3791bc42f",
+        "cam2": "a8863c490ad19738a88017f92c23c1325e5eeb9697ec651bd62f242314b72d3a",
+        "cam3": "70a7df75c26711833f7a5579fee5c985a3afee95c1bc09aaa57cea9aa994b598"
+      },
+      "scene_npz_sha256": "456529133a2a9510a5b90680fcc5406ace70bc55792087a8378448aafdf95cff",
+      "scene_metadata_sha256": "cdc30d818dc14c8b958ac78bab669affea008093d7273d750a262065fe3a43b4",
+      "v4_event_component_sha256": "138fd6561d32769ddf680ff9067309224ede3970bff36c4135d4474233a3da6b",
+      "player_track_ids": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 185,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            177,
+            185,
+            193
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "8a932ac1129f9a637e7a32d86010027a483d97aa0c6b1ad07b50dd98d20f796e"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "e127688040377f9abbbb0b2f133dd8b2c630ec64b1b0efce4df9b7ea488af938"
+            }
+          }
+        },
+        {
+          "source_event_id": "e003",
+          "frame": 239,
+          "subtype": "groundstroke_backhand",
+          "review_frames": [
+            231,
+            239,
+            247
+          ],
+          "panels": {
+            "wide": {
+              "file": "e003-wide.jpg",
+              "sha256": "e8391ed02cf99fad3b4b109f35267ffb40019ab25191ae38c14c5abe62a4b873"
+            },
+            "close": {
+              "file": "e003-close.jpg",
+              "sha256": "2f9e03aa8acb836e5a569c363a0d673d3cd2ea2b833ee8283373cc9d9a48f89f"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "32dd556cd4eb5ff041f712d621b24f9a889d73625ef6a54a4e4448ee5cc56d5b",
+      "source_video_id": "video_000",
+      "global_start_sec": 1314.013297,
+      "global_end_sec": 1319.730721,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          79660,
+          80002
+        ],
+        "cam1": [
+          78781,
+          79123
+        ],
+        "cam2": [
+          80320,
+          80662
+        ],
+        "cam3": [
+          80973,
+          81315
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_047",
+      "split": "val",
+      "camera_sha256": {
+        "cam0": "58d8bc85ebb65b0ffbc06fdcaafd3202cd016e846c1127b0ca8f897857f91112",
+        "cam1": "55677bd2e63323953a70fe7f8872f0c1b96162fa3f9bb7019860a2ac83a6bd5a",
+        "cam2": "8d377942775f37c5e32169655e203782048d09b69497ea998b062cfb66adedd2",
+        "cam3": "ce76debd30fd02ae1ae9d363ea73e00a651cc4a0a382f0c77537188023a8d282"
+      },
+      "scene_npz_sha256": "2cc80518a71b5ab16bbb84fe3f5a0ff77d557a09d539b19ab2b73b1c9f4dcfba",
+      "scene_metadata_sha256": "3b4dd99772dffc01367115b222f2a20bd1b6bddafd7dd77b2895be8737f6d050",
+      "v4_event_component_sha256": "54eb55664b10745790869dcb1122b8002bebf65e8bcefb47e9ea6594d7f5b10a",
+      "player_track_ids": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 94,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            86,
+            94,
+            102
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "49e2e007ed972cdfb03cc55506858636a06694ba413b2ec66b14543ad5f32f18"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "e89d76340c48b8e3138ea0bb438cc1cce9ce9a74d8d8d30ae2ed2375b5df0a59"
+            }
+          }
+        },
+        {
+          "source_event_id": "e015",
+          "frame": 633,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            625,
+            633,
+            641
+          ],
+          "panels": {
+            "wide": {
+              "file": "e015-wide.jpg",
+              "sha256": "7f2b4f2e85b5281939df5b4c8d16620ff7b93c02c06c7dc4fe5d3570d31fc54e"
+            },
+            "close": {
+              "file": "e015-close.jpg",
+              "sha256": "15af5c05c555c11b38a2b736997a769c7fd7eebd197753701f2eed7d2925d031"
+            }
+          }
+        },
+        {
+          "source_event_id": "e017",
+          "frame": 719,
+          "subtype": "groundstroke_backhand",
+          "review_frames": [
+            711,
+            719,
+            727
+          ],
+          "panels": {
+            "wide": {
+              "file": "e017-wide.jpg",
+              "sha256": "630bcb66bfab68fc2a249a1041093a740f9a8e5864664c45ebd535a3f36299e3"
+            },
+            "close": {
+              "file": "e017-close.jpg",
+              "sha256": "912e56d3b9d98c60734a30c261f8e404eff6a3ff2f86e5a8838296b15b26dc3c"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "15f569ead1fe89932aadf961be9e071553cfd8dc6e10de5a5c4b228d8c7beac1",
+      "source_video_id": "video_000",
+      "global_start_sec": 1354.801825,
+      "global_end_sec": 1368.898568,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          82105,
+          82949
+        ],
+        "cam1": [
+          81226,
+          82070
+        ],
+        "cam2": [
+          82765,
+          83609
+        ],
+        "cam3": [
+          83418,
+          84262
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_063",
+      "split": "val",
+      "camera_sha256": {
+        "cam0": "ac1ca2d57b282eb776ca8fa8eb6431dc943403ba3289d8ac70ef08e1714a56fe",
+        "cam1": "21b222e5dca57fe87cd7e59f6b4e950ad1531a2ea2f80f2421a29674859820a1",
+        "cam2": "55ee2479c9fccaeedbb0bc413776dfd09a19970df7e8b986e61460067728a887",
+        "cam3": "a853a0e496101b0c4dcb559318061597ae6e610ee44e9a6c9966d56d285fb3d0"
+      },
+      "scene_npz_sha256": "bc0c19aaec2d953c77524b41b16327cd98dde7a23f1fbfe16e054bdd03a8e671",
+      "scene_metadata_sha256": "ec5289b28eda65677e88169597373927c7618c4fe13cf76433001defbdcb3545",
+      "v4_event_component_sha256": "ad0e00c8fcdb48db8a4d8a5763c7f001e3f7de6529363b28d9408dd3f82edecc",
+      "player_track_ids": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 172,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            164,
+            172,
+            180
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "b8eadb439f91ee687f6dbfa5a952ac6737397274aff3b88d330fe060d82ec4b1"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "27afbf5e455a245664b78ac6dd3a68674699672494ccc316ea53cb12662881ad"
+            }
+          }
+        },
+        {
+          "source_event_id": "e003",
+          "frame": 240,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            232,
+            240,
+            248
+          ],
+          "panels": {
+            "wide": {
+              "file": "e003-wide.jpg",
+              "sha256": "15b5b2a056975a974589ebac15f9bc658bf3b113b9818b3ec6d89108067d2b52"
+            },
+            "close": {
+              "file": "e003-close.jpg",
+              "sha256": "389f8b21de8a2e0a920b2dc07082a8bb85ebc3d7b934f6157042fddbd46bb2c4"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "d10d92f71c33fc7dfeae826a2ce65ee28eefc3c8d313c172269191f2e6edfe95",
+      "source_video_id": "video_000",
+      "global_start_sec": 1780.375800520109,
+      "global_end_sec": 1786.058956520109,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          107614,
+          107954
+        ],
+        "cam1": [
+          106735,
+          107075
+        ],
+        "cam2": [
+          108274,
+          108614
+        ],
+        "cam3": [
+          108927,
+          109267
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_004",
+      "split": "test",
+      "camera_sha256": {
+        "cam0": "7c44f56b1588f973a8ae76bbc583631fab3c33fd3085d0cc09bfe680ae9e90e7",
+        "cam1": "8475e43b7b2459ca663ed2931a8084da3a3f4986e185fa3b07f96fef701f9162",
+        "cam2": "1b7c0357bafadbd0f4c78436c596c042dfebba5dc612ec0819e005f7aea3ee30",
+        "cam3": "2c0ca07ec45c641a055aabaffbb0753dfc4e82559443d19c3486269d8c9b25c6"
+      },
+      "scene_npz_sha256": "c54699fc010f017cc49fdd0b90277d75c0a17648dbc092a2e3ca2c1bc2761b43",
+      "scene_metadata_sha256": "bf67a890bb4b32e7f0056ed26115790125b96ab520cd7a31472074fedbc457ad",
+      "v4_event_component_sha256": "50bcd7906fef4330c2cf4906bef06ed313385660ee2b6624bf78bdbb01be1971",
+      "player_track_ids": [
+        0,
+        1,
+        4,
+        22
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 70,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            62,
+            70,
+            78
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "6b587f0b49b67d58cc5ed19b59ed99b6ebd486a3709ef229392d3dafe663c03c"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "3eb824ac7cf2203e3fdb2d8c947d09eff75e013dff2406dab675f33d792714a4"
+            }
+          }
+        },
+        {
+          "source_event_id": "e003",
+          "frame": 147,
+          "subtype": "groundstroke_backhand",
+          "review_frames": [
+            139,
+            147,
+            155
+          ],
+          "panels": {
+            "wide": {
+              "file": "e003-wide.jpg",
+              "sha256": "d3295747a83a7c12efb31b8c330e3071ef6bfe3801e54448f7a9e723b06c7eb7"
+            },
+            "close": {
+              "file": "e003-close.jpg",
+              "sha256": "a09885e81ce6b31b02fef0334e1b5edc40996007e20c7f821ae9ae3414b13918"
+            }
+          }
+        },
+        {
+          "source_event_id": "e005",
+          "frame": 286,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            278,
+            286,
+            294
+          ],
+          "panels": {
+            "wide": {
+              "file": "e005-wide.jpg",
+              "sha256": "cbf59fe2e07439837cc52d082a32771833617e48e7144ee75319110926b86322"
+            },
+            "close": {
+              "file": "e005-close.jpg",
+              "sha256": "0a0883e18f29f80ef3b92aae8ea66e1617c438d97ceb83c03c776a600518528a"
+            }
+          }
+        },
+        {
+          "source_event_id": "e007",
+          "frame": 354,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            346,
+            354,
+            362
+          ],
+          "panels": {
+            "wide": {
+              "file": "e007-wide.jpg",
+              "sha256": "e9eb454b7592d1c12b6be4ebefc202474f1a91271dcefd93b41440b6f878a19d"
+            },
+            "close": {
+              "file": "e007-close.jpg",
+              "sha256": "bbe486c67f854fe455500d028e96610572556f583ee769a80abcbca66acabd05"
+            }
+          }
+        },
+        {
+          "source_event_id": "e009",
+          "frame": 479,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            471,
+            479,
+            487
+          ],
+          "panels": {
+            "wide": {
+              "file": "e009-wide.jpg",
+              "sha256": "14de36f820df931f23810150528412203993afb31605d5cc2807aa65bd9e84a0"
+            },
+            "close": {
+              "file": "e009-close.jpg",
+              "sha256": "0a4402299f974feb464c9fd71d4d6cdbd9f9b6e5b3ccdf2316fe41a32824a1ec"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "846154d5ef3ce170050a2809b2d977eef4df1e4fe27d620e26692de0932a5dcc",
+      "source_video_id": "video_000",
+      "global_start_sec": 252.130632,
+      "global_end_sec": 261.91347,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          16012,
+          16597
+        ],
+        "cam1": [
+          15133,
+          15718
+        ],
+        "cam2": [
+          16671,
+          17256
+        ],
+        "cam3": [
+          17324,
+          17909
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_019",
+      "split": "test",
+      "camera_sha256": {
+        "cam0": "f7c3e544e937c5d49a6ae9cdc0561d09c98ef597b26549c6d09daa3e33587541",
+        "cam1": "ddcd80a7b0c356ebfad5aafe40b4477fd74160f0b98c7e02116bb1222a056020",
+        "cam2": "cd06d6743bb0a1764368db396d47624dab8a92c6fc23dd109fd5a9e7e5c2bf62",
+        "cam3": "f8b1c86ce1eb45288ad950fded280ad0b7521da4e11c779bb6915db54c54a284"
+      },
+      "scene_npz_sha256": "276ba30cfdb1a088bbf95a6e519a86951ea5a7668c607af256bf13337f882eb2",
+      "scene_metadata_sha256": "9f2a97663a0a1440759cd0cedcfea6616c49de505a04998227885a028ea60571",
+      "v4_event_component_sha256": "a5761546e809ad0f7a853b2a15cebc7554bce2b9241c067f81f4c6d86f2f39e7",
+      "player_track_ids": [
+        0,
+        2,
+        3,
+        4
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 141,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            133,
+            141,
+            149
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "267a1266f7aa081bf7f98689a3ad701e80edbcc7325641064c519c6824d3d596"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "53afa65bf1242942ef8f46eba4f1e19a5dbfabe792ec0bd8d73f5a394b095eb1"
+            }
+          }
+        },
+        {
+          "source_event_id": "e007",
+          "frame": 392,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            384,
+            392,
+            400
+          ],
+          "panels": {
+            "wide": {
+              "file": "e007-wide.jpg",
+              "sha256": "adce3e3baa2670d0bbb0a05fb27179ed3f04067b1a814d11ee252022f440795d"
+            },
+            "close": {
+              "file": "e007-close.jpg",
+              "sha256": "6f7bb122bef01e4cfa4e0d2d0eb8d8b078bab669f8389f9e5fb44350cf731b60"
+            }
+          }
+        },
+        {
+          "source_event_id": "e009",
+          "frame": 471,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            463,
+            471,
+            479
+          ],
+          "panels": {
+            "wide": {
+              "file": "e009-wide.jpg",
+              "sha256": "cf4d00c77454719487ea4eeeb50f2efea5ad2ea7e83a507ac427b735587d24c9"
+            },
+            "close": {
+              "file": "e009-close.jpg",
+              "sha256": "17979a361687fbd0f7a1ac014ad38fddc5c157b7477e2a7ceffe7b9377fa32ff"
+            }
+          }
+        },
+        {
+          "source_event_id": "e010",
+          "frame": 487,
+          "subtype": "volley_backhand",
+          "review_frames": [
+            479,
+            487,
+            495
+          ],
+          "panels": {
+            "wide": {
+              "file": "e010-wide.jpg",
+              "sha256": "b043b2f8d58f6a6e06bfb119dd506ee41b3819bd3e1ef6ba985b9f30776bced4"
+            },
+            "close": {
+              "file": "e010-close.jpg",
+              "sha256": "3eaa13764b0b70ac00da8b2650ecc59b462b88bc4526de17f4f34e0d471bbdbe"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "c113c3a0b3a57e7172dcc060c895f3a57592f631b036778ca0d3a4e98a915e52",
+      "source_video_id": "video_000",
+      "global_start_sec": 647.878711,
+      "global_end_sec": 657.375491,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          39733,
+          40301
+        ],
+        "cam1": [
+          38854,
+          39422
+        ],
+        "cam2": [
+          40392,
+          40960
+        ],
+        "cam3": [
+          41045,
+          41613
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_027",
+      "split": "test",
+      "camera_sha256": {
+        "cam0": "e9c75fcdcabab57415b1be46b3dcec806534da0d4d33f212403ee87cbc8bc8e9",
+        "cam1": "de5b3f01b9a782231a0f054afe10600df0249b8162b42a97a5619f5b0426d976",
+        "cam2": "7bb142ef07b3b0d3a7f4239038713215d4f85d9554c82a79459241bb3a730978",
+        "cam3": "714595721a3d2d1242d76bd6bca3b514591574f8b1540fbad44aa795cd903cdb"
+      },
+      "scene_npz_sha256": "aabf086098670fde964f176ffd0a9cca03c00cebddbd6c5d3d759345e65151ed",
+      "scene_metadata_sha256": "547b8a3b3575d819c092c4a1b4588745a522a96040c2caf3cff3f552bd4d6d65",
+      "v4_event_component_sha256": "ecfa649522f899c7bff7075dfc963953e69c2509894b8ad7049af8332b920a4a",
+      "player_track_ids": [
+        0,
+        1,
+        2,
+        3
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 64,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            56,
+            64,
+            72
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "c31b6a909c0f33d8e8ce016127a94f995f376aab5534032d338a5e63c65301cd"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "15f02c6a62d85ae1fab151a2b275f09f72291037873eb35d1c340970363d420a"
+            }
+          }
+        },
+        {
+          "source_event_id": "e003",
+          "frame": 149,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            141,
+            149,
+            157
+          ],
+          "panels": {
+            "wide": {
+              "file": "e003-wide.jpg",
+              "sha256": "17214a84466dded101873533aa6a5e7c4ac533a3fc7c3fa0995bea72fbe550a2"
+            },
+            "close": {
+              "file": "e003-close.jpg",
+              "sha256": "0297cbd22fd2655613941f30456f73c447dfd5dbf9563389642e5a24cb16492e"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "26da567a77b437a7e8ebc469580236563c5743872952765230b926fa9e28eb7c",
+      "source_video_id": "video_000",
+      "global_start_sec": 863.160406,
+      "global_end_sec": 867.07891,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          52637,
+          52871
+        ],
+        "cam1": [
+          51757,
+          51991
+        ],
+        "cam2": [
+          53296,
+          53530
+        ],
+        "cam3": [
+          53949,
+          54183
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_028",
+      "split": "test",
+      "camera_sha256": {
+        "cam0": "b97d8a24f2a9eca7a73f6c3645ebcb8ee4fe952dcd7efb05a1050e393d916977",
+        "cam1": "d94de264f678f0a604452939dc74bfe6ecc4b2c2e2271e665552db23ca738900",
+        "cam2": "62e9f9273cfd631bd223474458a361306af659089fa2c4d48bccb43850f04ee4",
+        "cam3": "bd38c66dc3947cf6ae849b7a419190d11ab94ff98f77786ef54a46017cb4058e"
+      },
+      "scene_npz_sha256": "374c4c586a443f98536af78036e68e434aecf5c8c2548d713457ce16350da6eb",
+      "scene_metadata_sha256": "cdd68568cc5ed4d85cf5d2fc63ec441fe975ceb5f34718c5b0a7ccf32a29e709",
+      "v4_event_component_sha256": "9f285bf7617259f361c45221083d9fdd0b7d108e0c09f18feb575c83857ab81a",
+      "player_track_ids": [
+        0,
+        1,
+        2,
+        6
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 155,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            147,
+            155,
+            163
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "29203145e6672c62cd192daebc16e00df95700d2e7811d0ea32d853193fe50f2"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "5df0c6ec2650d3b565cfce01d8104d339500525d16fe959e7c4c03037122f08f"
+            }
+          }
+        },
+        {
+          "source_event_id": "e008",
+          "frame": 510,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            502,
+            510,
+            518
+          ],
+          "panels": {
+            "wide": {
+              "file": "e008-wide.jpg",
+              "sha256": "372ef7aff8530569f543dccfb02a9d57474302593f89a37c6c3866b9c10a737d"
+            },
+            "close": {
+              "file": "e008-close.jpg",
+              "sha256": "fc94193923eabd9476641ecb7259cab4ce7ad1fd0530b30bb9ae243972fdd07a"
+            }
+          }
+        },
+        {
+          "source_event_id": "e010",
+          "frame": 586,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            578,
+            586,
+            594
+          ],
+          "panels": {
+            "wide": {
+              "file": "e010-wide.jpg",
+              "sha256": "f547cea9c51065914ba6bf9917c80128b786f93f8a58aed0ebbf3f7089ad036f"
+            },
+            "close": {
+              "file": "e010-close.jpg",
+              "sha256": "c2bd7423455014f080bf85838b3383b6aea01a5c2f325408a15cd3e0fa54edc8"
+            }
+          }
+        },
+        {
+          "source_event_id": "e012",
+          "frame": 652,
+          "subtype": "groundstroke_backhand",
+          "review_frames": [
+            644,
+            652,
+            660
+          ],
+          "panels": {
+            "wide": {
+              "file": "e012-wide.jpg",
+              "sha256": "1fa5487779cba036f3ee854d7c0d2bfdd756c178135d4cda10e094e61cf15ef7"
+            },
+            "close": {
+              "file": "e012-close.jpg",
+              "sha256": "eeb7bccbed78a6fb030279aab1dc0c6f21630b2711c7a520eba515bdf9aff155"
+            }
+          }
+        },
+        {
+          "source_event_id": "e013",
+          "frame": 692,
+          "subtype": "volley_backhand",
+          "review_frames": [
+            684,
+            692,
+            700
+          ],
+          "panels": {
+            "wide": {
+              "file": "e013-wide.jpg",
+              "sha256": "8868df40d3ded2084b8236cced1e729e8667551b933f28ff7ec4498a719f5f19"
+            },
+            "close": {
+              "file": "e013-close.jpg",
+              "sha256": "8ece6da6dbdab97a124da2b291dee5ba033d09ffc8d3e8cc7883c13db9888e6f"
+            }
+          }
+        },
+        {
+          "source_event_id": "e015",
+          "frame": 807,
+          "subtype": "groundstroke_backhand",
+          "review_frames": [
+            799,
+            807,
+            815
+          ],
+          "panels": {
+            "wide": {
+              "file": "e015-wide.jpg",
+              "sha256": "68819e4add95f6f587e1d086642135e882468db44a4a9209c284831f4b7bd1a4"
+            },
+            "close": {
+              "file": "e015-close.jpg",
+              "sha256": "ee34d251074fcaf5c686cf7f7783486c7cb06595504031724d6d351ff4b1d47e"
+            }
+          }
+        },
+        {
+          "source_event_id": "e017",
+          "frame": 955,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            947,
+            955,
+            963
+          ],
+          "panels": {
+            "wide": {
+              "file": "e017-wide.jpg",
+              "sha256": "0ef00191f80e1e7af3abf0703333be12a177e16e84dcafe2781a87abd5c9e642"
+            },
+            "close": {
+              "file": "e017-close.jpg",
+              "sha256": "d08c3fd39cd83d50ffeb9f6a681f7c58ac321eb1fb7ad4ba00e7d0d0032f4be8"
+            }
+          }
+        },
+        {
+          "source_event_id": "e018",
+          "frame": 1012,
+          "subtype": "volley_forehand",
+          "review_frames": [
+            1004,
+            1012,
+            1020
+          ],
+          "panels": {
+            "wide": {
+              "file": "e018-wide.jpg",
+              "sha256": "09f312ce7a1be9932f0a2a24478e22a0dedf5da039916caf9357acb86b446cfa"
+            },
+            "close": {
+              "file": "e018-close.jpg",
+              "sha256": "a2b51c6dfcd7f7aa32d9874b505301e4f91509d5634855ea07121afbae0ef35e"
+            }
+          }
+        },
+        {
+          "source_event_id": "e019",
+          "frame": 1056,
+          "subtype": "volley_forehand",
+          "review_frames": [
+            1048,
+            1056,
+            1064
+          ],
+          "panels": {
+            "wide": {
+              "file": "e019-wide.jpg",
+              "sha256": "7308f615e21d4de90adde6e440e7861892beb2b9e66a5ebf23f6cb77632493df"
+            },
+            "close": {
+              "file": "e019-close.jpg",
+              "sha256": "7817136529998a187a0461287b587192962883fb50badb161ffc5d3f341cbd3f"
+            }
+          }
+        },
+        {
+          "source_event_id": "e020",
+          "frame": 1088,
+          "subtype": "volley_backhand",
+          "review_frames": [
+            1080,
+            1088,
+            1096
+          ],
+          "panels": {
+            "wide": {
+              "file": "e020-wide.jpg",
+              "sha256": "bfba4bd1316048e86d968e7e166ff99fafa7afff27ddf1e57de42a4a04b419f9"
+            },
+            "close": {
+              "file": "e020-close.jpg",
+              "sha256": "d5ae86f83092df8a4aa8621c425369cd9808e238d57b34d9506d64f47ad64cfa"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "9f605d12915f15f179d1c41361d85095b5ebd1b64400ec93dda867486ee47ffa",
+      "source_video_id": "video_000",
+      "global_start_sec": 879.00856,
+      "global_end_sec": 900.492252,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          53586,
+          54873
+        ],
+        "cam1": [
+          52707,
+          53994
+        ],
+        "cam2": [
+          54246,
+          55533
+        ],
+        "cam3": [
+          54899,
+          56186
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_037",
+      "split": "test",
+      "camera_sha256": {
+        "cam0": "9300f92e4376f90fdc93a46e82c91d33fc2760c3807edfae8be97ce5f1d8972c",
+        "cam1": "c1b473a238719658a3caa6da81e4b6cae50396c18109956305db5ecba354c9b5",
+        "cam2": "8149f06c609a6f209499abf4cd17055a4b8ac4e9be301285c8a5fad4956c5bfc",
+        "cam3": "0112a64759ffd98bec0cfc529b779222dded555d883675794d78eba00f5049a1"
+      },
+      "scene_npz_sha256": "3e0d3544c2d9d110348f183b2387782b449d4da71fe654fe2b7813839c9d346e",
+      "scene_metadata_sha256": "010809336eb637cf61042154115b6dd02369b431f7070e30aa469e9e0c154dc1",
+      "v4_event_component_sha256": "356008f2c64a13db85a16ae4ae1dc2bb9a033af8d7b44b3eb3d65e627990a2dd",
+      "player_track_ids": [
+        0,
+        1,
+        2,
+        5
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 113,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            105,
+            113,
+            121
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "020f0ed0dcc0f7608541d4f5f3334925f5783ed8c3ac3f0f2319bb4ec7e946d2"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "8ec93bf4e0b8e53f43475046b9003c44d796659997c71a55d6313b88312acf74"
+            }
+          }
+        },
+        {
+          "source_event_id": "e003",
+          "frame": 173,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            165,
+            173,
+            181
+          ],
+          "panels": {
+            "wide": {
+              "file": "e003-wide.jpg",
+              "sha256": "a01580dbfc9d1c64a16fe1ba7b88e65b7b4f5cafddee1bcbe919da09b874340c"
+            },
+            "close": {
+              "file": "e003-close.jpg",
+              "sha256": "dd070ce51be72a1ce9ec0d081fc67de83995ad8aafe03e31256a82b5e7c96b41"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "dc89788e4406ba99a0d36c73491b077f6bb88b545385ba998d142d8d0be91a94",
+      "source_video_id": "video_000",
+      "global_start_sec": 1111.30508,
+      "global_end_sec": 1116.172299,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          67510,
+          67801
+        ],
+        "cam1": [
+          66631,
+          66922
+        ],
+        "cam2": [
+          68170,
+          68461
+        ],
+        "cam3": [
+          68823,
+          69114
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_040",
+      "split": "test",
+      "camera_sha256": {
+        "cam0": "c2a60bb60eb783233bac26200b38647578057fc38fdcf2c6404c3152f67ff6c2",
+        "cam1": "c263b681472323ae137dad6923863c8a3be11e17426f296d8f2f899210a9f0bc",
+        "cam2": "da26775ec091adfeda9b75a64a21b60fb55d765f1457e18ac710f1be8642dbe8",
+        "cam3": "4de4cf31535643ded175614fca0f8790a90d9c5f54aef332738cbf15694c49e7"
+      },
+      "scene_npz_sha256": "ebf354cd2cb795f63413c963dce8bead6b756b48c4000560d1caf57b48286254",
+      "scene_metadata_sha256": "c98175b804b4fb999182112f1911e9c760e90fdb73dac0ebbc0b6aca1a6b0a6e",
+      "v4_event_component_sha256": "04733a0398e67c355ab2a08fee54bb69e98b3660d8a4a11cc4e657abd5c63296",
+      "player_track_ids": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 87,
+          "subtype": "serve_underhand",
+          "review_frames": [
+            79,
+            87,
+            95
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "5e92dbf7918101dc28a5e16e55050e9a6e66dbf0a33892014d89c512fd4e08f6"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "56b61d5b332fd8cadb5549285d5c1298cab2cebc923766430dac3cf21f702a39"
+            }
+          }
+        },
+        {
+          "source_event_id": "e003",
+          "frame": 197,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            189,
+            197,
+            205
+          ],
+          "panels": {
+            "wide": {
+              "file": "e003-wide.jpg",
+              "sha256": "f29b397883a1aa4c290778e07ad5e84adf378f4213cbfe8ebd941fcb8fc0a2ca"
+            },
+            "close": {
+              "file": "e003-close.jpg",
+              "sha256": "b5ab2d56e2c5f8456bcb8737fec3af1f442b82e63f1cd96b8e06e12517e6bef9"
+            }
+          }
+        },
+        {
+          "source_event_id": "e004",
+          "frame": 230,
+          "subtype": "volley_backhand",
+          "review_frames": [
+            222,
+            230,
+            238
+          ],
+          "panels": {
+            "wide": {
+              "file": "e004-wide.jpg",
+              "sha256": "e247abf1ea59164db070290f4e2e032d60f5ecad0e79868892ca17cee1c0f083"
+            },
+            "close": {
+              "file": "e004-close.jpg",
+              "sha256": "3788bf7bb435bcc54f4e2ed1444511f8b4fb57603dff6562f1dab94a94f4582f"
+            }
+          }
+        },
+        {
+          "source_event_id": "e006",
+          "frame": 303,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            295,
+            303,
+            311
+          ],
+          "panels": {
+            "wide": {
+              "file": "e006-wide.jpg",
+              "sha256": "aad189a4e61da5815ca05976ee5ad233734a50340d494bcd4cadfda31c3a046e"
+            },
+            "close": {
+              "file": "e006-close.jpg",
+              "sha256": "ae86d1af8d80b4e5af911ebbe209a030e49a585311403da1c85a3e16c0347bb1"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "891136d8db6da7d2cbdbd745ca36bf4e9f5ddfb0fa6bf996f3920b763ab8fe96",
+      "source_video_id": "video_000",
+      "global_start_sec": 1184.239947,
+      "global_end_sec": 1191.190384,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          71882,
+          72298
+        ],
+        "cam1": [
+          71003,
+          71419
+        ],
+        "cam2": [
+          72542,
+          72958
+        ],
+        "cam3": [
+          73195,
+          73611
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_043",
+      "split": "test",
+      "camera_sha256": {
+        "cam0": "cfd4ce869935756f7a86ac4198780252b8a7219d307d335a59f72e39efa85b8f",
+        "cam1": "53f26651e4880be90484ed7e0a458f7c7e31e5070646676e75d3a37d815bfeaa",
+        "cam2": "106d299bc28ac1fa7cfa3c5583a6398f2d4c5034d022bd6a2787b0b5aa82a660",
+        "cam3": "f9a607a3405b4416aa4639897e15c84975b3bb11fbc3dd46c310f4b5f8f680b8"
+      },
+      "scene_npz_sha256": "0603f105b96e1ca405cb16ab3f0f6f31ec08c1b1019af06cd1cfc121a9076b01",
+      "scene_metadata_sha256": "0820f203db98aba1ec208d53530883129fe3438cb52ceffa811fe491ddc088e6",
+      "v4_event_component_sha256": "9df065400d3745d334620140a10c6fdee373c73ec2eb06ff8cdda727fc5dfb2f",
+      "player_track_ids": [
+        0,
+        1,
+        3,
+        5
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 63,
+          "subtype": "serve_underhand",
+          "review_frames": [
+            55,
+            63,
+            71
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "1899134bcbd1505d30385839b2a758ac3246773552c42a6b46b75d2c453ff28a"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "5ade31434b66ca24fcc5a89114cebf10eed53cf7ecab1ad893345ecaec21dd74"
+            }
+          }
+        },
+        {
+          "source_event_id": "e010",
+          "frame": 415,
+          "subtype": "serve_underhand",
+          "review_frames": [
+            407,
+            415,
+            423
+          ],
+          "panels": {
+            "wide": {
+              "file": "e010-wide.jpg",
+              "sha256": "4f5c8ddd94732de1dd9d9bf9e055ab559387449a185ad7bf47e0a78687528abe"
+            },
+            "close": {
+              "file": "e010-close.jpg",
+              "sha256": "6ea2757a2d22057652b39ca2174ebedbd169bf18b993b5fe9abef24a5eda2f36"
+            }
+          }
+        },
+        {
+          "source_event_id": "e012",
+          "frame": 527,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            519,
+            527,
+            535
+          ],
+          "panels": {
+            "wide": {
+              "file": "e012-wide.jpg",
+              "sha256": "63adbf0a0887d55411f8dae9ee1c25d627b2a0b895e75d6569cb5e817bc58bb5"
+            },
+            "close": {
+              "file": "e012-close.jpg",
+              "sha256": "e5061c6a1832141d6522c4c7445f53fe3d27b226fbeff6c2f4fa9f735d26ed1a"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "8f01972d75d785d26abe55179f6b67f894c81e73e118ae04b636ca78ea97838d",
+      "source_video_id": "video_000",
+      "global_start_sec": 1255.024322,
+      "global_end_sec": 1266.858133,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          76125,
+          76833
+        ],
+        "cam1": [
+          75246,
+          75954
+        ],
+        "cam2": [
+          76785,
+          77493
+        ],
+        "cam3": [
+          77437,
+          78145
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_048",
+      "split": "test",
+      "camera_sha256": {
+        "cam0": "c83a7c14a5c94d9f01a903ab8d99d075cb58e3e05f9e2d835e0e11f20089cf2a",
+        "cam1": "fc74c83c5c1a1007f9e4d888111056867147449083d45d098c67e42572ded554",
+        "cam2": "93597ca05450b6cdb5f7d2c78814ff02282a7028c55adaeb790926f401dc4aa5",
+        "cam3": "9651631ff7fcf88d5ec47b5acb22b4d8bc5def300e003a5f14d8715798dcff57"
+      },
+      "scene_npz_sha256": "b0d8f906e1ea642677fa70318d50e4492e0d5cebb145a88e48d9a6cef92d71be",
+      "scene_metadata_sha256": "ce434d329582cfa08a5f4965e48b632d1076c6493550150ad216dea0a5726d5d",
+      "v4_event_component_sha256": "245bc03c7b2f24e432815dffce03457e00fc413a4a28efe191f6dcba3c744220",
+      "player_track_ids": [
+        0,
+        1,
+        2,
+        5
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 124,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            116,
+            124,
+            132
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "8b472e0405c2f8ff046bf201fc69a4c6866196816f4510c89ea395f7c002235d"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "dde243afe567e2170b2d15758b06dde3fcafbe154b33555265e6577d00ac8f77"
+            }
+          }
+        },
+        {
+          "source_event_id": "e012",
+          "frame": 535,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            527,
+            535,
+            543
+          ],
+          "panels": {
+            "wide": {
+              "file": "e012-wide.jpg",
+              "sha256": "4eb032694c9c128d5776c69e5c4afe3523111f1348c6309d686ba5dafd6dfc8e"
+            },
+            "close": {
+              "file": "e012-close.jpg",
+              "sha256": "20c406a44cd9b8b70400291241054d75ed78529d082dfda8d7c3ab0f24275698"
+            }
+          }
+        },
+        {
+          "source_event_id": "e014",
+          "frame": 617,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            609,
+            617,
+            625
+          ],
+          "panels": {
+            "wide": {
+              "file": "e014-wide.jpg",
+              "sha256": "65bccb85083b28ad79a6a84f46153ab30e4d27e4c4ef87d30f03ddb21657140e"
+            },
+            "close": {
+              "file": "e014-close.jpg",
+              "sha256": "3cb2bebbbfaf8f70a3fd613d50182940f0ee9206b64887f53f278ae82989cd61"
+            }
+          }
+        },
+        {
+          "source_event_id": "e016",
+          "frame": 690,
+          "subtype": "groundstroke_backhand",
+          "review_frames": [
+            682,
+            690,
+            698
+          ],
+          "panels": {
+            "wide": {
+              "file": "e016-wide.jpg",
+              "sha256": "e57e98f000e2f2873a1e39025bbe8c010a1a7fe12e148aed61f559ed0252ca49"
+            },
+            "close": {
+              "file": "e016-close.jpg",
+              "sha256": "13fbe3164246a4f15ad05f31cc640c1432d397aa92870e6d34436bd1ab47ade3"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "1a7b6cbb2a337fd31c1907bb87b65a3d9a5a49b339780b71505676f3415a93e2",
+      "source_video_id": "video_000",
+      "global_start_sec": 1384.313614,
+      "global_end_sec": 1398.884391,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          83874,
+          84746
+        ],
+        "cam1": [
+          82995,
+          83867
+        ],
+        "cam2": [
+          84534,
+          85406
+        ],
+        "cam3": [
+          85187,
+          86059
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_053",
+      "split": "test",
+      "camera_sha256": {
+        "cam0": "a839b1d006859d69386660b41ce42dc281ce566ebb49947ff65845c86dfeb78b",
+        "cam1": "7f5ce84fca973ce1aa7be9ea5db7fc68f64f12be2ac8501ae9001e966b3967b9",
+        "cam2": "9f05d65441eae051fd0fa50d07f2edc2cadef421c94fa379656f69d8ee77f4a6",
+        "cam3": "3137e584a0b6549bf9535415d6c6e56d6f009adc8d4e634f9143ff82f66d8df7"
+      },
+      "scene_npz_sha256": "184306536449e231c503acbb1a8815484ef6f561f7e611dd221f7ed901c3a749",
+      "scene_metadata_sha256": "b915441ef4ebecf06a6195aaa50bdb170b01edcb7b93bc071b7fd15fc5e0ccf5",
+      "v4_event_component_sha256": "3b8a7de9d1821172407fdc37057e682dc65702863411f3df64940a22e9a36d26",
+      "player_track_ids": [
+        0,
+        1,
+        2,
+        5
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 142,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            134,
+            142,
+            150
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "2ecfb331654e1873c077d198f07e161f149a913cc760ceb4bfadd91f1f9178cf"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "3ea80fee9d0067be1ecb7007698f7ae0d6da356736102a3a9157bbdbf0916445"
+            }
+          }
+        },
+        {
+          "source_event_id": "e003",
+          "frame": 215,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            207,
+            215,
+            223
+          ],
+          "panels": {
+            "wide": {
+              "file": "e003-wide.jpg",
+              "sha256": "450bcb9735cf1d952be03e719846989e1353118b895aac64b7c62b3b8946cdec"
+            },
+            "close": {
+              "file": "e003-close.jpg",
+              "sha256": "2d77f3e1a6301029301bbff32dcba2804a026701542f2f29b30843988d8939d9"
+            }
+          }
+        },
+        {
+          "source_event_id": "e005",
+          "frame": 301,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            293,
+            301,
+            309
+          ],
+          "panels": {
+            "wide": {
+              "file": "e005-wide.jpg",
+              "sha256": "95c1da80d532fd8fe616a5fafc2c37de39be231051b08533d6a9fb85a0b529b4"
+            },
+            "close": {
+              "file": "e005-close.jpg",
+              "sha256": "2a509339eab61a6e5a2bf6cb9a431db54f435d79b4b021235ca7d7997b668a27"
+            }
+          }
+        },
+        {
+          "source_event_id": "e007",
+          "frame": 373,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            365,
+            373,
+            381
+          ],
+          "panels": {
+            "wide": {
+              "file": "e007-wide.jpg",
+              "sha256": "c4739fc3f9673c70f00b852f4fa2ca4ceae9aa4f9b2a578adc35ab734b6667d0"
+            },
+            "close": {
+              "file": "e007-close.jpg",
+              "sha256": "8d3689d469d250ca0727fed0040cc75653695490ea61a959379c68179d382d0d"
+            }
+          }
+        },
+        {
+          "source_event_id": "e008",
+          "frame": 405,
+          "subtype": "volley_forehand",
+          "review_frames": [
+            397,
+            405,
+            413
+          ],
+          "panels": {
+            "wide": {
+              "file": "e008-wide.jpg",
+              "sha256": "4efca96898f60486e5ca7bfc4f54fe2a344640562bc86a85924630c8cead65d5"
+            },
+            "close": {
+              "file": "e008-close.jpg",
+              "sha256": "a6d3f6ada64c684c6d1f844b0b4acd2702682684e71c68b8d56cff13e7625ab0"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "05141e6f895a554c370a7b1e98aa8ecb0967a6ec37776286bd6165326fd84aa1",
+      "source_video_id": "video_000",
+      "global_start_sec": 1515.9033065201088,
+      "global_end_sec": 1525.019716520109,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          91762,
+          92307
+        ],
+        "cam1": [
+          90883,
+          91428
+        ],
+        "cam2": [
+          92422,
+          92967
+        ],
+        "cam3": [
+          93074,
+          93619
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_056",
+      "split": "test",
+      "camera_sha256": {
+        "cam0": "14ae1361c4c6ea46ea22cd55c558bb57dcf39348f3cad6105ce77fd581b701f4",
+        "cam1": "fb668f5542c962e5365f44b4ef05bf53b22630acbb4c9b1bfa3a4ba99d7e94b3",
+        "cam2": "d823aaf79c105bd8edec65f1a362a604ee3c0302ec3809c8a0ad21f499d0d192",
+        "cam3": "f1ab7945d4f08f10ec3fdf29498933a9ddb3a3ecb65a0571b8cffb445efee18f"
+      },
+      "scene_npz_sha256": "21c86a7eebdbf8c4fa0651e2d8ba6c0444336a3a730485a9253403b664e31d23",
+      "scene_metadata_sha256": "2732d571ee5e2c3703ae1ca02e0227ea6fa06741d0a653519798a54e11bfae3f",
+      "v4_event_component_sha256": "581cfbab848780577079f402040dce0197cb9063fb45cbd62a242bc782a0e4f7",
+      "player_track_ids": [
+        0,
+        1,
+        2,
+        15
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 115,
+          "subtype": "serve_underhand",
+          "review_frames": [
+            107,
+            115,
+            123
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "157dd3fc52d575012ba4c9a8362b133fd728015d250bada9fae1ccc1afe50b65"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "833d6e7d2327bd09c19fd72709701b8cf4211562057d9ff51add46cb125d2850"
+            }
+          }
+        },
+        {
+          "source_event_id": "e007",
+          "frame": 488,
+          "subtype": "serve_underhand",
+          "review_frames": [
+            480,
+            488,
+            496
+          ],
+          "panels": {
+            "wide": {
+              "file": "e007-wide.jpg",
+              "sha256": "9051b95cfca08ec814aeb57a03bc33d72d0a2985c317ba8320f54b48479c7940"
+            },
+            "close": {
+              "file": "e007-close.jpg",
+              "sha256": "fb86bd42e33717036dd3a822dd83c96f3b1f324482d0ac016cf222161fd48265"
+            }
+          }
+        },
+        {
+          "source_event_id": "e009",
+          "frame": 605,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            597,
+            605,
+            613
+          ],
+          "panels": {
+            "wide": {
+              "file": "e009-wide.jpg",
+              "sha256": "3a9027bfdf7834bb119c2f7198f69ab85b7f926dae5fefba5f308f2925156776"
+            },
+            "close": {
+              "file": "e009-close.jpg",
+              "sha256": "7dca843ef12d5079d897e6c3da6456795aaa3b72ea4c439ee51ba48ec6a6ee8f"
+            }
+          }
+        },
+        {
+          "source_event_id": "e010",
+          "frame": 659,
+          "subtype": "volley_forehand",
+          "review_frames": [
+            651,
+            659,
+            667
+          ],
+          "panels": {
+            "wide": {
+              "file": "e010-wide.jpg",
+              "sha256": "419d78a5ae5813d35849865540e62769942256dee97db74099d98c22126ad44b"
+            },
+            "close": {
+              "file": "e010-close.jpg",
+              "sha256": "beff5b4ae075006ee4fb5ba7fdc305f778d9717ae9b4f0517d58af3724e4a885"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "2c99ac6757d634d38f9b75f3e4c9f6809884b59f08b8fa38063def5479940b9f",
+      "source_video_id": "video_000",
+      "global_start_sec": 1594.753603520109,
+      "global_end_sec": 1607.485552520109,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          96488,
+          97250
+        ],
+        "cam1": [
+          95609,
+          96371
+        ],
+        "cam2": [
+          97148,
+          97910
+        ],
+        "cam3": [
+          97801,
+          98563
+        ]
+      }
+    },
+    {
+      "clip_id": "video_000/clip_064",
+      "split": "test",
+      "camera_sha256": {
+        "cam0": "969ef4af9796f449c3db62d06dcb786d3091a099267f9874b40f1dc91e13ce3f",
+        "cam1": "243734f5cce1aebbeb019e38dc851583a5a5393dda6b5c981d4129ab08b614ec",
+        "cam2": "0f11ddb600ebe5d1d14580bd58e333af1d090efda95ce6c37b515d1a31ea385e",
+        "cam3": "f904f4e2e2ba3afd35ae1e8af2623feb1be5125f11d012852d3e43f0f5e343f8"
+      },
+      "scene_npz_sha256": "ca17cd054d25d96af6a9c520ba63e8c6d54ab431bb90eced051e176a8652b040",
+      "scene_metadata_sha256": "3a498ecf164dffb597f8165b49b89a826697911cf88e77d9e8e8a34b23071850",
+      "v4_event_component_sha256": "beff44a538b0a25c19d6c1ce2a2e463ebb1acb239d6056e2f8d8d30feec29194",
+      "player_track_ids": [
+        0,
+        1,
+        2,
+        4
+      ],
+      "shots": [
+        {
+          "source_event_id": "e001",
+          "frame": 150,
+          "subtype": "serve_overhead",
+          "review_frames": [
+            142,
+            150,
+            158
+          ],
+          "panels": {
+            "wide": {
+              "file": "e001-wide.jpg",
+              "sha256": "580dee646e329a8f9b7d93e02ecfb5c8d4b4a43decd058b90668ecdd6728e3a4"
+            },
+            "close": {
+              "file": "e001-close.jpg",
+              "sha256": "dca9c6beb606b1b5e0bda47c9e20b1a63d32026efef4af96ec711b5d9929e94f"
+            }
+          }
+        },
+        {
+          "source_event_id": "e003",
+          "frame": 230,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            222,
+            230,
+            238
+          ],
+          "panels": {
+            "wide": {
+              "file": "e003-wide.jpg",
+              "sha256": "537ec73f7564d8de865fc514e8736e9f5fb07d65814d9354d4883ad04b3bf159"
+            },
+            "close": {
+              "file": "e003-close.jpg",
+              "sha256": "21f82a5aecb84b3a3e3897ed707293025054dcd9236c8821dde74dd2017d225c"
+            }
+          }
+        },
+        {
+          "source_event_id": "e005",
+          "frame": 399,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            391,
+            399,
+            407
+          ],
+          "panels": {
+            "wide": {
+              "file": "e005-wide.jpg",
+              "sha256": "5dc0f04c3a2d55191a9587067706e0c81890a1fbf34673449e51cc53c338a6ad"
+            },
+            "close": {
+              "file": "e005-close.jpg",
+              "sha256": "cb1c140f89a59cf9b13b4b2d7ef257a0a85b4f1ec3eed22e620990cd79aa2cb2"
+            }
+          }
+        },
+        {
+          "source_event_id": "e007",
+          "frame": 685,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            677,
+            685,
+            693
+          ],
+          "panels": {
+            "wide": {
+              "file": "e007-wide.jpg",
+              "sha256": "67a4537440388c6388bf03130fb3c2ddddc3c425921be446f7db321c90123cae"
+            },
+            "close": {
+              "file": "e007-close.jpg",
+              "sha256": "12197a4a8b454e114bda5a460073b63651c34958ab589bc4c35edc57d5a43b88"
+            }
+          }
+        },
+        {
+          "source_event_id": "e009",
+          "frame": 837,
+          "subtype": "groundstroke_forehand",
+          "review_frames": [
+            829,
+            837,
+            845
+          ],
+          "panels": {
+            "wide": {
+              "file": "e009-wide.jpg",
+              "sha256": "3d70ec46b18eaa5c0cb1fff740180d56a18d53deeaa97768d5f8fe71732ee65d"
+            },
+            "close": {
+              "file": "e009-close.jpg",
+              "sha256": "d6111e0fca9b16a3142ebce71cdebb6375375fa3b0a26dec79263ead242418bd"
+            }
+          }
+        },
+        {
+          "source_event_id": "e010",
+          "frame": 1024,
+          "subtype": "smash",
+          "review_frames": [
+            1016,
+            1024,
+            1032
+          ],
+          "panels": {
+            "wide": {
+              "file": "e010-wide.jpg",
+              "sha256": "016a90c4265aa7e826b3e621d8966e368b9e38043f6893fa4fcea42e9b3391c3"
+            },
+            "close": {
+              "file": "e010-close.jpg",
+              "sha256": "47c1c16f61eeb1f96ecb0beed8837fc88087ce2c5b6edbcd25885bcd6c56fc8e"
+            }
+          }
+        },
+        {
+          "source_event_id": "e012",
+          "frame": 1069,
+          "subtype": "groundstroke_backhand",
+          "review_frames": [
+            1061,
+            1069,
+            1077
+          ],
+          "panels": {
+            "wide": {
+              "file": "e012-wide.jpg",
+              "sha256": "20190cdb9496fe4b14365d6dcddac106ad2b712127d8b9879e93e864394e5619"
+            },
+            "close": {
+              "file": "e012-close.jpg",
+              "sha256": "9318529fb3c9c4ebfdcc0884cdd07726145c46bd823821ba40a3b681ebff373e"
+            }
+          }
+        },
+        {
+          "source_event_id": "e013",
+          "frame": 1159,
+          "subtype": "smash",
+          "review_frames": [
+            1151,
+            1159,
+            1167
+          ],
+          "panels": {
+            "wide": {
+              "file": "e013-wide.jpg",
+              "sha256": "564ac1c17b2f633b014d3fda9b0387d8f2c6fe1d1f0905cb419bded88376b3d2"
+            },
+            "close": {
+              "file": "e013-close.jpg",
+              "sha256": "19f347e325989bbe451f828a39ce720cfc3200c42a89e470bb2d3964d56cec0f"
+            }
+          }
+        }
+      ],
+      "clip_json_sha256": "d37968260163c834831138dccac8c8f51430c072b506a3e7b73f5aad068e3b4e",
+      "source_video_id": "video_000",
+      "global_start_sec": 1800.3063065201088,
+      "global_end_sec": 1821.1897465201089,
+      "camera_source_frames_inclusive": {
+        "cam0": [
+          108809,
+          110060
+        ],
+        "cam1": [
+          107930,
+          109181
+        ],
+        "cam2": [
+          109469,
+          110720
+        ],
+        "cam3": [
+          110121,
+          111372
+        ]
+      }
+    }
+  ]
+}

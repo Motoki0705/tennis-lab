@@ -1,0 +1,112 @@
+clip_id,source_event_id,frame,subtype,split,gt_local_player_id,gt_local_player_index,visibility_status,audit_note
+video_000/clip_002,e001,78,serve_overhead,val,1,1,confirmed,"cam2/3: Black tracksuit winds up and reaches overhead, then drives through."
+video_000/clip_002,e015,659,serve_overhead,val,1,1,confirmed,cam2/3: Black tracksuit extends his racket out of the service load and follows through across the body.
+video_000/clip_002,e017,745,groundstroke_forehand,val,2,2,confirmed,cam0/1: Blue shorts steps into a low left-handed swing. Red shirt waits.
+video_000/clip_002,e019,820,groundstroke_backhand,val,5,3,confirmed,cam2/3: White cap runs wide and sweeps through a low backhand.
+video_000/clip_002,e020,875,volley_forehand,val,2,2,confirmed,cam0/1: Blue shorts bends and drops the racket to the incoming volley while red shirt stays set.
+video_000/clip_002,e022,967,groundstroke_forehand,val,1,1,confirmed,cam2/3: Black tracksuit lunges in a wide stance and lifts the racket through the forehand.
+video_000/clip_002,e023,1014,volley_backhand,val,2,2,confirmed,cam0/2: Blue shorts jumps into the high backhand across the body. Red shirt remains grounded.
+video_000/clip_002,e025,1053,groundstroke_backhand,val,1,1,confirmed,cam1/3: Black tracksuit lifts the racket from low to high as the ball leaves. White cap remains behind.
+video_000/clip_002,e026,1144,smash,val,0,0,confirmed,cam0/2: Red shirt raises the racket overhead and snaps forward as the ball descends.
+video_000/clip_002,e028,1191,groundstroke_backhand,val,5,3,confirmed,cam2/3: White cap takes a running backhand with the racket extended at waist height.
+video_000/clip_002,e029,1270,smash,val,0,0,confirmed,cam0/1: Red shirt jumps and brings the racket over the head as blue shorts watches.
+video_000/clip_002,e031,1323,groundstroke_forehand,val,5,3,confirmed,cam2/3: White cap rotates through a forehand and finishes with racket above his head.
+video_000/clip_012,e001,110,serve_overhead,val,4,3,confirmed,cam2/3: Red shirt raises the racket to the toss and finishes with the racket low.
+video_000/clip_012,e011,615,serve_overhead,val,4,3,confirmed,cam2/3: Red shirt repeats the toss and reaches above his head before swinging down.
+video_000/clip_012,e013,689,groundstroke_forehand,val,0,0,confirmed,cam0/1: Black tracksuit drives the forehand and hops into an across-shoulder finish.
+video_000/clip_012,e015,774,groundstroke_forehand,val,3,2,confirmed,cam1/2: Blue shorts strikes left-handed from a low setup and finishes above his shoulder.
+video_000/clip_012,e017,874,groundstroke_forehand,val,1,1,confirmed,"cam0/1: Gray shirt and white cap drive from the baseline, with the racket low ahead of the body at contact."
+video_000/clip_012,e018,903,volley_backhand,val,4,3,confirmed,cam2/3: Red shirt runs across the front court and reaches up to cut off the ball.
+video_000/clip_022,e001,155,serve_overhead,val,20,3,confirmed_with_track_gap,"cam0/1: Unlabelled black cap and black shorts server reaches overhead; the same clothing, cap, side and service position match ID20 in e008. Wide views show the other three IDs."
+video_000/clip_022,e008,598,serve_overhead,val,20,3,confirmed,cam0/1: Black cap reaches straight up with the racket and follows through while the partner waits.
+video_000/clip_022,e010,688,groundstroke_forehand,val,4,2,confirmed,cam2/3: Patterned dark shirt steps toward the ball and hops into a forehand finish.
+video_000/clip_022,e012,754,groundstroke_backhand,val,20,3,confirmed,"cam0/1: Black cap crouches and sweeps low across his body, finishing high."
+video_000/clip_022,e013,803,volley_backhand,val,4,2,confirmed,cam1/3: Patterned shirt runs and reaches the racket out in front near the net. White cap stays back.
+video_000/clip_022,e015,915,groundstroke_forehand,val,20,3,confirmed,cam0/1: Black cap steps across the line and lifts the racket through the forehand.
+video_000/clip_022,e016,966,smash,val,4,2,confirmed,cam2/3: Patterned shirt extends up at full reach and swings down through the overhead.
+video_000/clip_022,e018,988,groundstroke_forehand,val,20,3,confirmed,"cam0/1: Black cap sets in a wide stance, meets the low ball and brings the racket across his torso."
+video_000/clip_023,e001,127,serve_overhead,val,1,1,confirmed,"cam0/1: Blue shorts bends back under the toss, straightens his racket arm overhead and steps forward."
+video_000/clip_023,e008,395,serve_overhead,val,1,1,confirmed,cam0/1: Blue shorts reaches up left-handed and swings down into the court.
+video_000/clip_023,e019,916,serve_overhead,val,1,1,confirmed,cam0/1: Blue shorts loads with his racket behind his head and straightens into the serve.
+video_000/clip_023,e021,996,groundstroke_forehand,val,4,2,confirmed,cam2/3: White cap on the shaded baseline transfers weight forward into a forehand.
+video_000/clip_023,e023,1068,groundstroke_forehand,val,1,1,confirmed,cam0/1: Blue shorts drops the racket and rotates into an upward follow-through.
+video_000/clip_023,e025,1225,groundstroke_forehand,val,4,2,confirmed,cam2/3: White cap swings upward from below the waist as the ball rises past him.
+video_000/clip_023,e026,1315,smash,val,0,0,confirmed,"cam0/1: Cyan-labelled dark player jumps, reaches overhead and lands moving sideways."
+video_000/clip_023,e027,1346,volley_forehand,val,6,3,confirmed,cam2/3: Green-labelled net player bends and cuts off the low ball with an outstretched racket.
+video_000/clip_023,e029,1464,groundstroke_forehand,val,0,0,confirmed,cam0/1: Cyan-labelled player hurries toward the ball and scoops it with the racket low.
+video_000/clip_023,e031,1564,groundstroke_forehand,val,4,2,confirmed,cam2/3: White cap makes a running swing from the shaded back corner.
+video_000/clip_023,e032,1587,volley_forehand,val,0,0,confirmed,cam1/3: Cyan-labelled player rushes in and reaches up at the net. Green-labelled opponent stays set.
+video_000/clip_024,e001,238,serve_overhead,val,1,1,confirmed,"cam0/1: Blue shorts arches under the toss, swings the left-handed racket up, and lands forward."
+video_000/clip_029,e001,145,serve_overhead,val,0,0,confirmed,"cam0/1: Black shorts and cap loads the racket behind the body, extends up and serves."
+video_000/clip_029,e008,435,serve_overhead,val,0,0,confirmed,cam0/1: Cyan-labelled server stretches his racket arm above the toss and sweeps forward.
+video_000/clip_029,e010,529,groundstroke_forehand,val,7,3,confirmed,cam2/3: White cap lunges and drives the ball with the racket out in front.
+video_000/clip_029,e012,615,groundstroke_forehand,val,0,0,confirmed,cam0/1: Black cap steps in from the baseline and jumps into a high forehand finish.
+video_000/clip_029,e013,679,smash,val,6,2,confirmed,cam2/3: Patterned shirt charges the high ball and stretches his racket up while white cap is behind.
+video_000/clip_029,e015,774,groundstroke_forehand,val,1,1,confirmed,"cam0/1: Blue shorts runs wide, drops the racket below his waist and sweeps forward."
+video_000/clip_029,e017,854,groundstroke_backhand,val,7,3,confirmed,"cam2/3: White cap bends, punches the backhand and finishes with his racket raised."
+video_000/clip_029,e018,899,volley_forehand,val,1,1,confirmed,cam0/1: Blue shorts jumps across the front court and stretches his racket sideways. Cyan partner stands back.
+video_000/clip_032,e001,135,serve_overhead,val,2,0,confirmed,cam0/1: Blue shorts reaches up left-handed on the serve and follows across his body.
+video_000/clip_032,e003,217,groundstroke_forehand,val,6,3,confirmed,"cam2/3: Black tracksuit takes the wide return, drives up and ends with both arms high."
+video_000/clip_032,e005,329,groundstroke_forehand,val,2,0,confirmed,cam0/1: Blue shorts drives a low ball and follows the stroke inward with a hop.
+video_000/clip_033,e001,106,serve_overhead,val,2,1,confirmed,"cam0/1: Black shorts reaches overhead for the serve with the racket arm, then bends forward."
+video_000/clip_033,e003,175,groundstroke_forehand,val,5,3,confirmed,cam2/3: White cap steps into the forehand from the baseline as the patterned-shirt partner stays upcourt.
+video_000/clip_033,e005,250,groundstroke_forehand,val,0,0,confirmed,cam0/1: Blue shorts lowers the racket on the left and brings it up and across his body.
+video_000/clip_033,e007,338,groundstroke_forehand,val,5,3,confirmed,cam1/2: White cap swings low to high from a crouch behind the baseline.
+video_000/clip_045,e001,185,serve_overhead,val,0,0,confirmed,"cam0/1: White cap and gray shirt bends back, raises the racket to the toss and follows through."
+video_000/clip_045,e003,239,groundstroke_backhand,val,3,3,confirmed,"cam2/3: Blue shorts lunges and extends the racket into the return, finishing above the shoulder."
+video_000/clip_047,e001,94,serve_overhead,val,1,1,confirmed,cam0/1: Black tracksuit arches and brings the racket straight up to the toss before lowering it.
+video_000/clip_047,e015,633,serve_overhead,val,1,1,confirmed,cam0/1: Black tracksuit draws the racket back near his head and snaps it overhead.
+video_000/clip_047,e017,719,groundstroke_backhand,val,4,3,confirmed,cam2/3: Blue shorts steps forward into a low backhand. The patterned-shirt partner watches.
+video_000/clip_063,e001,172,serve_overhead,val,2,2,confirmed,cam0/1: Black cap and black shorts straightens his service motion and follows through downcourt.
+video_000/clip_063,e003,240,groundstroke_forehand,val,3,3,confirmed,cam1/2/3: White cap drives from the baseline. Cam1 separates him from the overlapping cyan net player.
+video_000/clip_004,e001,70,serve_overhead,test,22,3,confirmed_with_track_gap,"cam2/3: Unlabelled white-capped player reaches overhead to serve. The gray shirt, cap and far-side pairing match ID22 in e005 and e009."
+video_000/clip_004,e003,147,groundstroke_backhand,test,4,2,confirmed,cam0/1: Blue shorts crouches and swings from low to high at the shaded baseline.
+video_000/clip_004,e005,286,groundstroke_forehand,test,22,3,confirmed,cam2/3: White cap steps through a waist-high forehand. Black tracksuit stays at net.
+video_000/clip_004,e007,354,groundstroke_forehand,test,4,2,confirmed,"cam0/1: Blue shorts lunges, then lifts the low return with a left-handed racket."
+video_000/clip_004,e009,479,groundstroke_forehand,test,22,3,confirmed,cam2/3: White cap opens his stance and sweeps a forehand up through the rising ball.
+video_000/clip_019,e001,141,serve_overhead,test,3,2,confirmed,cam0/1: Blue shorts extends his racket arm into the toss and folds into a service finish.
+video_000/clip_019,e007,392,serve_overhead,test,3,2,confirmed,cam0/1: Blue shorts arches and reaches left-handed again while his partner stands at net.
+video_000/clip_019,e009,471,groundstroke_forehand,test,4,3,confirmed_with_track_gap,"cam2/3: White cap drives through a running forehand. His clothing, cap and court position match the ID4 receiver in e001/e007."
+video_000/clip_019,e010,487,volley_backhand,test,2,1,confirmed,cam0/1/3: Orange-labelled black tracksuit lunges and blocks the ball at the net while white cap is still finishing the previous swing.
+video_000/clip_027,e001,64,serve_overhead,test,1,1,confirmed,cam0/1: Blue shorts brings the racket straight up left-handed and leans forward after service contact.
+video_000/clip_027,e003,149,groundstroke_forehand,test,0,0,confirmed,cam1/2/3: White cap runs onto the return and swings through. The green net partner holds position.
+video_000/clip_028,e001,155,serve_overhead,test,2,2,confirmed,cam0/1: Blue shorts raises the racket above his head and sweeps forward after the toss.
+video_000/clip_028,e008,510,serve_overhead,test,2,2,confirmed,cam0/1: Blue shorts straightens into his second overhead service action and brings the racket ahead.
+video_000/clip_028,e010,586,groundstroke_forehand,test,6,3,confirmed,cam2/3: Patterned shirt drives from a running setup across the waist. White cap watches.
+video_000/clip_028,e012,652,groundstroke_backhand,test,2,2,confirmed,"cam0/1: Blue shorts extends the left-handed racket in front, then follows through high."
+video_000/clip_028,e013,692,volley_backhand,test,6,3,confirmed,cam2/3: Patterned shirt rushes toward the net and stoops to meet the low ball on the stretch.
+video_000/clip_028,e015,807,groundstroke_backhand,test,2,2,confirmed,"cam0/1: Blue shorts runs toward the shaded sideline, reaches for the ball and lifts the racket."
+video_000/clip_028,e017,955,groundstroke_forehand,test,0,0,confirmed,"cam1/3: White cap sets at the deep fence, turns through a high swing and brings his racket across."
+video_000/clip_028,e018,1012,volley_forehand,test,2,2,confirmed,cam0/1: Blue shorts strides across the front court and cuts the ball back with a sideways reach.
+video_000/clip_028,e019,1056,volley_forehand,test,6,3,confirmed,cam2/3: Patterned shirt opens the racket at shoulder height and meets the ball in front of the net.
+video_000/clip_028,e020,1088,volley_backhand,test,2,2,confirmed,cam0/1: Blue shorts jumps to meet the ball in front of his face. The orange partner stays to the left.
+video_000/clip_037,e001,113,serve_overhead,test,1,1,confirmed,"cam2/3: Black tracksuit takes the racket from behind his back to full overhead extension, then swings down."
+video_000/clip_037,e003,173,groundstroke_forehand,test,2,2,confirmed,cam0/1: Blue shorts steps into the left-handed return and lifts the racket above his shoulder.
+video_000/clip_040,e001,87,serve_underhand,test,4,3,confirmed,"cam2/3: Blue shorts bends at the waist and swings underhand at the baseline, then steps forward."
+video_000/clip_040,e003,197,groundstroke_forehand,test,0,0,confirmed,cam0/1: Black tracksuit lunges into a low return. Cam1 separates him from the white-capped partner.
+video_000/clip_040,e004,230,volley_backhand,test,2,2,confirmed,cam2/3: Patterned-shirt player reaches shoulder-high into the volley. Blue shorts closes in but leaves the swing to him.
+video_000/clip_040,e006,303,groundstroke_forehand,test,1,1,confirmed,cam0/1: White cap stretches to meet the low bounce and then raises his racket while stepping through.
+video_000/clip_043,e001,63,serve_underhand,test,5,3,confirmed,cam2/3: Blue shorts serves with a low left-handed sweep and lifts his trailing leg during the finish.
+video_000/clip_043,e010,415,serve_underhand,test,5,3,confirmed,cam2/3: Blue shorts bends and sweeps the racket forward underhand again.
+video_000/clip_043,e012,527,groundstroke_forehand,test,0,0,confirmed,cam0/1: White cap chases the low return toward the sideline and lunges deep with the racket forward.
+video_000/clip_048,e001,124,serve_overhead,test,1,1,confirmed,cam0/1: Black tracksuit reaches the racket up toward the toss and follows forward. White cap watches.
+video_000/clip_048,e012,535,serve_overhead,test,1,1,confirmed,cam0/1: Black tracksuit reaches at full extension and finishes in front of his body.
+video_000/clip_048,e014,617,groundstroke_forehand,test,5,3,confirmed,"cam2/3: Green-labelled player swings through the return at the shadow line, then hops up and follows through."
+video_000/clip_048,e016,690,groundstroke_backhand,test,0,0,confirmed,cam0/1: White cap reaches across his body and swings high. Black-clad partner approaches but keeps his racket low through contact.
+video_000/clip_053,e001,142,serve_overhead,test,2,2,confirmed,"cam0/1: Black shorts and dark cap loads the racket back, reaches up to the toss and lowers it after contact."
+video_000/clip_053,e003,215,groundstroke_forehand,test,5,3,confirmed,cam2/3: White cap steps into a low forehand and finishes with the racket upright. Orange net partner remains set.
+video_000/clip_053,e005,301,groundstroke_forehand,test,0,0,confirmed,cam0/1: Blue shorts swings from a wide stance near the baseline and rises into the follow-through.
+video_000/clip_053,e007,373,groundstroke_forehand,test,5,3,confirmed,cam2/3: White cap drops the racket and rotates through the forehand from the shaded baseline.
+video_000/clip_053,e008,405,volley_forehand,test,2,2,confirmed,cam0/1/3: Magenta-labelled net player jumps and moves his racket through the ball. Orange opponent remains crouched.
+video_000/clip_056,e001,115,serve_underhand,test,2,2,confirmed,"cam0/1: Blue shorts crouches and sweeps the racket underhand, then rises into the court."
+video_000/clip_056,e007,488,serve_underhand,test,2,2,confirmed,cam0/1: Blue shorts makes the second low service swing and follows through across his torso.
+video_000/clip_056,e009,605,groundstroke_forehand,test,15,3,confirmed,cam0/3: Patterned shirt drives through the low return and lifts his arms. White cap remains set.
+video_000/clip_056,e010,659,volley_forehand,test,2,2,confirmed,cam1/2: Blue shorts stretches left across the front court with the racket extended in front.
+video_000/clip_064,e001,150,serve_overhead,test,2,2,confirmed,cam0/1: Black shorts and dark cap stretches overhead to the toss and finishes forward.
+video_000/clip_064,e003,230,groundstroke_forehand,test,4,3,confirmed,"cam2/3: Black tracksuit plants in a wide stance, swings through the ball, and raises the racket."
+video_000/clip_064,e005,399,groundstroke_forehand,test,1,1,confirmed,cam0/2: Blue shorts on the deep sideline drives the left-handed racket up into a high finish.
+video_000/clip_064,e007,685,groundstroke_forehand,test,4,3,confirmed,cam2/3: Black tracksuit runs into the ball and jumps into an upward racket finish.
+video_000/clip_064,e009,837,groundstroke_forehand,test,1,1,confirmed,"cam1/2: Blue shorts comes up from a deep crouch, lifting a low ball near the sideline."
+video_000/clip_064,e010,1024,smash,test,4,3,confirmed,"cam2/3: Black tracksuit arches under the high ball, brings the racket up, then drops it into the finish."
+video_000/clip_064,e012,1069,groundstroke_backhand,test,1,1,confirmed,cam0/1: Blue shorts runs well outside the line and extends his racket low to the side.
+video_000/clip_064,e013,1159,smash,test,4,3,confirmed,cam2/3: Black tracksuit holds the racket behind his head before reaching up into the overhead.

@@ -100,6 +100,11 @@ def _parser() -> argparse.ArgumentParser:
         help="new directory for CSV tables (relative paths use the working directory)",
     )
     _format_arg(export)
+
+    hitter = commands.add_parser("hitter", help="store V4 shot hitter estimates")
+    hitter.add_argument("--benchmark", required=True, type=Path)
+    hitter.add_argument("--ingest-run", required=True, type=_positive_int)
+    hitter.add_argument("--owner-team", required=True, type=_positive_int)
     return parser
 
 
@@ -128,6 +133,18 @@ def _run(args: argparse.Namespace) -> None:
 
     engine = analytics_engine()
     try:
+        if args.command == "hitter":
+            from src.tennis_scene.analytics.db.hitters import store_v4_hitters
+
+            with engine.begin() as transaction:
+                report = store_v4_hitters(
+                    transaction,
+                    args.benchmark,
+                    ingest_run_id=args.ingest_run,
+                    owner_team_id=args.owner_team,
+                )
+            write_json(sys.stdout, report)
+            return
         with engine.connect() as connection:
             if args.command == "query":
                 table = DOMAIN_TABLES[args.table]
@@ -186,7 +203,14 @@ def main(argv: Sequence[str] | None = None) -> int:
             )
             args.output_dir = paths.declared("output_dir").path
         _run(args)
-    except (CommandError, OSError, SQLAlchemyError, TypeError, ValueError) as error:
+    except (
+        CommandError,
+        KeyError,
+        OSError,
+        SQLAlchemyError,
+        TypeError,
+        ValueError,
+    ) as error:
         print(f"analytics: {error}", file=sys.stderr)
         return 1
     return 0

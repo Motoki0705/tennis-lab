@@ -1,0 +1,64 @@
+{
+  "benchmark_id": "meiji_4cam/multiview-v4",
+  "ground_truth_sha256": "036e3bd6b57b852a09d87a0631b7591d5978553d3cae9ee1f5de558df5e4af1f",
+  "manifest_sha256": "8e012944b1407d696a1ab1d325ae3c6b60cf26f071752510ea2fc688b031893c",
+  "metrics": {
+    "ambiguous_count": 0,
+    "correct_resolved_count": 49,
+    "coverage": 0.9607843137254902,
+    "evaluable_resolved_count": 49,
+    "evaluable_shots": 51,
+    "false_resolution_count": 0,
+    "false_resolution_rate": 0.0,
+    "false_resolution_rate_among_evaluable_resolved": 0.0,
+    "false_resolutions": [],
+    "overall_accuracy": 0.9607843137254902,
+    "rejection_reasons": {
+      "too_far": 2
+    },
+    "resolved_accuracy": 1.0,
+    "resolved_count": 49,
+    "total_shots": 51,
+    "unresolved_count": 2,
+    "visibility_statuses": {
+      "confirmed": 49,
+      "confirmed_with_track_gap": 2
+    }
+  },
+  "rule_version": "court-hitter-v2.217835f4f9d0",
+  "schema": "v4_hitter_evaluation.v1",
+  "split": "test",
+  "split_audit": {
+    "clip_counts": {
+      "test": 11,
+      "train": 47,
+      "val": 11
+    },
+    "cross_split_duplicate_media_sha256": {},
+    "cross_split_source_frame_overlaps_inclusive": [],
+    "cross_split_time_overlaps_sec": [],
+    "duplicate_clip_ids_across_splits": [],
+    "shared_source_videos": {
+      "meiji_4cam/video_000": [
+        "test",
+        "train",
+        "val"
+      ]
+    },
+    "shot_counts": {
+      "test": 51,
+      "train": 219,
+      "val": 60
+    }
+  },
+  "thresholds": {
+    "max_frame_uncertainty_s": 0.1,
+    "min_margin": 0.18,
+    "motion_window_s": 0.05,
+    "net_zone_m": 0.7,
+    "root_reach_m": 1.85,
+    "search_radius_s": 0.035,
+    "side_deadband_m": 0.15,
+    "wrist_reach_m": 1.3
+  }
+}

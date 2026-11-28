@@ -9,6 +9,14 @@ from typing import Literal
 import numpy as np
 from numpy.typing import NDArray
 
+from src.tennis_scene.ball_events.observations import (
+    PLAYER_LANDMARKS,
+    landmark_distances,
+    side_velocities,
+)
+from src.tennis_scene.ball_events.observations import (
+    PlayerEvidence as PlayerEvidence,
+)
 from src.utils.rendering.trajectory_analysis import detect_bounces
 from src.utils.schema.court import (
     HALF_DOUBLES_WIDTH,
@@ -76,15 +84,6 @@ DEFAULT_THRESHOLDS = RuleThresholds()
 
 
 @dataclass(frozen=True, slots=True)
-class PlayerEvidence:
-    """Per-player root and both court-space COCO17 wrists, in that order."""
-
-    positions: NDArray[np.float32]  # (P, T, 3 landmarks, XYZ)
-    valid: NDArray[np.bool_]  # (P, T, 3 landmarks)
-    track_ids: NDArray[np.int32] | None  # (P,), local to this clip
-
-
-@dataclass(frozen=True, slots=True)
 class _Motion:
     frame: int
     left: int
@@ -97,30 +96,6 @@ class _Motion:
     @property
     def gap_frames(self) -> int:
         return max(0, self.right - self.left - 1)
-
-
-def _side_velocities(
-    xyz: NDArray[np.float64], valid: NDArray[np.bool_], fps: float, window: int
-) -> tuple[NDArray[np.float64], NDArray[np.float64]]:
-    # Shorten each secant at a contiguous run boundary. An empty side has NaN velocity.
-    indices = np.arange(len(xyz))
-    run_starts = np.maximum.accumulate(np.where(valid, 0, indices + 1))
-    run_ends = np.minimum.accumulate(np.where(valid, len(xyz) - 1, indices - 1)[::-1])[
-        ::-1
-    ]
-    incoming = np.full_like(xyz, np.nan)
-    outgoing = np.full_like(xyz, np.nan)
-    left = np.maximum(run_starts, indices - window)
-    right = np.minimum(run_ends, indices + window)
-    before = valid & (left < indices)
-    after = valid & (right > indices)
-    incoming[before] = (xyz[before] - xyz[left[before]]) * (
-        fps / (indices[before] - left[before])
-    )[:, None]
-    outgoing[after] = (xyz[right[after]] - xyz[after]) * (
-        fps / (right[after] - indices[after])
-    )[:, None]
-    return incoming, outgoing
 
 
 def _gap_motions(
@@ -305,17 +280,19 @@ def _player_support(
     if players is None or not players.valid[:, motion.frame].any():
         return {}, "player_unavailable"
     radii = np.array((rules.root_reach_m, rules.wrist_reach_m, rules.wrist_reach_m))
-    distances = np.linalg.norm(
-        players.positions[:, motion.frame] - motion.position, axis=-1
+    distances = landmark_distances(
+        players.positions[:, motion.frame],
+        players.valid[:, motion.frame],
+        motion.position,
     )
-    relative = np.where(players.valid[:, motion.frame], distances / radii, np.inf)
+    relative = distances / radii
     player, landmark = np.unravel_index(relative.argmin(), relative.shape)
     return {
         "player_index": int(player),
         "player_track_id": int(players.track_ids[player])
         if players.track_ids is not None
         else None,
-        "player_landmark": ("root", "left_wrist", "right_wrist")[landmark],
+        "player_landmark": PLAYER_LANDMARKS[landmark],
         "player_distance_m": float(distances[player, landmark]),
     }, ("player_far" if relative[player, landmark] > 1 else None)
 
@@ -374,7 +351,9 @@ def detect_ball_events(
     thresholds: RuleThresholds = DEFAULT_THRESHOLDS,
 ) -> list[BallEvent]:
     """Return time-ordered contact candidates on the input's zero-based timeline."""
-    return analyze_ball_events(ball_3d, valid, fps, players=players, thresholds=thresholds)[0]
+    return analyze_ball_events(
+        ball_3d, valid, fps, players=players, thresholds=thresholds
+    )[0]
 
 
 def analyze_ball_events(
@@ -418,7 +397,7 @@ def analyze_ball_events(
     if np.count_nonzero(valid) < 3:
         return [], coverage
 
-    incoming, outgoing = _side_velocities(
+    incoming, outgoing = side_velocities(
         xyz, valid, fps, max(1, round(thresholds.velocity_window_s * fps))
     )
     minima = set(
