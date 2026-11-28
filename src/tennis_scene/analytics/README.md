@@ -33,6 +33,58 @@ The metric dictionary defines counting units, applicable subjects, filters and c
 
 Each definition lists the count relation and required numerator and denominator evidence keys. For a positive denominator, both groups in `source_ids` contain unique IDs matching their respective counts. A confirmed zero numerator has an empty numerator group. For point counts and rates, use one representative persisted point row per canonical match point. Deduplicate `MatchPointId` values by subject and bin before selecting those rows. Rally length uses contacts as numerator evidence and points as denominator evidence. `insert_metric_snapshot()`, ORM inserts and updates, and CLI reads all apply `MetricRecord` validation. [Snapshot writer](db/snapshots.py)
 
+## Frozen V4 audit and ingest
+
+```bash
+data_root="$PWD/data"
+meiji="$data_root/tennis_multiview/processed/meiji_4cam"
+inputs=(--data-root "$data_root" --v4-root "$meiji/benchmarks/multiview-v4" --projects "$meiji/projects.json")
+
+.venv/bin/python -m src.tennis_scene.analytics audit "${inputs[@]}" > v4-audit.json
+.venv/bin/python -m src.tennis_scene.analytics audit "${inputs[@]}" --format csv > v4-audit.csv
+.venv/bin/python -m src.tennis_scene.analytics ingest "${inputs[@]}" --owner-team 1
+```
+
+`audit` can run without a configured `DATABASE_URL`. `ingest` requires a migrated database and an existing owner team. It returns the ingest-run and match-context database IDs. Both commands require the pinned Meiji V4 manifest and SHA256SUMS by default. To load an alternate V4 release, explicitly pass its `--manifest-sha256`. Use `--projects-sha256` to pin the score file as well. The audit records both input digests, the SHA256SUMS digest and the manual supplement digest when supplied.
+
+- S1 verifies the manifest, each `clip.json`, the adopted scene index, its NPZ and metadata, and the event component descriptor and sparse arrays against the release's SHA256SUMS. Camera media references are checked against the manifest, scene index and checksum inventory. `checksum_verification` reports how many files were read and hashed. Clip metadata retains release-relative paths and digests for the verified scene and event component.
+- The selected Clip Studio video must contain the same clip IDs, camera origins and clip bounds as V4. Time and camera-offset comparisons use an absolute tolerance of 1 ns for floating-point representation. Confirmed points use the existing scoring rules and service order. Unconfirmed score statuses stay visible in the audit and in clip metadata. A missing, auto, unknown or multiple-point score breaks the chain. A confirmed clip after such a break needs an anchor. A `not_point` clip passes the previous score through.
+- Equal source intervals or overlapping intervals with a matching certain in-point event identify duplicate confirmed clips. A shared bounce or rally contact can identify a clip that starts after the serve. The event labels and source times must agree within the combined half-frame sampling tolerance. The saved scores must agree. The first source interval supplies the shared match point key and the score advances once. The audit lists canonical points observed in multiple splits under `cross_split_point_keys`.
+- An overlapping clip with the same before-count and insufficient shared evidence retains its clip-local confirmed score. Its canonical point key is NULL, and `point_identity_hold` records the reason and candidate clips. Such clips are listed in `pending_point_identity_clip_ids`. A confirmed clip supplies a point association for eligible events. Point boundaries stay unresolved when the input provides only clip bounds.
+- The audit reports `reached_match_end` when a confirmed score reaches the end under the scoring rules. `match_complete` requires a continuous ledger from the opening score, with connected points, resolved identities and a confirmed final score.
+- A certain terminal `net_fault` linked to a certain non-serve contact can establish `net_error` when the contact side and the confirmed winner agree. A receiver win with two explicit certain service faults can establish `double_fault`. Service lets replay the same attempt and their bounces stay outside the point. The audit reports unresolved terminal causes as `unknown` and unresolved error assessments as `undetermined`.
+- The availability denominator is the full clip inventory. An observed zero for an event count is available. CSV contains the same summary, column and clip records as JSON, with `section`, `key` and `data` columns. Structured `data` cells are JSON.
+- Repeating the same input hashes for the same team and ingest definition returns the existing run. Different input hashes or a new ingest definition create a run with its own export. Ingest definition `2` versions the normalized rows and audit contract.
+
+### Manual supplement
+
+Pass `--manual-supplement` to `audit` or `ingest`. JSON uses `{"version": 1, "points": [...]}`. CSV uses a header with the same row fields and a JSON array in each populated `serve_attempts` cell.
+
+```json
+{
+  "version": 1,
+  "points": [
+    {
+      "clip_id": "video_000/clip_000",
+      "point_key": "point",
+      "reviewer": "reviewer-id",
+      "terminal_cause": "out_wide",
+      "error_assessment": "forced",
+      "note": "Checked the end of the point from two views",
+      "serve_attempts": [
+        {"serve_number": 1, "replay_index": 0, "result": "in"}
+      ]
+    }
+  ]
+}
+```
+
+`clip_id`, `point_key` and `reviewer` are required. Provide at least one cause, assessment or attempt. A manual terminal cause uses one of the known values in the [metric dictionary](metrics.py). Error assessments use `forced`, `unforced` or `undetermined`. Enter one review per canonical match point. A reviewed cause or assessment applies to all of its clip copies with `manual_confirmed` provenance.
+
+List consecutive serve attempts in chronological order. Each attempt requires a `result` of `in`, `fault`, `let` or `unknown`. Optional fields are `serve_number` (1 or 2), `replay_index` (starting at 0), `source_event_id` (an in-point V4 serve from that clip) and `fault_cause` (text for a fault). A let keeps the serve number and advances the replay index. Use null or omit an optional field when its value is unresolved. Confirmed attempts are stored against the reviewed clip and point.
+
+A confirmed second-serve fault requires a receiver win, and a known terminal cause for that point must be `double_fault`. When a manual `double_fault` row also supplies attempts, it must include confirmed faults explicitly numbered 1 and 2. Supply a cause-only review when the serve attempts are unavailable. Serve fault details, including a net fault, belong in `fault_cause`. The CLI validates the review against the confirmed score and applicable V4 cause before ingest.
+
 ## CLI queries and export
 
 ```bash

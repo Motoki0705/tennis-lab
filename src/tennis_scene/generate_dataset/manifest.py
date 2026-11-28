@@ -66,7 +66,8 @@ def split_clip_id(clip_id: str) -> tuple[str, str]:
 
 def file_sha256(path: str | Path) -> str:
     """Return the raw hexadecimal SHA-256 used by annotation markers."""
-    return dual_sha256(path)
+    digest: str = dual_sha256(path)
+    return digest
 
 
 @dataclass(frozen=True)
@@ -221,6 +222,11 @@ class ClipManifest:
         if not path.is_file():
             raise DatasetManifestError(f"clip manifest not found: {path}")
         payload = load_json(path)
+        return cls.from_dict(payload, clip_dir=root)
+
+    @classmethod
+    def from_dict(cls, payload: object, *, clip_dir: Path) -> ClipManifest:
+        path = clip_dir / CLIP_MANIFEST_FILENAME
         if not isinstance(payload, dict):
             raise DatasetManifestError(f"{path} must contain a JSON object.")
         _require_exact_keys(
@@ -330,7 +336,7 @@ class ClipManifest:
                 cameras.append(dict(block))
 
         return cls(
-            clip_dir=root,
+            clip_dir=clip_dir,
             dataset_id=dataset_id,
             clip_id=clip_id,
             video_id=video_id,
