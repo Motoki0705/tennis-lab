@@ -16,7 +16,7 @@ export DATABASE_URL='postgresql+psycopg://tennis_analytics:tennis_analytics@127.
 
 Compose accepts `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD` and `POSTGRES_PORT`. The development defaults are `tennis_analytics` for the first three and `5432` for the port, which is bound to loopback. Update `DATABASE_URL` when changing these values. PostgreSQL initializes the database and credentials when the named volume is first created. `docker compose down` stops the service and retains the volume.
 
-The CLI also accepts `db upgrade [revision]` and `db downgrade [revision]`, with defaults of `head` and `base` respectively. Downgrading to `base` drops the analytics tables and their data. `db check` checks the revision and Alembic's model comparison.
+The CLI also accepts `db upgrade [revision]` and `db downgrade [revision]`, with defaults of `head` and `base` respectively. Downgrading to `base` drops the analytics tables and their data. Downgrading past revision `0002` requires a database without `itf_linear` profiles. `db check` checks the revision and Alembic's model comparison.
 
 ## Schema and writes
 
@@ -46,6 +46,27 @@ Each definition lists the count relation and required numerator and denominator 
 The metric dictionary supports JSON and CSV and runs without `DATABASE_URL`. Query accepts a domain table, an optional database row `--id`, an optional numeric `--owner-team` and an optional positive `--limit`. Omit the owner filter to query all accessible rows.
 
 A scoped export reads a single database snapshot. It includes the selected run or match, its descendant rows, the match's ingest provenance and referenced court profiles. JSON goes to stdout and CSV writes one file per domain table into a new directory. Both use database ID order per table, UTC timestamps and deterministic JSON encoding. CSV uses JSON cells for objects and arrays. A `\N` cell represents NULL, and literal text starting with a backslash gains an extra backslash.
+
+## Extract and audit V4 shot geometry
+
+```bash
+benchmark=data/tennis_multiview/processed/meiji_4cam/benchmarks/multiview-v4
+.venv/bin/python -m src.tennis_scene.analytics geometry --benchmark "$benchmark" > v4-geometry.json
+.venv/bin/python -m src.tennis_scene.analytics geometry --benchmark "$benchmark" --ingest-run 1 --owner-team 1
+.venv/bin/python -m src.tennis_scene.analytics query shot_geometry_features --owner-team 1 --format csv
+```
+
+The first command audits all 69 clips without a database. It checks the pinned manifest and scene indexes, the adopted event components, and the checksums of the arrays used by S4. The report gives per-clip and per-split field availability, missing reasons, crossing statuses, landing sources and train/val bin counts. The ball observations are reconstructed clip measurements. The ballistic unit test supplies independent numerical truth.
+
+With both database flags, geometry joins an existing V4 ingest run by clip and original event ID and uses its point eligibility. The DB selects an explicit CLI profile or override first, then the registered match profile, then the sport default. The selected profile must match the stored sport. All four geometry tables can be read by `query` and included in a scoped JSON or CSV export. Matching writes retain the same row IDs. Re-extracting with a new profile replaces that clip's shot geometry and crossing rows atomically. The pinned inputs, match registration, and earlier profile records remain available. The report names the selected profile per clip.
+
+Meiji defaults to `soft_tennis_standard` with a flat 1.07 m tape and 0.033 m ball radius. Use `--profile tennis_itf_standard` for a 0.914 m center, a 1.07 m endpoint, and a 0.0335 m radius. Its linear net height and effective span use the existing court geometry over the doubles width. `--profile-overrides FILE` applies JSON parameters to the selected standard or the sport default. Assign a distinct `profile_key` and a `source_kind` of `measured` or `custom`. An optional `source_reference` records the venue evidence. A `measured_curve` uses `net_samples_x_height_m` as ordered `[x, height]` pairs including both posts and the center.
+
+- Arcs use nominal event frames for their recorded bounds and count valid ball samples within those bounds. Calculation windows exclude the full annotated contact uncertainty and split at invalid or unlabelable frames. Excluded V4 contacts end shot attribution and serve as arc boundaries. Clip-relative time, fractional frame and uncertainty are stored with the ball-center contact evidence. Speeds are in m/s from the nearest contiguous two samples on each side of the contact window. An available fractional event position uses a single-sided extrapolation of less than one frame and is marked estimated.
+- The first observed crossing toward the opponent is primary and receives `time_to_net_s`. Every crossing records `time_s`. Exact-plane samples require a transition between opposite sides. For a run of exact zeros, the recorded time is the first sampled plane entry and the frame evidence contains the entire bracket. Off-span crossings retain their flag and use the endpoint height as the nominal height reference. Net touch remains in `ball_events`. A closed, fully observed arc with no transition can confirm absence. Tracking or event gaps and an open clip tail can leave the crossing unknown.
+- Positions remain in court XYZ. Analysis positions and heading rotate both X and Y by 180 degrees when the hitter is on +Y. Heading is measured from the opponent-facing axis toward positive analysis X. Landing depth is the signed distance from the opponent baseline. Left and right refer to the hitter's analysis frame.
+- Landing uses the first annotated bounce before another hit. A self-court or dead-ball bounce can retain its event evidence in quality metadata with NULL landing measurements. A tracking or annotation gap before the first bounce also leaves landing missing. Line margin uses a projected ball disk and distance to the region boundary, including the net plane at Y=0. The service box is diagonal to the contact side inferred from ball X. Timing windows that allow multiple line calls produce `uncertain`. A geometric line call supplies no point outcome.
+- Version `s4_bins.v2` uses 0.5 m contact-height bins, three equal court-width lanes and depth bins below 0 m, [0, 2) m, [2, 4) m and [4, ∞) m. An incomplete or boundary-spanning timing window withholds the affected bin. Landing retains the measured position and nominal depth, and quality metadata records the candidate bins and reasons for withholding. The report includes unassigned counts and the height bins seen in train/val.
 
 ## Tests
 

@@ -61,8 +61,15 @@ def _format_arg(parser: argparse.ArgumentParser) -> None:
 
 
 def _parser() -> argparse.ArgumentParser:
+    from src.tennis_scene.analytics.geometry_cli import add_geometry_arguments
+
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
+
+    geometry = commands.add_parser(
+        "geometry", help="extract and audit Meiji V4 geometry"
+    )
+    add_geometry_arguments(geometry, _positive_int)
 
     db = commands.add_parser("db", help="manage the Alembic schema")
     db_commands = db.add_subparsers(dest="db_command", required=True)
@@ -124,6 +131,12 @@ def _run(args: argparse.Namespace) -> None:
         else:
             rows = [definition.to_record() for definition in definitions]
             write_records(sys.stdout, METRIC_DEFINITION_FIELDS, rows, args.format)
+        return
+
+    if args.command == "geometry":
+        from src.tennis_scene.analytics.geometry_cli import run_geometry_command
+
+        run_geometry_command(args)
         return
 
     engine = analytics_engine()
