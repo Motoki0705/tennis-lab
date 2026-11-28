@@ -769,7 +769,10 @@ def _check_same_rows(
 
 
 def test_cli_query_and_scoped_exports_agree_with_the_persisted_rows(
-    migrated_db: Engine, tmp_path: Path, capsys: pytest.CaptureFixture[str]
+    migrated_db: Engine,
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     with migrated_db.begin() as connection:
         access = _access_rows(connection)
@@ -863,9 +866,9 @@ def test_cli_query_and_scoped_exports_agree_with_the_persisted_rows(
     assert json.loads(capsys.readouterr().out) == data["metric_snapshots"]
 
     destination = tmp_path / "match"
-    assert (
-        main([*match_export, "--format", "csv", "--output-dir", str(destination)]) == 0
-    )
+    with monkeypatch.context() as cwd:
+        cwd.chdir(tmp_path)
+        assert main([*match_export, "--format", "csv", "--output-dir", "match"]) == 0
     assert {file.stem for file in destination.glob("*.csv")} == set(data)
     for name, json_rows in data.items():
         with (destination / f"{name}.csv").open(encoding="utf-8", newline="") as stream:

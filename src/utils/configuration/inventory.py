@@ -562,6 +562,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "tennis_scene.multiview_scene",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tennis_scene.analytics.__main__": (
+        "tennis_scene.analytics",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tennis_scene.ball_events.__main__": (
         "tennis_scene.rule_ball_events",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -842,6 +846,13 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         domain="tennis_scene",
         executable_module=True,
         optional_policy="the tracks and candidate stores are required for prepare/run",
+    ),
+    _non_hydra_boundary(
+        "src.tennis_scene.analytics.__main__",
+        "main",
+        domain="tennis_scene",
+        executable_module=True,
+        optional_policy="an explicit new output directory is required only for a scoped CSV export",
     ),
     _non_hydra_boundary(
         "src.tennis_scene.ball_events.__main__",

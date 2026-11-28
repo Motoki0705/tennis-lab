@@ -24,6 +24,29 @@ from src.tennis_scene.analytics.metrics import (
     METRIC_DEFINITION_FIELDS,
     METRIC_DEFINITIONS,
 )
+from src.utils.configuration import (
+    BoundaryPathField,
+    NonHydraPathBoundary,
+    PathDirection,
+    PathKind,
+    PathResolver,
+    PathRole,
+    RuntimePathRoots,
+)
+from src.utils.paths import PROJECT_ROOT
+
+PATH_BOUNDARY = NonHydraPathBoundary(
+    name="tennis_scene.analytics",
+    fields=(
+        BoundaryPathField(
+            "output_dir",
+            PathRole.OUTPUT,
+            PathDirection.OUTPUT,
+            PathKind.DIRECTORY,
+            allow_role_root=True,
+        ),
+    ),
+)
 
 
 def _positive_int(text: str) -> int:
@@ -71,7 +94,11 @@ def _parser() -> argparse.ArgumentParser:
     scope.add_argument("--ingest-run", type=_positive_int)
     scope.add_argument("--match-context", type=_positive_int)
     export.add_argument("--owner-team", type=_positive_int)
-    export.add_argument("--output-dir", type=Path, help="new directory for CSV tables")
+    export.add_argument(
+        "--output-dir",
+        type=Path,
+        help="new directory for CSV tables (relative paths use the working directory)",
+    )
     _format_arg(export)
     return parser
 
@@ -138,6 +165,26 @@ def main(argv: Sequence[str] | None = None) -> int:
     ):
         parser.error("--output-dir is required for CSV exports and only applies to CSV")
     try:
+        if args.command == "export" and args.output_dir is not None:
+            destination = args.output_dir
+            if destination.exists() or destination.is_symlink():
+                raise FileExistsError(
+                    f"Export destination already exists: {destination}"
+                )
+            output_dir = destination.parent.resolve() / destination.name
+            roots = RuntimePathRoots(
+                project_root=PROJECT_ROOT,
+                data_root=PROJECT_ROOT,
+                checkpoint_root=PROJECT_ROOT,
+                artifact_root=PROJECT_ROOT,
+                output_root=output_dir,
+                cache_root=PROJECT_ROOT,
+                external_asset_root=PROJECT_ROOT,
+            )
+            paths = PATH_BOUNDARY.validate(
+                {"output_dir": output_dir}, resolver=PathResolver(roots)
+            )
+            args.output_dir = paths.declared("output_dir").path
         _run(args)
     except (CommandError, OSError, SQLAlchemyError, TypeError, ValueError) as error:
         print(f"analytics: {error}", file=sys.stderr)

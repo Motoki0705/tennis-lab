@@ -51,6 +51,40 @@ def test_incomplete_csv_export_leaves_no_published_directory(tmp_path: Path) -> 
     assert list(tmp_path.iterdir()) == []
 
 
+@pytest.mark.parametrize("existing", ["directory", "dangling-symlink"])
+def test_csv_cli_rejects_existing_destination_before_connecting(
+    existing: str,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    monkeypatch.delenv("DATABASE_URL", raising=False)
+    destination = tmp_path / "export"
+    if existing == "directory":
+        destination.mkdir()
+    else:
+        destination.symlink_to(tmp_path / "missing")
+
+    assert (
+        main(
+            [
+                "export",
+                "--match-context",
+                "1",
+                "--format",
+                "csv",
+                "--output-dir",
+                str(destination),
+            ]
+        )
+        == 1
+    )
+    assert (
+        f"Export destination already exists: {destination}" in capsys.readouterr().err
+    )
+    assert list(tmp_path.iterdir()) == [destination]
+
+
 def test_metrics_cli_and_missing_database_configuration(
     monkeypatch: pytest.MonkeyPatch, capsys: pytest.CaptureFixture[str]
 ) -> None:
