@@ -17,13 +17,11 @@ set -euo pipefail
 REPO_ROOT="$(git rev-parse --show-toplevel)"
 cd "$REPO_ROOT"
 
-RUN_DIR="knowledge/runs/run-i2746-cross-clip-player-id-ablation"
 CACHE_DIR="outputs/i2746_cross_clip_player_id/cache"
-PY=".venv/bin/python"
 
 if [[ "${1:-}" == "--extract-gpu" ]]; then
-  PYTHONPATH=. "$PY" "$RUN_DIR/extract_cache.py" --device cuda --batch-size 64
-  PYTHONPATH=. "$PY" "$RUN_DIR/extract_kpr_cache.py" --device cuda --batch-size 32
+  PYTHONPATH=. .venv/bin/python knowledge/runs/run-i2746-cross-clip-player-id-ablation/extract_cache.py --device cuda --batch-size 64
+  PYTHONPATH=. .venv/bin/python knowledge/runs/run-i2746-cross-clip-player-id-ablation/extract_kpr_cache.py --device cuda --batch-size 32
 fi
 
 if [[ ! -f "$CACHE_DIR/clip_reid_cache.npz" ]]; then
@@ -32,18 +30,18 @@ if [[ ! -f "$CACHE_DIR/clip_reid_cache.npz" ]]; then
 fi
 
 echo "=== 1. Contract & metric verification tests ==="
-PYTHONPATH=. "$PY" -m pytest -q "$RUN_DIR/test_contract.py"
+PYTHONPATH=. .venv/bin/python -m pytest -q knowledge/runs/run-i2746-cross-clip-player-id-ablation/test_contract.py
 
 echo "=== 2. E0..E7 isolated ablation (dev calibration + frozen test evaluation) ==="
-PYTHONPATH=. "$PY" "$RUN_DIR/run_e0_e7.py" --eval-test
+PYTHONPATH=. .venv/bin/python knowledge/runs/run-i2746-cross-clip-player-id-ablation/run_e0_e7.py --eval-test
 
 echo "=== 3. Follow-up axes (LLR, Swap-Margin, Axis G greedy/MILP, Axis P KPR) ==="
-PYTHONPATH=. "$PY" "$RUN_DIR/followup.py" --eval-test
+PYTHONPATH=. .venv/bin/python knowledge/runs/run-i2746-cross-clip-player-id-ablation/followup.py --eval-test
 
 echo "=== 4. Export compact CSV/JSON artifacts & versioned player_identity_links sample ==="
-PYTHONPATH=. "$PY" "$RUN_DIR/export_artifacts.py"
+PYTHONPATH=. .venv/bin/python knowledge/runs/run-i2746-cross-clip-player-id-ablation/export_artifacts.py
 
 echo "=== 5. Generate ablation comparison figure & 4-view identity montage ==="
-PYTHONPATH=. "$PY" "$RUN_DIR/make_figures.py"
+PYTHONPATH=. .venv/bin/python knowledge/runs/run-i2746-cross-clip-player-id-ablation/make_figures.py
 
-echo "=== Done: $RUN_DIR ==="
+echo "=== Done: knowledge/runs/run-i2746-cross-clip-player-id-ablation ==="
