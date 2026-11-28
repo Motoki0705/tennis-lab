@@ -157,7 +157,10 @@ class CourtNetProfile(_OwnedRecord, Base):
         UniqueConstraint("owner_team_id", "profile_key"),
         _owned_index("sport_type"),
         _choices("sport_type", SPORT_TYPES),
-        _choices("net_profile_kind", ("flat", "itf_parabolic", "measured_curve")),
+        _choices(
+            "net_profile_kind",
+            ("flat", "itf_linear", "itf_parabolic", "measured_curve"),
+        ),
         _choices("source_kind", PROFILE_SOURCES),
         CheckConstraint(
             "net_height_center_m > 0 AND net_height_post_m > 0 "

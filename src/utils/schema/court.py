@@ -303,12 +303,18 @@ COURT_COORD_SCALE_XYZ: tuple[float, float, float] = (
 )
 
 
-def net_height_at_x(x: float) -> float:
+def net_height_at_x(
+    x: float,
+    *,
+    half_span_m: float = HALF_DOUBLES_WIDTH,
+    center_height_m: float = NET_HEIGHT_CENTER,
+    post_height_m: float = NET_HEIGHT_POST,
+) -> float:
     """Return the net height (metres) at lateral position ``x``.
 
     The net sags linearly from :data:`NET_HEIGHT_POST` at the posts to
     :data:`NET_HEIGHT_CENTER` at the centre strap; ``|x|`` is clamped to
     :data:`HALF_DOUBLES_WIDTH`.
     """
-    x_ratio = min(abs(x) / HALF_DOUBLES_WIDTH, 1.0)
-    return NET_HEIGHT_CENTER + x_ratio * (NET_HEIGHT_POST - NET_HEIGHT_CENTER)
+    x_ratio = min(abs(x) / half_span_m, 1.0)
+    return center_height_m + x_ratio * (post_height_m - center_height_m)

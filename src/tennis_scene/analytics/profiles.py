@@ -2,9 +2,10 @@
 
 from __future__ import annotations
 
+from collections.abc import Mapping
 from dataclasses import asdict, dataclass, replace
 from math import isfinite
-from typing import Any, Literal
+from typing import Any, Literal, Self
 
 from src.utils.schema.court import (
     COURT_LENGTH,
@@ -14,16 +15,34 @@ from src.utils.schema.court import (
     NET_POST_OFFSET_X,
     SERVICE_LINE_DISTANCE,
     SINGLES_WIDTH,
+    net_height_at_x,
 )
 
 ProfileSource = Literal["rule_default", "measured", "custom"]
+_PARAMETER_KEYS = (
+    "court_length_m",
+    "doubles_width_m",
+    "singles_width_m",
+    "service_line_m",
+    "net_samples_x_height_m",
+    "source_reference",
+)
+
+
+def _profile_parameters(values: Mapping[str, Any]) -> dict[str, Any]:
+    parameters = dict(values)
+    if "net_samples_x_height_m" in parameters:
+        parameters["net_samples_x_height_m"] = tuple(
+            tuple(pair) for pair in parameters["net_samples_x_height_m"]
+        )
+    return parameters
 
 
 @dataclass(frozen=True, slots=True)
 class CourtNetProfile:
     profile_key: str
     sport_type: Literal["soft_tennis", "tennis"]
-    net_profile_kind: Literal["flat", "itf_parabolic", "measured_curve"]
+    net_profile_kind: Literal["flat", "itf_linear", "itf_parabolic", "measured_curve"]
     source_kind: ProfileSource
     net_height_center_m: float
     net_height_post_m: float
@@ -64,7 +83,7 @@ class CourtNetProfile:
                 raise ValueError("A flat net requires equal center and post heights")
         elif self.net_profile_kind == "measured_curve":
             self._validate_samples()
-        elif self.net_profile_kind != "itf_parabolic":
+        elif self.net_profile_kind not in ("itf_linear", "itf_parabolic"):
             raise ValueError(f"Unknown net profile kind: {self.net_profile_kind}")
         if self.net_samples_x_height_m and self.net_profile_kind != "measured_curve":
             raise ValueError("Net samples require a measured_curve profile")
@@ -75,7 +94,10 @@ class CourtNetProfile:
 
     @property
     def half_net_span(self) -> float:
-        return self.doubles_width_m / 2 + self.net_post_offset_x_m
+        half_width = self.doubles_width_m / 2
+        if self.net_profile_kind == "itf_linear":
+            return half_width
+        return half_width + self.net_post_offset_x_m
 
     def _validate_samples(self) -> None:
         samples = self.net_samples_x_height_m
@@ -101,6 +123,13 @@ class CourtNetProfile:
         if self.net_profile_kind == "flat":
             return self.net_height_center_m
         span = self.half_net_span
+        if self.net_profile_kind == "itf_linear":
+            return net_height_at_x(
+                x_m,
+                half_span_m=span,
+                center_height_m=self.net_height_center_m,
+                post_height_m=self.net_height_post_m,
+            )
         if abs(x_m) >= span:
             return self.net_height_post_m
         if self.net_profile_kind == "itf_parabolic":
@@ -118,21 +147,31 @@ class CourtNetProfile:
     def to_record(self) -> dict[str, Any]:
         """Serialize the profile using the store's scalar and JSON columns."""
         fields = asdict(self)
-        parameters = {
-            name: fields.pop(name)
-            for name in (
-                "court_length_m",
-                "doubles_width_m",
-                "singles_width_m",
-                "service_line_m",
-                "net_samples_x_height_m",
-                "source_reference",
-            )
-        }
+        parameters = {name: fields.pop(name) for name in _PARAMETER_KEYS}
         parameters["net_samples_x_height_m"] = [
             list(pair) for pair in self.net_samples_x_height_m
         ]
         return {**fields, "parameters_json": parameters}
+
+    @classmethod
+    def from_record(cls, record: Mapping[str, Any]) -> Self:
+        """Decode a registered profile, applying standard dimensions to omitted parameters."""
+        parameters = record["parameters_json"]
+        if not isinstance(parameters, dict):
+            raise ValueError("Court profile parameters_json must be an object")
+        return cls(
+            profile_key=record["profile_key"],
+            sport_type=record["sport_type"],
+            net_profile_kind=record["net_profile_kind"],
+            source_kind=record["source_kind"],
+            net_height_center_m=record["net_height_center_m"],
+            net_height_post_m=record["net_height_post_m"],
+            ball_radius_m=record["ball_radius_m"],
+            net_post_offset_x_m=record["net_post_offset_x_m"],
+            **_profile_parameters(
+                {key: parameters[key] for key in _PARAMETER_KEYS if key in parameters}
+            ),
+        )
 
 
 SOFT_TENNIS_STANDARD = CourtNetProfile(
@@ -147,7 +186,7 @@ SOFT_TENNIS_STANDARD = CourtNetProfile(
 TENNIS_ITF_STANDARD = CourtNetProfile(
     profile_key="tennis_itf_standard",
     sport_type="tennis",
-    net_profile_kind="itf_parabolic",
+    net_profile_kind="itf_linear",
     source_kind="rule_default",
     net_height_center_m=NET_HEIGHT_CENTER,
     net_height_post_m=NET_HEIGHT_POST,
@@ -162,12 +201,18 @@ STANDARD_PROFILES = {
 def resolve_profile(
     *,
     dataset_id: str,
+    sport_type: str | None = None,
     profile_key: str | None = None,
     overrides: dict[str, Any] | None = None,
 ) -> CourtNetProfile:
     """Select a standard and optionally name and record a venue-specific revision."""
-    if profile_key is None and dataset_id == "meiji_4cam":
-        profile_key = SOFT_TENNIS_STANDARD.profile_key
+    if profile_key is None:
+        if sport_type == "tennis":
+            profile_key = TENNIS_ITF_STANDARD.profile_key
+        elif sport_type == "soft_tennis" or (
+            sport_type is None and dataset_id == "meiji_4cam"
+        ):
+            profile_key = SOFT_TENNIS_STANDARD.profile_key
     if profile_key is None or profile_key not in STANDARD_PROFILES:
         raise ValueError(
             f"Select a standard court profile for {dataset_id}: {profile_key!r}"
@@ -187,8 +232,4 @@ def resolve_profile(
         raise ValueError(
             "A measured/custom override requires a new profile key and the base sport"
         )
-    if "net_samples_x_height_m" in changes:
-        changes["net_samples_x_height_m"] = tuple(
-            tuple(pair) for pair in changes["net_samples_x_height_m"]
-        )
-    return replace(base, **changes)
+    return replace(base, **_profile_parameters(changes))

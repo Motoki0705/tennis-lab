@@ -111,16 +111,21 @@ def run_geometry_command(args: argparse.Namespace) -> None:
         )
         if not isinstance(overrides, dict):
             raise ValueError("Profile overrides must be a JSON object")
-    profile = resolve_profile(
-        dataset_id="meiji_4cam", profile_key=args.profile, overrides=overrides
-    )
     manifest_sha256 = (
         MEIJI_V4_MANIFEST_SHA256
         if args.manifest_sha256 is None
         else args.manifest_sha256
     )
     clips = read_frozen_v4(paths.declared("benchmark").path, manifest_sha256)
+    profile = (
+        resolve_profile(
+            dataset_id="meiji_4cam", profile_key=args.profile, overrides=overrides
+        )
+        if args.ingest_run is None or args.profile is not None
+        else None
+    )
     if args.ingest_run is None:
+        assert profile is not None
         results = {
             clip.clip_id: extract_geometry(
                 clip.trajectory, clip.events, profile=profile, match_format="doubles"
@@ -138,6 +143,7 @@ def run_geometry_command(args: argparse.Namespace) -> None:
                     manifest_sha256=manifest_sha256,
                     clips=clips,
                     profile=profile,
+                    overrides=overrides if profile is None else None,
                 )
         finally:
             engine.dispose()
@@ -146,7 +152,6 @@ def run_geometry_command(args: argparse.Namespace) -> None:
         audit_geometry(
             [clip for clip in clips if clip.clip_id in results],
             results,
-            profile=profile,
             manifest_sha256=manifest_sha256,
             ingest_run_id=args.ingest_run,
         ),

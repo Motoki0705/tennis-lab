@@ -7,7 +7,7 @@ from dataclasses import asdict, replace
 from math import isclose
 from typing import Any
 
-from sqlalchemy import Connection, Table, select
+from sqlalchemy import Connection, Table, delete, select
 from sqlalchemy.dialects.postgresql import insert
 
 from src.tennis_scene.analytics.db.models import (
@@ -39,7 +39,9 @@ from src.tennis_scene.analytics.geometry import (
     extract_geometry,
 )
 from src.tennis_scene.analytics.geometry_v4 import V4GeometryClip
-from src.tennis_scene.analytics.profiles import CourtNetProfile
+from src.tennis_scene.analytics.profiles import CourtNetProfile, resolve_profile
+
+_S4_DEFINITIONS = ("s4_geometry.v1", DEFINITION_VERSION)
 
 
 def _write_once(
@@ -100,7 +102,7 @@ def _reconcile_events(
             .where(
                 event_table.c.owner_team_id == owner_team_id,
                 event_table.c.clip_id == clip_db_id,
-                event_table.c.adopted_in_v4.is_(True),
+                event_table.c.adopted_in_v4.is_not(None),
             )
         )
         .mappings()
@@ -114,21 +116,27 @@ def _reconcile_events(
     events = []
     for event in clip.events:
         row = by_id[event.source_event_id]
-        if (
+        expected = (
             event.frame,
             event.kind,
             event.subtype,
             event.status,
             event.court_side,
             event.frame_uncertainty,
-        ) != (
+            event.excluded_reason is None,
+            event.excluded_reason,
+        )
+        actual = (
             row["frame"],
             row["kind"],
             row["subtype"],
             row["status"],
-            row["court_side"],
+            row["court_side"] or 0,
             row["frame_uncertainty"],
-        ) or not isclose(
+            row["adopted_in_v4"],
+            row["excluded_reason"],
+        )
+        if expected != actual or not isclose(
             event.frame / clip.trajectory.fps, row["time_s"], rel_tol=0, abs_tol=1e-9
         ):
             raise ValueError(
@@ -227,13 +235,109 @@ def _shot_record(shot: ShotGeometry, fps: float) -> dict[str, Any]:
     }
 
 
+def _profile_for_clip(
+    connection: Connection,
+    *,
+    owner_team_id: int,
+    clip_record: Mapping[str, Any],
+    profile: CourtNetProfile | None,
+    overrides: dict[str, Any] | None,
+) -> tuple[CourtNetProfile, int, str]:
+    sport = clip_record["sport_type"]
+    profile_id = clip_record["court_net_profile_id"]
+    if profile is not None or overrides is not None or profile_id is None:
+        if profile is None:
+            profile = resolve_profile(
+                dataset_id="meiji_4cam", sport_type=sport, overrides=overrides
+            )
+        if profile.sport_type != sport:
+            raise ValueError(
+                f"Profile sport differs from the ingested match for {clip_record['clip_id']}"
+            )
+        profile_id = save_court_net_profile(connection, owner_team_id, profile)
+
+    table = ProfileModel.__table__
+    row = (
+        connection.execute(
+            select(table)
+            .where(table.c.owner_team_id == owner_team_id, table.c.id == profile_id)
+            .with_for_update(read=True)
+        )
+        .mappings()
+        .one()
+    )
+    selected = profile if profile is not None else CourtNetProfile.from_record(row)
+    return selected, int(profile_id), str(row["visibility"])
+
+
+def _refresh_derived_rows(
+    connection: Connection,
+    *,
+    owner_team_id: int,
+    clip_db_id: int,
+    profile_id: int,
+    evidence: Mapping[str, str],
+) -> None:
+    """Replace an owned S4 derivation while the clip row is locked."""
+    arcs, crossings, shots = (
+        ArcModel.__table__,
+        CrossingModel.__table__,
+        ShotGeometryFeature.__table__,
+    )
+    arc_scope = (arcs.c.owner_team_id == owner_team_id, arcs.c.clip_id == clip_db_id)
+    qualities = (
+        connection.execute(select(arcs.c.quality_json).where(*arc_scope))
+        .scalars()
+        .all()
+    )
+    if not qualities:
+        return
+    if any(
+        not isinstance(quality, dict)
+        or quality.get("definition_version") not in _S4_DEFINITIONS
+        or quality.get("manifest_sha256") != evidence["manifest_sha256"]
+        or quality.get("event_detection_sha256") != evidence["event_detection_sha256"]
+        for quality in qualities
+    ):
+        raise ValueError(
+            f"Conflicting flight_arcs source evidence for clip {clip_db_id}"
+        )
+
+    crossing_scope = (
+        crossings.c.owner_team_id == owner_team_id,
+        crossings.c.clip_id == clip_db_id,
+    )
+    shot_scope = (
+        shots.c.owner_team_id == owner_team_id,
+        shots.c.clip_id == clip_db_id,
+        shots.c.definition_version.in_(_S4_DEFINITIONS),
+    )
+    stale_definition = any(
+        quality["definition_version"] != DEFINITION_VERSION for quality in qualities
+    )
+    if not stale_definition:
+        previous_profiles = connection.execute(
+            select(crossings.c.court_net_profile_id)
+            .where(*crossing_scope)
+            .union(select(shots.c.profile_id).where(*shot_scope))
+        ).scalars()
+        if all(previous == profile_id for previous in previous_profiles):
+            return
+
+    connection.execute(delete(crossings).where(*crossing_scope))
+    connection.execute(delete(shots).where(*shot_scope))
+    if stale_definition:
+        connection.execute(delete(arcs).where(*arc_scope))
+
+
 def _persist_clip(
     connection: Connection,
     *,
     owner_team_id: int,
     clip_db_id: int,
     clip: V4GeometryClip,
-    profile: CourtNetProfile,
+    profile: CourtNetProfile | None,
+    overrides: dict[str, Any] | None,
     manifest_sha256: str,
 ) -> GeometryResult:
     clips, matches = Clip.__table__, MatchContext.__table__
@@ -242,6 +346,7 @@ def _persist_clip(
             select(
                 clips,
                 matches.c.sport_type,
+                matches.c.court_net_profile_id,
                 matches.c.visibility.label("match_visibility"),
             )
             .join(
@@ -250,7 +355,7 @@ def _persist_clip(
                 & (clips.c.match_context_id == matches.c.id),
             )
             .where(clips.c.owner_team_id == owner_team_id, clips.c.id == clip_db_id)
-            .with_for_update(of=clips)
+            .with_for_update(of=(clips, matches))
         )
         .mappings()
         .one()
@@ -273,21 +378,22 @@ def _persist_clip(
         clip.trajectory.fps,
     ):
         raise ValueError(f"V4 clip identity or timebase differs for {clip.clip_id}")
-    if record["sport_type"] != profile.sport_type:
-        raise ValueError(
-            f"Profile sport differs from the ingested match for {clip.clip_id}"
-        )
-
     events, event_ids, visibility = _reconcile_events(
         connection,
         owner_team_id=owner_team_id,
         clip_db_id=clip_db_id,
         clip=clip,
     )
+    profile, profile_id, profile_visibility = _profile_for_clip(
+        connection,
+        owner_team_id=owner_team_id,
+        clip_record=record,
+        profile=profile,
+        overrides=overrides,
+    )
     result = extract_geometry(
         clip.trajectory, events, profile=profile, match_format="doubles"
     )
-    profile_id = save_court_net_profile(connection, owner_team_id, profile)
     common = {
         "owner_team_id": owner_team_id,
         "clip_id": clip_db_id,
@@ -301,6 +407,13 @@ def _persist_clip(
         "manifest_sha256": manifest_sha256,
         "event_detection_sha256": clip.component_sha256,
     }
+    _refresh_derived_rows(
+        connection,
+        owner_team_id=owner_team_id,
+        clip_db_id=clip_db_id,
+        profile_id=profile_id,
+        evidence=input_evidence,
+    )
     arc_ids = {
         arc.arc_index: _write_once(
             connection,
@@ -314,6 +427,12 @@ def _persist_clip(
         )
         for arc in result.arcs
     }
+    featured = {
+        **common,
+        "visibility": min(
+            common["visibility"], profile_visibility, key=VISIBILITIES.index
+        ),
+    }
     for crossing in result.crossings:
         shot = result.arcs[crossing.arc_index].shot_event
         _write_once(
@@ -321,7 +440,7 @@ def _persist_clip(
             CrossingModel.__table__,
             ("owner_team_id", "flight_arc_id", "crossing_index"),
             {
-                **common,
+                **featured,
                 **_crossing_record(crossing),
                 "flight_arc_id": arc_ids[crossing.arc_index],
                 "ball_event_id": None
@@ -343,7 +462,7 @@ def _persist_clip(
                 "bin_version",
             ),
             {
-                **common,
+                **featured,
                 **_shot_record(shot_geometry, clip.trajectory.fps),
                 "profile_id": profile_id,
                 "ball_event_id": event_ids[shot_geometry.shot_event.source_event_id],
@@ -360,16 +479,23 @@ def persist_v4_geometry(
     ingest_run_id: int,
     manifest_sha256: str,
     clips: Sequence[V4GeometryClip],
-    profile: CourtNetProfile,
+    profile: CourtNetProfile | None = None,
+    overrides: dict[str, Any] | None = None,
 ) -> dict[str, GeometryResult]:
-    """Write one run atomically, joining existing clips and adopted event IDs."""
+    """Write one run atomically, joining existing clips and V4 event IDs."""
+    if profile is not None and overrides is not None:
+        raise ValueError(
+            "Supply either a resolved profile or overrides to the sport default"
+        )
     runs, matches, table = IngestRun.__table__, MatchContext.__table__, Clip.__table__
     run = (
         connection.execute(
-            select(runs).where(
+            select(runs)
+            .where(
                 runs.c.owner_team_id == owner_team_id,
                 runs.c.id == ingest_run_id,
             )
+            .with_for_update()
         )
         .mappings()
         .one_or_none()
@@ -416,6 +542,7 @@ def persist_v4_geometry(
                 clip_db_id=row["id"],
                 clip=by_name[row["clip_id"]],
                 profile=profile,
+                overrides=overrides,
                 manifest_sha256=manifest_sha256,
             )
             for row in rows

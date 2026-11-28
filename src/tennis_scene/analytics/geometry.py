@@ -19,8 +19,8 @@ from src.tennis_scene.ball_event_labels import (
     EVENT_SUBTYPES_V4,
 )
 
-DEFINITION_VERSION = "s4_geometry.v1"
-BIN_VERSION = "s4_bins.v1"
+DEFINITION_VERSION = "s4_geometry.v2"
+BIN_VERSION = "s4_bins.v2"
 HEIGHT_BIN_WIDTH_M = 0.5
 DEPTH_BIN_EDGES_M = (0.0, 2.0, 4.0)
 DEPTH_BINS = ("out-long", "0-2m", "2-4m", "4m+")
@@ -50,6 +50,7 @@ class GeometryEvent:
     in_point: bool = True
     point_id: int | None = None
     point_end_frame: int | None = None
+    excluded_reason: str | None = None
 
     def __post_init__(self) -> None:
         if (
@@ -75,6 +76,12 @@ class GeometryEvent:
             raise ValueError("A shot's court side must be -1, 0 or +1")
         if self.status is not None and self.status not in EVENT_STATUS:
             raise ValueError(f"Invalid event status: {self.status}")
+        if self.excluded_reason is not None and (
+            not self.excluded_reason.strip() or self.in_point
+        ):
+            raise ValueError(
+                "An excluded event requires a reason and cannot be in point"
+            )
         if self.frame_uncertainty is not None and (
             not isfinite(self.frame_uncertainty) or self.frame_uncertainty < 0
         ):
@@ -216,6 +223,7 @@ class Landing:
     line_margin_m: float | None = None
     result: str = "not_applicable"
     missing_reason: str | None = None
+    depth_bin: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -243,6 +251,7 @@ class GeometryResult:
     arcs: tuple[FlightArc, ...]
     shots: tuple[ShotGeometry, ...]
     crossings: tuple[NetPlaneCrossing, ...]
+    profile: CourtNetProfile
 
 
 def analysis_xyz(xyz: XYZ, hitter_side: int) -> XYZ | None:
@@ -323,6 +332,8 @@ def _arcs(
                     first + int(gaps[0]) - 1,
                     "event_coverage_gap",
                 )
+            if boundary_reason is None and end is not None and end.excluded_reason:
+                boundary_reason = "excluded_contact"
 
         valid = track.valid[first : last + 1]
         arcs.append(
@@ -492,7 +503,9 @@ def _crossings(
                     is_primary=primary,
                     fractional_frame=frame,
                     time_s=frame / track.fps,
-                    time_to_net_s=(frame - shot.center) / track.fps,
+                    time_to_net_s=(frame - shot.center) / track.fps
+                    if primary
+                    else None,
                     x_m=x,
                     y_m=y_pos,
                     z_center_m=z,
@@ -544,7 +557,7 @@ def _line_call(
     far: float,
     radius: float,
 ) -> tuple[float, str]:
-    wide, long = min(x - left, right - x), far - y
+    wide, long = min(x - left, right - x), min(y, far - y)
     if wide >= 0 and long >= 0:
         return min(wide, long) + radius, "in"
     margin = radius - hypot(min(0.0, wide), min(0.0, long))
@@ -621,6 +634,36 @@ def _height_bin(z: float) -> str | None:
     return f"{lo:.1f}-{lo + HEIGHT_BIN_WIDTH_M:.1f}m"
 
 
+def _lane_bin(x: float, half_width: float) -> str:
+    if x < -half_width / 3:
+        return "left"
+    return "right" if x > half_width / 3 else "center"
+
+
+def _depth_bin(depth: float) -> str:
+    return DEPTH_BINS[sum(depth >= edge for edge in DEPTH_BIN_EDGES_M)]
+
+
+def _resolve_landing_bin(
+    candidates: set[str],
+    *,
+    window_complete: bool,
+    all_in_opponent_half: bool,
+) -> tuple[str | None, dict[str, Any]]:
+    if not all_in_opponent_half:
+        reason = "opponent_half_ambiguous"
+    elif len(candidates) > 1:
+        reason = "boundary_spanned"
+    elif not window_complete or not candidates:
+        reason = "timing_window_incomplete"
+    else:
+        return next(iter(candidates)), {
+            "candidates": sorted(candidates),
+            "held_reason": None,
+        }
+    return None, {"candidates": sorted(candidates), "held_reason": reason}
+
+
 def _landing(
     profile: CourtNetProfile,
     width: float,
@@ -645,12 +688,24 @@ def _landing(
     if y <= 0:
         return Landing(missing_reason="self_court_bounce"), None, {}
     half = width / 2
-    lane = "left" if x < -half / 3 else "right" if x > half / 3 else "center"
     landing_positions = [
         p
         for xyz in landing_window
         if (p := analysis_xyz(xyz, shot.court_side)) is not None
     ]
+    opponent_positions = [point for point in landing_positions if point[1] > 0]
+    all_in_opponent_half = len(opponent_positions) == len(landing_positions)
+    lane, lane_evidence = _resolve_landing_bin(
+        {_lane_bin(px, half) for px, _, _ in opponent_positions},
+        window_complete=window_complete,
+        all_in_opponent_half=all_in_opponent_half,
+    )
+    depth_bin, depth_evidence = _resolve_landing_bin(
+        {_depth_bin(profile.half_length - py) for _, py, _ in opponent_positions},
+        window_complete=window_complete,
+        all_in_opponent_half=all_in_opponent_half,
+    )
+    bin_evidence = {"landing_lane": lane_evidence, "landing_depth": depth_evidence}
     landing_x_side = (
         _one_x_side([p[0] for p in landing_positions], profile.ball_radius_m)
         if window_complete
@@ -666,10 +721,19 @@ def _landing(
     if serve:
         if not contact_x_side:
             return (
-                Landing(bounce, position, depth, lane, course, result="uncertain"),
+                Landing(
+                    bounce,
+                    position,
+                    depth,
+                    lane,
+                    course,
+                    result="uncertain",
+                    depth_bin=depth_bin,
+                ),
                 normalized,
                 {
                     "landing_context_reason": "service_box_side_unknown",
+                    "landing_bin_evidence": bin_evidence,
                 },
             )
         half_singles = profile.singles_width_m / 2
@@ -688,12 +752,20 @@ def _landing(
     )
     result = nominal if window_complete and candidates == [nominal] else "uncertain"
     return (
-        Landing(bounce, position, depth, lane, course, margin, result),
+        Landing(
+            bounce, position, depth, lane, course, margin, result, depth_bin=depth_bin
+        ),
         normalized,
         {
             "line_call_nominal": nominal,
             "line_call_candidates": candidates,
-            "line_call_bounds_m": {"left": left, "right": right, "far": far},
+            "line_call_bounds_m": {
+                "left": left,
+                "right": right,
+                "near": 0.0,
+                "far": far,
+            },
+            "landing_bin_evidence": bin_evidence,
         },
     )
 
@@ -791,7 +863,7 @@ def _shot(
         "landing_region": "service_box"
         if shot.subtype in SERVE_SUBTYPES
         else "opponent_half",
-        "line_rule": "projected_ball_disk_overlaps_outer_line_edges",
+        "line_rule": "projected_ball_disk_overlaps_landing_region",
     }
     width = (
         profile.singles_width_m
@@ -832,10 +904,8 @@ def _shot(
         height_id = _height_bin(contact.xyz[2])
         if height_id is not None:
             bins["contact_height"] = height_id
-    if landing.depth_m is not None:
-        bins["landing_depth"] = DEPTH_BINS[
-            sum(landing.depth_m >= edge for edge in DEPTH_BIN_EDGES_M)
-        ]
+    if landing.depth_bin is not None:
+        bins["landing_depth"] = landing.depth_bin
     if landing.lane is not None:
         bins["landing_lane"] = landing.lane
     if landing.course is not None:
@@ -889,4 +959,4 @@ def extract_geometry(
         for index, event in enumerate(events)
         if event.kind == "shot" and event.in_point
     )
-    return GeometryResult(arcs, shots, _crossings(track, arcs, profile))
+    return GeometryResult(arcs, shots, _crossings(track, arcs, profile), profile)

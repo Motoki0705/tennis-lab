@@ -3,6 +3,7 @@ from __future__ import annotations
 import pytest
 
 from src.tennis_scene.analytics.profiles import resolve_profile
+from src.utils.schema.court import HALF_DOUBLES_WIDTH, net_height_at_x
 
 
 def test_meiji_and_itf_use_distinct_tape_geometry_and_ball_radii() -> None:
@@ -17,11 +18,11 @@ def test_meiji_and_itf_use_distinct_tape_geometry_and_ball_radii() -> None:
     )
     assert (soft.ball_radius_m, hard.ball_radius_m) == (0.033, 0.0335)
     assert [soft.net_height_at_x(x) for x in (-4.9, 0, 2.5)] == [1.07] * 3
-    assert hard.net_height_at_x(0.0) == 0.914
-    assert hard.net_height_at_x(-3.1995) == pytest.approx(0.953)
-    assert hard.net_height_at_x(6.399) == pytest.approx(1.07)
-    assert hard.crossing_in_net_span(-6.399)
-    assert not hard.crossing_in_net_span(6.400)
+    for x in (-6.399, -HALF_DOUBLES_WIDTH, 0.0, 3.1995, HALF_DOUBLES_WIDTH, 7.0):
+        assert hard.net_height_at_x(x) == net_height_at_x(x)
+        assert hard.crossing_in_net_span(x) == (abs(x) <= HALF_DOUBLES_WIDTH)
+    assert hard.net_height_at_x(3.1995) == pytest.approx(1.005, abs=1e-4)
+    assert soft.crossing_in_net_span(6.399)
 
 
 def test_measured_net_interpolates_asymmetric_knots_and_retains_provenance() -> None:

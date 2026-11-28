@@ -21,7 +21,6 @@ from src.tennis_scene.analytics.geometry import (
     GeometryEvent,
     GeometryResult,
 )
-from src.tennis_scene.analytics.profiles import CourtNetProfile
 from src.tennis_scene.ball_event_labels import (
     EVENT_CLASSES_V4,
     EVENT_STATUS,
@@ -107,7 +106,8 @@ def _pinned_clip(root: Path, row: dict[str, Any], split: str) -> V4GeometryClip:
     arrays: dict[str, Any] = unpack_value(
         {name: payload[name] for name in columns}, component_dir, descriptor["arrays"]
     )
-    events = payload["event_evidence"]["events"]
+    evidence = payload["event_evidence"]
+    events, excluded = evidence["events"], evidence["excluded_events"]
     for name, dtype in columns.items():
         value = arrays[name]
         shape: tuple[int, ...]
@@ -126,6 +126,7 @@ def _pinned_clip(root: Path, row: dict[str, Any], split: str) -> V4GeometryClip:
 
     if (
         len(events) != annotation["events"]
+        or len(excluded) != annotation["excluded_events"]
         or int(arrays["ball_3d_valid"].sum()) != row["ball"]["valid_3d_frames"]
     ):
         raise ValueError(
@@ -160,6 +161,17 @@ def _pinned_clip(root: Path, row: dict[str, Any], split: str) -> V4GeometryClip:
                 in_point=event["old_in_point"],
             )
         )
+    decoded.extend(
+        GeometryEvent(
+            event["source_event_id"],
+            event["frame"],
+            event["old_kind"],
+            frame_uncertainty=None,
+            in_point=False,
+            excluded_reason=event["reason"],
+        )
+        for event in excluded
+    )
     return V4GeometryClip(
         clip_id,
         split,
@@ -172,7 +184,7 @@ def _pinned_clip(root: Path, row: dict[str, Any], split: str) -> V4GeometryClip:
             float(row["fps"]),
             arrays["ball_event_coverage"],
         ),
-        tuple(decoded),
+        tuple(sorted(decoded, key=lambda event: (event.frame, event.source_event_id))),
     )
 
 
@@ -255,6 +267,7 @@ def _availability(results: Sequence[GeometryResult]) -> dict[str, Any]:
             "time_to_net",
             "first_bounce",
             "landing_depth",
+            "landing_depth_bin",
             "landing_lane",
             "landing_course",
             "line_margin",
@@ -350,6 +363,7 @@ def _availability(results: Sequence[GeometryResult]) -> dict[str, Any]:
             for field, value in (
                 ("first_bounce", landing.position),
                 ("landing_depth", landing.depth_m),
+                ("landing_depth_bin", landing.depth_bin),
                 ("landing_lane", landing.lane),
                 ("landing_course", landing.course),
                 ("line_margin", landing.line_margin_m),
@@ -361,7 +375,18 @@ def _availability(results: Sequence[GeometryResult]) -> dict[str, Any]:
                 ),
             ):
                 if value is None:
-                    reasons[field][landing_reason] += 1
+                    bin_field = {
+                        "landing_depth_bin": "landing_depth",
+                        "landing_lane": "landing_lane",
+                    }.get(field)
+                    bin_reason = (
+                        shot.quality.get("landing_bin_evidence", {})
+                        .get(bin_field, {})
+                        .get("held_reason")
+                        if bin_field is not None
+                        else None
+                    )
+                    reasons[field][bin_reason or landing_reason] += 1
 
     available = {}
     for field, missing in reasons.items():
@@ -390,7 +415,6 @@ def audit_geometry(
     clips: Sequence[V4GeometryClip],
     results: Mapping[str, GeometryResult],
     *,
-    profile: CourtNetProfile,
     manifest_sha256: str,
     ingest_run_id: int | None,
 ) -> dict[str, Any]:
@@ -408,6 +432,10 @@ def audit_geometry(
     bins = {
         split: _bin_counts(by_split[split], height_ids) for split in ("train", "val")
     }
+    profiles = {
+        result.profile.profile_key: result.profile.to_record()
+        for result in results.values()
+    }
     return {
         "benchmark_id": "meiji_4cam/multiview-v4",
         "manifest_sha256": manifest_sha256,
@@ -422,7 +450,8 @@ def audit_geometry(
             "landing_lane_edges": [-1 / 3, 1 / 3],
             "landing_lane_edge_unit": "fraction_of_half_court_width",
         },
-        "profile": profile.to_record(),
+        "profile": next(iter(profiles.values())) if len(profiles) == 1 else None,
+        "profiles": profiles,
         "overall": _availability(list(results.values())),
         "splits": {split: _availability(group) for split, group in by_split.items()},
         "train_val_bins": bins,
@@ -432,6 +461,10 @@ def audit_geometry(
                 "component_sha256": clip.component_sha256,
                 "annotation_sha256": clip.annotation_sha256,
                 "valid_ball_frames": int(clip.trajectory.valid.sum()),
+                "profile_key": results[clip.clip_id].profile.profile_key,
+                "excluded_contact_boundaries": sum(
+                    e.excluded_reason is not None for e in clip.events
+                ),
                 "net_contact_subtypes": dict(
                     Counter(
                         e.subtype

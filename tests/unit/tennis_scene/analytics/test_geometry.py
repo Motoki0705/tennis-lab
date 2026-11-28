@@ -5,8 +5,10 @@ from math import atan2, hypot
 
 import numpy as np
 import pytest
+import torch
 from numpy.typing import NDArray
 
+from src.tasks.blcs.generate_dataset.api_server.metrics import net_clearance_m
 from src.tennis_scene.analytics.geometry import (
     BallTrajectory,
     GeometryEvent,
@@ -229,12 +231,42 @@ def test_all_crossings_include_exact_plane_run_and_return_but_skip_touches() -> 
     assert [c.fractional_frame for c in rows] == pytest.approx([3, 7.75, 9 + 1 / 3])
     assert [c.direction_y for c in rows] == [1, -1, 1]
     assert [c.is_primary for c in rows] == [True, False, False]
+    assert [c.time_s for c in rows] == pytest.approx(
+        [3 / 20, 7.75 / 20, (9 + 1 / 3) / 20]
+    )
+    assert rows[0].time_to_net_s == pytest.approx(3 / 20)
+    assert all(c.time_to_net_s is None for c in rows[1:])
     assert rows[0].used_frames == (2, 3, 4, 5)
     assert rows[1].used_frames == (7, 8)
     assert rows[1].source_kind == "estimated"
     assert all(c.crossing_in_net_span is False for c in rows)
     assert result.shots[0].landing.position is not None
     assert result.shots[0].landing.position.source_kind == "estimated"
+
+
+def test_excluded_return_after_bounce_ends_serve_crossing_attribution() -> None:
+    rejected = GeometryEvent(
+        "return",
+        8,
+        "shot",
+        frame_uncertainty=None,
+        in_point=False,
+        excluded_reason="dead-ball return after fault",
+    )
+    result = _axis(
+        [-5, -4, -2, 1, 3, 4, 5, 6, 5, 2, -1, -4, -6, -7],
+        [_shot(0, "serve_overhead"), _bounce(6), rejected],
+    )
+    (serve,) = result.shots
+    assert serve.landing.position is not None
+    (crossing,) = (row for row in result.crossings if row.status == "crossed")
+    assert crossing.used_frames == (2, 3)
+    assert result.arcs[2].end_event == rejected
+    assert result.arcs[2].shot_boundary_reason == "excluded_contact"
+    assert result.arcs[3].start_event == rejected
+    assert result.arcs[3].shot_event is None
+    assert result.arcs[3].sample_runs == ((9, 13),)
+    assert result.crossings[-1].status == "not_applicable"
 
 
 @pytest.mark.parametrize("subtype", ["net_in", "service_let"])
@@ -309,6 +341,8 @@ def test_rotating_both_horizontal_axes_preserves_heading_lane_course_and_depth()
         ),
         ("doubles", "serve_underhand", -1.0, 7.0, "out_long", -0.567),
         ("doubles", "serve_underhand", 1.0, 5.0, "out_wide", -0.967),
+        ("doubles", "groundstroke_forehand", -1.276, 1.831, "in", 1.864),
+        ("doubles", "serve_underhand", -1.0, 0.2, "in", 0.233),
     ],
 )
 def test_landing_uses_match_lines_service_diagonal_and_ball_disk(
@@ -346,6 +380,73 @@ def test_bounce_crossing_a_service_line_within_uncertainty_withholds_call() -> N
     assert shot.landing.result == "uncertain"
     assert shot.landing.line_margin_m == pytest.approx(0.023)
     assert shot.quality["line_call_candidates"] == ["in", "out_long"]
+
+
+@pytest.mark.parametrize(
+    ("samples", "held_axis", "possible", "other_axis", "resolved_bin"),
+    [
+        (
+            [(-1.798, 8.0), (-1.844, 8.0), (-1.937, 8.0)],
+            "landing_lane",
+            ["center", "left"],
+            "landing_depth",
+            "2-4m",
+        ),
+        (
+            [(2.0, 9.869), (2.0, 10.1), (2.0, 10.225)],
+            "landing_depth",
+            ["0-2m", "2-4m"],
+            "landing_lane",
+            "right",
+        ),
+    ],
+)
+def test_bounce_window_holds_only_the_axis_with_a_spanned_bin_boundary(
+    samples: list[tuple[float, float]],
+    held_axis: str,
+    possible: list[str],
+    other_axis: str,
+    resolved_bin: str,
+) -> None:
+    track = np.tile(np.array([2.0, -5.0, 1.0]), (13, 1))
+    track[9:12] = [(x, y, 0.033) for x, y in samples]
+    result = extract_geometry(
+        BallTrajectory(track, np.ones(len(track), dtype=bool), 30.0),
+        [_shot(1), _bounce(10, frame_uncertainty=1)],
+        profile=SOFT_TENNIS_STANDARD,
+        match_format="doubles",
+    )
+    shot = result.shots[0]
+    assert shot.landing.position is not None
+    assert shot.landing.position.xyz == (*samples[1], 0.033)
+    assert shot.landing.depth_m == pytest.approx(11.885 - samples[1][1])
+    assert held_axis not in shot.bins
+    assert shot.bins[other_axis] == resolved_bin
+    assert shot.quality["landing_bin_evidence"][held_axis] == {
+        "candidates": possible,
+        "held_reason": "boundary_spanned",
+    }
+    if held_axis == "landing_lane":
+        assert shot.landing.lane is None
+    else:
+        assert shot.landing.lane == "right"
+
+
+def test_incomplete_bounce_window_keeps_observation_and_holds_landing_bins() -> None:
+    result = _axis(
+        [-8, -7, -6, -4, 2, 3, 4, 5, 6],
+        [_shot(1), _bounce(7, frame_uncertainty=1)],
+        invalid=[8],
+    )
+    shot = result.shots[0]
+    assert shot.landing.position is not None
+    assert shot.landing.depth_m == pytest.approx(6.885)
+    for field in ("landing_lane", "landing_depth"):
+        assert field not in shot.bins
+        assert (
+            shot.quality["landing_bin_evidence"][field]["held_reason"]
+            == "timing_window_incomplete"
+        )
 
 
 def test_self_court_bounce_preserves_evidence_and_withholds_landing() -> None:
@@ -386,7 +487,7 @@ def test_a_new_point_cannot_supply_a_prior_shots_bounce_or_crossing() -> None:
     assert result.arcs[1].shot_end_frame == 4
 
 
-def test_itf_clearance_uses_point_on_profile_and_its_ball_radius() -> None:
+def test_itf_clearance_matches_existing_blcs_simulator_and_its_ball_radius() -> None:
     track = np.tile(np.array([3.1995, -1.0, 1.2]), (8, 1))
     track[4:, 1] = 1.0
     result = extract_geometry(
@@ -396,5 +497,9 @@ def test_itf_clearance_uses_point_on_profile_and_its_ball_radius() -> None:
         match_format="singles",
     )
     (crossing,) = (row for row in result.crossings if row.is_primary)
-    assert crossing.net_clearance_center_m == pytest.approx(0.247)
-    assert crossing.net_clearance_bottom_m == pytest.approx(0.2135)
+    reference = net_clearance_m(torch.from_numpy(track))
+    assert reference is not None
+    assert crossing.net_clearance_center_m == pytest.approx(reference, abs=1e-12)
+    assert crossing.net_clearance_bottom_m == pytest.approx(
+        reference - 0.0335, abs=1e-12
+    )
