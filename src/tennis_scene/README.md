@@ -313,6 +313,7 @@ exportと描画に使う `scene_assembly`・カメラの版を照合します。
 
 ## 他の入口
 
+- PostgreSQL の分析用スキーマ、指標辞書、照会・エクスポート CLI は [analytics](analytics/README.md) を参照してください。
 - [multiview_pose](multiview_pose/README.md): 全人物のDINO・ViTPoseと固定した動画共有sideから、フレーム別3D骨格と排他的な観測割当を作るCPU入口。
 - [player_view](visualization/player_view/README.ja.md): 元動画なしで保存済みv2の人物・球・時刻・mask・頭部姿勢用資産を共通bundleへ書き出す。
 - [evaluation](evaluation/README.md): 固定入力でのball 3D CPU replay・LOVO採点・比較可視化。

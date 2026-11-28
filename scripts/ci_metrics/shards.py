@@ -396,6 +396,7 @@ def verify_shards(
     needs: dict[str, Any],
     lane_plan: dict[str, Any] | None = None,
     source_root: Path | None = None,
+    require_postgres: bool = False,
 ) -> dict[str, Any]:
     """Require successful jobs and observations up to the aggregate job attempt."""
     result = inspect_shards(
@@ -418,6 +419,8 @@ def verify_shards(
             result["issues"].append(
                 "required system dependency coverage is unavailable"
             )
+    if require_postgres or "postgres" in needs:
+        expected_jobs.add("postgres")
     if set(needs) != expected_jobs or any(
         row.get("result") != "success" for row in needs.values()
     ):
@@ -509,6 +512,7 @@ def main() -> int:
     parser.add_argument("--count", required=True, type=int)
     parser.add_argument("--lane-plan", required=True, type=Path)
     parser.add_argument("--artifact-manifest", required=True, type=Path)
+    parser.add_argument("--require-postgres", action="store_true")
     parser.add_argument(
         "--timing-profile",
         type=Path,
@@ -532,6 +536,7 @@ def main() -> int:
         needs=json.loads(os.environ["CI_JOB_RESULTS"]),
         lane_plan=lane_plan,
         source_root=Path.cwd(),
+        require_postgres=args.require_postgres,
     )
     try:
         manifest = read_manifest(

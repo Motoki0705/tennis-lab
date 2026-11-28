@@ -3,47 +3,39 @@
 from __future__ import annotations
 
 import re
-from typing import TYPE_CHECKING, Any, Literal
+from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from numpy.typing import NDArray
 
 from src.tasks.ball_refiner_3d.events import EVENT_CLASSES
+from src.tennis_scene.ball_event_labels import (
+    EVENT_CLASSES_V4 as EVENT_CLASSES_V4,
+)
+from src.tennis_scene.ball_event_labels import (
+    EVENT_SOURCES as EVENT_SOURCES,
+)
+from src.tennis_scene.ball_event_labels import (
+    EVENT_STATUS as EVENT_STATUS,
+)
+from src.tennis_scene.ball_event_labels import (
+    EVENT_SUBTYPES_BY_KIND_V4 as EVENT_SUBTYPES_BY_KIND_V4,
+)
+from src.tennis_scene.ball_event_labels import (
+    EVENT_SUBTYPES_V4 as EVENT_SUBTYPES_V4,
+)
+from src.tennis_scene.ball_event_labels import (
+    EventSource as EventSource,
+)
 
 if TYPE_CHECKING:
     from src.tennis_scene.schema import SceneResult
 
-EventSource = Literal["annotation", "rule", "refiner"]
-EVENT_SOURCES = ("annotation", "rule", "refiner")
-EVENT_STATUS = ("certain", "probable", "uncertain")
 EVENT_SUBTYPES = ("serve", "groundstroke", "volley", "smash", "let_cord", "net_fault", "other", None)
 EVENT_SUBTYPES_BY_KIND = (
     (0, 1, 2, 3, 6, 7),  # shot
     (7,),  # bounce
     (4, 5, 6, 7),  # net
-)
-
-EVENT_CLASSES_V4 = ("shot", "bounce", "net", "unknown")
-EVENT_SUBTYPES_V4 = (
-    "serve_overhead",
-    "serve_underhand",
-    "groundstroke_forehand",
-    "groundstroke_backhand",
-    "volley_forehand",
-    "volley_backhand",
-    "volley_center",
-    "smash",
-    "service_let",
-    "net_in",
-    "net_fault",
-    "bounce",
-    "unknown",
-)
-EVENT_SUBTYPES_BY_KIND_V4 = (
-    (0, 1, 2, 3, 4, 5, 6, 7),  # shot
-    (11,),  # bounce
-    (8, 9, 10),  # net
-    (12,),  # unknown
 )
 
 _COMMON = {

@@ -34,7 +34,7 @@ NHT_TINYCUDANN_REQUIREMENT = (
 DEFAULT_BASE = "origin/main"
 DEFAULT_LINT_PATHS = ("src", "tests", ".spin")
 DEFAULT_TYPECHECK_PATHS = ("src", "tests", ".spin/cmds.py")
-CI_MARKER_EXPRESSION = "not local_data and not cuda"
+CI_MARKER_EXPRESSION = "not local_data and not cuda and not postgres"
 PYTHON_SUFFIXES = frozenset({".py", ".pyi"})
 
 
@@ -557,7 +557,7 @@ def typecheck(all_files: bool, base: str, paths: tuple[Path, ...]) -> None:
     "--all",
     "include_environmental",
     is_flag=True,
-    help="Include tests marked local_data or cuda.",
+    help="Include tests marked local_data, cuda or postgres.",
 )
 @click.option("--coverage", is_flag=True, help="Collect coverage for src/.")
 @click.option(
