@@ -15,12 +15,9 @@ from src.tennis_scene.ball_events.rules import (
     analyze_ball_events,
     detect_ball_events,
 )
-from src.utils.schema.player import COCO_KP_IDX
 
 if TYPE_CHECKING:
     from src.tennis_scene.schema import SceneResult
-
-_WRISTS = [COCO_KP_IDX["left_wrist"], COCO_KP_IDX["right_wrist"]]
 
 
 def detect_scene_events(
@@ -47,19 +44,12 @@ def analyze_scene_events(
         )
     if scene.ball_3d.shape != (scene.num_frames, 3):
         raise ValueError("Ball positions disagree with the SceneResult frame count")
-    players = PlayerEvidence(
-        positions=np.concatenate(
-            (
-                scene.player_position[:, :, None, :],
-                scene.player_kp_3d[:, :, _WRISTS, :],
-            ),
-            axis=2,
-        ),
-        valid=np.concatenate(
-            (scene.player_valid[:, :, None], scene.player_kp_3d_vis[:, :, _WRISTS]),
-            axis=2,
-        ),
-        track_ids=scene.player_track_ids,
+    players = PlayerEvidence.from_pose(
+        scene.player_position,
+        scene.player_valid,
+        scene.player_kp_3d,
+        scene.player_kp_3d_vis,
+        scene.player_track_ids,
     )
     events, coverage = analyze_ball_events(
         scene.ball_3d,

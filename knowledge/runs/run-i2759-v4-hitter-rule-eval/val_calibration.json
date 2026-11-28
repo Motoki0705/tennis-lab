@@ -1,0 +1,282 @@
+{
+  "split": "val",
+  "clips": 11,
+  "shots": 60,
+  "manifest_sha256": "8e012944b1407d696a1ab1d325ae3c6b60cf26f071752510ea2fc688b031893c",
+  "ground_truth_sha256": "036e3bd6b57b852a09d87a0631b7591d5978553d3cae9ee1f5de558df5e4af1f",
+  "selection": "fewest wrong, then most correct, then closest to original wrist reach, then larger margin",
+  "selected": {
+    "thresholds": {
+      "wrist_reach_m": 1.3,
+      "root_reach_m": 1.85,
+      "min_margin": 0.18,
+      "net_zone_m": 0.7,
+      "side_deadband_m": 0.15,
+      "max_frame_uncertainty_s": 0.1,
+      "search_radius_s": 0.035,
+      "motion_window_s": 0.05
+    },
+    "rule_version": "court-hitter-v1.217835f4f9d0",
+    "resolved": 59,
+    "correct": 59,
+    "wrong": 0
+  },
+  "grid": [
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.0,
+        "root_reach_m": 1.85,
+        "min_margin": 0.06,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.7e521b8e0ba7",
+      "resolved": 55,
+      "correct": 55,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.0,
+        "root_reach_m": 1.85,
+        "min_margin": 0.1,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.813f94638099",
+      "resolved": 55,
+      "correct": 55,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.0,
+        "root_reach_m": 1.85,
+        "min_margin": 0.14,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.a8932f24ee14",
+      "resolved": 55,
+      "correct": 55,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.0,
+        "root_reach_m": 1.85,
+        "min_margin": 0.18,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.e80965aed452",
+      "resolved": 55,
+      "correct": 55,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.15,
+        "root_reach_m": 1.85,
+        "min_margin": 0.06,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.62b957724e98",
+      "resolved": 56,
+      "correct": 56,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.15,
+        "root_reach_m": 1.85,
+        "min_margin": 0.1,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.365a8d632157",
+      "resolved": 56,
+      "correct": 56,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.15,
+        "root_reach_m": 1.85,
+        "min_margin": 0.14,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.520bcabb6cb1",
+      "resolved": 56,
+      "correct": 56,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.15,
+        "root_reach_m": 1.85,
+        "min_margin": 0.18,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.6988971017b3",
+      "resolved": 56,
+      "correct": 56,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.3,
+        "root_reach_m": 1.85,
+        "min_margin": 0.06,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.de4a9d5fb511",
+      "resolved": 59,
+      "correct": 59,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.3,
+        "root_reach_m": 1.85,
+        "min_margin": 0.1,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.73ca9fee5006",
+      "resolved": 59,
+      "correct": 59,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.3,
+        "root_reach_m": 1.85,
+        "min_margin": 0.14,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.2a8ab9a3e6cb",
+      "resolved": 59,
+      "correct": 59,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.3,
+        "root_reach_m": 1.85,
+        "min_margin": 0.18,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.217835f4f9d0",
+      "resolved": 59,
+      "correct": 59,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.45,
+        "root_reach_m": 1.85,
+        "min_margin": 0.06,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.e53f7fc43d15",
+      "resolved": 59,
+      "correct": 59,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.45,
+        "root_reach_m": 1.85,
+        "min_margin": 0.1,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.3da29e01ecad",
+      "resolved": 59,
+      "correct": 59,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.45,
+        "root_reach_m": 1.85,
+        "min_margin": 0.14,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.c8ef4c58d332",
+      "resolved": 59,
+      "correct": 59,
+      "wrong": 0
+    },
+    {
+      "thresholds": {
+        "wrist_reach_m": 1.45,
+        "root_reach_m": 1.85,
+        "min_margin": 0.18,
+        "net_zone_m": 0.7,
+        "side_deadband_m": 0.15,
+        "max_frame_uncertainty_s": 0.1,
+        "search_radius_s": 0.035,
+        "motion_window_s": 0.05
+      },
+      "rule_version": "court-hitter-v1.99a41ddd7c32",
+      "resolved": 59,
+      "correct": 59,
+      "wrong": 0
+    }
+  ]
+}

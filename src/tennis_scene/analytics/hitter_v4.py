@@ -3,8 +3,10 @@
 from __future__ import annotations
 
 import json
+import re
 from dataclasses import dataclass
 from hashlib import file_digest, sha256
+from math import isfinite
 from pathlib import Path
 from typing import Any
 
@@ -13,6 +15,8 @@ import numpy as np
 from src.tennis_scene.ball_event_labels import EVENT_CLASSES_V4, EVENT_SUBTYPES_V4
 
 SPLITS = ("train", "val", "test")
+_CLIP_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.-]*/[A-Za-z0-9][A-Za-z0-9_.-]*")
+_EVENT_ID = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.:,-]*")
 
 
 def file_sha256(path: Path) -> str:
@@ -82,10 +86,14 @@ class V4Clip:
             archive[f"ball_event_{field}"]
             for field in ("frame", "kind", "subtype", "frame_uncertainty", "side")
         )
+        dtypes = (np.int32, np.uint8, np.uint8, np.uint8, np.int8)
         if (int(archive["num_frames"]), float(archive["fps"])) != (
             self.frames,
             self.fps,
-        ) or any(column.shape != (len(events),) for column in columns):
+        ) or any(
+            column.shape != (len(events),) or column.dtype != dtype
+            for column, dtype in zip(columns, dtypes, strict=True)
+        ):
             raise ValueError(f"{self.clip_id}: event evidence and archive disagree")
         shots = []
         seen: set[str] = set()
@@ -96,7 +104,7 @@ class V4Clip:
             source_id = event["source_event_id"]
             if (
                 not isinstance(source_id, str)
-                or not source_id
+                or _EVENT_ID.fullmatch(source_id) is None
                 or source_id in seen
                 or not 0 <= frame < self.frames
                 or uncertainty < 0
@@ -163,8 +171,17 @@ class V4Benchmark:
         clips = {}
         for row in manifest["clips"]:
             clip_id = row["clip_id"]
-            if clip_id in clips or clip_id not in assignments:
-                raise ValueError(f"Duplicate or unassigned V4 clip: {clip_id}")
+            if (
+                not isinstance(clip_id, str)
+                or _CLIP_ID.fullmatch(clip_id) is None
+                or clip_id in clips
+                or clip_id not in assignments
+                or type(row["frames"]) is not int
+                or row["frames"] < 1
+                or not isfinite(row["fps"])
+                or row["fps"] <= 0
+            ):
+                raise ValueError(f"Invalid V4 clip record: {clip_id!r}")
             scene_dir = FileRef.from_manifest(root, row["scene"]).path.parent
             clip = V4Clip(
                 clip_id,
