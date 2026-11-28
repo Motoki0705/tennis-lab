@@ -1,6 +1,6 @@
 # Tennis Lab Knowledge Summary
 
-更新日: 2026-11-26
+更新日: 2026-11-28
 
 研究トピックごとの**現在の判断**（採用中の構成とその根拠、未解決の課題、次の実験）をまとめた入口です。数値・条件・考察の正本は各[ノード](nodes/)、再現手順は[runs](runs/)にあります。2026-11-05までの日付順の記録は、[凍結アーカイブ](history/summary-2026-11-05.md)に原文のまま残しています。
 
@@ -30,6 +30,7 @@
 - **人物モデルの共通速度基準**　固定6 clipで現行DINO、ViTPose-Hのflipあり・なし、HMR2特徴＋GVHMRのPT16・TRT16を再計測し、全22条件で計時が完了しました。parityは未判定です。検出・姿勢の比較図には疑似GTによる精度と実測速度を使います。PT32の暫定速度と初回parityは初回記録を参照してください。 [再計測の基準値](nodes/tennis_scene/000086-run-person-model-speed-low-precision.md) · [初回記録](nodes/tennis_scene/000085-run-person-model-speed-baseline.md)
 - **身体復元の採否**　共通ハーネスの実測で速度優位を確認できなかったため、FastHMRへの置き換えを見送りました。標準recipeはGVHMRを使い、`recipe=fasthmr` で別経路を選べます。 [速度と採否の記録](nodes/tennis_scene/000095-run-fasthmr-camerahmr-pt16-speed.md)
 - **2D姿勢の置換候補**　固定疑似BBoxではRTMPose-X TRT16が、ViTPose-H flipありTRT16に対しbatch 1のwall P50を28.7%、P95を10.1%、NVMLピークを60.2%削減し、平均OKSは0.95ポイント低下しました。実DINO BBoxと3D再構成で下流品質を確認する優先候補です。採用にはconfidenceの較正と重み・engineの利用条件の確認が残ります。 [固定疑似GTと実測の比較](nodes/tennis_scene/000091-run-meiji-topdown-pose-comparison.md)
+- **明示選択の人物検出・2D姿勢checkpoint**　PR #2681（#2492）で `src/tennis_scene/configs/pipeline.yaml` に追加された `people_models.rfdetr_checkpoint`（`rfdetr-l`）と `people_models.rtmpose_checkpoint`（`rtmpose-x`）を [deployments.yaml](registry/deployments.yaml) へ登録しました。いずれも明示指定時のみ利用する公開重みであり、既定の `dino`・`vitpose-h` は変更していません。 [RF-DETR-L比較](nodes/player_detection/000009-run-meiji-rfdetr-large-accuracy.md) · [2D姿勢比較](nodes/tennis_scene/000091-run-meiji-topdown-pose-comparison.md)
 
 ## Court Detection
 
