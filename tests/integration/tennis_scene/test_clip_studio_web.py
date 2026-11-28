@@ -1,13 +1,17 @@
 """Real HTTP range delivery, exact-frame seek and export through the browser API."""
 
+import asyncio
 from pathlib import Path
 from time import monotonic, sleep
+from typing import IO
 
 import cv2
 import numpy as np
 import pytest
+from anyio import AsyncFile
 from fastapi.testclient import TestClient
 from omegaconf import DictConfig, OmegaConf
+from starlette.types import Message
 
 from src.tennis_scene.clip_studio.project import ClipSource, ClipStudioProject
 from src.tennis_scene.clip_studio.web.app import create_app
@@ -74,6 +78,72 @@ def test_ranged_media_and_exact_source_frame(web_client):
     assert client.get("/api/frame/0?time=-1&revision=0").status_code == 204
     assert client.get("/api/frame/0?time=nan&revision=0").status_code == 422
     assert client.get("/api/media/99").status_code == 404
+
+
+def test_media_stops_reading_and_closes_file_after_disconnect(web_client, monkeypatch):
+    client, runtime = web_client
+    file_size = 1024 * 1024
+    with runtime.video_paths[0].open("r+b") as video:
+        video.truncate(file_size)
+
+    original_read = AsyncFile.read
+    bytes_read = 0
+    opened_file: IO[bytes] | None = None
+
+    async def track_read(file: AsyncFile[bytes], size: int = -1) -> bytes:
+        nonlocal bytes_read, opened_file
+        # Keep a reference to verify explicit file closure during response cleanup.
+        opened_file = file.wrapped
+        data: bytes = await original_read(file, size)
+        bytes_read += len(data)
+        return data
+
+    monkeypatch.setattr(AsyncFile, "read", track_read)
+
+    async def request_media() -> None:
+        body_started = asyncio.Event()
+        request_received = False
+        status = None
+
+        async def receive() -> Message:
+            nonlocal request_received
+            if not request_received:
+                request_received = True
+                return {"type": "http.request", "body": b"", "more_body": False}
+            await body_started.wait()
+            return {"type": "http.disconnect"}
+
+        async def send(message: Message) -> None:
+            nonlocal status
+            if message["type"] == "http.response.start":
+                status = message["status"]
+            elif message["body"]:
+                body_started.set()
+            # Uvicorn's send returns without raising after disconnect.
+
+        await asyncio.wait_for(
+            client.app(
+                {
+                    "type": "http",
+                    "asgi": {"version": "3.0", "spec_version": "2.3"},
+                    "http_version": "1.1",
+                    "method": "GET",
+                    "scheme": "http",
+                    "path": "/api/media/0",
+                    "query_string": b"",
+                    "headers": [(b"host", b"localhost"), (b"range", b"bytes=0-")],
+                },
+                receive,
+                send,
+            ),
+            timeout=5,
+        )
+        assert status == 206
+        assert body_started.is_set()
+
+    asyncio.run(request_media())
+    assert 0 < bytes_read < file_size // 2
+    assert opened_file is not None and opened_file.closed
 
 
 def test_review_time_mapping_matches_real_jpeg_frames_and_stale_requests(web_client):
