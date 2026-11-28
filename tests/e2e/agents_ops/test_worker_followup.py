@@ -71,7 +71,7 @@ for flag in args:
         name, _, value = flag.removeprefix("--property=").partition("=")
         assert value.startswith(":")
         (pre if name == "ExecStartPre" else post).append(
-            [arg.replace("%%", "%") for arg in shlex.split(value.removeprefix(":"))]
+            shlex.split(value.removeprefix(":"))
         )
 for argv in pre:
     subprocess.run(argv, cwd=working if working.exists() else None, check=True)

@@ -62,13 +62,13 @@ def _backend_config(
     if backend == "pytorch":
         if roots:
             raise SemanticConfigurationError(f"{model} engines require the TensorRT backend")
-        if model not in {"vitpose", "dino_detector"} and precision != "fp32":
+        if model not in {"vitpose", "dino_detector", "rfdetr_l", "rtmpose_x"} and precision != "fp32":
             raise SemanticConfigurationError(f"{model} PyTorch inference requires fp32")
         return BackendConfig(precision, ())
-    if precision != "fp16" or not roots or (model != "dino_detector" and len(roots) != 1):
+    if precision != "fp16" or not roots or (model not in {"dino_detector", "rfdetr_l"} and len(roots) != 1):
         raise SemanticConfigurationError(
             f"{model} TensorRT requires fp16 and explicit engine directories "
-            "(one per input shape for DINO, exactly one for other models)"
+            "(one per input shape for DINO, one per batch for RF-DETR-L, exactly one for other models)"
         )
     if device != "auto" and not device.startswith("cuda"):
         raise SemanticConfigurationError(f"{model} TensorRT requires CUDA")
@@ -255,6 +255,29 @@ _VITPOSE_RUNTIME_SCHEMA = StrictConfigSchema(
 )
 
 
+def _validate_alternative_runtime(value: Mapping[str, object], *, model: str) -> None:
+    _validate_batch_size(value, model=model)
+    if value["precision"] not in {"fp32", "fp16"}:
+        raise SemanticConfigurationError(f"{model} precision must be fp32 or fp16")
+
+
+_ALTERNATIVE_RUNTIME_FIELDS = {
+    "batch_size": ConfigField.of(int),
+    "precision": ConfigField.of(str),
+    **_BACKEND_FIELDS,
+}
+_RFDETR_RUNTIME_SCHEMA = StrictConfigSchema(
+    name="submodules.runtime.rfdetr_l",
+    fields={"confidence": ConfigField.of(float), **_ALTERNATIVE_RUNTIME_FIELDS},
+    semantic_checks=(lambda value: _validate_alternative_runtime(value, model="rfdetr_l"),),
+)
+_RTMPOSE_RUNTIME_SCHEMA = StrictConfigSchema(
+    name="submodules.runtime.rtmpose_x",
+    fields={"flip_test": ConfigField.of(bool), **_ALTERNATIVE_RUNTIME_FIELDS},
+    semantic_checks=(lambda value: _validate_alternative_runtime(value, model="rtmpose_x"),),
+)
+
+
 def _schema(model: str) -> StrictConfigSchema:
     return StrictConfigSchema(
         name=f"submodules.runtime.{model}",
@@ -277,6 +300,8 @@ SUBMODULE_RUNTIME_SCHEMA = StrictConfigSchema(
         "tracking": ConfigField.mapping(_TRACKING_RUNTIME_SCHEMA),
         "dino_detector": ConfigField.mapping(_DINO_RUNTIME_SCHEMA),
         "vitpose": ConfigField.mapping(_VITPOSE_RUNTIME_SCHEMA),
+        "rfdetr_l": ConfigField.mapping(_RFDETR_RUNTIME_SCHEMA, required=False),
+        "rtmpose_x": ConfigField.mapping(_RTMPOSE_RUNTIME_SCHEMA, required=False),
         "hmr2": ConfigField.mapping(_HMR2_RUNTIME_SCHEMA),
         "clip_reid": ConfigField.mapping(_CLIP_REID_RUNTIME_SCHEMA),
         "gvhmr": ConfigField.mapping(_GVHMR_RUNTIME_SCHEMA),
@@ -322,6 +347,22 @@ class ViTPoseRuntimeConfig:
 
 
 @dataclass(frozen=True, slots=True)
+class RFDetrRuntimeConfig:
+    confidence: float
+    batch_size: int
+    precision: InferencePrecision
+    engines: tuple[Path, ...]
+
+
+@dataclass(frozen=True, slots=True)
+class RTMPoseRuntimeConfig:
+    flip_test: bool
+    batch_size: int
+    precision: InferencePrecision
+    engines: tuple[Path, ...]
+
+
+@dataclass(frozen=True, slots=True)
 class BatchedRuntimeConfig:
     """Validated batch size and backend for an inference model."""
 
@@ -330,6 +371,58 @@ class BatchedRuntimeConfig:
 
 
 Hmr2RuntimeConfig = BatchedRuntimeConfig
+
+
+_BODY_RUNTIME_SCHEMA = StrictConfigSchema(
+    name="submodules.runtime.body",
+    fields={key: SUBMODULE_RUNTIME_SCHEMA.fields[key] for key in ("device", "hmr2", "gvhmr", "static_cam")},
+)
+
+
+def _batched_runtime(
+    value: Mapping[str, object], *, model: str, device: str, resolver: PathResolver | None,
+) -> BatchedRuntimeConfig:
+    options = _nested_mapping(value[model], name=f"runtime.{model}")
+    return BatchedRuntimeConfig(
+        batch_size=cast(int, options["batch_size"]),
+        backend=_backend_config(options, model=model, device=device, resolver=resolver),
+    )
+
+
+def _device_type(device: str) -> str:
+    if not device.strip():
+        raise SemanticConfigurationError("submodules.runtime.device must be a non-empty device specification.")
+    if device == "auto":
+        return device
+    import torch
+
+    try:
+        device_type: str = torch.device(device).type
+        return device_type
+    except (RuntimeError, ValueError) as error:
+        raise SemanticConfigurationError(f"submodules.runtime.device is invalid: {device!r}.") from error
+
+
+@dataclass(frozen=True, slots=True)
+class BodyRuntimeConfig:
+    """HMR2 and GVHMR settings for reconstructing saved crop observations."""
+
+    device: str
+    hmr2: Hmr2RuntimeConfig
+    static_cam: bool
+    gvhmr: BatchedRuntimeConfig
+
+    @classmethod
+    def from_mapping(cls, value: Mapping[str, object], *, resolver: PathResolver) -> BodyRuntimeConfig:
+        validated = _BODY_RUNTIME_SCHEMA.validate(value)
+        device = cast(str, validated["device"])
+        _device_type(device)
+        return cls(
+            device=device,
+            hmr2=_batched_runtime(validated, model="hmr2", device=device, resolver=resolver),
+            static_cam=cast(bool, validated["static_cam"]),
+            gvhmr=_batched_runtime(validated, model="gvhmr", device=device, resolver=resolver),
+        )
 
 
 @dataclass(frozen=True, slots=True)
@@ -344,6 +437,8 @@ class SubmoduleRuntimeConfig:
     static_cam: bool
     clip_reid: BatchedRuntimeConfig
     gvhmr: BatchedRuntimeConfig
+    rfdetr_l: RFDetrRuntimeConfig | None
+    rtmpose_x: RTMPoseRuntimeConfig | None
 
     @property
     def uses_tensorrt(self) -> bool:
@@ -363,33 +458,34 @@ class SubmoduleRuntimeConfig:
         vitpose = _nested_mapping(validated["vitpose"], name="runtime.vitpose")
         vitpose_head = _nested_mapping(vitpose["head"], name="runtime.vitpose.head")
         device = cast(str, validated["device"])
-        if not device.strip():
-            raise SemanticConfigurationError(
-                "submodules.runtime.device must be a non-empty device specification."
-            )
-        if device != "auto":
-            import torch
-
-            try:
-                device_type = torch.device(device).type
-            except (RuntimeError, ValueError) as error:
-                raise SemanticConfigurationError(
-                    f"submodules.runtime.device is invalid: {device!r}."
-                ) from error
-            if device_type != "cuda":
-                if dino["precision"] != "fp32":
-                    raise SemanticConfigurationError("Mixed precision DINO requires a CUDA device.")
-                if vitpose["precision"] != "fp32" and (device_type, vitpose["precision"]) != ("cpu", "bf16"):
-                    raise SemanticConfigurationError("Mixed precision ViTPose requires CUDA or bf16 on CPU.")
+        device_type = _device_type(device)
+        if device_type not in {"auto", "cuda"}:
+            if dino["precision"] != "fp32":
+                raise SemanticConfigurationError("Mixed precision DINO requires a CUDA device.")
+            if vitpose["precision"] != "fp32" and (device_type, vitpose["precision"]) != ("cpu", "bf16"):
+                raise SemanticConfigurationError("Mixed precision ViTPose requires CUDA or bf16 on CPU.")
         dino_backend = _backend_config(dino, model="dino_detector", device=device, resolver=resolver)
         pose_backend = _backend_config(vitpose, model="vitpose", device=device, resolver=resolver)
-
-        def batched_runtime(section: str) -> BatchedRuntimeConfig:
-            options = _nested_mapping(validated[section], name=f"runtime.{section}")
-            return BatchedRuntimeConfig(
-                batch_size=cast(int, options["batch_size"]),
-                backend=_backend_config(options, model=section, device=device, resolver=resolver),
-            )
+        rfdetr = None
+        rtmpose = None
+        if "rfdetr_l" in validated:
+            rf = _nested_mapping(validated["rfdetr_l"], name="runtime.rfdetr_l")
+            backend = _backend_config(rf, model="rfdetr_l", device=device, resolver=resolver)
+            confidence, batch_size = cast(float, rf["confidence"]), cast(int, rf["batch_size"])
+            if not 0 < confidence < 1:
+                raise SemanticConfigurationError("RF-DETR-L confidence must be in (0, 1)")
+            if backend.engines and len(backend.engines) != batch_size:
+                raise SemanticConfigurationError("RF-DETR-L TRT16 requires one engine for each batch from 1 to batch_size")
+            if backend.precision == "fp16" and device_type not in {"auto", "cuda"}:
+                raise SemanticConfigurationError("RF-DETR-L FP16 requires CUDA")
+            rfdetr = RFDetrRuntimeConfig(confidence, batch_size, backend.precision, backend.engines)
+        if "rtmpose_x" in validated:
+            rtm = _nested_mapping(validated["rtmpose_x"], name="runtime.rtmpose_x")
+            backend = _backend_config(rtm, model="rtmpose_x", device=device, resolver=resolver)
+            if backend.precision == "fp16" and device_type not in {"auto", "cuda"}:
+                raise SemanticConfigurationError("RTMPose-X FP16 requires CUDA")
+            rtmpose = RTMPoseRuntimeConfig(cast(bool, rtm["flip_test"]), cast(int, rtm["batch_size"]),
+                                          backend.precision, backend.engines)
 
         return cls(
             device=device,
@@ -426,10 +522,12 @@ class SubmoduleRuntimeConfig:
                     ),
                 ),
             ),
-            hmr2=batched_runtime("hmr2"),
+            hmr2=_batched_runtime(validated, model="hmr2", device=device, resolver=resolver),
             static_cam=cast(bool, validated["static_cam"]),
-            clip_reid=batched_runtime("clip_reid"),
-            gvhmr=batched_runtime("gvhmr"),
+            clip_reid=_batched_runtime(validated, model="clip_reid", device=device, resolver=resolver),
+            gvhmr=_batched_runtime(validated, model="gvhmr", device=device, resolver=resolver),
+            rfdetr_l=rfdetr,
+            rtmpose_x=rtmpose,
         )
 
 

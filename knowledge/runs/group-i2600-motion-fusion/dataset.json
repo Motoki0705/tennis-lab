@@ -1,0 +1,1396 @@
+{
+  "clips": {
+    "video_000/clip_000": {
+      "annotation_sha256": "eba7bc8bb7dc0cd8649fa4c347249c57798881432cff5a4afb7844738adec293",
+      "fps": 59.94005994005994,
+      "frames": 356,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "d001c8dbbd4ffb9120a15cb5d633ce706d49b13a57c89f3de49c9ade1330d3eb",
+      "scene_index_sha256": "e383b105e963c7d7d70ab9838ca382c95a5fcbd1fd74957b9b834095455314a0",
+      "sha256": "adf30f0692346301ba2ddf1bf0757bde0c12eb76714b5442c17d29aefff9fc3d",
+      "source_interval_s": [
+        154.417302,
+        160.35974399999998
+      ],
+      "track_ids": [
+        0,
+        3,
+        1,
+        6
+      ]
+    },
+    "video_000/clip_001": {
+      "annotation_sha256": "da8ba9fbfd94ba7bb9957909d9e9ab202260953f4bfdd1e49ddc9c11474f509f",
+      "fps": 59.94005994005994,
+      "frames": 561,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "5c2247703273aeb805b22299d4fa457f1706e4eeab6de68e390506e349f949be",
+      "scene_index_sha256": "601fc420226082cc0a31293cd59ab6b19da336889f036b1492765b080452da29",
+      "sha256": "c09c4d70840cb8d57a4014de15600f96f62afc52051e501c9065ab067a037e88",
+      "source_interval_s": [
+        173.419483,
+        182.779709
+      ],
+      "track_ids": [
+        0,
+        3,
+        1,
+        8
+      ]
+    },
+    "video_000/clip_002": {
+      "annotation_sha256": "fba72b55543c6e193defc44ba202b73d59cbf383fbd610cba8453466d5a467dd",
+      "fps": 59.94005994005994,
+      "frames": 1516,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "260d0f423fc48ad00484d1e9c3ab7f3189c4c2f725499e7fdd5f37e8ca80b734",
+      "scene_index_sha256": "d4858ba357cbabf29c47e8e0ff3deaf2478204a280148c4446717cf297929ea3",
+      "sha256": "1e71e39dc5b2be6560f21e4b57a4808733a59d9e40a206b4c1b6300a935b7b2c",
+      "source_interval_s": [
+        196.53901,
+        221.835543
+      ],
+      "track_ids": [
+        0,
+        2,
+        1,
+        5
+      ]
+    },
+    "video_000/clip_003": {
+      "annotation_sha256": "dc7dccd4fd78585cc21a790e253bf31a27346d383a3a215d17821786ca5599c9",
+      "fps": 59.94005994005994,
+      "frames": 369,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "3440caf5924e10efb32147119c672ca2afc30fe0feca5a0a19d2a1e35480ed3a",
+      "scene_index_sha256": "8b384aa5b2771e5f2cc63fb7d142bb6408b96f45a4b5fceb08ab2662b72ea990",
+      "sha256": "d9b2bbbc21188254cb91b9511acb997e8a7b36ec48005268d990cd5909866543",
+      "source_interval_s": [
+        236.487796,
+        242.64123999999998
+      ],
+      "track_ids": [
+        0,
+        1,
+        2,
+        6
+      ]
+    },
+    "video_000/clip_004": {
+      "annotation_sha256": "4fc45bb2b724b54e7b544828adcdb552b94dd1af2a264b7b5a7344c9dbe1de07",
+      "fps": 59.94005994005994,
+      "frames": 586,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "4db78c494457dc75b72b4f6bb6fbc04bb556392158850da8fff640ef27c4ed55",
+      "scene_index_sha256": "884f77e411ed96a84f04ea32fb0639e28ad35887f272e7ba36cdb4c71f3288f0",
+      "sha256": "d8a3d1dae4ff383cb30255d004ca857f25ee32c7f0ea25de2e41b21518dbb432",
+      "source_interval_s": [
+        252.130632,
+        261.91347
+      ],
+      "track_ids": [
+        0,
+        4,
+        1,
+        22
+      ]
+    },
+    "video_000/clip_005": {
+      "annotation_sha256": "43ce3643e1dd6ba89eb74d3e23fa8725f4b8536e5b22669040e1ea8f84dd4f1f",
+      "fps": 59.94005994005994,
+      "frames": 314,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "14ae7629c433efb0f0418f0cc7e87d0de716a92530123387dae24dc2a160c658",
+      "scene_index_sha256": "e3f0122bea03863c5505be8726d24cdf08620fb816be74740ad6ce62826c2da0",
+      "sha256": "a69795195e60c2f33ae0f70440d5d56fbc48367a0904f45ee5dbe4647566315f",
+      "source_interval_s": [
+        286.693507,
+        291.92693
+      ],
+      "track_ids": [
+        3,
+        6,
+        0,
+        7
+      ]
+    },
+    "video_000/clip_006": {
+      "annotation_sha256": "a64427acad0292dcf13f99cafc7c5489d255546b39099a6057dd35f17e8a1974",
+      "fps": 59.94005994005994,
+      "frames": 867,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "a02c83bf58c6cfdc91efb7ca0ab3ee0d8bb4b8f5fff4b48c1329d3f1554cb217",
+      "scene_index_sha256": "c12acfcdb5a1649f8e9e44acbe56725ec2572b23be0c9f7f4c2b6c31c0468a9f",
+      "sha256": "3a9f8f778635fe4c8e60ccabc247b11692620c4cb0dd335cc5d711a66a6daf72",
+      "source_interval_s": [
+        300.955613,
+        315.422867
+      ],
+      "track_ids": [
+        1,
+        2,
+        0,
+        6
+      ]
+    },
+    "video_000/clip_007": {
+      "annotation_sha256": "088bb7943027d41f1e91b5cf9db30974f92b1dd1665b32ce2c2c7f1d2091684c",
+      "fps": 59.94005994005994,
+      "frames": 401,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "8120233636bf0da7e21c6f2d646695858e567965e59a0c74b876ab038019a1e6",
+      "scene_index_sha256": "53480ee30a0b8fbf5bb26941a49af1cf466c376e4a8cabf8cb29bca23cbc323c",
+      "sha256": "c5cebc73d8af7d0b47c63176743617b43681e8f863236e52b1e36fab17f28594",
+      "source_interval_s": [
+        329.221558,
+        335.905496
+      ],
+      "track_ids": [
+        0,
+        1,
+        2,
+        4
+      ]
+    },
+    "video_000/clip_008": {
+      "annotation_sha256": "b1c9535e4fcab9991e0adc0b74987854b5f2cc97b84e2c1b3596f8a0634aaec0",
+      "fps": 59.94005994005994,
+      "frames": 626,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "8fdfcbd9d96bb554bb525cac4726e13d9ff39e72b767bde00caafc979d42bf5b",
+      "scene_index_sha256": "36cb6e8b79b24385701a5a0168986b73c680b221a3aab26a6ba2267a9a4d5bd3",
+      "sha256": "1d8298862840dc170bcb8fd496f518ef852024ac5ad7b1215b7c03f91f462d76",
+      "source_interval_s": [
+        345.374526,
+        355.824749
+      ],
+      "track_ids": [
+        0,
+        1,
+        2,
+        4
+      ]
+    },
+    "video_000/clip_009": {
+      "annotation_sha256": "d73ccd35606e8f933db8052f66d4d05149284185ddc960f2df02c090f5e8cbc7",
+      "fps": 59.94005994005994,
+      "frames": 974,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "728f154d1c5b1568a5dc2634f02a9555af4bd3911fc4b3cef303bbfd03f39b9d",
+      "scene_index_sha256": "5eb2a0f21e6360fe5608cdc778f55be740d1d047199a1bc2492964a620ea060c",
+      "sha256": "d38b490a6285050fc6c6c1aca99e61727ccba41e5f88af1795f7229e4abf67dc",
+      "source_interval_s": [
+        368.941499,
+        385.185458
+      ],
+      "track_ids": [
+        2,
+        5,
+        0,
+        10
+      ]
+    },
+    "video_000/clip_010": {
+      "annotation_sha256": "65924c4e1692247efcb1d3a40d2f1840cb5cd0f27d9b58f1748cb7126081996a",
+      "fps": 59.94005994005994,
+      "frames": 545,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "a8c6d448c19ce3e9a691d155c7ae4be3192ff27b922b0e33d2e78ffb21369a92",
+      "scene_index_sha256": "7f63a9a313424fcb12f184e2a6c1f6bef8c4bc8394be1290ab8b3c15f6dbd478",
+      "sha256": "6d61c97c23bc65bbe99295c4619a48072a7e311e53ba5fbbf438c236743d42cc",
+      "source_interval_s": [
+        399.158157,
+        408.246432
+      ],
+      "track_ids": [
+        2,
+        3,
+        0,
+        7
+      ]
+    },
+    "video_000/clip_011": {
+      "annotation_sha256": "05e1eedff36a425f415ff4bcfb5c2d62a7e4c7571d01b9e224b1abd775619738",
+      "fps": 59.94005994005994,
+      "frames": 1147,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "3514405693dd771af8a0409f0677f2bd6ad7c5965e896c93b598fa201c53a137",
+      "scene_index_sha256": "f4adf83d495155c2b3e60f1cc20e62693fce43e23249ea6c38d0d42c89f74624",
+      "sha256": "458b8437d78caef6bbe489e241212662bc2f9014683972ec27bf1be13aa3e40d",
+      "source_interval_s": [
+        419.824168,
+        438.958498
+      ],
+      "track_ids": [
+        3,
+        4,
+        1,
+        5
+      ]
+    },
+    "video_000/clip_012": {
+      "annotation_sha256": "a30d630ca953a04f7395062bc4bf7d83fabdbd25489fd3101c553a121a230e93",
+      "fps": 59.94005994005994,
+      "frames": 1017,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "69ae0ef324a79ea0a89d0967724503170919c82797dd70b1f11df540c498d8d7",
+      "scene_index_sha256": "12f805b17e4c1c8d005dfa28dc68088eec8188312c4e4cb9242fb95821cd32be",
+      "sha256": "0cb8b18d69fc928f87b7e5ae54ec3d8388678c1f2e16684b07661070b7b2e463",
+      "source_interval_s": [
+        456.96531,
+        473.931999
+      ],
+      "track_ids": [
+        0,
+        1,
+        3,
+        4
+      ]
+    },
+    "video_000/clip_013": {
+      "annotation_sha256": "a8dc052748a40ed1bce97892ce35167cb6163a7e9fc0573a883a434632f69221",
+      "fps": 59.94005994005994,
+      "frames": 469,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "4da7f29f3eb9eecade04e3a2ec798e572c3d379c5448a60e642b9514fa7bccff",
+      "scene_index_sha256": "ec960d45274ce7d8011c204f2e329e98ef642c0e7f9676afba01ea5cfd9bd914",
+      "sha256": "9e5ecb703eae38977030e194fcce65be5af498d9dd102819a4bbae23a95ec51e",
+      "source_interval_s": [
+        487.518113,
+        495.334806
+      ],
+      "track_ids": [
+        2,
+        10,
+        0,
+        5
+      ]
+    },
+    "video_000/clip_014": {
+      "annotation_sha256": "f6a8445360499d1f55e27ef216da9f9db13cba324d9e85c8c0bea1e995d31208",
+      "fps": 59.94005994005994,
+      "frames": 463,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "d52cb3a2402776b3b8288c04562fe285084c6bf58f5ba876f8dc8fecd8bfa27f",
+      "scene_index_sha256": "e17ac4aec17b26d685c95f2bf7afd64b43fab6bdeb116dcd46d32a11ead03eb1",
+      "sha256": "98133235dafcdf84bf301a3dbc574a48d79d2b3c3da6296b25f54310828d8ff5",
+      "source_interval_s": [
+        503.10862899999995,
+        510.825027
+      ],
+      "track_ids": [
+        0,
+        1,
+        2,
+        6
+      ]
+    },
+    "video_000/clip_015": {
+      "annotation_sha256": "928234e8492f170737b8f57673737e72ecd327a3e40404af8710a49a5e766e11",
+      "fps": 59.94005994005994,
+      "frames": 828,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "3ecaf8b84bcfd5c6795b02a5b9e576f4f38a83a974c9eb789711344e55321221",
+      "scene_index_sha256": "3a9ef2675ad9bf7def0fe0e6b7c6a40d886b922ac6ec69cef4ae0c02e2d61e10",
+      "sha256": "eb1106e5b68d86e9888bb93e466740c9042dba62b318973e8dc66b25f3363656",
+      "source_interval_s": [
+        529.87706,
+        543.693926
+      ],
+      "track_ids": [
+        0,
+        2,
+        1,
+        6
+      ]
+    },
+    "video_000/clip_016": {
+      "annotation_sha256": "1b021962db4b4ef472af04ff4c93a1ffe8513c3b98e62121f37f954c17d6f122",
+      "fps": 59.94005994005994,
+      "frames": 1214,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "cfe7e665c03b0f3c708a9c66cb7638e722ff8f60722120f22d28406142a86707",
+      "scene_index_sha256": "1c49047888f67c6817ae2abe72e31156e0e07f62316fff1e66514529c9c86abc",
+      "sha256": "af61a393b29d1375ecd55a0c8c03e02438615b90bfa73ce9683bd8d5b7e1890c",
+      "source_interval_s": [
+        554.782993,
+        575.031893
+      ],
+      "track_ids": [
+        0,
+        2,
+        3,
+        4
+      ]
+    },
+    "video_000/clip_017": {
+      "annotation_sha256": "f78c3f2db78e31c0ba73a06e491d177c7373d1deea3c32ced539570ef93e4fec",
+      "fps": 59.94005994005994,
+      "frames": 364,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "c380d7b00937f71d9172691eb92f0a78a283c41ba5ccccd6fca4e8921740e956",
+      "scene_index_sha256": "3daee2917487c9118f8215b443d69434b61b83d87091a71ab3d6e33459642336",
+      "sha256": "8b0278e3c96e4bc38f18eee1d854ca1503db647d3fa959e360d382ddf6087c8c",
+      "source_interval_s": [
+        586.426799,
+        592.493675
+      ],
+      "track_ids": [
+        1,
+        2,
+        0,
+        6
+      ]
+    },
+    "video_000/clip_018": {
+      "annotation_sha256": "a87918cc4b311514e0c8ddd0947684dd0a1caac66a6d87ff820ddae551a12969",
+      "fps": 59.94005994005994,
+      "frames": 386,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "cf72ab82644ae7de68532df5d9910edd0b670de81c666056964c978a2de2b403",
+      "scene_index_sha256": "ac5689b4358aebea3d62cc977be2b15f95c518c9f489b2c0bb7ce14c05c5d066",
+      "sha256": "6eaad32da18ee6dcb7fab9f713c41feae7363d9d4e8066d438d6b6c6dba33d87",
+      "source_interval_s": [
+        600.093739,
+        606.527996
+      ],
+      "track_ids": [
+        0,
+        4,
+        2,
+        5
+      ]
+    },
+    "video_000/clip_019": {
+      "annotation_sha256": "37f3d3081ae5939bd35deb7e35d6f05651f933af210fdc3ff6418b5fa789ecdc",
+      "fps": 59.94005994005994,
+      "frames": 569,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "9f35d9481bb60f5cc72a61882f3dcce1a4623dc663b4f3e4ecfd2d598e088303",
+      "scene_index_sha256": "08c0dcb84d406067ff377ba9360cea0b96687762549b32cca73994e216b02039",
+      "sha256": "f7398be175967fb1f5c8fad7e0c7e030e73e7b8e1db05a0e71c8f79fe2cb8242",
+      "source_interval_s": [
+        647.878711,
+        657.375491
+      ],
+      "track_ids": [
+        2,
+        3,
+        0,
+        4
+      ]
+    },
+    "video_000/clip_020": {
+      "annotation_sha256": "9ab3c4891ebb54b8646db023e2894d00da966220a6f16766c2d74b8fad497d41",
+      "fps": 59.94005994005994,
+      "frames": 651,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "0404b79633a8be910e527f97625ec736c262cdfaf54e7598a64f76f862b45dc8",
+      "scene_index_sha256": "b84c30da8d1da03bbd6fc37216f31deb1094b2c5fcb5eb3d596ff9c8b3abaf11",
+      "sha256": "c574bd8c0d27ac36d8db8d53fe89786e5700b752fff5af6459a582699a94b49e",
+      "source_interval_s": [
+        665.719009,
+        676.584445
+      ],
+      "track_ids": [
+        0,
+        4,
+        6,
+        7
+      ]
+    },
+    "video_000/clip_021": {
+      "annotation_sha256": "292ce62929badecaf64a8cfce8176d68e68cfdd2b35b1cd4f2c42aef7845455c",
+      "fps": 59.94005994005994,
+      "frames": 513,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "5028c4fe9c959b13dcb434fb257f8011117ea506b63bbc96e47db3eca3cda665",
+      "scene_index_sha256": "a56e2f3904fecd0066ef1dfa231c5e3c42c6c95964ed6428f4bdd19c25c90112",
+      "sha256": "26637b0358a0f85aa75ad16b772680e3f369f1bfc4dcfac9aed4d91091d11af8",
+      "source_interval_s": [
+        687.947169,
+        696.513797
+      ],
+      "track_ids": [
+        0,
+        2,
+        1,
+        4
+      ]
+    },
+    "video_000/clip_022": {
+      "annotation_sha256": "cdb79fa0a5079850ccb84b2e4c6940b735b048010cbf10f1e0aef3be518082b1",
+      "fps": 59.94005994005994,
+      "frames": 1044,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "1e0433655fa6fc47e3e5e286c8fc2a2628958b5df4ccdfd66743724a205caedd",
+      "scene_index_sha256": "3ff13990322666236006820876ef503a0637a57fccb88b889e4acee9fda05957",
+      "sha256": "b50d33d152c2558fcd10ec805039a8d0e1811d9144f1c5e948be8f4891ad59e9",
+      "source_interval_s": [
+        711.143276,
+        728.559987
+      ],
+      "track_ids": [
+        0,
+        20,
+        2,
+        4
+      ]
+    },
+    "video_000/clip_023": {
+      "annotation_sha256": "a91edd58238811cd1a1fa3303c66f299333145b31b1f2e68307e1b1cb0f7566a",
+      "fps": 59.94005994005994,
+      "frames": 1736,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "dc5504292fcc0e85f548b253d0e2e7ea2c90021d306242a118faf72232507716",
+      "scene_index_sha256": "5a2b68f42ecab38d3c84b7a179da8760b2abb8eae704ab88b70060a95f0eddf6",
+      "sha256": "7dc31c038c4f76fd8d91324ece4af306c5862552469a3ae908669ef12d90bb11",
+      "source_interval_s": [
+        740.114742,
+        769.081385
+      ],
+      "track_ids": [
+        0,
+        1,
+        4,
+        6
+      ]
+    },
+    "video_000/clip_024": {
+      "annotation_sha256": "f9367b81dcd1188fbb7d82e18fef2f80aa84610273748d3658b5cfbeeb181334",
+      "fps": 59.94005994005994,
+      "frames": 397,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "f7ebc7b30a172c76cdf065ef7490f60b0d5c1d12a3b5ff19973558b57bfb38f4",
+      "scene_index_sha256": "a7fdb41c96760dbbcea5cb77cca663515c2fc92e32b9a06c3fe25a7ba8519bfb",
+      "sha256": "bdf9835f1591294659a7d5447a8122024849c9ee57ea881fc5ef6e3536cf4007",
+      "source_interval_s": [
+        783.516657,
+        790.133153
+      ],
+      "track_ids": [
+        1,
+        3,
+        0,
+        7
+      ]
+    },
+    "video_000/clip_025": {
+      "annotation_sha256": "019d0d341c0ceecbebbd01443e3bfc0989cab186dc8bf01f83978b6e117e7f94",
+      "fps": 59.94005994005994,
+      "frames": 505,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "7a4ca4714b84ba02c3c5a593fd85de7b0f2e076e20ebbcd948a76c10c39652db",
+      "scene_index_sha256": "57bd98077141212bd5f02c8ab8a766e68b1c367d1094ec8f566b82a7a6976cf6",
+      "sha256": "63cc98104fa7aee6a40c7299d8adb9c1854ec7340c53c8fce05adb62bb686be6",
+      "source_interval_s": [
+        803.02312,
+        811.45638
+      ],
+      "track_ids": [
+        0,
+        2,
+        1,
+        5
+      ]
+    },
+    "video_000/clip_026": {
+      "annotation_sha256": "b1e61e16be03878a399219bbff26c15c35e085f742fe20ce04e2f16e7d4e3b1e",
+      "fps": 59.94005994005994,
+      "frames": 1262,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "37e726323896922e0a6b293db8d669314cd655c2ef708a059d94e45c7cba0171",
+      "scene_index_sha256": "70015137bd4a8ffed04f7f0fb7d65d8cdddd6d084c9bb5f958a44d6d0723b725",
+      "sha256": "18dbaacc315e6d1d0395d511141b0c8223033a7fcdd1df2f08909aa70cc0a24e",
+      "source_interval_s": [
+        821.971684,
+        843.022755
+      ],
+      "track_ids": [
+        0,
+        1,
+        4,
+        5
+      ]
+    },
+    "video_000/clip_027": {
+      "annotation_sha256": "bff6bda04a34350cbb3e2e0838d5f1d947dd782fae11b63822dfeb489b422d3b",
+      "fps": 59.94005994005994,
+      "frames": 235,
+      "reference_annotation_sha256": "203147a15d5955eb4c12ecea44d465102e04c972703fa47e7d780af8896cc629",
+      "scene_archive_sha256": "addd230e8761647a439b710d45ce3340d670df165db7be9680e15f0f3d8eea94",
+      "scene_index_sha256": "416adbb65a1bad7fb5d164d4150a9d2a19198c4b5f47f0ad54ae882b43b19f14",
+      "sha256": "63529fc3cd72299ca7820016de641e53693cf25c6f7fb51e4f4a41ab7c20a9ae",
+      "source_interval_s": [
+        863.160406,
+        867.07891
+      ],
+      "track_ids": [
+        1,
+        2,
+        0,
+        3
+      ]
+    },
+    "video_000/clip_028": {
+      "annotation_sha256": "8e08b3990a70173a1b24dbc473fbbcc767bb2937720303c297bc3532d6407c20",
+      "fps": 59.94005994005994,
+      "frames": 1288,
+      "reference_annotation_sha256": "0e69da265a82685b0577f60d71ef89bbaafb8f96d3cba5a36eab5f4fb558e9aa",
+      "scene_archive_sha256": "0b6d33a659bba41de2357812803a1dc07b69c02d62b9a26f758133298c2b520c",
+      "scene_index_sha256": "534302b27c7f18a3aba70a1f161f2c25b6626ee8ef4062b8bafaf9080ef1969d",
+      "sha256": "3ca57353c9cb2fe2e4f6962d63a895c0347d12d22783bf3ac2636a6df79fbb51",
+      "source_interval_s": [
+        879.00856,
+        900.492252
+      ],
+      "track_ids": [
+        1,
+        2,
+        0,
+        6
+      ]
+    },
+    "video_000/clip_029": {
+      "annotation_sha256": "1891f041aa9351ff03c66e3bea008fadbd564b7c2d79481179932adc31547189",
+      "fps": 59.94005994005994,
+      "frames": 990,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "c5afb64693145391e584e5e1ee3a01a1e8b28a6e6a9f2237afdcc38a8bd802aa",
+      "scene_index_sha256": "35f36f90a6ccd49d943ba0db3847cc9fe4faaf9d17a2047f5c7fd0c0c9571ac8",
+      "sha256": "4f5c260695e415ca5d546ca84da84711388d60de55f64c3014b5f4067fc277b0",
+      "source_interval_s": [
+        914.938442,
+        931.456215
+      ],
+      "track_ids": [
+        0,
+        1,
+        6,
+        7
+      ]
+    },
+    "video_000/clip_030": {
+      "annotation_sha256": "f58042f93ac6c35dfb02b4f05d808c42be25bfd35c324158bc29f67ef5e86411",
+      "fps": 59.94005994005994,
+      "frames": 515,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "b3c218df7e823ed5505b6b62143a5d4388975d0ed54acbdc401eadc20a72ec19",
+      "scene_index_sha256": "b1bbfaa038dce5b789cfddeff98be354e83a5bb4a89583b0d4a44fc1a7515484",
+      "sha256": "4ea4af223e2dabf9d151df88c631eca24864077d86d2ec3f4a1d605ac791ab01",
+      "source_interval_s": [
+        943.902696,
+        952.500458
+      ],
+      "track_ids": [
+        1,
+        2,
+        3,
+        6
+      ]
+    },
+    "video_000/clip_031": {
+      "annotation_sha256": "3f3f77be9150cac55a8f284cf30b39eb11afd97832a27c652597a64ed099ecb4",
+      "fps": 59.94005994005994,
+      "frames": 321,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "4d622adf4369999d1f0c5139235bd410be8960b584aff3b5951cf046fce53e0c",
+      "scene_index_sha256": "cc1e5c186fb6af9aa96235f135e6f11615fab5d2c39ef45855d8fb3225de94a0",
+      "sha256": "76c59db1f62c060a953e1eb1417f8ede1f448aba7f12310e40620f0046a1c133",
+      "source_interval_s": [
+        960.980606,
+        966.331446
+      ],
+      "track_ids": [
+        1,
+        3,
+        0,
+        6
+      ]
+    },
+    "video_000/clip_032": {
+      "annotation_sha256": "836b34565a07dd9ec8d60a974c5c0c88995d5fa05a8b30c1fc4e0c16146a0e19",
+      "fps": 59.94005994005994,
+      "frames": 451,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "f29372c2605d97b02a0c42652072dc7601301c23becf5da9e07642ec3ee9d2dd",
+      "scene_index_sha256": "061c9f53f9d305af563639cbc3a97143cd336029a563ea5609ccdb56286a6ebf",
+      "sha256": "9ea00cabc9b7eab9472c8c53301ad61b5c52a6803ac6ef148ce0f721223e180c",
+      "source_interval_s": [
+        973.669602,
+        981.202038
+      ],
+      "track_ids": [
+        2,
+        5,
+        3,
+        6
+      ]
+    },
+    "video_000/clip_033": {
+      "annotation_sha256": "37008b606404b4e1a6ce3e7dfc516fda46b9285d3593f796a481386a4cae4d35",
+      "fps": 59.94005994005994,
+      "frames": 415,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "f5f4c2dd068b78c3053b1b0ee4cffba0925245a8765c521caec580abe266c424",
+      "scene_index_sha256": "1414f4140d4043f750be46c3008b734cedb175b51083f3a0d8e65bdaed675188",
+      "sha256": "32c00317e84740663ad1de673db5f3563431a87acef8fee46066cd3804d7a831",
+      "source_interval_s": [
+        994.848901,
+        1001.766793
+      ],
+      "track_ids": [
+        0,
+        2,
+        4,
+        5
+      ]
+    },
+    "video_000/clip_034": {
+      "annotation_sha256": "146859b4369c8648533514ed49efcddb3ff88b3bec9b5c7904802633220cfd99",
+      "fps": 59.94005994005994,
+      "frames": 1124,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "6f34fd323d8418a196c0194012175eee8613905b3a807fedf1d126e482fce666",
+      "scene_index_sha256": "5e47870dea771436d77c431d702dc3a43df85b5143721ea829748d7ee1da204b",
+      "sha256": "78a4ce4dea49c8f78664f80c1f3a27b731782b48a5986cdea4b36a4ed2193378",
+      "source_interval_s": [
+        1015.7575429999999,
+        1034.506597
+      ],
+      "track_ids": [
+        0,
+        2,
+        3,
+        4
+      ]
+    },
+    "video_000/clip_035": {
+      "annotation_sha256": "1d491e362bc06c89cf8c9d1e93813571d97f5be64b431362dbffe679e8739103",
+      "fps": 59.94005994005994,
+      "frames": 2108,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "7d8d90954fc928de0f2d06667b2c4e3cec091011ffb72b6e0de0d5f4be5e052d",
+      "scene_index_sha256": "6b47515d68a7c7ee30a309be08bd9efcdddddee53bb1680a14a29ea86a5f312a",
+      "sha256": "6dbaacc9cf44c12c29e56376d5c3cfa17291778d6e0a332bc23aeded66c35fb2",
+      "source_interval_s": [
+        1047.785237,
+        1082.951617
+      ],
+      "track_ids": [
+        0,
+        4,
+        2,
+        5
+      ]
+    },
+    "video_000/clip_036": {
+      "annotation_sha256": "f5fd81b6f847715383a2a67e90981bdf9d6d65763c18316bcd078ce7ee16bda4",
+      "fps": 59.94005994005994,
+      "frames": 405,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "5f289f8eec9252516d6e37d843edc0013cf330d76effc6673181fa8cf854cca6",
+      "scene_index_sha256": "506fa977e852cd969b314f8dfba0edb8b2f717edd880fcfbe6ee18f491ade500",
+      "sha256": "5a2ff23ca6fb706985a8faea0839b9bb216d30afcef773d6f72c387f8e550d87",
+      "source_interval_s": [
+        1092.331213,
+        1099.082158
+      ],
+      "track_ids": [
+        0,
+        2,
+        1,
+        6
+      ]
+    },
+    "video_000/clip_037": {
+      "annotation_sha256": "ef71163fc2e30f0d0e176da234a94d2738e0f6911871dec5adb875f083f34031",
+      "fps": 59.94005994005994,
+      "frames": 292,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "ab78f24fc161ed5649d949d736d820b01e61c53ab2f937a84f5858171f503706",
+      "scene_index_sha256": "2602687a14db843a6f63dafd4781ce48b2fc29033dd4d4691562d11474a1ecc5",
+      "sha256": "4a0353ffad2f091262255cafdae2d4a7cd96bbad5aaab09bd12e2ee1acf91ecf",
+      "source_interval_s": [
+        1111.30508,
+        1116.172299
+      ],
+      "track_ids": [
+        0,
+        2,
+        1,
+        5
+      ]
+    },
+    "video_000/clip_038": {
+      "annotation_sha256": "b442b5c4d790d124d20bb233bbacb215affb48569f765ca774d74fd6e8efc1f8",
+      "fps": 59.94005994005994,
+      "frames": 337,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "0d49d4f1ea98ebc09ff14d158860a2323aee86c3d35d4478f04c42953c5f7176",
+      "scene_index_sha256": "b8758dfee9974d58f5c991fdcebe8662cabb38874eb1b8a6beacdad0fa3e3003",
+      "sha256": "5d118a800371583ff71811107feda4a374cb237eee29a9445ebd8b87fdb81869",
+      "source_interval_s": [
+        1130.808091,
+        1136.426128
+      ],
+      "track_ids": [
+        0,
+        2,
+        1,
+        6
+      ]
+    },
+    "video_000/clip_039": {
+      "annotation_sha256": "80bb1fa09edf3c171b9efad2e47dacf0ade24a7b96a4d6cc712bc731e331e166",
+      "fps": 59.94005994005994,
+      "frames": 873,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "f299106ddd9f7dcb3edc4aef311dfb8287d70a06730f24da64527e7bb0523e2e",
+      "scene_index_sha256": "2a4fb517b374f4703c8806370639d326fcd1fa7c3efd1217fbe2e69f73cb98fb",
+      "sha256": "29abb3b1321212726428970963f236b567c97676ecc3be9598b7ef15661a1d86",
+      "source_interval_s": [
+        1157.54062,
+        1172.112691
+      ],
+      "track_ids": [
+        0,
+        1,
+        2,
+        5
+      ]
+    },
+    "video_000/clip_040": {
+      "annotation_sha256": "9b32a603a410f6d1d14baaaa1d3bb1ef1cc0f0eaabca2d206a1543239b53eefc",
+      "fps": 59.94005994005994,
+      "frames": 417,
+      "reference_annotation_sha256": "3f627d697c7af03774862687968054bbf1bd7a19111b6e370fc812e82a18eaf8",
+      "scene_archive_sha256": "1bd29e1dff971875696e31f8971b12224af1e7018fbd75e9c0e842f0a0200e59",
+      "scene_index_sha256": "0d3ec28dd8b8e4e8e1d2215b8f4c8225d2b4683f5ec314aa4ef84589347b3160",
+      "sha256": "9dab56d55adc0f04837437b81894f640c884a7ab3375a676f9c3b13ef082ff4d",
+      "source_interval_s": [
+        1184.239947,
+        1191.190384
+      ],
+      "track_ids": [
+        0,
+        1,
+        2,
+        4
+      ]
+    },
+    "video_000/clip_041": {
+      "annotation_sha256": "2fc05790455c42bca58fbd4dc559733227b6208a654df675386504a5299af778",
+      "fps": 59.94005994005994,
+      "frames": 781,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "d327ea69c45552bbdc1122c5c6dc010e752958b3eb320eb5eb78d58f220c3dbd",
+      "scene_index_sha256": "5cb0a9b32726841ea9764c826bfa89b85406e1630d7dd2c57680916377c3fa07",
+      "sha256": "e821931e3d03fc4c92054aef73846b0b3437b999ba3adde591a13b6cc8430216",
+      "source_interval_s": [
+        1204.634319,
+        1217.66793
+      ],
+      "track_ids": [
+        0,
+        2,
+        4,
+        5
+      ]
+    },
+    "video_000/clip_042": {
+      "annotation_sha256": "2c646e9ce57ba2f6f15d1a5f8cc27318fadb2674739606ce8ac62179bb288535",
+      "fps": 59.94005994005994,
+      "frames": 418,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "0d6689c0990f91a995a353b29b493dd1d79fa64f5f1aafdeae07c6d98e312b4f",
+      "scene_index_sha256": "86d2c229ab49a3f93381a7f1ab7fb47326e7ebd48d30c1713ee6a00f5d696627",
+      "sha256": "04fae41cefa85ba3f547d0a84aa6d9fbd8bde47e3e1b5f947c48dd4491d18baa",
+      "source_interval_s": [
+        1226.73396,
+        1233.706937
+      ],
+      "track_ids": [
+        2,
+        4,
+        3,
+        5
+      ]
+    },
+    "video_000/clip_043": {
+      "annotation_sha256": "02b6519dc12ad42006ad101479f4cd47d9fa56159fa067f72c8905eff468c896",
+      "fps": 59.94005994005994,
+      "frames": 709,
+      "reference_annotation_sha256": "7cd296b7b68e9c37c52dbcddeeea25f694ee65ca9f31b838fcc8706cfd7be034",
+      "scene_archive_sha256": "033feb8b425ef07c472821b2ce2d9581f495ae5a84bd8150a93d5c049356158a",
+      "scene_index_sha256": "36aa5bf948647b64085932546d86ac3715e54f7c1ea3600df448bd7f168979ca",
+      "sha256": "16229df461c615ceef7051db98031d7033266c8fc90c256f409627ba59afdd7d",
+      "source_interval_s": [
+        1255.024322,
+        1266.858133
+      ],
+      "track_ids": [
+        0,
+        3,
+        1,
+        5
+      ]
+    },
+    "video_000/clip_044": {
+      "annotation_sha256": "f4ff09b53ffddbff6275f3c55c1ab759fefa1965693c75fd2052dd9dc3e04c10",
+      "fps": 59.94005994005994,
+      "frames": 616,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "a332c47d421649ad4e2faea2189830168c2e8700d3755ffa562ecd8c36fc455c",
+      "scene_index_sha256": "5da9543b27d9a42554f746baf0f418e024fcfb320915855c8115df1cc6287be3",
+      "sha256": "185324373cf50318f5cd65fe4c66255e878752d902a1b27e772001f1a6704b38",
+      "source_interval_s": [
+        1275.976415,
+        1286.24652
+      ],
+      "track_ids": [
+        0,
+        2,
+        1,
+        3
+      ]
+    },
+    "video_000/clip_045": {
+      "annotation_sha256": "77c013b8c45e0bf61146d96a062ef7e3de2bbd9489f0c2ddf49c9dbe355b55e9",
+      "fps": 59.94005994005994,
+      "frames": 343,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "3d4f3bad685bf0a209d4daabb76c66162f3e04d803845b13ee6fcbf97b3a0d05",
+      "scene_index_sha256": "8f668208f40a7fb005b416ba142fc795c53527f03092f031395fd6780565cd75",
+      "sha256": "7b1c8ae88f939f90998defd1cfcbc274867c87ab0878390f437a6e657d9af0a9",
+      "source_interval_s": [
+        1314.013297,
+        1319.730721
+      ],
+      "track_ids": [
+        0,
+        2,
+        1,
+        3
+      ]
+    },
+    "video_000/clip_046": {
+      "annotation_sha256": "437dedb6f76414d0f89f0a89880da726aa6c7756ab8a70eb28954a323dab7112",
+      "fps": 59.94005994005994,
+      "frames": 425,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "9bb6bb8762b0378882102da89ca5d9a22c0cceba1a51cd8a6f60113cccfdf85c",
+      "scene_index_sha256": "e4feb716dfeabe96fdb2c1f300303b788234b489b7e1a10949f6391570a457c0",
+      "sha256": "c7c806213e40ea6ec338bf932ed94f3a37ad7fde54cacd407cfbcd81e35f8899",
+      "source_interval_s": [
+        1332.586549,
+        1339.679524
+      ],
+      "track_ids": [
+        0,
+        1,
+        2,
+        5
+      ]
+    },
+    "video_000/clip_047": {
+      "annotation_sha256": "661fb3c855dce1242f23f81a29052b25328ccb859e709f68f1c55d63da2c4eb2",
+      "fps": 59.94005994005994,
+      "frames": 845,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "36d4fd1bc82996f4d4ef664b29abec88fe17c9a19d5d4f9755502a31176da96c",
+      "scene_index_sha256": "55627b54173973a3cd3a879962ae55718f61ef4bc448d4f4bc145f4758b2637a",
+      "sha256": "9b774858847f286a9c28c55b72f1f781da1077a04a00a9bf4a1a370ef062bb46",
+      "source_interval_s": [
+        1354.801825,
+        1368.898568
+      ],
+      "track_ids": [
+        0,
+        1,
+        2,
+        4
+      ]
+    },
+    "video_000/clip_048": {
+      "annotation_sha256": "38bafae2aaa1e3e94e009d7bc319ecc1f4b3f808165734f581035d4e9ab066f5",
+      "fps": 59.94005994005994,
+      "frames": 873,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "31b7ad076eb2d3cf2219228c94dc005bb461f47dfe34de9b9a04ef230093e828",
+      "scene_index_sha256": "6d9a6070faa048db1636e8e8b6e7e1c1785fded3df1e841cf56a6b2d0047f7ac",
+      "sha256": "7619cfb1f485d14d1744fc1884ee08348cf40c4821931689ff50b5ad209d5274",
+      "source_interval_s": [
+        1384.313614,
+        1398.884391
+      ],
+      "track_ids": [
+        0,
+        1,
+        2,
+        5
+      ]
+    },
+    "video_000/clip_049": {
+      "annotation_sha256": "e81e35c4455a902f60060c01aefee1ccfac60b307d0c5eeae0afe5ddc688726b",
+      "fps": 59.94005994005994,
+      "frames": 1120,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "75177de99df24e0c29533d723ece6bd7846cea7ead798a134aa9c7c33fbfaf56",
+      "scene_index_sha256": "c028a8b319b1546da347f00b2a35bc542dced52e044d7dd8a5108fecc4f8d2df",
+      "sha256": "c664983129dc5b7b97c3a77c50e44ed0f4e332cd1aff5937f8ce09b630a41239",
+      "source_interval_s": [
+        1410.506507520109,
+        1429.199575520109
+      ],
+      "track_ids": [
+        1,
+        3,
+        4,
+        38
+      ]
+    },
+    "video_000/clip_050": {
+      "annotation_sha256": "15867ea9268c9237eb3344211d91bfc69b2dd643b967d02ea0379c32218a81e6",
+      "fps": 59.94005994005994,
+      "frames": 833,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "739c93eecb3925736c0068a54126ba0d9b6477caddc8c9f3e7ba0bbc9c1f115c",
+      "scene_index_sha256": "01018ef522c29d86b3021a13aaf24b1ff304b0eb6516138c863472686001054c",
+      "sha256": "6aaf18b83d8d24b60716097bf1762840b0c6a979bfb42d7b82d7342378f820a1",
+      "source_interval_s": [
+        1446.4641215201088,
+        1460.3640445201088
+      ],
+      "track_ids": [
+        1,
+        2,
+        0,
+        6
+      ]
+    },
+    "video_000/clip_051": {
+      "annotation_sha256": "a871cd8d62fbc0990b0efbf9bb22fd5f70b4236ee66eb1a8dc65da2e729be2b5",
+      "fps": 59.94005994005994,
+      "frames": 300,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "25f1504b338d8fae075a5d3c7fd6a6cf2f20664bd2eae50320c431c03c3160f8",
+      "scene_index_sha256": "08d116e8a09d3f756d5adad38144cc82ccef6c66c463e8743ea7072780c88a92",
+      "sha256": "b1a5a15a36ea960bde338a5c807cd289ce62a1cb6dd34819382bafbef7224f3f",
+      "source_interval_s": [
+        1483.744046520109,
+        1488.7431525201089
+      ],
+      "track_ids": [
+        0,
+        1,
+        2,
+        3
+      ]
+    },
+    "video_000/clip_052": {
+      "annotation_sha256": "d97f811d71fa7d248607091322e4cae1eec5af0812170d661e4d78a08d533787",
+      "fps": 59.94005994005994,
+      "frames": 425,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "61cc159aebc7714e433b9ace7c9d68c94d84230948f1765b10fcb70eb53dd38c",
+      "scene_index_sha256": "a06a757efe97d2f6173878467135ad33109bb1be4988ebc0d30d80ce50001e11",
+      "sha256": "12cf5e8fde0329d69a7527db884a80f9f26b64a0f68bff8fb68b9b7ede2f0f5d",
+      "source_interval_s": [
+        1497.132315520109,
+        1504.214920520109
+      ],
+      "track_ids": [
+        1,
+        2,
+        0,
+        3
+      ]
+    },
+    "video_000/clip_053": {
+      "annotation_sha256": "4b0820a4e1e5828fa675d742f1071ecb68a638299e47af93b24df59054e2a6c1",
+      "fps": 59.94005994005994,
+      "frames": 546,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "3ea4019222eeb1d197b4bd868292e73316f7e3a7963d8337f65708719d90cb1f",
+      "scene_index_sha256": "bc70e2b768cd7267d763059d299115a1aeae6754c50f395d209c9c370ca2c869",
+      "sha256": "d18e4810f8e1d476bd01337801f4fb66c7301b6fad60f4b2c302b2582b872df3",
+      "source_interval_s": [
+        1515.9033065201088,
+        1525.019716520109
+      ],
+      "track_ids": [
+        0,
+        2,
+        1,
+        5
+      ]
+    },
+    "video_000/clip_054": {
+      "annotation_sha256": "4545683f170062bc06d9e4e14cb6461b5a44512a594e7f9f78980b957d4320a0",
+      "fps": 59.94005994005994,
+      "frames": 768,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "7a3a7216b44d664b95874d8d0a5ebc3dcf4009e9053c819ebfe6e376545dc932",
+      "scene_index_sha256": "425fc571cefcb7d8285002e9dd6fc9e66bdb2e8e7f0969ee9f036f737c872fb0",
+      "sha256": "0855ac2583ef11c9a9521a1b9a19f9a378bf462aeed663cc9b5502ce6b011c09",
+      "source_interval_s": [
+        1539.2736715201088,
+        1552.090830520109
+      ],
+      "track_ids": [
+        0,
+        2,
+        3,
+        4
+      ]
+    },
+    "video_000/clip_055": {
+      "annotation_sha256": "06e087a5f4ea912c0400cb36882e76eb0808954bfcc7536097dc1145a0843c8b",
+      "fps": 59.94005994005994,
+      "frames": 691,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "81447e6a0aa453831b472b68508020835f202c2c8d6f6872a95c59623de299a4",
+      "scene_index_sha256": "a478a4587aab52222487f7331814522a6a4fabbefbc8adfb3c789e35749e7141",
+      "sha256": "b8437a180230ab1e1b4596527c5af9e0ccc063334c2bcd885499bb43f4f7544e",
+      "source_interval_s": [
+        1568.469303520109,
+        1580.0033505201088
+      ],
+      "track_ids": [
+        1,
+        3,
+        0,
+        4
+      ]
+    },
+    "video_000/clip_056": {
+      "annotation_sha256": "009b6ad01ce6b2b7b6952fc6e894a19aa21e2e7f7c3e612fad4d40aac50e092a",
+      "fps": 59.94005994005994,
+      "frames": 763,
+      "reference_annotation_sha256": "f4c696c3d9b6fb6df805dd05225527a22ea880df33f52066fb79e015b311a7cd",
+      "scene_archive_sha256": "3e23635ccdac515b96b963c64ae6e392be49c62e92f44da3f4d2eafcfe33595e",
+      "scene_index_sha256": "eeb10ce00b2222a4350c4b988a00bb086ced299da34d4ed8c421dea3ceadd90c",
+      "sha256": "e5a9b931855b90a8896bccaac0c031add2e2eafc90aa0ec82619f0294fbf03ab",
+      "source_interval_s": [
+        1594.753603520109,
+        1607.485552520109
+      ],
+      "track_ids": [
+        1,
+        2,
+        0,
+        15
+      ]
+    },
+    "video_000/clip_057": {
+      "annotation_sha256": "8effd0c406fecf9d61199cb9a2ae11cdceabf92275739b70fc0e6d209d089c22",
+      "fps": 59.94005994005994,
+      "frames": 285,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "07fd3fd7d249020dce92c34d44163cdcf5dab87a501505517ff1e2b5b83d052e",
+      "scene_index_sha256": "384d167e3a0294084fc3bf9866d3c9b4ceee09f8cb81a5230e195364f66cc11a",
+      "sha256": "35fa926f7dfa85579d3b3e390e53d6716b9e40a90e187153b3b56179b950a479",
+      "source_interval_s": [
+        1621.3315205201088,
+        1626.081953520109
+      ],
+      "track_ids": [
+        0,
+        2,
+        3,
+        4
+      ]
+    },
+    "video_000/clip_058": {
+      "annotation_sha256": "c49e4b0dea6d5f188789b09b8cc9925b669b3c979e2e0ba46ef6a426b829539f",
+      "fps": 59.94005994005994,
+      "frames": 765,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "eec61ed65790f93dee8e4774cfe411b301a53255fb75b4cbf890f15973fffb29",
+      "scene_index_sha256": "3396a0e586c4c2a5153e835b188c546fa29770320c60054be19415613ac36f45",
+      "sha256": "9be74f171a7cc38877296f4e85c98e8c3f044139c96e1e9465f14f252427c295",
+      "source_interval_s": [
+        1636.2992415201088,
+        1649.065262520109
+      ],
+      "track_ids": [
+        0,
+        3,
+        1,
+        4
+      ]
+    },
+    "video_000/clip_059": {
+      "annotation_sha256": "3500116a009c80d4e3335c30c33f4b02aae26d91745eb1c992e249ee9b3798aa",
+      "fps": 59.94005994005994,
+      "frames": 475,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "d2db57f6999a87707b021cec82be69cc923cce92bb61742474727b38822ef4e6",
+      "scene_index_sha256": "7f423dc52639df9ab9f1b84a3c71003d98cfa15d15091dbec88f36fa6663d2c2",
+      "sha256": "86fd0f20e1ed10dc80dbc980231be47ed4c71f17af954495edfbd549639ac07e",
+      "source_interval_s": [
+        1668.815497520109,
+        1676.737121520109
+      ],
+      "track_ids": [
+        0,
+        1,
+        3,
+        6
+      ]
+    },
+    "video_000/clip_060": {
+      "annotation_sha256": "323f94527d34730e8e00cd9baef460f411ef3deea81f78e796b63f1cb35fc6a9",
+      "fps": 59.94005994005994,
+      "frames": 313,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "ac8a3d43918fa9075225c9eb93905993305c7971e21de6ea07440f8facff13e7",
+      "scene_index_sha256": "ae025d09f2f83bc88cd6e348a52da877352fead3c366b8ca3ed4b6591150c744",
+      "sha256": "1f8152acd24f5dfea0e9fd9637f3a396c577dcf0e61ec4aced97ea22b1b6ea75",
+      "source_interval_s": [
+        1697.2543285201089,
+        1702.479888520109
+      ],
+      "track_ids": [
+        0,
+        4,
+        1,
+        5
+      ]
+    },
+    "video_000/clip_061": {
+      "annotation_sha256": "8fa6bc64bdc1b96eb4e891bdcdab0401bf0bc1e7347b3250e411380aad44b3dd",
+      "fps": 59.94005994005994,
+      "frames": 487,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "c40806d6e860340a7292dea33274b445a6f35fe78fbdeaf13aa0d2f4b59a63a0",
+      "scene_index_sha256": "a7b51bd2cfe878455930fe043dff2a7de2f53e3e3a7df56d011afb4b9bc16572",
+      "sha256": "01edad4d7f86630c29a269932433c68ced00e065f77796d8f43acbd8b815898d",
+      "source_interval_s": [
+        1720.427435520109,
+        1728.544740520109
+      ],
+      "track_ids": [
+        0,
+        1,
+        2,
+        7
+      ]
+    },
+    "video_000/clip_062": {
+      "annotation_sha256": "564acc1eadbece808fc032b205dbc807e3d0768555419b16059f2dde600e18aa",
+      "fps": 59.94005994005994,
+      "frames": 430,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "9c9550c4f76cb0ebc5d32112b71b8ed061aaeba7cfc79df7c729c5f8289995ac",
+      "scene_index_sha256": "f6638f99303381989d08b99d2358cf70b70a492e123cc067c1b69dfefaa255de",
+      "sha256": "e6d6969a7b1f7e51d1eec3032555d1fd717b8a3c7d30f4247b5f61f539569b2c",
+      "source_interval_s": [
+        1738.523337520109,
+        1745.7050195201089
+      ],
+      "track_ids": [
+        0,
+        1,
+        3,
+        4
+      ]
+    },
+    "video_000/clip_063": {
+      "annotation_sha256": "7ba2539b558cbd1f67797b63f2d6f07d05e11e0cb5be121223649bed550e1aeb",
+      "fps": 59.94005994005994,
+      "frames": 341,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "317dfc73cb59f03dc99749bbe9bf34006f000c82212fa864f6f357df4705f8f5",
+      "scene_index_sha256": "482b1305a4b4c9cb5503854e638070a9a837fdffc1749983870ef25d41efdd81",
+      "sha256": "85a3af9a849ae629add98a66adc8d860d19ecba9a00350c5231189ca53eccba2",
+      "source_interval_s": [
+        1780.375800520109,
+        1786.058956520109
+      ],
+      "track_ids": [
+        1,
+        2,
+        0,
+        3
+      ]
+    },
+    "video_000/clip_064": {
+      "annotation_sha256": "bb8b01b64fffd800e60ee81a6b4e52dd9a7fd9c56c6392c779e82da307d377c8",
+      "fps": 59.94005994005994,
+      "frames": 1252,
+      "reference_annotation_sha256": "725166b2340212d4b72b1ef9485a1e73611914c58cd9e2b848910c83ee00e167",
+      "scene_archive_sha256": "b00b841e20933fbbdd1ad29aa7f75a2efacdd8935fc9f0c6811d2463d872450a",
+      "scene_index_sha256": "68dea3f98f09ebfcd27ab7ec54531e553d5a99ad94e395eb6311d6de711f43c1",
+      "sha256": "37e5b517a7226e186f1d78688fc633fdaf4462677ef33f5cf4b74402e7d98d7a",
+      "source_interval_s": [
+        1800.3063065201088,
+        1821.1897465201089
+      ],
+      "track_ids": [
+        1,
+        2,
+        0,
+        4
+      ]
+    },
+    "video_000/clip_065": {
+      "annotation_sha256": "677a090beda8f14a0aa0f89fe458dfa3c807a872d036d0b7f00975efc6e7e736",
+      "fps": 59.94005994005994,
+      "frames": 355,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "cb323b77a8f14f7328560d6f9256747409fd1cf61afa483f0dbc0d4de3af35a7",
+      "scene_index_sha256": "8c41253a397cc2b9d9a0f1a4e3c5db8345262219ce92104e69a373adb262b626",
+      "sha256": "82268750de2ae7930c60b7f542a183773d576ae0c7a789ff2e9c600a34523144",
+      "source_interval_s": [
+        1841.510637520109,
+        1847.4266065201089
+      ],
+      "track_ids": [
+        0,
+        3,
+        1,
+        5
+      ]
+    },
+    "video_000/clip_066": {
+      "annotation_sha256": "7e6428d4831b3647a83991f0d2896940b0f642bb9769dc6bcbd633ec1ff1ab69",
+      "fps": 59.94005994005994,
+      "frames": 613,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "e3bda77069287cee46f67c721d7f108cfeed4310acb370606046f06549cafa5c",
+      "scene_index_sha256": "21c7284de19b2efad88019d9392bd6e310c7f3d5ef44cb709d71e2df6b475a21",
+      "sha256": "ec16f1da3043f7458b53639a72cc5cfa1c8ea947f2fc0918b9b9881a8a7f58c1",
+      "source_interval_s": [
+        1864.7815695201089,
+        1875.0151895201088
+      ],
+      "track_ids": [
+        1,
+        4,
+        0,
+        5
+      ]
+    },
+    "video_000/clip_067": {
+      "annotation_sha256": "2fd6798f214d0a3c483db5b0c3892539775726be8da2eb967be1919185c3095e",
+      "fps": 59.94005994005994,
+      "frames": 543,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "18e83d66ef896fe6651673ff31d28ca7afb5665e805cab8419198b5451a6288b",
+      "scene_index_sha256": "5b235ee098efddaaabe92576e972a8cacf6f16701cdc74c9915e7f27989811de",
+      "sha256": "b5b34f93fd059de8e547b28039ab4c1412f1dadad762f74c24cf8430d6d40026",
+      "source_interval_s": [
+        1898.9019305201089,
+        1907.9678115201089
+      ],
+      "track_ids": [
+        0,
+        2,
+        1,
+        6
+      ]
+    },
+    "video_000/clip_068": {
+      "annotation_sha256": "817411970077cc2bf8d40acc82588850220be07e23ac1fb051e780e30e021601",
+      "fps": 59.94005994005994,
+      "frames": 462,
+      "reference_annotation_sha256": null,
+      "scene_archive_sha256": "21b5159beec60e9ddfcb0a26f93249befabd2ff0d47e599a5ada894606827961",
+      "scene_index_sha256": "57b56b7bd6e07fb1a53f2f05762739681312b6f2c4d126d0ddb41b9698019b8b",
+      "sha256": "74c924964ea355b4724d35e349016d6be85e1cf419aa0bd67a8403826a521aca",
+      "source_interval_s": [
+        1917.619098,
+        1925.334182
+      ],
+      "track_ids": [
+        0,
+        1,
+        3,
+        7
+      ]
+    }
+  },
+  "manifest_sha256": "790f05016e31ff4eb3fa8fc7d681d1a22ff0540928672e2a274a64543cd2a28a",
+  "prepared_sha256": "e0c54222f9cfbfde278956e4438d158fe9fa4a17e92ec791b607bac396c24677",
+  "reference_pins_sha256": "1ca990884968ae0a6221fee3a6e14cb63116d07938f8dcd79618e84557c73eea",
+  "smplx_sha256": "376021446ddc86e99acacd795182bbef903e61d33b76b9d8b359c2b0865bd992",
+  "splits": {
+    "test": [
+      "video_000/clip_004",
+      "video_000/clip_019",
+      "video_000/clip_027",
+      "video_000/clip_028",
+      "video_000/clip_037",
+      "video_000/clip_040",
+      "video_000/clip_043",
+      "video_000/clip_048",
+      "video_000/clip_053",
+      "video_000/clip_056",
+      "video_000/clip_064"
+    ],
+    "train": [
+      "video_000/clip_000",
+      "video_000/clip_001",
+      "video_000/clip_003",
+      "video_000/clip_005",
+      "video_000/clip_006",
+      "video_000/clip_007",
+      "video_000/clip_008",
+      "video_000/clip_009",
+      "video_000/clip_010",
+      "video_000/clip_011",
+      "video_000/clip_013",
+      "video_000/clip_014",
+      "video_000/clip_015",
+      "video_000/clip_016",
+      "video_000/clip_017",
+      "video_000/clip_018",
+      "video_000/clip_020",
+      "video_000/clip_021",
+      "video_000/clip_025",
+      "video_000/clip_026",
+      "video_000/clip_030",
+      "video_000/clip_031",
+      "video_000/clip_034",
+      "video_000/clip_035",
+      "video_000/clip_036",
+      "video_000/clip_038",
+      "video_000/clip_039",
+      "video_000/clip_041",
+      "video_000/clip_042",
+      "video_000/clip_044",
+      "video_000/clip_046",
+      "video_000/clip_049",
+      "video_000/clip_050",
+      "video_000/clip_051",
+      "video_000/clip_052",
+      "video_000/clip_054",
+      "video_000/clip_055",
+      "video_000/clip_057",
+      "video_000/clip_058",
+      "video_000/clip_059",
+      "video_000/clip_060",
+      "video_000/clip_061",
+      "video_000/clip_062",
+      "video_000/clip_065",
+      "video_000/clip_066",
+      "video_000/clip_067",
+      "video_000/clip_068"
+    ],
+    "val": [
+      "video_000/clip_002",
+      "video_000/clip_012",
+      "video_000/clip_022",
+      "video_000/clip_023",
+      "video_000/clip_024",
+      "video_000/clip_029",
+      "video_000/clip_032",
+      "video_000/clip_033",
+      "video_000/clip_045",
+      "video_000/clip_047",
+      "video_000/clip_063"
+    ]
+  }
+}

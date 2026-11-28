@@ -1,0 +1,43 @@
+\section{問題設定と出力形式}
+\label{sec:problem-and-output}
+
+\subsection{入力と座標}
+
+入力は一つのクリップに属する\ev{input}{3〜5}台の同期済み固定カメラ映像と、各映像に対応するカメラIDである。
+元フレーム数を $T$、視点数を $N$、選手数を $P$、共通のフレームレートを $f$、画像の幅と高さを $(W,H)$ とする。
+入力で時刻合わせを済ませ、各視点のフレーム $t$ が同じ時刻 $t/f$ を表す。
+寸法とFPSを入口で検査する。校正後は $XY$ 平面をコート面とし、$+Z$ を上向きとするメートル座標を使う。
+画像観測は画素座標 $(u,v)$ で処理し、SceneResultの画像座標には $(u/W,v/H)$ を保存する。
+選手IDはクリップ内で定義し、シングルスまたはダブルスの人数条件を設定で与える。
+
+\subsection{シーン配列と有効性}
+
+表\ref{tab:scene-contract}に、SceneResult v2の主要配列と読むべきマスクを示す。
+無効な座標は\ev{schema}{0}で保存するため、原点にある有効座標と欠測はマスクで区別する。
+関節と身体の配置には確定IDでの実観測、身体メッシュには有効なrootとyaw、
+球には利用できる\ev{schema}{2}視点以上を要求する。有効な3D結果に基準カメラを含むコート参照を記録する。
+現行の公開出力はシーン統合が作るv2にイベント段が疎なイベント列と判定可能区間を加えたv3であり、
+本報告の幾何評価では両版で共通の配列を用いる。
+
+\begin{table}[htbp]
+\centering
+\caption{SceneResultの主な出力配列。\textit{J}は\ev{schema}{17}関節、\textit{K}は\ev{schema}{14}コート点、\textit{V}はメッシュの頂点数。}
+\label{tab:scene-contract}
+\small
+\begin{tabular}{@{}lll@{}}
+\toprule
+量 & 保存形状・型 & 有効性の情報 \\
+\midrule
+コートの画像座標 & $N\times T\times K\times\ev{schema}{2}$、\texttt{float32} & コート点の可視性 \\
+選手の画像関節 & $P\times N\times T\times J\times\ev{schema}{2}$、\texttt{float32} & 関節の可視性・選手実観測 \\
+選手のコート関節 & $P\times T\times J\times\ev{schema}{3}$、\texttt{float32} & 関節有効性・理由 \\
+選手のrootとyaw & $P\times T\times\ev{schema}{3}$、$P\times T$、\texttt{float32} & root有効性・理由、yaw有効性 \\
+身体の局所メッシュ & $P\times T\times V\times\ev{schema}{3}$、\texttt{float32} & 身体配置の有効性 \\
+球の画像座標 & $N\times T\times\ev{schema}{2}$、\texttt{float32} & 視点ごとの観測 \\
+球のコート座標 & $T\times\ev{schema}{3}$、\texttt{float32} & 三角測量の有効性・理由 \\
+\bottomrule
+\end{tabular}
+
+\smallskip
+{\footnotesize 有効性マスクはbool型。理由配列は対応するマスクと同じ形状の\texttt{uint8}。}
+\end{table}

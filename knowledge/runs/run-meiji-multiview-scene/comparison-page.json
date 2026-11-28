@@ -1,0 +1,312 @@
+{
+  "bundle_bytes": 63271542,
+  "index_sha256": "c804e05c75c12829ca13f89d2e3de6dba69075bc296c0975a532f3a1cea9eb15",
+  "manifest_sha256": "2e7f56efc8752c2306d43e7b3df7f4f5a2a87d8a19fb96af357e9a22fcc557e8",
+  "codec": "h264",
+  "clips": [
+    {
+      "clip_id": "video_000/clip_002",
+      "stage1": {
+        "video": "stage1/clip_002.mp4",
+        "video_sha256": "0e7a4b04131b3f5884edc31ed2e028117a457d964452e7abbbe0a7a1054fb095",
+        "video_bytes": 3238850,
+        "video_frames": 506,
+        "poster": "stage1/clip_002.jpg",
+        "poster_sha256": "be346ddcc5f405f559286fc9db6da97925773f8d6b6d658e35610e27d59fc7d8"
+      },
+      "stage2": {
+        "video": "stage2/clip_002.mp4",
+        "video_sha256": "a8c24bc70537b78e94e0939a46fdc8ea58b925b13d1c6fed94b42d431e201403",
+        "video_bytes": 3204813,
+        "video_frames": 506,
+        "poster": "stage2/clip_002.jpg",
+        "poster_sha256": "dca1e4093c3e0d1e3fb259d553b82313e4f4b38f345a5a19d461adb90a1b634d"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_004",
+      "stage1": {
+        "video": "stage1/clip_004.mp4",
+        "video_sha256": "614f0219a87663f60460ce8b33478b0f16d0c75f1ecff7f1e837d515db9116b3",
+        "video_bytes": 1329671,
+        "video_frames": 196,
+        "poster": "stage1/clip_004.jpg",
+        "poster_sha256": "616957da03f575d7bc45034c1c803a9a6d32992c630ed323bc96cecd2f5de809"
+      },
+      "stage2": {
+        "video": "stage2/clip_004.mp4",
+        "video_sha256": "3fb4d1db3965c2bbc22c007d3af04d4c89e7db7bf4ee8dfaf63ed094556ea7e0",
+        "video_bytes": 1272386,
+        "video_frames": 196,
+        "poster": "stage2/clip_004.jpg",
+        "poster_sha256": "6b1d92660634deb09e457954b5d3aaa8ecd4ff10b535ac6e33c509c7a333c6fa"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_012",
+      "stage1": {
+        "video": "stage1/clip_012.mp4",
+        "video_sha256": "eca2c43be7003d34ccef0262630242a0757cec0fce4b890bf8b4e97f8eb854d1",
+        "video_bytes": 2155301,
+        "video_frames": 339,
+        "poster": "stage1/clip_012.jpg",
+        "poster_sha256": "221b2d559e16f370142f4ed76ccbdecfc21b57419b277e871af3bb6f6aef9d99"
+      },
+      "stage2": {
+        "video": "stage2/clip_012.mp4",
+        "video_sha256": "bfabec2d802922a8b240742d7d0fe319c14e248e1657c019668ea1da64011f29",
+        "video_bytes": 2043488,
+        "video_frames": 339,
+        "poster": "stage2/clip_012.jpg",
+        "poster_sha256": "c56dfbff8d7d7ec1098d426eb79e9df8d0835c80a39368780c14566f9e27a2df"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_014",
+      "stage1": {
+        "video": "stage1/clip_014.mp4",
+        "video_sha256": "5a83c653cb6b462426c357829ad41b3581746dfeaf7e6eb98a4c1d5f4b54a5c0",
+        "video_bytes": 1040186,
+        "video_frames": 155,
+        "poster": "stage1/clip_014.jpg",
+        "poster_sha256": "290d75b1f73c1095c2d4fb8afed1be18e838bd450561b7ea6758f5f1d50de061"
+      },
+      "stage2": {
+        "video": "stage2/clip_014.mp4",
+        "video_sha256": "29b40abda7ab6a787342a01af66072b1047706a86662bc96be42c766479522fa",
+        "video_bytes": 993446,
+        "video_frames": 155,
+        "poster": "stage2/clip_014.jpg",
+        "poster_sha256": "c9e166ad68fe6c91a80c4815f711629cf6a26f67abb38be1c462b39dbb6150c1"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_018",
+      "stage1": {
+        "video": "stage1/clip_018.mp4",
+        "video_sha256": "156f5ef7bdb199601db971deb7ef1fdbd247fcb438493861ac7aef7bf04bd742",
+        "video_bytes": 883269,
+        "video_frames": 129,
+        "poster": "stage1/clip_018.jpg",
+        "poster_sha256": "feb8b12d26c2d9a78ddd9e46ac921c7e9d219fb8b10fa202b6a66f7b82a07269"
+      },
+      "stage2": {
+        "video": "stage2/clip_018.mp4",
+        "video_sha256": "bc512ef0149ddc33448adb001bbc7181d7f68a99ed8488446228819080db1ec0",
+        "video_bytes": 819423,
+        "video_frames": 129,
+        "poster": "stage2/clip_018.jpg",
+        "poster_sha256": "9f53f5fdfc8c48a15e5bc7baf06114460f8f2452e2901f3596ce3856cea596da"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_020",
+      "stage1": {
+        "video": "stage1/clip_020.mp4",
+        "video_sha256": "085f849701e90cc663c81795b41cd030d8925bfdd26f655dc483b048ac8fda42",
+        "video_bytes": 1421912,
+        "video_frames": 217,
+        "poster": "stage1/clip_020.jpg",
+        "poster_sha256": "7731b60a3636bae4bf72af937d0c33552062e3da3a0ca59b6a501f7f5c632db3"
+      },
+      "stage2": {
+        "video": "stage2/clip_020.mp4",
+        "video_sha256": "6e610c51ba3e1bb81fcdf7a4c612676f8fee2264c53379231b30c1dab28817dd",
+        "video_bytes": 1348557,
+        "video_frames": 217,
+        "poster": "stage2/clip_020.jpg",
+        "poster_sha256": "6d39f3ce9910bf929d88f932d0a7ae7fbcc4bc98ae94bb890e04d62996e6d25a"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_023",
+      "stage1": {
+        "video": "stage1/clip_023.mp4",
+        "video_sha256": "475fe05c2c8dcdb4917855c6084925bcd0dca6689a5cd5ceda0a2e2e3d55984a",
+        "video_bytes": 4190202,
+        "video_frames": 579,
+        "poster": "stage1/clip_023.jpg",
+        "poster_sha256": "4bca33f71cc689a8cbd397397e0b2bd61f79cac16b1faf71548c396ec325f915"
+      },
+      "stage2": {
+        "video": "stage2/clip_023.mp4",
+        "video_sha256": "f83a5aa179acd32a929f12ccbb4a02c473eae144310119f887f28f0a7bfaf6c8",
+        "video_bytes": 4120371,
+        "video_frames": 579,
+        "poster": "stage2/clip_023.jpg",
+        "poster_sha256": "2fd5ccc6cff55d95d61f0056a63b99ff8d2f3c573dde74d440e4b05672c61731"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_028",
+      "stage1": {
+        "video": "stage1/clip_028.mp4",
+        "video_sha256": "cf50a0feb2937c4160eca610fb89d3656b7d445fc36fc860a6257f94671c725d",
+        "video_bytes": 2804575,
+        "video_frames": 430,
+        "poster": "stage1/clip_028.jpg",
+        "poster_sha256": "67ea21c865abaacee29acf9ff4cb8dc4c5000021b69abc2a7adf2455b069cc82"
+      },
+      "stage2": {
+        "video": "stage2/clip_028.mp4",
+        "video_sha256": "8cc1196bdc6b6fca4cac20220948aa7f4dac2c3ef03f25615026e71048302cfa",
+        "video_bytes": 2771966,
+        "video_frames": 430,
+        "poster": "stage2/clip_028.jpg",
+        "poster_sha256": "828b85301f6272c44f4b6ff7dd1118b7ed62e9fe6c1051c51b4dded53c22b0ec"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_036",
+      "stage1": {
+        "video": "stage1/clip_036.mp4",
+        "video_sha256": "95fd65cecf799413c0f3c4a5ceb8e4d7467c6a2bced37fa45b13ca07579de59f",
+        "video_bytes": 988397,
+        "video_frames": 135,
+        "poster": "stage1/clip_036.jpg",
+        "poster_sha256": "6e9b87683cf0364ec70ac46a2b8e2d6121c20bfae40e2f99b1ec6a844340e4f9"
+      },
+      "stage2": {
+        "video": "stage2/clip_036.mp4",
+        "video_sha256": "a5452d7f6896c517da93e29ea99351fb053596c7978426630ee79fe871aec4a9",
+        "video_bytes": 912507,
+        "video_frames": 135,
+        "poster": "stage2/clip_036.jpg",
+        "poster_sha256": "6585941ee055eb6d701c00f22414fce52798cd6be74dbd818a953ff27fb4eab2"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_038",
+      "stage1": {
+        "video": "stage1/clip_038.mp4",
+        "video_sha256": "777a99647c0bdb7c6f84ab1ae36853ea853fc4656c40983cd58fad5aa6d385c5",
+        "video_bytes": 803726,
+        "video_frames": 113,
+        "poster": "stage1/clip_038.jpg",
+        "poster_sha256": "f140d8d4d9159b4c65ce535ad33efb75e0bf23952f0313a72c61d3c2dd620e86"
+      },
+      "stage2": {
+        "video": "stage2/clip_038.mp4",
+        "video_sha256": "7a39675173d67eb1976de490573c94c0a317dab9f571ba3ff45f49e4fa9d1058",
+        "video_bytes": 787651,
+        "video_frames": 113,
+        "poster": "stage2/clip_038.jpg",
+        "poster_sha256": "9335b4d345e10071681a6019acd2fe0aebcd38bcd5e15c18e7e7667412448273"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_039",
+      "stage1": {
+        "video": "stage1/clip_039.mp4",
+        "video_sha256": "07f590b06e22676d383389c90d5a2e12d8d0b846338608f42078f446254d4d03",
+        "video_bytes": 1968626,
+        "video_frames": 291,
+        "poster": "stage1/clip_039.jpg",
+        "poster_sha256": "55a8faac26f88ab9d8713a272c1ea432facfd740698b61d6b7db25b5589271ea"
+      },
+      "stage2": {
+        "video": "stage2/clip_039.mp4",
+        "video_sha256": "721eafacc15742dc69899b379330d455c5a3b9c8a61536f6f75da60191defa89",
+        "video_bytes": 1895950,
+        "video_frames": 291,
+        "poster": "stage2/clip_039.jpg",
+        "poster_sha256": "03b9f274fe36a815dc9801c7dcb7890dcb1f60f40b0fae8c828de07dff19558d"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_049",
+      "stage1": {
+        "video": "stage1/clip_049.mp4",
+        "video_sha256": "24136d7d87ecfa7e0b4c5ae8c930c2e79217ba295cb83b5e68a77c5f50705d98",
+        "video_bytes": 2254576,
+        "video_frames": 374,
+        "poster": "stage1/clip_049.jpg",
+        "poster_sha256": "042ffa1510ab4cd30b8537f07b7a654d585676e2636cb997e573064ce49aea08"
+      },
+      "stage2": {
+        "video": "stage2/clip_049.mp4",
+        "video_sha256": "a97ae6feaa70772d4949bcc7c7f35031627fde6c8cd77177af20c33ea1c72e6a",
+        "video_bytes": 2166192,
+        "video_frames": 374,
+        "poster": "stage2/clip_049.jpg",
+        "poster_sha256": "75a5ef4b659689889715dae22136151c9a5224803de890265a9c0ef62ac91212"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_058",
+      "stage1": {
+        "video": "stage1/clip_058.mp4",
+        "video_sha256": "3b0d9a191207c100491e79d19c6d868bdf4e6a1196a360ff9ffea741e161ef7b",
+        "video_bytes": 1595398,
+        "video_frames": 255,
+        "poster": "stage1/clip_058.jpg",
+        "poster_sha256": "0d6e5b07f0d91397e58bf7076fdd001b940e5610e669aef22725ed3746b3cd5e"
+      },
+      "stage2": {
+        "video": "stage2/clip_058.mp4",
+        "video_sha256": "70c7a0f9a65936bcd583fea3a365f3c734e90ed682fab277c91276e4fb40b46a",
+        "video_bytes": 1548235,
+        "video_frames": 255,
+        "poster": "stage2/clip_058.jpg",
+        "poster_sha256": "4dbb145fad31cb9e7fdfb89bb955fddd0b0e53cd489430692921fea22805da7a"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_060",
+      "stage1": {
+        "video": "stage1/clip_060.mp4",
+        "video_sha256": "e84a8feb1a4b2606798a5eb9f424022d7293e850dac90d378c13986d85da068a",
+        "video_bytes": 729704,
+        "video_frames": 105,
+        "poster": "stage1/clip_060.jpg",
+        "poster_sha256": "56f41f0a59f496b6caf17e3f2afddb7d859d50ebc7a4b765e1cf2355eb4f89eb"
+      },
+      "stage2": {
+        "video": "stage2/clip_060.mp4",
+        "video_sha256": "28e2cda64df5d63260169098442116bea9ca15e7faaac3baa15851a74fbe6861",
+        "video_bytes": 668853,
+        "video_frames": 105,
+        "poster": "stage2/clip_060.jpg",
+        "poster_sha256": "6088c3a9c1981ef8e08e35c34f936dddc8993d40f23bf09686b7efa2542b32aa"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_009",
+      "stage1": {
+        "video": "stage1/clip_009.mp4",
+        "video_sha256": "f60c86c95c568429f7f58f8c9c7da0d0dd941fda900215338ec96554f0f57151",
+        "video_bytes": 2157648,
+        "video_frames": 325,
+        "poster": "stage1/clip_009.jpg",
+        "poster_sha256": "f1192032feeab2d20f6ac5eda0a945690ec28f26693eb920dc537943c091ead7"
+      },
+      "stage2": {
+        "video": "stage2/clip_009.mp4",
+        "video_sha256": "fcb479ec3b50de393804684c3f850e0f0c6a4220c255784421ac515345db798f",
+        "video_bytes": 2170432,
+        "video_frames": 325,
+        "poster": "stage2/clip_009.jpg",
+        "poster_sha256": "7e0451f9f4019b1ed7e638f149478191600882feb261c1194bb0330d61acf6d6"
+      }
+    },
+    {
+      "clip_id": "video_000/clip_052",
+      "stage1": {
+        "video": "stage1/clip_052.mp4",
+        "video_sha256": "50bf6a7383a6dd50610143bc37513596f59d1a99e010bc4faede31083feb5e07",
+        "video_bytes": 1021839,
+        "video_frames": 142,
+        "poster": "stage1/clip_052.jpg",
+        "poster_sha256": "aac96fca8d5b423bc9aa0835c33b6a7386ffebf3d7c7e5f25acd86230b85ba01"
+      },
+      "stage2": {
+        "video": "stage2/clip_052.mp4",
+        "video_sha256": "3be21dc47ca02dfc5deeec4e9e010bb9929b0dc7dc212ca0cea5f4e118bdb750",
+        "video_bytes": 1033823,
+        "video_frames": 142,
+        "poster": "stage2/clip_052.jpg",
+        "poster_sha256": "c16657ee4a3736e92c9e0166022045a7d3dfae1cb0e297d3098370850aa21188"
+      }
+    }
+  ]
+}

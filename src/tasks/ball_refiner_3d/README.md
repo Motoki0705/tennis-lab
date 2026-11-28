@@ -21,6 +21,7 @@
 | [training/](training/README.md) | BaseTrainingRunner / BaseLightningModuleへの接続、loss、step schedule |
 | `inference/` | 公開Predictor、クリップ全体の1回forward、予測イベントによる区間分割、Flow sampling、NPZ入出力 |
 | `evaluation/` | 全ラリー評価、baseline、checkpointと対応付けた予測・指標の保存 |
+| `post_training/` | SceneResult v3の選手動作入力、凍結Refinerへの融合、実映像での追加学習と評価 |
 | [visualization/](visualization/dataset_review/README.md) | 静的plotとDataset Review WebUI |
 | `scripts/` | 引数・path検証と上記APIの呼び出しのみ |
 
@@ -109,3 +110,41 @@ dataset reviewはこれらの配列を表示する。
 学習で保存するLightning checkpointにはoptimizer・scheduler・乱数状態も含まれる。
 共有dataset・学習済み重み・過去の実験記録は変更しない。
 旧CLI・flat moduleは廃止したため、過去実験の再実行には記録されたcommitを使用する。
+
+## 実映像でのモーション付きイベント追加学習
+
+Meiji `multiview-v3` の公開SceneResult v3を使う。事前学習済みの3クラス回帰checkpointから球embedding・Temporal Transformer・座標head・イベントheadを読み込み、evalモードで固定する。1フレームにつき1トークンを保ち、球embeddingへ選手の残差を加える。
+
+| `--mode` | 入力融合 |
+|---|---|
+| `shared` | 共有MLP（161→128→256、RMSNorm・SiLU）で符号化し、有効な選手を加算 |
+| `per-player` | 同じ構造のMLPを4枠それぞれに持ち、有効な選手を加算 |
+| `set-attention` | 共有MLP、4-head SAB 1層、球embeddingをクエリにしたattention pooling |
+| `ball-only` | 事前学習済みモデルで評価のみ実行 |
+
+残差への最終線形層はweightとbiasをゼロで初期化する。Set Attentionは球と選手の種別embeddingを持ち、無効な選手をkey/valueから除外する。有効な選手がいないフレームでは全方式が球embeddingをそのまま使用する。[Set Transformer](https://proceedings.mlr.press/v97/lee19d.html)
+
+選手枠は負のY側2枠、正のY側2枠。各側はmanifestとSceneResultの安定IDを昇順に配置し、欠員をmaskする。各選手の161次元は関節の回転6D（126）、root位置（3）、yawのsin/cos（2）、root速度（3）、左右手首のroot相対位置（6）とその速度（6）、球のroot相対位置（3）と左右手首相対位置（6）、root・heading・SMPL・球・root速度・手首速度の有効性（6）。XYZと球相対位置は既存の `[10,20,5]` m、手首相対位置は1 m、速度は10 m/sで割る。速度は有効な連続2フレームの後退差分と元FPSから求める。SMPL-Xの中立形状で順運動学を行い、SceneResultに記録された体スケール、Y-up→Z-up変換、yawと描画補償回転の逆を合成してコート座標に配置する。root単体の観測はSMPL欠測時にも使用する。
+
+```bash
+.venv/bin/python -m src.tasks.ball_refiner_3d.scripts.post_train prepare \
+  --dataset "$BENCHMARK" --manifest-sha256 "$MANIFEST_SHA" \
+  --smplx "$SMPLX_NEUTRAL" --reference-labels "$REFERENCE_LABELS" \
+  --reference-pins "$REFERENCE_PINS" --reference-pins-sha256 "$REFERENCE_PINS_SHA" \
+  --output "$PREPARED"
+
+# CUDAを指定するコマンドはtraining queueに登録する。
+.venv/bin/python -m src.tasks.ball_refiner_3d.scripts.post_train run \
+  --dataset "$PREPARED" --manifest-sha256 "$MANIFEST_SHA" \
+  --prepared-sha256 "$PREPARED_SHA" \
+  --checkpoint "$CHECKPOINT" --checkpoint-sha256 "$CHECKPOINT_SHA" \
+  --mode shared --seed 42 --device cuda --output "$RUN"
+```
+
+パスは絶対パス、出力は新規ディレクトリを指定する。`prepare` はmanifestの47/11/11分割、sceneと注釈のhash、元動画区間、FPS、選手IDを照合する。元動画区間の分割間重複はエラーになる。独立ラベルは #2542 のrun bundleの `inputs.json` と採点6本の `video_000/clip_NNN/labels.json` を指定する。`prepare` が出力する `inputs.json` のSHA-256が `PREPARED_SHA`。
+
+学習は1クリップ1更新で全長を使い、AdamW（既定12 epoch、lr 0.0003、weight decay 0.01、勾配norm上限1.0）。checkpointのGaussian幅を使い、certain・probableの全イベントを教師にする。coverage外の既知イベントもGaussianを生成し、coverage内にかかる裾を学習する。coverage外は全クラス、uncertainの前後2フレームは該当クラスをBCEから除く。uncertainの区間と重なる別の確定・有力ラベルは、coverage内の正例中心を保持する。validationのmacro-F1、同点はvalidation BCE、さらに同点は先のepochで選ぶ。
+
+評価では確率0.5以上・同クラス3フレーム間隔でピークを抽出し、クラスとクリップごとに元フレーム±2の1対1対応を最大化する。coverageにかかわらず既知イベントを照合し、coverage外で未照合のピークはFP集計から除く。ポイント内はTP/FNをラベルで分類し、FPは連続するポイント内注釈の最初から最後までで判定する。ポイント外の注釈と次のサーブは区間の境界になるため、このFPは注釈からの推定に基づく。条件別の判定時刻はTP/FNがラベル時刻、FPが予測時刻。ネット付近は観測球の `abs(y) ≤ 1 m`、SMPL欠測は割当済みの選手に対するmaskを使う。ボレーは注釈subtypeごとの再現率・時刻誤差を報告する。正解イベントのない条件は指標を `null` とする。
+
+`run.json` と `history.json` に設定・入力hash・学習曲線を、`best.pt` に選択した融合重みと事前学習checkpointのhashを保存する。`predictions/` に元フレーム単位の予測、`matches.json` に照合内訳、`metrics.json` に両ラベル源の精度・追加パラメータ数・推論時間・CUDAピーク割当を保存する。計測は各クリップ1回のwarmup後に同期付きforwardを3回行い、入出力の転送と採点を計測から除く。

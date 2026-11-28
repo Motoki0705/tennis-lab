@@ -17,7 +17,11 @@ from src.tennis_scene.multiview_pose.schema import (
 )
 from src.tennis_scene.pipeline.artifacts import document_digest, json_value
 from src.tennis_scene.pipeline.contracts import ClipSource
-from src.tennis_scene.pipeline.source_identity import source_digests
+from src.tennis_scene.pipeline.model_assets import LEGACY_PEOPLE_MODELS
+from src.tennis_scene.pipeline.source_identity import (
+    compatible_people_model_source_digests,
+    source_digests,
+)
 from src.tennis_scene.pipeline.storage.clip_store import ArtifactRef, ClipStore
 from src.tennis_scene.pipeline.storage.codec import ArtifactCodec, restore_type
 from src.tennis_scene.pipeline.storage.scene_index import read_component_descriptor
@@ -62,11 +66,14 @@ def publish_candidates(
         "court_side": inputs.court_side,
         "config": json_value(config),
     }
+    implementation = source_digests(Path(__file__).parent)
+    if inputs.people_models == LEGACY_PEOPLE_MODELS:
+        implementation = compatible_people_model_source_digests(implementation, prefix="tennis_scene/multiview_pose/")
     identity = {
         "schema": SCHEMA,
         "version": VERSION,
         "source_sha256": store.source_key,
-        "implementation": document_digest(source_digests(Path(__file__).parent)),
+        "implementation": document_digest(implementation),
         **evidence,
     }
     ref: ArtifactRef = store.publish(

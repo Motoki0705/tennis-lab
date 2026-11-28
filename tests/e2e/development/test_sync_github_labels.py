@@ -44,6 +44,7 @@ def test_repository_manifest_is_valid_and_keeps_existing_names() -> None:
         "bug",
         "enhancement",
         "research",
+        "ablation",
         "documentation",
         "followup",
         "ai-proposed",

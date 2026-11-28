@@ -622,7 +622,7 @@ def _main(argv: argparse.Namespace | list[str] | None = None) -> int:
             value = (
                 wait(path, after=args.after, timeout=args.timeout)
                 if args.command == "wait-merge"
-                else view(path)
+                else view(path, store=store)
             )
             print(json.dumps(value, ensure_ascii=False, indent=2, sort_keys=True))
             return 0

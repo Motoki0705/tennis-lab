@@ -1,0 +1,41 @@
+# 親issue &#35;2690
+
+結果 → 親の判断と理由 → 実際の行動 → 次の結果を、参照で辿る表示です。
+
+反映範囲: このHEADの記録集合 96 件。記録時刻 2026-11-27T17:31:04.544940+00:00 〜 2026-11-27T21:59:05.452618+00:00。
+
+公開待ち: このHEADのmain反映と、まだGitに無い非公開記録は `decision-log-status` で照合してください。ここでは未公開件数や最新状態を推測しません。
+
+[上の階層](../README.md) · [親一覧](../README.md)
+
+96 記録 / 判断 0 件。失敗・拒否の結果: 4 件。未判断の結果: 38 件。親の確認未記録: 36 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 26 件（結果イベント単位）。
+
+公開workerログ: 3 ターン（分母）。対応イベントあり: 3 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 3 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。
+
+対応数は公開worker3ファイルのあるターンを分母にしたものです。イベントのみのターンを加えた和集合とは分けます。対応イベントの存在は、親判断の記録・受入・網羅性を保証しません。
+
+最後の受入・担当終了／引継ぎ: [結果 7072](activity-fe81243e2c75473f900afa1b3cb49888/README.md#record-8bac561657b44a239da3297e813394fd)
+
+担当終了（担当世代 1 / 観測時点 2026-11-27T21:59:04.419347+00:00）<br>最後の親の受入（明示記録時点）: completed<br>[終了時の照合先main](https://github.com/Motoki0705/tennis-lab/commit/e3f62b219a3bebe9f1d32679c51238f007948aa2)<br>根拠非公開・記録不足: capture&#95;source=parent.release; artifact=parent issue comment; content&#95;sha256=ac007bddbdf68ca8ed56bac4fc5239a0e91c1420f184a3ab697f03ec890e5030; private evidence<br>[根拠](https://github.com/Motoki0705/tennis-lab/issues/2701#issuecomment-7228920495)（内容識別あり・全文復元は未保証）<br>終了・引継ぎの根拠: 根拠非公開・記録不足: capture&#95;source=parent.release; artifact=parent issue comment; content&#95;sha256=4b74a6569ba3afbd280d82f5e9e2bddca3b4f985ff540c909d1513ee88d7c204; private evidence<br>[根拠](https://github.com/Motoki0705/tennis-lab/issues/2701#issuecomment-7228921902)（内容識別あり・全文復元は未保証）<br>公開残件（観測時点）: 1 件<br>decision_log: unprepared / 未公開 7 記録 / awaiting&#95;publication<br>公開の担当: unassigned<br>workerログの再開先: parent --repo Motoki0705/tennis-lab --parent 2690 publish-worker-log --all-parents --source-parent 2690<br>判断ログの再開先: parent --repo Motoki0705/tennis-lab --parent RECOVERY&#95;PARENT publish-decision-log --unassigned-parent 2690
+
+直近の観測（受入の判定とは別）: 担当終了（担当世代 1 / 観測時点 2026-11-27T21:59:04.419347+00:00）<br>最後の親の受入（明示記録時点）: completed [結果 7072](activity-fe81243e2c75473f900afa1b3cb49888/README.md#record-8bac561657b44a239da3297e813394fd)<br>[結果 7072](activity-fe81243e2c75473f900afa1b3cb49888/README.md#record-8bac561657b44a239da3297e813394fd) partial / machine: Parent lifecycle and publication reconciliation observed / acceptance is recorded separately<br>[行動 7073](activity-fe81243e2c75473f900afa1b3cb49888/README.md#record-ad158853d8304f1a8e80a7be900ae604) 記録 / 終了（成果受入とは別）
+
+## 下の階層
+
+| 対象・期間 | 件数と未確認 | 最新の記録 |
+| --- | --- | --- |
+| [担当issue &#35;2690](child-2690/README.md)<br>2026-11-27T17:33:18.497933+00:00 〜 2026-11-27T21:47:02.233004+00:00 | 49 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 18 件。親の確認未記録: 16 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 7 件（結果イベント単位）。<br>公開workerログ: 3 ターン（分母）。対応イベントあり: 3 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 3 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 7052](activity-1c01dfe4f9974b568dbd7d2ab79ea6b0/README.md#record-1ecc2a532f2d44979ce4387667bdf10e) success / machine: parent.publish-worker-log: success / 担当issue: 2690<br>[行動 7053](activity-1c01dfe4f9974b568dbd7d2ab79ea6b0/README.md#record-fc7ff61a3d12449fa5f8f9ddba3c2f86) 公開 / 終了（成果受入とは別） |
+
+## 活動別の結果と判断
+
+[全17件の一覧（1ページ）](activity-index-activities-0001/README.md)
+
+| 対象・期間 | 件数と未確認 | 最新の記録 |
+| --- | --- | --- |
+| [worker&#95;logs.publish / 担当issue &#35;2690](activity-ab1c945795734c169819b8f4a2f34b02/README.md)<br>2026-11-27T21:46:27.229761+00:00 〜 2026-11-27T21:46:27.322724+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 0 件（結果イベント単位）。<br>公開workerログ: 1 ターン（分母）。対応イベントあり: 1 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 7031](activity-ab1c945795734c169819b8f4a2f34b02/README.md#record-d84fa8da25994f55bcb7283abd8fd248) success / machine: worker&#95;logs.publish: delegation&#95;key=d-8602e8c5840f4ff2a1e8e5d895bd1a5a / ターン: 1 / 状態: merged<br>[行動 7032](activity-ab1c945795734c169819b8f4a2f34b02/README.md#record-ee0beb9a90e74770a445de23ee929754) 公開だけの再試行 / 終了（成果受入とは別） |
+| [worker&#95;logs.publish / 担当issue &#35;2690](activity-7dceb0fc13cd4c6f9b5445ed051649db/README.md)<br>2026-11-27T21:46:27.569330+00:00 〜 2026-11-27T21:46:27.665529+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 0 件（結果イベント単位）。<br>公開workerログ: 1 ターン（分母）。対応イベントあり: 1 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 7034](activity-7dceb0fc13cd4c6f9b5445ed051649db/README.md#record-de26f2408ee5436e9603a9683f43b918) success / machine: worker&#95;logs.publish: delegation&#95;key=d-8602e8c5840f4ff2a1e8e5d895bd1a5a / ターン: 2 / 状態: merged<br>[行動 7035](activity-7dceb0fc13cd4c6f9b5445ed051649db/README.md#record-624f19e51eec41dd838d361364db2f0c) 公開だけの再試行 / 終了（成果受入とは別） |
+| [worker&#95;logs.publish / 担当issue &#35;2690](activity-f00479522fa04259bedae736f7098a6d/README.md)<br>2026-11-27T21:47:01.773490+00:00 〜 2026-11-27T21:47:01.909923+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 0 件（結果イベント単位）。<br>公開workerログ: 1 ターン（分母）。対応イベントあり: 1 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 1 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 7050](activity-f00479522fa04259bedae736f7098a6d/README.md#record-32f642abc2934ee490078990419e9b56) success / machine: worker&#95;logs.publish: delegation&#95;key=d-8602e8c5840f4ff2a1e8e5d895bd1a5a / ターン: 3 / 状態: merged<br>[行動 7051](activity-f00479522fa04259bedae736f7098a6d/README.md#record-32ca1dde7ecb4564819a3cdfb218102d) 公開 / 終了（成果受入とは別） |
+| [parent.publish-worker-log / 担当issue &#35;2690](activity-1c01dfe4f9974b568dbd7d2ab79ea6b0/README.md)<br>2026-11-27T21:46:26.875444+00:00 〜 2026-11-27T21:47:02.233004+00:00 | 4 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 1 件（結果イベント単位）。<br>公開workerログ: 0 ターン（分母）。対応イベントあり: 0 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 0 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 7052](activity-1c01dfe4f9974b568dbd7d2ab79ea6b0/README.md#record-1ecc2a532f2d44979ce4387667bdf10e) success / machine: parent.publish-worker-log: success / 担当issue: 2690<br>[行動 7053](activity-1c01dfe4f9974b568dbd7d2ab79ea6b0/README.md#record-fc7ff61a3d12449fa5f8f9ddba3c2f86) 公開 / 終了（成果受入とは別） |
+| [parent.release / 親 &#35;2690 の直接活動](activity-094ec3a8992148889ed886759152934d/README.md)<br>2026-11-27T21:58:20.764398+00:00 〜 2026-11-27T21:59:04.062988+00:00 | 7 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 4 件。親の確認未記録: 4 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 4 件（結果イベント単位）。<br>公開workerログ: 0 ターン（分母）。対応イベントあり: 0 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 0 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | [結果 7069](activity-094ec3a8992148889ed886759152934d/README.md#record-6394fde288b84a4ab61905649b70cc14) success / parent&#95;verification: parent.release: success / acceptance: completed / 親issue: 2690 / parent&#95;action&#95;applied: はい / phase: 要件合意済み<br>[行動 7070](activity-094ec3a8992148889ed886759152934d/README.md#record-0ce37c8ec74247ce829169babb764e3a) 引継ぎ / 終了（成果受入とは別） |
+| [parent.termination / 親 &#35;2690 の直接活動](activity-fe81243e2c75473f900afa1b3cb49888/README.md)<br>2026-11-27T21:59:05.008022+00:00 〜 2026-11-27T21:59:05.452618+00:00 | 3 記録 / 判断 0 件。失敗・拒否の結果: 0 件。未判断の結果: 1 件。親の確認未記録: 1 件。判断済み未実行の計画: 0 件。記録不足の最終報告: 0 件（結果イベント単位）。最終報告の観測対象外: 1 件（結果イベント単位）。<br>公開workerログ: 0 ターン（分母）。対応イベントあり: 0 ターン / 対応イベントなし: 0 ターン。イベントのみ: 0 ターン。和集合: 0 ターン。最終報告なし（終了・欠落の根拠あり）: 0 ターン。稼働中: 0 ターン。終了未確認: 0 ターン。最終報告あり・公開保留: 0 ターン。 | 担当終了（担当世代 1 / 観測時点 2026-11-27T21:59:04.419347+00:00）<br>最後の親の受入（明示記録時点）: completed [結果 7072](activity-fe81243e2c75473f900afa1b3cb49888/README.md#record-8bac561657b44a239da3297e813394fd)<br>[結果 7072](activity-fe81243e2c75473f900afa1b3cb49888/README.md#record-8bac561657b44a239da3297e813394fd) partial / machine: Parent lifecycle and publication reconciliation observed / acceptance is recorded separately<br>[行動 7073](activity-fe81243e2c75473f900afa1b3cb49888/README.md#record-ad158853d8304f1a8e80a7be900ae604) 記録 / 終了（成果受入とは別） |
+

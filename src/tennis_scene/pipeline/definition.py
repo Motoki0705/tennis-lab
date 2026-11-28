@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Callable, Mapping
 from functools import partial
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from src.submodules.models.ecpose.inference import require_weight
@@ -128,7 +129,6 @@ from src.tennis_scene.pipeline.recipes import (
     RecipeName,
 )
 from src.tennis_scene.pipeline.runner import ComponentNode
-from src.tennis_scene.pipeline.source_identity import source_commit
 from src.tennis_scene.pipeline.video_court.component import (
     SharedCourtAssembler,
     SharedCourtModule,
@@ -146,6 +146,8 @@ if TYPE_CHECKING:
 
     from src.submodules.configuration import (
         DinoDetectorRuntimeConfig,
+        RFDetrRuntimeConfig,
+        RTMPoseRuntimeConfig,
         ViTPoseRuntimeConfig,
     )
     from src.tennis_scene.configuration import PipelineRuntimeConfig
@@ -285,7 +287,8 @@ def validate_override_names(overrides: Mapping[str, Any], recipe: RecipeName = S
         raise ValueError(f'Unknown component override: {sorted(unknown)}')
 
 
-def _person_runtime_identity(runtime: DinoDetectorRuntimeConfig | ViTPoseRuntimeConfig,
+def _person_runtime_identity(
+                             runtime: DinoDetectorRuntimeConfig | ViTPoseRuntimeConfig | RFDetrRuntimeConfig | RTMPoseRuntimeConfig,
                              device: str, *, key: str = "runtime") -> dict[str, Any]:
     options = json_value(runtime)
     del options["engines"]
@@ -295,6 +298,29 @@ def _person_runtime_identity(runtime: DinoDetectorRuntimeConfig | ViTPoseRuntime
         del options["precision"]
         return {key: options}
     return {key: options, "device": device}
+
+
+def _bound_assets(cfg: PipelineRuntimeConfig, enabled: bool, paths: Mapping[str, Path]) -> dict[str, Any]:
+    return {name: cfg.court_kp.asset_catalog.file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
+
+
+def person_detection_settings(cfg: PipelineRuntimeConfig) -> dict[str, Any]:
+    enabled = cfg.enabled["person_observations"]
+    return {
+        "detector": cfg.people.detector,
+        "assets": _bound_assets(cfg, enabled, cfg.people.detection_assets()),
+        **_person_runtime_identity(cfg.people.detector_runtime, cfg.people.runtime.device),
+        "scope": "full_frame", "enabled": enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
+        "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc",
+    }
+
+
+def person_pose_feature_settings(cfg: PipelineRuntimeConfig, component: PersonPoseFeaturesModule) -> dict[str, Any]:
+    return {
+        **component.cache_identity(),
+        **_person_runtime_identity(cfg.people.pose_runtime, cfg.people.runtime.device),
+        "assets": _bound_assets(cfg, cfg.enabled["person_observations"], cfg.people.pose_assets()),
+    }
 
 
 def check_shared_side_execution(cfg: PipelineRuntimeConfig, overrides: Mapping[str, Any] | None) -> None:
@@ -345,8 +371,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     appearance_media = appearance_media_identity(ids, source.paths) if binds_appearance_media(cfg, overrides) else None
     decoders = {} if appearance_media is None else appearance_media["decoders"]
 
-    def bound_assets(enabled: bool, paths: dict[str, Any]) -> dict[str, Any]:
-        return {name: cfg.court_kp.asset_catalog.file_identity(path) for name, path in paths.items()} if enabled else {"enabled": False}
+    bound_assets = partial(_bound_assets, cfg)
 
     def add(name: str, component: Any, assembler: Any, bindings: dict[str, str], settings: Callable[[], Any],
             *, camera: str | None = None, require_component: Callable[[], None] | None = None,
@@ -379,10 +404,6 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
     body_enabled = cfg.enabled["gvhmr"]
     tracking_encoder = components["person_appearance_features"].encoder
     encoder_assets = {} if encoder is None else {"encoder" if name == "checkpoint" else name: path for name, path in encoder.weights.items()}
-
-    runtime = cfg.people.runtime
-    detector_runtime = _person_runtime_identity(runtime.dino_detector, runtime.device)
-    pose_runtime = _person_runtime_identity(runtime.vitpose, runtime.device)
 
     def body_assets() -> dict[str, Any]:
         if body_enabled:
@@ -454,16 +475,12 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         detection_node = f"person_detection/{camera}"
         if cfg.ecpose is None:
             add(detection_node, components["person_detection"], PersonDetectionInputAssembler(),
-                {}, lambda: {"detector": "dino",
-                 "assets": bound_assets(people_enabled, {"checkpoint": cfg.people.dino_checkpoint}),
-                 **detector_runtime,
-                 "scope": "full_frame", "enabled": people_enabled, "merge_duplicates": cfg.merge_duplicate_person_boxes,
-                 "merge_rule": "greedy_iou_ge_0.8_score_desc_source_row_asc"}, camera=camera)
+                {}, partial(person_detection_settings, cfg), camera=camera,
+                component_origin_only=cfg.people.uses_alternative_models)
             add(f"person_pose_features/{camera}", components["person_pose_features"],
                 PersonPoseFeaturesInputAssembler(), {"detections": detection_node},
-                lambda: {**components['person_pose_features'].cache_identity(), **pose_runtime,
-                    "assets": bound_assets(people_enabled, {"pose": cfg.people.vitpose_checkpoint})}, camera=camera,
-                after_components=('person_detection',))
+                partial(person_pose_feature_settings, cfg, components['person_pose_features']), camera=camera,
+                after_components=('person_detection',), component_origin_only=cfg.people.uses_alternative_models)
         else:
             joint_node = f"{ECPOSE_RECIPE}/{camera}"
             ecpose_module = components[ECPOSE_RECIPE]
@@ -599,7 +616,7 @@ def standard_definition(cfg: PipelineRuntimeConfig, source: ClipSource, *, code_
         {**reconstructed, "skeleton": "player_triangulation", "placement": "body_placement",
          **({"ball": "ball_triangulation"} if include_ball else {})}, lambda: {"enabled": cfg.enabled})
     if cfg.event_detection is not None:
-        events = EventDetectionModule(cfg.event_detection, source.clip_id, code_commit=source_commit())
+        events = EventDetectionModule(cfg.event_detection, source.clip_id)
         add(EVENT_DETECTION, events, EventDetectionInputAssembler(), {"scene": "scene_assembly"},
             events.cache_identity, require_component=None if EVENT_DETECTION in overrides else events.require_inputs,
             component_origin_only=True)
@@ -619,8 +636,10 @@ def enabled_model_assets(cfg: PipelineRuntimeConfig) -> dict[str, Path]:
     body_assets = (cfg.people.body_assets() if cfg.fasthmr is None else
                    {f"fasthmr_{name}": path for name, path in
                     {**cfg.fasthmr.inference_weights, **cfg.fasthmr.geometry_weights}.items()})
-    person_assets = ({"detector": cfg.people.dino_checkpoint, "vitpose": cfg.people.vitpose_checkpoint}
-                     if cfg.ecpose is None else {"ecpose": cfg.ecpose.checkpoint})
+    person_assets = ({
+        "detector" if cfg.people.detector == "dino" else cfg.people.detector: cfg.people.detection_assets()["checkpoint"],
+        "vitpose" if cfg.people.pose == "vitpose-h" else cfg.people.pose: cfg.people.pose_assets()["pose"],
+    } if cfg.ecpose is None else {"ecpose": cfg.ecpose.checkpoint})
     event_checkpoint = None if cfg.event_detection is None else cfg.event_detection.checkpoint
     return {
         **({"court": cfg.court_kp.checkpoint} if cfg.direct_annotation is None and cfg.video_court is None else {}),

@@ -1,0 +1,105 @@
+{
+  "job_id": "0-8204212722975544204_2026-11-27T13-47-57-024455795Z_973716_i2696-ablation-v1.job",
+  "state": "done",
+  "resource": "all",
+  "logical_gpu_slot": "all",
+  "measurement_head": "2dbd8c355faa2d530b8b0e17164f691e60a57d07",
+  "captured_at": "2026-11-27T22:47:57+09:00",
+  "finished_at_jst": "2026-11-28T00:46:26.720187+09:00",
+  "raw_output_directory": "outputs/i2696/ablation-v1",
+  "queue_log": {
+    "path": ".training_queue/logs/0-8204212722975544204_2026-11-27T13-47-57-024455795Z_973716_i2696-ablation-v1.log",
+    "sha256": "3febf7bf3dbfaf9c08db65bfe8312dec7468d25413782af3e6ad35367ac8e371"
+  },
+  "repro_capture": {
+    "path": "run.json",
+    "sha256": "dfd79670231f63b7dd3c8721ee07efd7ab5281d69ff61ce47f983b644a48cd5f"
+  },
+  "raw_outcome": {
+    "path": "outcome.json",
+    "sha256": "0e08d3c6dfef936fa4554a8c1804b71ef8b48c9d696b313c0e011953cd380ad6"
+  },
+  "engine_preparation_exit_code": 0,
+  "conditions": {
+    "C1_serial_pt16": [
+      {
+        "directory": "C1_serial_pt16/clip_000",
+        "clips": [
+          "video_000/clip_000"
+        ],
+        "statuses": {
+          "video_000/clip_000": "generated"
+        },
+        "exit_code": 0
+      },
+      {
+        "directory": "C1_serial_pt16/clip_037",
+        "clips": [
+          "video_000/clip_037"
+        ],
+        "statuses": {
+          "video_000/clip_037": "generated"
+        },
+        "exit_code": 0
+      },
+      {
+        "directory": "C1_serial_pt16/clip_027",
+        "clips": [
+          "video_000/clip_027"
+        ],
+        "statuses": {
+          "video_000/clip_027": "generated"
+        },
+        "exit_code": 0
+      }
+    ],
+    "C2_shared_pt16": [
+      {
+        "directory": "C2_shared_pt16/video",
+        "clips": [
+          "video_000/clip_000",
+          "video_000/clip_037",
+          "video_000/clip_027"
+        ],
+        "statuses": {
+          "video_000/clip_000": "generated",
+          "video_000/clip_027": "generated",
+          "video_000/clip_037": "generated"
+        },
+        "exit_code": 0
+      }
+    ],
+    "C3_batched_pt16": [
+      {
+        "directory": "C3_batched_pt16/video",
+        "clips": [
+          "video_000/clip_000",
+          "video_000/clip_037",
+          "video_000/clip_027"
+        ],
+        "statuses": {
+          "video_000/clip_000": "generated",
+          "video_000/clip_027": "generated",
+          "video_000/clip_037": "generated"
+        },
+        "exit_code": 0
+      }
+    ],
+    "C4_batched_trt16": [
+      {
+        "directory": "C4_batched_trt16/video",
+        "clips": [
+          "video_000/clip_000",
+          "video_000/clip_037",
+          "video_000/clip_027"
+        ],
+        "statuses": {
+          "video_000/clip_000": "generated",
+          "video_000/clip_027": "generated",
+          "video_000/clip_037": "generated"
+        },
+        "exit_code": 0
+      }
+    ]
+  }
+}

@@ -2,20 +2,33 @@
 
 from __future__ import annotations
 
+import io
 import json
 import os
 import shutil
 import subprocess
 import sys
+import zipfile
+from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
 import pytest
 
+from scripts.ci_metrics import update_profile
+from scripts.ci_metrics.__main__ import main as metrics_main
+from scripts.ci_metrics.artifacts import inspect_artifacts
 from scripts.ci_metrics.lanes import digest, load_registry, make_plan
 from scripts.ci_metrics.profile import build_profile
+from scripts.ci_metrics.report import summarize
 from scripts.ci_metrics.runner import test_environment as headless_environment
-from scripts.ci_metrics.shards import assign_groups, read_timing_profile, verify_shards
+from scripts.ci_metrics.shards import (
+    assign_groups,
+    inspect_shards,
+    read_timing_profile,
+    verify_shards,
+    write_growth_report,
+)
 
 REPO = Path(__file__).resolve().parents[3]
 CONTEXT: dict[str, Any] = {"sha": "a" * 40, "run_id": "123", "attempt": "1"}
@@ -445,12 +458,528 @@ def test_profile_recomputes_measured_file_and_split_costs(
     assert read_timing_profile(destination)[0] == profile
 
 
+def _mock_update_actions(
+    monkeypatch: pytest.MonkeyPatch,
+    coverage: dict[str, Any],
+    root: Path | None = None,
+    *,
+    newer_files: dict[str, bytes] | None = None,
+) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+    repo = update_profile.REPOSITORY
+    run = {
+        "id": 123,
+        "path": ".github/workflows/ci.yml",
+        "event": "push",
+        "head_branch": "main",
+        "head_sha": CONTEXT["sha"],
+        "run_attempt": 3,
+        "status": "completed",
+        "conclusion": "success",
+        "repository": {"id": 1, "full_name": repo},
+        "head_repository": {"id": 1, "full_name": repo},
+    }
+    names = [
+        "cpu-lane-plan-123",
+        *(f"cpu-test-measurements-123-shard-{i}" for i in range(3)),
+    ]
+    artifacts: list[dict[str, Any]] = [
+        {
+            "name": name,
+            "id": 10 + index,
+            "expired": False,
+            "created_at": "2026-11-27T00:00:00Z",
+            "size_in_bytes": 100,
+            "workflow_run": {
+                "id": 123,
+                "head_sha": CONTEXT["sha"],
+                "head_branch": "main",
+                "repository_id": 1,
+                "head_repository_id": 1,
+            },
+        }
+        for index, name in enumerate([*names, "cpu-test-coverage-123-3"])
+    ]
+    manifest = inspect_artifacts(artifacts, "123", 2)
+    coverage["artifacts"] = manifest["artifacts"]
+    newer_run = {**run, "id": 124}
+    newer_artifacts = (
+        [
+            {
+                **item,
+                "id": item["id"] + 100,
+                "name": item["name"].replace("-123", "-124"),
+                "workflow_run": {**item["workflow_run"], "id": 124},
+            }
+            for item in artifacts
+        ]
+        if newer_files is not None
+        else []
+    )
+    newer_manifest = inspect_artifacts(newer_artifacts, "124", 2)
+
+    def list_artifacts(repository: str, run_id: str) -> list[dict[str, Any]]:
+        assert repository == repo
+        return (
+            artifacts if run_id == "123" else newer_artifacts if run_id == "124" else []
+        )
+
+    def api(endpoint: str) -> bytes:
+        if endpoint == f"repos/{repo}/actions/runs/123":
+            return json.dumps(run).encode()
+        if endpoint == f"repos/{repo}/actions/runs/124":
+            return json.dumps(newer_run).encode()
+        if endpoint.startswith(f"repos/{repo}/actions/workflows/ci.yml/runs?"):
+            return json.dumps({"workflow_runs": [newer_run, run]}).encode()
+        identifier = int(endpoint.split("/")[-2])
+        assert endpoint == f"repos/{repo}/actions/artifacts/{identifier}/zip"
+        output = io.BytesIO()
+        with zipfile.ZipFile(output, "w") as archive:
+            if identifier == 114:
+                assert newer_files is not None
+                newer_coverage = {
+                    **coverage,
+                    "run_id": "124",
+                    "artifacts": newer_manifest["artifacts"],
+                }
+                archive.writestr(
+                    "coverage.json",
+                    newer_files.get(
+                        "coverage.json", json.dumps(newer_coverage).encode()
+                    ),
+                )
+                archive.writestr("artifacts.json", json.dumps(newer_manifest))
+            elif identifier == 110:
+                assert newer_files is not None
+                archive.writestr("plan.json", newer_files["plan.json"])
+            elif identifier == 14:
+                archive.writestr("coverage.json", json.dumps(coverage))
+                archive.writestr("artifacts.json", json.dumps(manifest))
+            else:
+                assert root is not None, f"unexpected download: {identifier}"
+                if identifier == 10:
+                    archive.write(root / "shard-0/tests/lane-plan.json", "plan.json")
+                else:
+                    for path in (root / f"shard-{identifier - 11}/tests").iterdir():
+                        archive.write(path, f"tests/{path.name}")
+        return output.getvalue()
+
+    monkeypatch.setattr(update_profile, "fetch_artifacts", list_artifacts)
+    monkeypatch.setattr(update_profile, "_api", api)
+    return run, artifacts
+
+
+@pytest.mark.parametrize(
+    "location, key, value, reason",
+    [
+        ("run", "event", "pull_request", "successful CI push on main"),
+        ("run", "head_branch", "topic", "successful CI push on main"),
+        ("run", "conclusion", "cancelled", "successful CI push on main"),
+        ("coverage", "success", False, "coverage.json success"),
+        ("coverage", "full_cpu_success", False, "coverage.json full_cpu_success"),
+        (
+            "coverage",
+            "observations_complete",
+            False,
+            "coverage.json observations_complete",
+        ),
+        ("coverage", "deferred_count", 1, "coverage.json deferred_count"),
+        ("coverage", "counts", {"passed": 6, "failed": 1}, "zero failures"),
+        ("coverage", "source_sha", "b" * 40, "coverage.json source_sha"),
+        ("coverage", "run_id", "124", "coverage.json run_id"),
+        ("coverage", "attempt", "2", "coverage.json attempt"),
+        ("coverage", "artifacts", [], "download set"),
+        ("artifacts", "missing", None, "found 0"),
+        ("artifacts", "expired", None, "found 0"),
+        ("artifacts", "duplicate", None, "found 2"),
+        ("artifacts", "wrong_run", None, "mismatched run/HEAD"),
+    ],
+)
+def test_update_profile_rejects_ineligible_evidence_before_replacing_weights(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    location: str,
+    key: str,
+    value: Any,
+    reason: str,
+) -> None:
+    coverage = {
+        "schema_version": 3,
+        "success": True,
+        "full_cpu_success": True,
+        "observations_complete": True,
+        "deferred_count": 0,
+        "event": "push",
+        "ref": "refs/heads/main",
+        "scope": "full",
+        "source_sha": CONTEXT["sha"],
+        "run_id": "123",
+        "attempt": "3",
+        "counts": {"passed": 7},
+        "shard_count": 2,
+    }
+    run, artifacts = _mock_update_actions(monkeypatch, coverage)
+    if location == "run":
+        run[key] = value
+    elif location == "coverage":
+        coverage[key] = value
+    elif key == "missing":
+        artifacts.pop(1)
+    elif key == "expired":
+        artifacts[1]["expired"] = True
+    elif key == "duplicate":
+        artifacts.append({**artifacts[1], "id": 42})
+    else:
+        artifacts[0]["workflow_run"]["id"] = 99
+
+    profile = tmp_path / "cpu-file-times.json"
+    before = b'{"schema_version":1,"file_seconds":{"tests/test_first.py":1}}\n'
+    profile.write_bytes(before)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "ci_metrics",
+            "update-profile",
+            "--run-id",
+            "123",
+            "--output",
+            str(profile),
+            "--baseline",
+            str(profile),
+        ],
+    )
+    assert metrics_main() == 1
+    assert reason in capsys.readouterr().err
+    assert profile.read_bytes() == before
+
+
+def _main_push_observations(
+    observed_shards: Path, root: Path
+) -> tuple[dict[str, Any], dict[str, Any]]:
+    shutil.copytree(observed_shards, root)
+    for index in range(3):
+        directory = root / f"shard-{index}/tests"
+        plan = _replace_lane_plan(
+            directory, event="push", ref="refs/heads/main", reasons=["main_push"]
+        )
+        path = directory / "environment.json"
+        metadata = json.loads(path.read_text())
+        metadata["environment"]["GITHUB_RUN_ATTEMPT"] = "2" if index == 1 else "1"
+        path.write_text(json.dumps(metadata))
+    coverage = verify_shards(
+        root, 2, needs=SUCCESS, lane_plan=plan, **{**CONTEXT, "attempt": "3"}
+    )
+    assert coverage["full_cpu_success"], coverage["issues"]
+    return plan, coverage
+
+
+def test_invalid_setup_and_missing_call_cannot_publish_a_profile(
+    observed_shards: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    root = tmp_path / "actions"
+    plan, coverage = _main_push_observations(observed_shards, root)
+    directory = root / "shard-0/tests"
+    journal = next(directory.glob("events-controller-*.jsonl"))
+    rows = [json.loads(line) for line in journal.read_text().splitlines()]
+    setup = next(
+        row for row in rows if row["event"] == "phase" and row["phase"] == "setup"
+    )
+    assert setup["outcome"] == "passed"
+    setup["outcome"] = "unknown-setup"
+    nodeid = setup["nodeid"]
+    call = next(
+        row
+        for row in rows
+        if row["event"] == "phase"
+        and row["phase"] == "call"
+        and row["nodeid"] == nodeid
+    )
+    rows.remove(call)
+    journal.write_text("".join(json.dumps(row) + "\n" for row in rows))
+
+    result = summarize(directory)
+    assert result["successful_test_baseline"] is False
+    assert result["counts"]["incomplete"] == 1
+    assert any(
+        "unknown-setup" in issue and nodeid in issue for issue in result["issues"]
+    )
+    checked = inspect_shards(root, 2, lane_plan=plan, **{**CONTEXT, "attempt": "3"})
+    assert checked["observations_complete"] is False
+    assert any("unknown-setup" in issue for issue in checked["issues"])
+    with pytest.raises(ValueError, match="unknown-setup"):
+        build_profile(root)
+
+    _mock_update_actions(monkeypatch, coverage, root)
+    output = tmp_path / "cpu-file-times.json"
+    before = (observed_shards.parent / "suite/weights.json").read_bytes()
+    output.write_bytes(before)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "ci_metrics",
+            "update-profile",
+            "--run-id",
+            "123",
+            "--baseline",
+            str(output),
+            "--output",
+            str(output),
+        ],
+    )
+    assert metrics_main() == 1
+    assert "unknown-setup" in capsys.readouterr().err
+    assert output.read_bytes() == before
+
+
+@pytest.mark.parametrize(
+    "file, data, reason",
+    [
+        (
+            "plan.json",
+            b'{"schema_version":1,"plan_id":"not-the-plan"}',
+            "lane plan identity mismatch",
+        ),
+        ("coverage.json", b'{"success": true,', "JSONDecodeError"),
+        ("coverage.json", b"[]", "AttributeError"),
+    ],
+)
+def test_profile_search_rejects_corrupt_evidence_and_uses_the_next_run(
+    observed_shards: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    file: str,
+    data: bytes,
+    reason: str,
+) -> None:
+    root = tmp_path / "actions"
+    _, coverage = _main_push_observations(observed_shards, root)
+    _mock_update_actions(monkeypatch, coverage, root, newer_files={file: data})
+    profile = tmp_path / "cpu-file-times.json"
+    before = (observed_shards.parent / "suite/weights.json").read_bytes()
+    profile.write_bytes(before)
+    report = tmp_path / "report.json"
+    args = [
+        "ci_metrics",
+        "update-profile",
+        "--baseline",
+        str(profile),
+        "--output",
+        str(profile),
+        "--report",
+        str(report),
+    ]
+
+    monkeypatch.setattr(sys, "argv", [*args, "--run-id", "124"])
+    assert metrics_main() == 1
+    diagnostic = capsys.readouterr().err
+    assert "run 124" in diagnostic and file in diagnostic and reason in diagnostic
+    assert profile.read_bytes() == before
+    assert not report.exists()
+
+    monkeypatch.setattr(sys, "argv", [*args, "--latest-main"])
+    assert metrics_main() == 0
+    assert "Rejected main run 124" in capsys.readouterr().err
+    assert read_timing_profile(profile)[0]["source"]["run_id"] == "123"
+    (rejected,) = json.loads(report.read_text())["rejected_runs"]
+    assert (
+        rejected["run_id"] == 124
+        and file in rejected["reason"]
+        and reason in rejected["reason"]
+    )
+
+
+@pytest.mark.parametrize("fault", ["transport", "local-io"])
+def test_profile_search_stops_on_transport_or_local_io_failure(
+    observed_shards: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+    fault: str,
+) -> None:
+    root = tmp_path / "actions"
+    _, coverage = _main_push_observations(observed_shards, root)
+    run, _ = _mock_update_actions(monkeypatch, coverage, root)
+    looked_up = []
+    list_artifacts: Callable[[str, str], list[dict[str, Any]]] = (
+        update_profile.fetch_artifacts
+    )
+
+    def track_lookup(repo: str, run_id: str) -> list[dict[str, Any]]:
+        looked_up.append(run_id)
+        return list_artifacts(repo, run_id)
+
+    monkeypatch.setattr(
+        update_profile, "_latest_runs", lambda _: iter((run, {**run, "id": 122}))
+    )
+    monkeypatch.setattr(update_profile, "fetch_artifacts", track_lookup)
+    if fault == "transport":
+        api: Callable[[str], bytes] = update_profile._api
+
+        def unavailable(endpoint: str) -> bytes:
+            if endpoint.endswith("/artifacts/11/zip"):
+                return b"invalid shard ZIP"
+            if endpoint.endswith("/artifacts/12/zip"):
+                raise subprocess.CalledProcessError(
+                    1, ["gh", "api"], stderr=b"network unavailable"
+                )
+            return api(endpoint)
+
+        monkeypatch.setattr(update_profile, "_api", unavailable)
+        reason = "network unavailable"
+    else:
+        read_text = Path.read_text
+
+        def unreadable(path: Path, *args: Any, **kwargs: Any) -> str:
+            if path.name.startswith("events-controller-") and path.parents[
+                2
+            ].name.startswith("cpu-profile-evidence-"):
+                raise PermissionError("cannot read staged observations")
+            return read_text(path, *args, **kwargs)
+
+        monkeypatch.setattr(Path, "read_text", unreadable)
+        reason = "cannot read staged observations"
+
+    profile = tmp_path / "cpu-file-times.json"
+    before = (observed_shards.parent / "suite/weights.json").read_bytes()
+    profile.write_bytes(before)
+    monkeypatch.setattr(
+        sys,
+        "argv",
+        [
+            "ci_metrics",
+            "update-profile",
+            "--latest-main",
+            "--baseline",
+            str(profile),
+            "--output",
+            str(profile),
+        ],
+    )
+    assert metrics_main() == 1
+    diagnostic = capsys.readouterr().err
+    assert reason in diagnostic and "Rejected main run" not in diagnostic
+    assert looked_up == ["123"]
+    assert profile.read_bytes() == before
+
+
+def test_verified_update_profiles_a_partial_rerun_and_preserves_existing_weights_on_error(
+    observed_shards: Path,
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    root = tmp_path / "actions"
+    plan, coverage = _main_push_observations(observed_shards, root)
+    _mock_update_actions(monkeypatch, coverage, root)
+    baseline = observed_shards.parent / "suite/weights.json"
+    output = tmp_path / "cpu-file-times.json"
+    report = tmp_path / "comparison.json"
+    common = [
+        "ci_metrics",
+        "update-profile",
+        "--baseline",
+        str(baseline),
+        "--output",
+        str(output),
+        "--report",
+        str(report),
+    ]
+    monkeypatch.setattr(sys, "argv", [*common, "--latest-main"])
+    assert metrics_main() == 0
+    assert "Rejected main run 124" in capsys.readouterr().err
+    profile, fingerprint = read_timing_profile(output)
+    checked = json.loads(report.read_text())
+    assert profile["source"]["attempt"] == "3"
+    assert profile["source"]["plan_attempt"] == "1"
+    assert profile["source"]["shard_attempts"] == {"0": "1", "1": "2", "2": "1"}
+    assert profile["source"]["coverage_artifact_id"] == 14
+    assert profile["source"]["plan_artifact_id"] == 10
+    assert profile["source"]["shard_artifact_ids"] == {"0": 11, "1": 12, "2": 13}
+    assert checked["assignment_comparison"]["A"]["unmeasured_file_count"] == 2
+    assert checked["assignment_comparison"]["C"]["unmeasured_split_case_count"] == 0
+    assert checked["coverage"]["selected_count"] == 7
+    assert checked["baseline_matches_observed_profile"] is True
+    assert checked["ordinary_shard_phase_seconds_observed"] == pytest.approx(
+        checked["assignment_comparison"]["A"]["measured_phase_seconds_on_assignment"]
+    )
+
+    monkeypatch.setattr(sys, "argv", [*common, "--run-id", "123", "--attempt", "3"])
+    assert metrics_main() == 0
+    assert read_timing_profile(output)[1] == fingerprint
+    before = output.read_bytes()
+    second = root / "shard-1/tests"
+    _replace_lane_plan(second, main_successes={"different-plan": {}})
+    assert metrics_main() == 1
+    assert "fixed lane plan" in capsys.readouterr().err
+    assert output.read_bytes() == before
+    _replace_lane_plan(second, main_successes=plan["main_successes"])
+
+    path = second / "run.json"
+    successful_run = path.read_text()
+    path.write_text(json.dumps({**json.loads(successful_run), "exitcode": 1}))
+    assert metrics_main() == 1
+    assert "failed shard observations" in capsys.readouterr().err
+    assert output.read_bytes() == before
+    path.write_text(successful_run)
+
+    replace = Path.replace
+
+    def fail_to_publish(candidate: Path, target: Path) -> Path:
+        if target == output:
+            raise OSError("cannot publish candidate")
+        return replace(candidate, target)
+
+    with monkeypatch.context() as publish:
+        publish.setattr(Path, "replace", fail_to_publish)
+        assert metrics_main() == 1
+    assert "cannot publish candidate" in capsys.readouterr().err
+    assert output.read_bytes() == before
+    assert not list(tmp_path.glob(".cpu-profile-*"))
+
+    suite = tmp_path / "suite"
+    shutil.copytree(observed_shards.parent / "suite", suite)
+    shutil.copy2(output, suite / "weights.json")
+    with (suite / "tests/test_first.py").open("a") as stream:
+        stream.write(
+            "\n@pytest.mark.skip(reason='optional dependency unavailable')\ndef test_new_case(): pass\n"
+        )
+    (suite / "tests/test_unmeasured.py").write_text("def test_new_file(): pass\n")
+    new_observations = tmp_path / "after-update"
+    for index in range(3):
+        _run_observed_shard(
+            suite, new_observations / f"shard-{index}/tests", index, 2, workers=1
+        )
+    result = verify_shards(
+        new_observations, 2, needs=SUCCESS, source_root=suite, **CONTEXT
+    )
+    assert result["full_cpu_success"], result
+    assert result["selected_count"] == 9
+    assert result["counts"] == {"passed": 8, "skipped": 1}
+    assert result["system_deps"]["counts"] == {"passed": 1}
+    manifest = json.loads(
+        (new_observations / "shard-0/tests/shard-gw0.json").read_text()
+    )
+    assert manifest["profile_sha256"] == fingerprint
+    assert manifest["unmeasured_files"] == ["tests/test_unmeasured.py"]
+    assert manifest["unmeasured_cases_in_split_files"] == [
+        "tests/test_first.py::test_new_case"
+    ]
+
+
 def test_real_lane_selection_records_the_universe_before_deferring_a_file(
     tmp_path: Path,
     observed_shards: Path,
 ) -> None:
     suite = tmp_path / "suite"
     shutil.copytree(observed_shards.parent / "suite", suite)
+    timing_profile = suite / "weights.json"
+    timing_profile.write_text(json.dumps(build_profile(observed_shards)))
     registry_path = suite / "scripts/ci_metrics/lanes.json"
     registry_path.write_text(
         json.dumps(
@@ -515,6 +1044,33 @@ def test_real_lane_selection_records_the_universe_before_deferring_a_file(
     }
     with pytest.raises(ValueError, match="partial CPU scope"):
         build_profile(artifacts)
+    write_growth_report(
+        artifacts,
+        audit,
+        timing_profile,
+        source_root=suite,
+        repository=None,
+        ancestor=CONTEXT["sha"],
+    )
+    report = json.loads((artifacts / "growth-summary.json").read_text())
+    assert report["profile_freshness"]["observed_case_count"] == 6
+    assert report["profile_freshness"]["full_selected_count_delta"] is None
+    assert report["ordinary_shard_balance"]["measured"]["max_over_mean"] == 1.0
+    assert len(report["ordinary_shard_balance"]["shards"]) == 1
+
+    write_growth_report(
+        artifacts,
+        audit,
+        suite / "missing.json",
+        source_root=suite,
+        repository=None,
+        ancestor=CONTEXT["sha"],
+    )
+    report = json.loads((artifacts / "growth-summary.json").read_text())
+    assert report["profile_freshness"] is None
+    assert "FileNotFoundError" in report["profile_reason"]
+    assert report["ordinary_shard_balance"]["shards"][0]["index"] == 0
+    assert audit["success"] is True
 
 
 def test_split_file_rejects_new_shared_fixture(
@@ -557,6 +1113,78 @@ def test_split_file_rejects_new_shared_fixture(
     assert not json.loads((output / "summary.json").read_text())[
         "successful_test_baseline"
     ]
+
+
+def test_storage_boundary_files_pass_the_case_split_collection_guard(
+    tmp_path: Path,
+) -> None:
+    files = [
+        f"tests/integration/agents_ops/test_storage_tier_{kind}_boundaries.py"
+        for kind in ("crash", "recovery")
+    ]
+    profile, _ = read_timing_profile(REPO / "scripts/ci_metrics/cpu-file-times.json")
+    # Exercise the same fixture guard when the baseline profile is checked out
+    # for a timing comparison and has no measurement for these files yet.
+    weights = tmp_path / "weights.json"
+    weights.write_text(
+        json.dumps(
+            {
+                **profile,
+                "split_files": files,
+                "file_seconds": {
+                    name: profile["file_seconds"].get(name, 1.0) for name in files
+                },
+            }
+        )
+    )
+    _, fingerprint = read_timing_profile(weights)
+    registry, source_files = load_registry(REPO)
+    lane = tmp_path / "plan.json"
+    lane.write_text(
+        json.dumps(make_plan(registry, source_files, source_sha=None, event="local"))
+    )
+    output = tmp_path / "observations"
+    result = subprocess.run(
+        [
+            sys.executable,
+            "-m",
+            "pytest",
+            "-n",
+            "0",
+            "--collect-only",
+            "-q",
+            "-m",
+            "not local_data and not cuda",
+            "-p",
+            "scripts.ci_metrics.pytest_plugin",
+            "-p",
+            "scripts.ci_metrics.shard_plugin",
+            "--ci-shard-index",
+            "0",
+            "--ci-shard-count",
+            "10",
+            "--ci-shard-weights",
+            str(weights),
+            "--ci-lane-plan",
+            str(lane),
+            "--ci-metrics-dir",
+            str(output),
+            *files,
+        ],
+        cwd=REPO,
+        env=headless_environment(dict(os.environ)),
+        capture_output=True,
+        text=True,
+        timeout=30,
+    )
+    assert result.returncode == 0, result.stdout + result.stderr
+    manifest = json.loads((output / "shard-controller.json").read_text())
+    assert manifest["profile_sha256"] == fingerprint
+    assert {node.split("::", 1)[0] for node in manifest["universe_nodeids"]} == set(
+        files
+    )
+    assert set(manifest["assignments"]) == set(manifest["universe_nodeids"])
+    assert set(manifest["assignments"].values()) == set(range(10))
 
 
 @pytest.mark.parametrize(

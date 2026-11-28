@@ -158,6 +158,15 @@ phases on setup skips remain unmeasured, with status shown. Profile comparison
 uses the exact scheduling profile fingerprint; missing or mismatched profiles
 show a reason, and new files are labelled unmeasured in the profile.
 
+The same report shows the scheduling profile's source run, commit, case count
+and split file count. It compares the request with the measured file and split
+case inventories, and gives the case count change on full requests. The
+ordinary shard table pairs the recorded estimates with summed setup, call and
+teardown seconds and reports min, max, mean and max/mean for both. The system
+runtime job is outside this balance calculation. Rising unmeasured rates or
+persistent measured imbalance are reasons to review a candidate using the
+[profile refresh command](sharding.md#regenerate-measured-weights).
+
 The `cpu-test-coverage-<run>-<attempt>` artifact also keeps `growth.json`
 (schema 1, complete requested inventory/details/results/fixture costs and run
 identity, or an explicit incomplete reason), `growth-summary.json` (all report rows), and `growth-summary.md` for
@@ -318,4 +327,7 @@ The implementation uses [pytest hooks](https://docs.pytest.org/en/stable/referen
 [Actions attempt APIs](https://docs.github.com/en/rest/actions/workflow-runs#get-a-workflow-run-attempt),
 and [`setup-uv` cache outputs](https://github.com/astral-sh/setup-uv#outputs).
 
-Regenerate scheduling weights from a run's latest complete shard artifacts with the [`profile` command](sharding.md#regenerate-measured-weights). Valid mixed attempts retain their provenance; failed cases remain visible and incomplete observations are rejected.
+Refresh scheduling weights from audited successful main CI with the
+[`update-profile` command](sharding.md#regenerate-measured-weights). The same
+guide describes the diagnostic `profile` command and the matched Actions
+comparison.

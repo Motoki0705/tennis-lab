@@ -13,6 +13,7 @@ from yaml import YAMLError
 from src.submodules.models import validate_dino_extension
 from src.submodules.models.ecpose.releases import RELEASES as EDGECRAFTER_RELEASES
 from src.submodules.models.fasthmr.assets import CHECKPOINT_SHA256
+from src.submodules.people_model_assets import PEOPLE_MODEL_CHECKPOINTS
 from src.tasks.player_association.appearance.encoders import encoder_weights
 from src.tasks.player_association.association.config import (
     DEFAULT_CONFIG,
@@ -25,6 +26,7 @@ from src.tennis_scene.configuration import (
 )
 from src.tennis_scene.installation_assets import INSTALLATION_ASSETS
 from src.tennis_scene.pipeline.definition import enabled_model_assets
+from src.tennis_scene.pipeline.model_assets import people_model_names
 from src.tennis_scene.pipeline.recipes import (
     ECPOSE_RECIPE,
     FASTHMR_RECIPE,
@@ -42,7 +44,7 @@ from src.utils.models.tensorrt_artifacts import (
 from src.utils.paths import PROJECT_ROOT
 from src.utils.sample_dataset import PUBLISHED_FILES
 
-_ECPOSE_ENGINE_FILES = (ENGINE_MANIFEST, EXPORT_MANIFEST, ONNX_FILE, PLAN_FILE)
+_ENGINE_FILES = (ENGINE_MANIFEST, EXPORT_MANIFEST, ONNX_FILE, PLAN_FILE)
 
 @dataclass(frozen=True)
 class AssetRequirement:
@@ -93,6 +95,7 @@ def configured_requirements(cfg: DictConfig) -> tuple[AssetRequirement, ...]:
 
     models = section("people_models")
     recipe = parse_recipe(value.get("recipe", STANDARD_RECIPE))
+    detector, pose = people_model_names(models)
     checkpoint("court", section("court_kp")["checkpoint"])
     checkpoint("ball", section("ball_detection")["checkpoint"])
     event = section("event_detection")
@@ -113,11 +116,27 @@ def configured_requirements(cfg: DictConfig) -> tuple[AssetRequirement, ...]:
             add("ecpose_model_config", PathRole.EXTERNAL_ASSET,
                 cast(str, ecpose["repository"]), release.family, "configs", release.config)
             if ecpose.get("engine") is not None:
-                for name in _ECPOSE_ENGINE_FILES:
+                for name in _ENGINE_FILES:
                     add(f"ecpose_{name}", PathRole.CHECKPOINT, cast(str, ecpose["engine"]), name)
         else:
-            checkpoint("detector", models["dino_checkpoint"])
-            checkpoint("vitpose", models["vitpose_checkpoint"])
+            people_runtime = cast(Mapping[str, Mapping[str, object]], models["runtime"])
+            if detector == "dino":
+                checkpoint("detector", models["dino_checkpoint"])
+            if pose == "vitpose-h":
+                checkpoint("vitpose", models["vitpose_checkpoint"])
+            for selected, name, checkpoint_key, runtime_name in (
+                (detector, "rfdetr-l", "rfdetr_checkpoint", "rfdetr_l"),
+                (pose, "rtmpose-x", "rtmpose_checkpoint", "rtmpose_x"),
+            ):
+                if selected != name:
+                    continue
+                if runtime_name not in people_runtime or checkpoint_key not in models:
+                    raise ValueError(f"{name} requires {checkpoint_key} and runtime.{runtime_name}")
+                add(name, PathRole.CHECKPOINT, cast(str, models[checkpoint_key]),
+                    digest=PEOPLE_MODEL_CHECKPOINTS[name].sha256)
+                for index, engine in enumerate(cast(tuple[str, ...], people_runtime[runtime_name]["engines"])):
+                    for filename in _ENGINE_FILES:
+                        add(f"{name}_engine_{index}/{filename}", PathRole.ARTIFACT, engine, filename)
         tracking = section("person_tracking")
         tracking_path = encoder_weights(cast(str, tracking["encoder"]), checkpoint_root=roots.checkpoint_root,
                                         external_root=roots.external_asset_root)
@@ -157,7 +176,7 @@ def configured_requirements(cfg: DictConfig) -> tuple[AssetRequirement, ...]:
     for name in installation_only:
         if name not in {item.name for item in requirements}:
             checkpoint(name, pins[name].filename)
-    if recipe != ECPOSE_RECIPE:
+    if recipe != ECPOSE_RECIPE and detector == "dino":
         for name, suffix in (("dino_models", "models/__init__.py"), ("dino_util", "util/__init__.py"),
                              ("dino_ops", "models/dino/ops/src/vision.cpp")):
             add(name, PathRole.EXTERNAL_ASSET, cast(str, models["dino_repository"]), suffix)
@@ -202,6 +221,8 @@ def standard_requirements(cfg: PipelineRuntimeConfig) -> tuple[AssetRequirement,
             requirements.append(AssetRequirement(name, path, release.sha256, size_bytes=release.size))
         elif name == "ball_event_refiner":
             requirements.append(AssetRequirement(name, path, cfg.require_event_detection().checkpoint_sha256))
+        elif name in PEOPLE_MODEL_CHECKPOINTS:
+            requirements.append(AssetRequirement(name, path, PEOPLE_MODEL_CHECKPOINTS[name].sha256))
         else:
             pin = pins[name]
             requirements.append(AssetRequirement(name, path, pin.sha256, size_bytes=pin.size_bytes))
@@ -215,7 +236,13 @@ def standard_requirements(cfg: PipelineRuntimeConfig) -> tuple[AssetRequirement,
         requirements.append(AssetRequirement("ecpose_model_config", cfg.ecpose.model_config))
         if cfg.ecpose.engine is not None:
             requirements.extend(AssetRequirement(f"ecpose_{name}", cfg.ecpose.engine / name)
-                                for name in _ECPOSE_ENGINE_FILES)
+                                for name in _ENGINE_FILES)
+    if cfg.enabled["person_observations"] and cfg.ecpose is None:
+        for selected, runtime in ((cfg.people.detector, cfg.people.detector_runtime),
+                                  (cfg.people.pose, cfg.people.pose_runtime)):
+            if selected in PEOPLE_MODEL_CHECKPOINTS:
+                requirements.extend(AssetRequirement(f"{selected}_engine_{index}/{filename}", root / filename)
+                    for index, root in enumerate(runtime.engines) for filename in _ENGINE_FILES)
     for name in ("dinov3", "smpl_faces"):
         asset = pins[name]
         requirements.append(AssetRequirement(name, cfg.resolver.resolve(PathRole.CHECKPOINT, asset.filename), asset.sha256))
@@ -229,7 +256,7 @@ def standard_requirements(cfg: PipelineRuntimeConfig) -> tuple[AssetRequirement,
         "dinov3_hub": cfg.resolver.resolve(PathRole.EXTERNAL_ASSET, "dinov3/hubconf.py"),
         "dinov3_backbones": cfg.resolver.resolve(PathRole.EXTERNAL_ASSET, "dinov3/dinov3/hub/backbones.py"),
     }
-    if cfg.ecpose is not None:
+    if cfg.ecpose is not None or cfg.people.detector != "dino":
         source_files = {name: path for name, path in source_files.items() if not name.startswith("dino_")}
     requirements.extend(AssetRequirement(name, path) for name, path in source_files.items())
     sample_pins = {cfg.roots.data_root / "samples" / item.filename: item.sha256 for item in PUBLISHED_FILES}

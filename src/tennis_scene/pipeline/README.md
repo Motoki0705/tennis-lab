@@ -17,6 +17,7 @@
 | `dataset_publication.py` | dataset完成markerの再利用判定、scene契約検証、`annotation.json`の原子的公開と失敗marker |
 | `storage/codec.py` | componentが宣言したOutput型をJSONと数値配列へ保存・復元。pickleや動的class importは使わない |
 | `storage/clip_store.py` | clipを正本とする永続store、原子的な成果物公開、`scene.json`、メモリcache |
+| `storage/scene_pointers.py` | 公開・復元時に `scene.json` と `annotation.json` を切り替え、保留中の読み込みを止める |
 | `storage/scene_export.py` | 統合sceneのimmutableなexportと`scene.json`への採用 |
 | `orchestrator.py` | 共通入力部品への動画束縛、標準recipeから1clipの計画を作成・実行・最終化、実行receipt |
 | `video_batch.py` | 同じvideoの固定clip群を1計画へ束縛し、失敗を分離してclip完成直後に公開する入口 |
@@ -233,12 +234,62 @@ ball_points＋camera → ball_triangulation
 GVHMRパラメータ＋3D関節 → body_placement → scene_assembly → event_detection
 ```
 
-人物検出はDINOに固定し、標準設定は**COCO DINOの全画面、score ≥ 0.30、入力800/1333**（#964の2026-09-30判断）。
+既定の人物検出は **COCO DINO の全画面、score ≥ 0.30、入力800/1333**（#964の2026-09-30判断）。
 ROI gateを置かず、選手以外も2D候補として保存する。#937は
 `people_models.dino_checkpoint=player_detection/chat-player-v1-e8-best-pr937.pth`を明示した場合に使用できる。
 指定重みが無い・DINO形式でない場合は停止し、別の重みを選び直さない。
 `person_detections` v2のcheckpoint hash・全画面scopeがartifact identityと下流の依存参照を変える。
 旧ROI検出・pose・文脈を新しい経路の成果物として再利用できない。
+
+### 人物モデルの選択
+
+`people_models.detector` は `dino` / `rfdetr-l`、`people_models.pose` は
+`vitpose-h` / `rtmpose-x` を独立に選びます。既定は DINO Swin-L と ViTPose-H の PyTorch FP32 です。
+RF-DETR-L の PyTorch FP16 は CUDA autocast、RTMPose-X の PyTorch FP16 は FP16 の重みと入力を使います。
+導入手順は [submodules README](../../submodules/README.md#rf-detr-l-と-rtmpose-x-の重みの取得) を参照してください。
+
+```yaml
+people_models:
+  detector: rfdetr-l
+  pose: rtmpose-x
+  runtime:
+    rfdetr_l:
+      confidence: 0.30
+      backend: tensorrt
+      precision: fp16
+      batch_size: 1
+      engines: [tensorrt/rfdetr-l/704x704/b1]
+    rtmpose_x:
+      flip_test: true
+      backend: tensorrt
+      precision: fp16
+      batch_size: 8
+      engines: [tensorrt/rtmpose-x/384x288/b1-16]
+```
+
+RF-DETR-L は全画面を 704×704 に変換し、全 query/class の上位300組から COCO person
+の box を元画素へ戻します。`runtime.rfdetr_l.confidence` の初期値は DINO と同じ 0.30 です。
+固定ベンチマークの TRT16 で 0.25 から 0.30 に上げると 50,862 box 中 2,917 box が外れ、
+選手の疑似 GT に対する Recall@IoU 0.50 は 96.81% から 96.66% になりました。
+設定値と score の意味はモデル識別に保存します。 [棚卸しと再採点](https://github.com/Motoki0705/tennis-lab/issues/2664#issuecomment-7195383283)
+
+RTMPose-X は元の矩形 box に 1.25 の余白を適用し、384×288 の affine crop を作ります。
+Halpe26 の先頭17点を COCO17 として返します。flip 有効時は元画像と反転画像を別々に forward し、
+左右を戻して SimCC logits を FP32 で平均します。関節 confidence は x/y の小さいほうの
+ピーク値で、成果識別に `raw_simcc_peak` を保存します。ピークが非正の場合は座標を
+`(-1,-1)` とし、生の score を保持します。固定26,276 box での TRT16 のスコア範囲は
+RTMPose-X 0.00983–1.08398、ViTPose-H 0.00422–1.04492 でした。
+
+| 利用箇所 | 検出 score・関節 confidence の用途 |
+|---|---|
+| 重複 box 統合 | 任意の IoU ≥ 0.8 の統合で score 降順、同点は元行順。#1739 の全検出行を使う場合は統合を無効にする。 |
+| StrongSORT++・CLIP | Kalman 更新は基準ノイズを `1 − score` 倍。pose 距離は両側が 0.30 以上の共通4関節を要求し、各対の小さい confidence で重み付けする。CLIP は画像 crop を使い、AFLink/GSI の補間を実観測と区別する。 |
+| 選手選別・カメラ間対応 | 足元、滞在時間、CLIP を使用する。score の影響は検出・追跡を経由する。 |
+| 観測 mask・校正 | 既定は実検出かつ画面内で confidence ≥ 0.15。人物による校正の検証は ≥ 0.30。 |
+| 標準三角測量・身体配置 | 0.30 以上の観測を使い、group 化で `[0,1]` に収めた score を DLT と残差に使う。身体配置は inlier の score と再投影誤差で重み付けする。 |
+| #1739 の3D候補・追跡・選別 | レイに 0.25、強い観測に 0.55 を使う。後者の通過率は RTMPose-X 80.44%、ViTPose-H 88.02%。3D追跡と選別は幾何・時間と3D候補スコアを使う。 |
+| 代表 view・GVHMR | coverage と平均 confidence で view を選ぶ。GVHMR の `> 0.50` を通る関節は RTMPose-X 86.53%、ViTPose-H 91.21%。 |
+| SceneResult・可視化・SLCS | `human_kp_vis` はマスク済み confidence。可視化は主に 0.15。SLCS は視点・関節平均 0.30 を既定の閾値とし、同平均をラベル重みに使う。 |
 
 ### 人物特徴の保存とCPU追跡
 
@@ -307,6 +358,10 @@ v2の`source_rows`は間引き前のclip/camera通番、`duplicate_merges`はfra
 `player_selection` は校正z=0の足元から選手候補を選ぶ。固定規則の正本は
 [`court_linking.py`](../../tasks/person_tracking/court_linking.py)のdocstringと`LinkingConfig`。
 連結後のdistinct core滞在で選別し、`person_observations.max_tracks_per_camera`は最後のgroup上限だけに使う。
+シングルスとダブルスのどちらもコアは `|x| ≤ 5.485 m`、`|y| ≤ 16.885 m`。必要滞在はクリップの25%。
+選別領域とチェーンごとの滞在フレーム数・選別理由は `diagnostics.linking` に保存する。
+対応付けで求める人数は `player_association.players_per_side=1`（シングルス）または
+`player_association.players_per_side=2`（ダブルス）で指定する。
 CLIP-ReIDは既定on。欠測は明記し、encoder/重みエラーを幾何だけの成功に変えない。
 `selected_player_tracks` v3の`selected`は元track軸の全実観測を保持し、領域外・無効足元を削らない。
 追跡特徴は選別側のencoder名とモデルidentityが一致するときだけ再利用する。不一致・identity不明なら
@@ -365,7 +420,7 @@ HMR2特徴とGVHMRは既定でFP32を使い、DINO・ViTPoseとは別に推論�
 
 ## TensorRT FP16
 
-ViTPose-H、DINO Swin-L、CLIP-ReID ViT-B/16、HMR2、GVHMR SIGA24を個別に選択できます。
+人物検出、2D pose、CLIP-ReID ViT-B/16、HMR2、GVHMR SIGA24 の TensorRT FP16 を個別に選択できます。
 既定のバックエンドはPyTorch FP32です。TensorRTの任意依存はLinux x86-64とCUDA 13用です。
 
 ```bash
@@ -380,12 +435,15 @@ uv sync --locked --extra tensorrt
 |---|---|---|
 | `vitpose` | pose crop | 256×192。flip有効時の入力はcrop数の2倍 |
 | `dino_detector` | 同じresize後shapeのフレーム | H×Wごとに1ディレクトリ。MSDAは標準GridSample |
+| `rfdetr_l` | 全画面フレーム | 704×704。バッチ1から上限まで各サイズの固定エンジンを登録 |
+| `rtmpose_x` | pose crop | 384×288。flip を有効にしても入力 profile のバッチ軸は元crop数 |
 | `clip_reid` | RGBの人物crop | 256×128。追跡特徴と人物対応のCLIP-ReIDで共用 |
 | `hmr2` | 身体viewのcrop | 256×256 |
 | `gvhmr` | 同じ長さの人物系列 | 人数・系列長はprofileの範囲。復号・静止カメラ補正・IKはFP32 |
 
 TensorRTを選んだモデルの `batch_size` は単一clipと横断バッチで共通です。
-横断バッチを有効にしたとき、PyTorchのモデルには既存の `batching.sizes` が適用されます。
+横断バッチを有効にしたとき、RF-DETR-L と RTMPose-X には各モデルの `batch_size` が適用され、
+既定モデルの PyTorch 実行には `batching.sizes` が適用されます。
 各バッチの端数を処理します。GVHMRは連続する同じ長さの人物系列をまとめ、人物ごとに復号します。
 5モデルを同時に使った評価時の `batch_size`、必要なprofile、メモリ実測は[全クリップ評価](../../../knowledge/runs/run-i2363-trt-player-video/README.md#バッチサイズの根拠)に記録しています。
 
@@ -402,7 +460,7 @@ DINOのTensorRT FP16は明示設定で選択でき、既定はPyTorch FP32です
 ### エンジンの作成と配置
 
 保存規約は `outputs/tensorrt/<model>/<shape>/<build-tag>/` です。
-`<model>` は `vitpose`、`dino`、`clip`、`hmr2`、`gvhmr` のいずれかです。
+`<model>` は `vitpose`、`dino`、`rfdetr-l`、`rtmpose-x`、`clip`、`hmr2`、`gvhmr` のいずれかです。
 `<shape>` は前処理後のH×W、GVHMRでは系列長のmin・opt・maxを表します。
 ビルドごとに新しいタグを使います。
 
@@ -411,6 +469,23 @@ bundle=outputs/tensorrt/vitpose/256x192/example-b2
 .venv/bin/python -m src.tennis_scene.scripts.tensorrt export vitpose "$bundle"
 .venv/bin/python -m src.tennis_scene.scripts.tensorrt build "$bundle" --opt-batch 2 --max-batch 2
 ```
+
+新しい人物モデルの変換は次のとおりです。RF-DETR-L の export には `rfdetr` extra もインストールします。
+設定で (N > 1) のバッチを使う場合は、RF-DETR-L の `export` に
+`--override people_models.runtime.rfdetr_l.batch_size=N` を渡し、同じ値を `build` の opt/max に渡します。
+端数も同じ方式で実行できるよう 1 から上限までのエンジンを登録します。
+
+```bash
+rf=outputs/tensorrt/rfdetr-l/704x704/b1
+rtm=outputs/tensorrt/rtmpose-x/384x288/b1-16
+.venv/bin/python -m src.tennis_scene.scripts.tensorrt export rfdetr-l "$rf"
+.venv/bin/python -m src.tennis_scene.scripts.tensorrt build "$rf" --opt-batch 1 --max-batch 1 --workspace-mib 2048
+.venv/bin/python -m src.tennis_scene.scripts.tensorrt export rtmpose-x "$rtm"
+.venv/bin/python -m src.tennis_scene.scripts.tensorrt build "$rtm" --opt-batch 8 --max-batch 16 --workspace-mib 1536
+```
+
+RF-DETR-L の plan は FP32 bindings の型付き FP16、RTMPose-X の plan は FP16 bindings の型付き FP16 です。
+エンジンは実行する GPU に合わせて作成します。
 
 保存先はworktreeルートからの相対パス、または絶対パスで指定します。
 ローカルの変換・ビルドは[共有training queue](../../../.agents/skills/training-queue/SKILL.md)で実行します。
@@ -429,7 +504,7 @@ TensorRTでprofile境界とL=177（範囲内の場合）の有限性・層精度
 .venv/bin/python -m src.tennis_scene.scripts.qualify_gvhmr_tensorrt "$bundle" outputs/gvhmr-qualification.json
 ```
 
-画像モデルの最小バッチは1です。profile内のバッチサイズは設定だけで変更できます。
+動的 profile の画像モデルは最小バッチ1です。profile内のバッチサイズは設定だけで変更できます。
 
 ```yaml
 people_models:
@@ -549,8 +624,11 @@ side・alignment・三角測量へ渡す`uv_px/confidence`は欠損をゼロ、m
 
 ## 成果物
 
-構造化clipでは`<clip>/annotations/tennis_scene/`をstoreとし、呼び出し側が`store_root`で明示する。
-単独動画の入口（`store_root=None`）は`cache.directory/<source digest>`を使う。
+構造化clipのstoreの基点は`<clip>/annotations/tennis_scene/`で、呼び出し側が`store_root`で明示する。
+単独動画の入口（`store_root=None`）の基点は`cache.directory/<source digest>`。
+DINO＋ViTPose-H はこの基点に保存する。RF-DETR-L または RTMPose-X を選ぶ場合は、
+基点の `people-models/<detector>+<pose>/` に `scene.json`、export、公開マーカー、失敗記録を保存する。
+単一clip CLI の出力ディレクトリと、一括実行の既定の進捗ディレクトリにも同じ組合せ名を使う。
 storeの場所を動画パスの形から推測しない。`cache.directory`はrun IDを含まないARTIFACT pathで、`cache.source=load`で再開できる。
 
 ```text
@@ -571,19 +649,35 @@ camera scopeはnode名（例`ball_detection/cam0`）と実行identityに含む�
 
 出力は一時directoryで完了してから公開し、clip単位のlockを取って`scene.json`を更新する。
 中断途中の出力を下流へ渡さず、既存の完成artifactを上書きしない。
-`scene.json`の`artifacts`は採用版、`exports.scene`は完成した統合出力と採用した`event_detection`成果物を指す。
+`scene.json`の`artifacts`は採用版、`exports.scene`は完成した統合出力とその生成元を指す。
+v2では`scene_assembly`、v3では`scene_assembly`に依存する`event_detection`を生成元とする。
 採用componentが差し替わった時点で旧exportへの公開参照を外す。既存のimmutableなexportファイルは保持し、
 `scene.json`から統合sceneを読む際にも上流artifactの依存鎖が現採用版と一致するか検証する。
 `scene.npz`は派生した統合結果で、component間の受け渡しには使わない。
 `load_scene_result(scene.json)`またはstore directoryを指定すると、checksum検証後にその統合結果を読める。
 datasetの完成marker（`annotation.json`）は`dataset_publication.py`が公開し、
 [generate_dataset](../generate_dataset/README.md)がclipごとの呼出しと結果を管理する。
+公開・復元で二つの参照を切り替える共通の入口は `storage.scene_pointers` の
+`replace_scene_pointers(root, *, scene, annotation, receipt, recovery)`。
+`root` と保存済み `receipt` は `Path`、`scene` と `annotation` は切替先のUTF-8文字列とする。
+元のmarkerがない状態に戻す場合は `annotation=None` を渡す。`recovery` は読込エラーに含める復旧操作の文字列。
+呼び出し側は `clip_store_lock(root)` 内で切替前後の参照を検証してから呼ぶ。
+`.scene-pointer-update.json` は両参照の読み戻しが済むまで復旧記録を指す。
+読込中の保留、他の記録による切替、読み戻しの不一致は `ScenePointerUpdateError`（`ValueError` の派生型）を返す。
+復旧する書き手は同じロック内で `read_pending_scene_update(root)` の `receipt` を照合し、同じ入口で公開・復元を続ける。
 標準pipelineのmarker発行・再利用では、公開するsceneの依存を`body_placement`から
 `body_parameters` v2、`hmr2_features` v1、共通の`body_view_selection`までたどり、
 採用参照・checksumとclip/人物/segment/frameの対応を検証する。旧身体成果物は明示的に拒否する。
 
-モデル/設定/上流artifact/入力組立の変更は再計算を必要とする。現行のコードfingerprintは`src`全体を保守的に含むため、
-コード変更は全componentを無効化する。設定・checkpointだけの変更は、そのcomponentと依存先だけを無効化する。
+モデル/設定/上流artifact/入力組立の変更は再計算を必要とする。実行キーの実装識別と公開識別の
+`code_sha256` は、`src` 全体のPythonソースのSHA-256を `source_identity.py` の互換表で
+正規化して求める。互換表は対象ファイルの全ハッシュが一致する変更だけを基準版へ対応づける。
+ソース識別が変わると全componentが無効になり、設定・checkpointだけの変更はそのcomponentと依存先を無効にする。
+同じソース識別・設定・入力ならcheckoutのcommitをまたいで再利用できる。`event_detection` の
+`metadata.ball_events.provenance.code_commit` は計算時のcommitを記録し、cache/loadによる再利用時も保持する。
+設定に `code_commit` を含む旧実行キーの `event_detection` には、一度 `execute` が必要になる。
+旧公開識別の完成markerを更新するdatasetでは `overwrite=true` を使う。
+配布済みのSceneResult v3は `load_scene_result` で引き続き読み込める。
 新しい実装を差す場合は`ComponentNode`へ実装、IO、assembler、bindings、設定を登録する。runner変更は不要。
 
 ## execute / load

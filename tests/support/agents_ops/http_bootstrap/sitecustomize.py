@@ -1,4 +1,4 @@
-"""Patch only an imported transport in pytest's explicitly marked child env.
+"""Patch the transport and opted-in launch boundary in pytest child processes.
 
 Delay until import so checkout tests retain their own module search paths and
 unrelated Python tools/fake executables do not import the GitHub client.
@@ -29,32 +29,37 @@ if (
     from pathlib import Path
     from typing import Any
 
-    class TransportLoader(importlib.abc.Loader):
-        def __init__(self, loader: Any) -> None:
+    hooks = {"issues.transport": "github_http.py"}
+    if os.environ.get("AGENTS_TEST_DIRECT_MERGE_GATE") == "1":
+        hooks["lib.ops_review.merge_gate_impl"] = "merge_gate_launcher.py"
+
+    class FixtureLoader(importlib.abc.Loader):
+        def __init__(self, loader: Any, fixture: str) -> None:
             self.loader = loader
+            self.fixture = fixture
 
         def create_module(self, spec: Any) -> Any:
             return self.loader.create_module(spec)
 
         def exec_module(self, module: Any) -> None:
             self.loader.exec_module(module)
-            path = Path(__file__).resolve().parents[1] / "github_http.py"
-            spec = importlib.util.spec_from_file_location("github_http", path)
+            path = Path(__file__).resolve().parents[1] / self.fixture
+            spec = importlib.util.spec_from_file_location(path.stem, path)
             assert spec is not None and spec.loader is not None
             helper = importlib.util.module_from_spec(spec)
             spec.loader.exec_module(helper)
             module._test_bridge = helper.install(module)
 
-    class TransportFinder(importlib.abc.MetaPathFinder):
+    class FixtureFinder(importlib.abc.MetaPathFinder):
         def find_spec(self, fullname: str, path: Any = None, target: Any = None) -> Any:
-            if fullname != "issues.transport":
+            if fullname not in hooks:
                 return None
             spec = importlib.machinery.PathFinder.find_spec(fullname, path, target)
             if spec is not None and spec.loader is not None:
-                spec.loader = TransportLoader(spec.loader)
+                spec.loader = FixtureLoader(spec.loader, hooks[fullname])
             return spec
 
-    sys.meta_path.insert(0, TransportFinder())
+    sys.meta_path.insert(0, FixtureFinder())
 
     # Preserve an explicit startup hook used by another fixture. Python loads
     # only one sitecustomize, so install our lazy transport hook and then run

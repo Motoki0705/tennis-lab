@@ -47,6 +47,10 @@ componentのIO宣言、入力組立、runner、clip store、保存形式とexecu
 [pipeline/README.md](pipeline/README.md)です。
 storeの採用済みartifactは、推論もstoreへの書き込みもせずにHTML galleryで確認できます。
 
+全人物の3D再構成を試すCPU入口は、[フレーム別の候補生成](multiview_pose/README.md)と
+[時間追跡・選手選別](multiview_tracking/README.md)にあります。
+統合済みの3D IDから身体とSceneResultを生成するrecipeは [multiview_scene](multiview_scene/README.md) を参照してください。
+
 ```bash
 .venv/bin/python -m src.tennis_scene.scripts.visualize_component_store --store <clip>/annotations/tennis_scene --output <dir> [--videos]
 ```
@@ -127,7 +131,7 @@ meiji_4camでは、同じoverridesへ`people_models.runtime.dino_detector.precis
 実行中に登録されたclipは次回の対象になります。
 
 clipの全nodeが完成すると、共通のexportとdataset publisherがそのclipの
-`annotations/tennis_scene/annotation.json`を公開します。`continue_on_error=true`では、
+`annotation.json`を[人物モデルの組合せに対応するstore](pipeline/README.md#成果物)に公開します。`continue_on_error=true`では、
 `clip_too_long`などの入力・再構成失敗を記録し、そのclipの未完了nodeをblockedにして
 他のclipを続けます。共有モデルの読込・解放失敗、CUDA/deviceエラー、中断は実行を停止します。
 失敗が残ると終了コードは非0です。`continue_on_error=false`で最初の失敗時に停止できます。
@@ -231,6 +235,55 @@ camera IDと動画を明示的に対応付け、sceneと動画の解像度・FPS
 SceneResult v2・v3の有効性maskを既存rendererへそのまま渡します。
 README用GIFのCPU生成コマンド・入力hash・目視確認結果は
 [LOESS導入後の再生成・比較記録](../../knowledge/nodes/tennis_scene/000031-run-scene-ball-loess-20261026.md)を参照してください。
+
+## 3D人物比較ページ
+
+`pose_comparison` は、meiji_4cam の採用中の `SceneResult` を左に、対応する新経路を右に表示します。
+どちらも同じ元フレームの4視点への投影とコート上面図です。段階1は
+[`frame_pose_candidates` v1](multiview_pose/README.md) の骨格と観測割当、段階2は
+[`multiview_pose_tracks` v1](multiview_tracking/README.md) の時間IDと選手選別を表示します。
+選定は i2363 の初回 `progress.json` を使います。停止14本と、成功55本をID順に並べて seed 42 で抽出した
+`clip_009`・`clip_052` が対象です。候補は割当改善後に再計測した `refine/timing/meiji4` を使います。
+[再計測と成果物の版](../../knowledge/runs/run-multiview-pose-link-recall-20261124/README.md#meiji_4cam全69-clip)
+
+リポジトリのrootで、保存済みの入力を指定して実行します。CPUで描画・圧縮します。
+
+```bash
+.venv/bin/python -m src.tennis_scene.visualization.pose_comparison \
+  --dataset "$I2363_RUN/inputs/dataset" \
+  --progress "$I2363_RUN/all/progress/d1df39596d4f47f1896cb535191e7040/progress.json" \
+  --candidates "$POSE_OUTPUT/refine/timing/meiji4" \
+  --pose-record knowledge/runs/run-multiview-pose-link-recall-20261124/meiji4.json \
+  --tracks "$TRACK_OUTPUT/meiji4" \
+  --tracking-record knowledge/runs/run-i2445-multiview-tracking/meiji4.json \
+  --output outputs/pose-comparison
+```
+
+`I2363_RUN` は保存済みの `i2363-all-v1`、`POSE_OUTPUT` は #2444 の `outputs/i2444`、`TRACK_OUTPUT` は #2445 の `outputs/i2445` です。
+`--tracks` と `--tracking-record` を指定すると両段階を描画します。両方を省略すると段階1だけを描画します。
+`index.html` を開くと、同じディレクトリ内のMP4とポスターを閲覧できます。段階の切替時はclipと再生位置を引き継ぎます。
+`manifest.json` にclipの選定、表示した `scene_assembly`、候補と追跡のartifact IDと版、動画SHA-256、元フレームでの指標を保存します。
+`--clip clip_012` などを指定すると、選定済みのclipだけを描画できます。複数指定も可能です。
+
+旧経路は各clipの `annotations/tennis_scene/scene.json` で採用したSceneResult v2・v3の系譜をたどり、
+exportと描画に使う `scene_assembly`・カメラの版を照合します。
+3D関節がなければ残存する2Dトラックと初回の停止理由を表示します。
+採用中のシーンに有効なボール3Dがある場合は、カメラ行列を照合して同じ球を両側に表示します。
+固定3D IDの経路を採用したデータセットでは、`--legacy-generation before-multiview` で採用直前の旧世代を指定します。
+採用時の記録、旧index、exportの一致を確認して読みます。既定の `active` は現在の旧世代を読みます。
+`--output` に新しいディレクトリを指定するとページを作り直せます。
+
+動画は1888×488のH.264、CRF 21、元の3フレームごと（約19.98 fps）で、clipの時間軸全体を表示します。
+容量は1動画15 MB、ページ全体200 MBが上限です。上限を超える入力では `--crf` と `--frame-step` で調整できます。
+段階2ではclip内でIDの色を固定し、選手を `P`、選外の人物を `T` で表示します。
+観測による3Dを実線、補間を破線と上面図の中空の点で示します。生成 `+`、再出現 `R`、消失 `X` と、
+観測割当 `A?`・時間ID `ID?` の接戦は0.4秒間表示します。消失は上面図内の最後の位置に記します。
+段階2の新経路の3D被覆と人数分布は、観測による有効な3D関節を持つ選手を元フレームごとに数えます。
+コート上面の点は追跡が保存した胴体中心を使います。旧経路と段階1では腰、肩、残存関節の順に中心を求めます。
+未使用視点への再投影は、採用した人物IDに対応する実2D関節があり、正深度に投影できる有効3D関節のうち、
+その視点が復元のinlierに含まれなかった組を集計します。#2470 の `multiview_scene report` と同じ定義です。
+旧経路は採用シーンの2D観測と骨格のinlier mask、新経路は候補の `reprojection_valid` と `inlier_mask` を使います。
+元解像度での残差の中央値・P95と、分母になる関節・視点の組数を表示します。採点対象が0件の場合は理由を表示します。段階2の追跡側では残差の保存値がある場合に表示します。
 
 ## Blenderアニメーション
 

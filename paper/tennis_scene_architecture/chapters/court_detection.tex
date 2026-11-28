@@ -1,0 +1,125 @@
+\section{コート検出}
+\label{sec:court-detection}
+
+\subsection{3DGSからの画像と幾何教師の生成}
+
+撮影動画の多視点画像からSfM\cite{colmap}でカメラと疎な点群を復元し、3DGSで描画できるシーンを得る。
+画像と幾何教師を揃えるため、再構成座標で実際のコート面とテンプレートの位置・向き・スケールを求める。
+点群の高さ分布から地面近傍の候補を選び、RANSACで平面を推定する（図\ref{fig:court-ground}）。
+校正済み画像で得たLINE確率を、推定平面の共通格子へ投影する。
+視点ごとの線の証拠を集約し、コートの規格線が支持される位置へテンプレートを置く（図\ref{fig:court-projection}）。
+合成時には、撮影軌道に対し方位・高さ・画角を変えたカメラを置き、RGBに加えてコートのキーポイント、
+ライン、領域とカメラ幾何を同じ投影で生成する。図\ref{fig:court-alignment}はこの整合を視覚化した例である。
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=.97\linewidth]{figures/court/method_ransac.png}
+\caption{実SfM点群からの地面推定。元の点群（左）、高さ帯で選んだ候補（中）、RANSACと再推定で残った支持点と平面（右）。軸は確定スケールでのメートル表示。}
+\label{fig:court-ground}
+\end{figure}
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=.89\linewidth]{figures/court/method_projection.png}
+\caption{実画像のLINE確率を地面へ投影する例。上段は画像上の線の証拠、中段は各視点の地面への投影。
+下段は表示視点の和、当てはめ用の全\ev{court-method}{32}視点の和、規格コートとの重畳。
+保留\ev{court-method}{16}視点は集約から外した。}
+\label{fig:court-projection}
+\end{figure}
+
+\begin{figure}[tbp]
+\centering
+\begin{tabular}{@{}cc@{}}
+\includegraphics[width=.478\linewidth]{figures/court/B00_000423_alignment.png} &
+\includegraphics[width=.478\linewidth]{figures/court/B01_001403_alignment.png} \\
+B00 & B01 \\[2pt]
+\includegraphics[width=.478\linewidth]{figures/court/B02_000445_alignment.png} &
+\includegraphics[width=.478\linewidth]{figures/court/B03_001091_alignment.png} \\
+B02 & B03
+\end{tabular}
+\caption{シーンごとの合成画像とコートのアライメント。保存カメラから規格線をレンダリング画像へ再投影した。}
+\label{fig:court-alignment}
+\end{figure}
+
+合成画像は生成時の記録で\ev{court-corpus}{8,433}枚、既存のコート報告で照合した版で
+\ev{court-corpus}{4}シーン、\ev{court-corpus}{8,415}枚、\ev{court-corpus}{141}軌道群だった。
+DINOv3\cite{dinov3}の凍結特徴を用いたコート検出器では、複数の幾何教師を画像の共通特徴から予測する。
+
+\subsection{合成シーン構成と実画像への転移}
+
+凍結特徴・検出器と\ev{court-scenes}{5,500}学習画像・\ev{court-scenes}{33,160}更新を共通にし、
+B00から順にシーンを加えて、旧TennisCourtDetectorの実画像validation \ev{court-scenes}{2,211}枚を採点した。
+表\ref{tab:court-scenes}に示すように、KP平均誤差は\ev{court-scenes}{1}シーンの\ev{court-scenes}{53.9} pxから
+\ev{court-scenes}{4}シーンの\ev{court-scenes}{23.6} pxへ下がった。B01を加えた\ev{court-scenes}{2}シーンは
+B00単独より誤差が大きかった。シーン対を入れ替えた比較でも、撮影・描画特性で分けた
+異群ペアのKP平均\ev{court-pairs}{33.93} pxに対し、同群ペアは\ev{court-pairs}{83.34} pxだった。
+
+\begin{table}[tbp]
+\centering
+\caption{合成シーン数を変えた比較。実画像は全行で同じvalidation、KPの単位は長辺\ev{court-scenes}{512}設定のモデル入力px。seedは\ev{court-scenes}{42}。}
+\label{tab:court-scenes}
+\small
+\input{tables/court_scenes}
+\end{table}
+
+視点分布の寄与は、同じB00〜B03を使い、各シーン\ev{court-views}{128}枚、合計\ev{court-views}{512}枚、
+\ev{court-views}{6,000}更新、seed \ev{court-views}{42と43}に揃えて調べた。
+狭分布は撮影カメラの位置・向き・画角に近い画像から選び、広分布は方位・高さ・画角の区画から撮影近傍の外を含めて選んだ。
+収録動画で分けた実画像testの結果を表\ref{tab:court-viewpoints}と図\ref{fig:court-viewpoints}に示す。
+広分布では全体のKP平均誤差が\ev{court-views}{103.50→111.07} px、H成立率が\ev{court-views}{32.41→22.19\%}となった。
+seed別では、広分布でKP誤差が下がった学習でもH成立率は下がった。
+厳しい再投影基準に達した画像も少なかった。
+
+\begin{table}[tbp]
+\centering
+\caption{撮影近傍と広い視点分布。KP平均は可視点を集計した長辺\ev{court-views}{512}換算px、H成立率は写像を得た画像の割合。両指標ともseedを等重みで平均。}
+\label{tab:court-viewpoints}
+\small
+\input{tables/court_viewpoints}
+\end{table}
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=.88\linewidth]{figures/court/test-effects.png}
+\caption{実画像testの広分布と狭分布の差（広−狭）。点はseedごとの結果と両seed平均、区間は動画を単位に再標本化した\ev{court-views}{95\%}区間。層別集合には重複がある。}
+\label{fig:court-viewpoints}
+\end{figure}
+
+\subsection{共同推定と固定カメラでの運用}
+
+推論ではKPの対応からホモグラフィ候補を作り、画像内で投影線に沿うLINEの支持を調べて候補を選ぶ。
+共同最適化では線の位置と信頼できるKPを使い、交点が部分的に隠れていても線の観測を活用する。
+観測LINEと投影した規格線の順方向・逆方向の支持率は、local01でKPのみの\ev{court-h}{73.9/81.8\%}から、
+共同最適化の\ev{court-h}{99.4/99.8\%}へ上がった（図\ref{fig:court-real}）。
+Meijiでは動画単位の共有写像を\ev{court-shared}{69}クリップ・\ev{court-shared}{276}カメラ区間で利用できた。
+別フレームの線の変位を診断し、証拠不足などの警告を\ev{court-shared}{159}区間に残した。
+
+\newcommand{\courtcomparison}[1]{%
+  \includegraphics[width=.321\linewidth,height=.17\textheight,keepaspectratio]{figures/court/#1.jpg}&
+  \includegraphics[width=.321\linewidth,height=.17\textheight,keepaspectratio]{figures/court/#1_baseline_common.png}&
+  \includegraphics[width=.321\linewidth,height=.17\textheight,keepaspectratio]{figures/court/#1_ours.png}}
+\begin{figure}[tbp]
+\centering
+\small
+\setlength{\tabcolsep}{2pt}
+\begin{tabular}{@{}ccc@{}}
+入力写真 & TCD（argmax） & KP＋LINE共同推定 \\[2pt]
+\courtcomparison{local01}\\[2pt]
+\courtcomparison{local02}\\[2pt]
+\courtcomparison{local03}\\[2pt]
+\courtcomparison{local04}
+\end{tabular}
+\caption{学習外の実画像例。上からlocal01〜local04。TCD列は保存確率の最大位置を使う比較、
+右列はKPとLINEの共同最適化。点は検出、線は生成できたホモグラフィによるコート重畳を示す。}
+\label{fig:court-real}
+\end{figure}
+
+各シーンの登録画像を撮影順に前後に分け、一方の区間だけに現れる地面トラックを同じ空間セル内で比べた。
+再構成した地面の高さ差はシーン内でばらつき、比較できたセルの分布もシーン間で異なった（図\ref{fig:court-drift}）。
+
+\begin{figure}[tbp]
+\centering
+\includegraphics[width=.93\linewidth]{figures/court/sfm_temporal_drift.png}
+\caption{SfM登録画像の前半と後半で求めた地面の高さ差（後半−前半、cm）。両区間に独立した支持点をもつセルを表示する。}
+\label{fig:court-drift}
+\end{figure}

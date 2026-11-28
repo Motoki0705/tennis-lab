@@ -202,6 +202,7 @@ def enqueue(
     *,
     persist: Callable[[], None],
     command: Callable[..., subprocess.CompletedProcess[str]],
+    message: str | None = None,
 ) -> dict[str, Any]:
     """Caller holds its lock and supplies a verified, complete observed boundary.
 
@@ -211,6 +212,10 @@ def enqueue(
     boundary = task["observed_boundary"]
     if not boundary["line_complete"]:
         raise ValueError("Rollout has a partial record; no message was sent")
+    if message is None:
+        message = marker + "\n" + task["prompt"]
+    elif not marker or marker not in message:
+        raise ValueError("Queue message must contain its receipt marker")
     delivery = {
         "marker": marker,
         "phase": "uncertain",
@@ -230,7 +235,7 @@ def enqueue(
                 "--thread",
                 task["thread_id"],
                 "--message",
-                marker + "\n" + task["prompt"],
+                message,
             ],
             env=environment,
             cwd=task["cwd"],

@@ -33,7 +33,7 @@ hints, never selection rules; invalid profiles fail explicitly.
 Run one local partition from a fixed checkout:
 
 ```bash
-.venv/bin/python -m scripts.ci_metrics run --workers 2 --output /absolute/new/shard-0/tests \
+.venv/bin/python -m scripts.ci_metrics run --workers 2 --output .ci-metrics/shard-0/tests \
   --shard-index 0 --shard-count 10 --shard-weights scripts/ci_metrics/cpu-file-times.json
 ```
 
@@ -61,6 +61,12 @@ recomputes the per-shard report from those events and requires:
 - R = S_0 disjoint-union ... disjoint-union S_n; no missing, duplicate or empty shard;
 - system marker inventories matching independent pre-selection events and every other shard; ordinary shards contain no marked cases, the runtime job contains every marked case exactly once, and all runtime outcomes are passed (zero skip/xfail);
 - successful plan, lint, every matrix job and the system-runtime job; skipped/cancelled jobs are not successes.
+
+The phase audit accepts pytest's `passed`, `failed` and `skipped` outcomes.
+Every case needs exactly one setup and teardown. A passing setup requires one
+call, while a failed or skipped setup proceeds directly to teardown. Expected
+failures and unexpected passes retain their pytest `wasxfail` classification.
+Unknown phase labels or outcomes and incomplete sequences fail the audit.
 
 Deleting the same case from every manifest is detected against the independent
 pre-selection events. Deferred cases are neither skips nor successes. The aggregate
@@ -105,28 +111,203 @@ use [baseline](baseline.md) for evidence and comparison limitations. Refresh the
 profile from complete measurements after material fixture or suite changes.
 No runner-count recommendation is inferred from the number of test files alone.
 
+System preparation and pin maintenance are owned by the [runtime contract](README.md#pinned-system-runtimes).
+
 ## Regenerate measured weights
 
-Download the latest `cpu-test-measurements-RUN-shard-*` artifacts from one run, with exactly one artifact directory per shard and the same HEAD and lane plan, then run:
+Run `update-profile` from the checkout with an authenticated `gh` that can read
+Actions artifacts. Use `--latest-main` to search successful main pushes from
+newest to oldest. Ineligible runs are reported with reasons. Use `--run-id`
+and `--attempt` to reproduce a particular update while its artifact set is
+still live.
+The search records a run's invalid artifact data and checks the next candidate.
+A pinned run with invalid evidence, an API request failure or a local I/O
+failure ends the update and preserves the output profile.
+
+The command pins the run and HEAD, downloads the lane plan and the latest
+coverage and shard archives by artifact ID, checks the aggregate's download
+manifest, and rebuilds the worker and JUnit audit. It accepts only complete,
+successful main push observations with zero deferred cases and an audited
+system-runtime shard. A partial rerun can reuse earlier successful shard
+observations under the fixed plan and attempt rules above. Invalid or missing
+evidence leaves the output profile intact. Replacing the output is atomic.
+
+Reproduce the current update using the source run's scheduling profile as the
+comparison baseline.
 
 ```bash
-.venv/bin/python -m scripts.ci_metrics profile --root /absolute/artifacts \
-  --output scripts/ci_metrics/cpu-file-times.json
+profile_work=$(mktemp -d)
+git show 8d629a35289f475e514291167435c333876afdd2:scripts/ci_metrics/cpu-file-times.json > "$profile_work/baseline.json"
+.venv/bin/python -m scripts.ci_metrics update-profile --run-id 45955929416 --attempt 1 \
+  --baseline "$profile_work/baseline.json" --output "$profile_work/cpu-file-times.json" \
+  --report "$profile_work/comparison.json" \
+  --split-file tests/e2e/agents_ops/test_board_messages.py \
+  --split-file tests/e2e/agents_ops/test_parent_session.py \
+  --split-file tests/integration/agents_ops/test_storage_tier_crash_boundaries.py \
+  --split-file tests/integration/agents_ops/test_storage_tier_recovery_boundaries.py
 ```
 
-The command rebuilds phase/JUnit reports and audits source/run/plan, attempt bounds, all worker manifests, assignment, and the exact full-inventory multiset. For mixed attempts it uses the maximum shard attempt as the aggregate attempt and records `source.plan_attempt` and `source.shard_attempts`. Missing phases, duplicates, dirty/mixed sources, cancellations and collection failures are rejected. Complete test failures remain in the weights and in `source.counts`/`unsuccessful_cases`; generating weights never turns them into passing CI. `Python` still requires successful jobs and observations. The audit also reports `observations_complete` separately from success.
+For a new run, replace `--run-id … --attempt …` with `--latest-main`. The default
+comparison baseline is the checked-out `cpu-file-times.json`. Omit the split
+options to retain the measured run's split declarations. Repeat `--split-file`
+to replace that list after reviewing the fixtures. A declaration with zero
+measured cases needs an explicit list update. The JSON report includes the
+source and pinned command, the file-level differences, and the full group
+assignments and loads. When growth reports show a material increase in unmeasured
+files or cases, or persistent load imbalance, review a candidate and publish it
+through a normal reviewed PR. The command writes only local files.
 
-Any deferred case rejects profile generation. A successful subset cannot overwrite
-the full CPU scheduling profile or claim a full CPU baseline.
+For historical or failed-run diagnostics, `profile --root artifacts
+--output diagnostic.json` still rebuilds weights from downloaded
+shard directories. It can represent complete failing observations in
+`source.counts` and `unsuccessful_cases`. For mixed attempts it uses the highest
+shard attempt. It rejects deferred cases.
 
-By default, retain the observed `split_files`. Repeat `--split-file tests/path.py` to explicitly replace that list after reviewing fixtures. The collection guard validates those declarations against the current fixture graph before execution. Merge gate, board messages and parent session retain function-fixture splitting. Coordinate training keeps its module-scoped `shared` fixture within one shard. No test bodies or fixture scopes change.
+### Offline comparison of the current profile
 
-The refreshed profile uses the complete successful main push [run 41240159671](https://github.com/Motoki0705/tennis-lab/actions/runs/41240159671): all ten shards, 883 files, 14,561 cases (14,470 passed / 91 skipped / 0 failed), and 7,543.124 summed phase seconds. The old profile left 54 current files unmeasured, including the 29-case court dataset integration: its median estimate was 0.077 s versus 406.228 s measured. On this same inventory, old weights estimated 676.570–676.572 s per shard, but the measured costs of those assignments were 439.996–1,101.161 s. Reassigning with refreshed weights estimates 754.311–754.313 s across ten shards, with no unmeasured files or split cases. These are overlapping worker phase costs, not wall-time predictions. Reprofile after material test-cost changes.
+The previous profile used [run 41240159671](https://github.com/Motoki0705/tennis-lab/actions/runs/41240159671)
+with 883 files and 14,561 cases. The new profile uses
+[run 45955929416](https://github.com/Motoki0705/tennis-lab/actions/runs/45955929416)
+at commit `8d629a35289f475e514291167435c333876afdd2`. The plan, all 11
+measurement archives, and successful coverage agree on the run and HEAD. All
+attempts are 1. Of 26,189 cases in 1,160 files, 26,070 passed, 119 had legitimate
+skips, and none failed or were deferred. The system job passed all 17 cases.
+The refresh adds 282 file entries, updates 878, and drops five entries with no
+observed cases. The profile's `source` records the exact artifact IDs and
+inventory hash.
 
-System preparation and pin maintenance are owned by the [runtime contract](README.md#pinned-system-runtimes).
+A uses the previous weights, B refreshes them with the same case split policy
+on the observed inventory, and C also splits the storage crash and recovery
+boundary files. The old `test_merge_gate.py` declaration had zero collected
+cases because the file supplies helpers. There are two effective splits in B
+and four in C. A estimates 281 ordinary files and 28 split cases using
+unmeasured defaults. B and C have zero unmeasured ordinary files or split cases.
+
+All values below are summed setup, call and teardown seconds across workers.
+A observed is the actual phase cost under A on the 26,189-case source run.
+The estimate columns apply to that inventory and the two later full inventories
+described below. The system job's 18.578 observed phase seconds are separate
+from the ordinary shard totals.
+
+| Shard | A estimated | A observed | B estimated | C estimated |
+|---|---:|---:|---:|---:|
+| 0 | 610.579 | 725.360 | 1809.091 | 1360.607 |
+| 1 | 610.580 | 1322.624 | 1310.776 | 1360.609 |
+| 2 | 610.579 | 611.440 | 1310.776 | 1360.608 |
+| 3 | 610.579 | 1304.961 | 1310.776 | 1360.609 |
+| 4 | 610.579 | 1185.038 | 1310.777 | 1360.608 |
+| 5 | 610.578 | 1397.866 | 1310.777 | 1360.607 |
+| 6 | 610.579 | 1650.712 | 1310.776 | 1360.608 |
+| 7 | 610.580 | 844.635 | 1310.778 | 1360.609 |
+| 8 | 610.578 | 3311.545 | 1310.777 | 1360.608 |
+| 9 | 610.578 | 1235.024 | 1310.778 | 1360.609 |
+| Min | 610.578 | 611.440 | 1310.776 | 1360.607 |
+| Max | 610.580 | 3311.545 | 1809.091 | 1360.609 |
+| Mean | 610.579 | 1358.921 | 1360.608 | 1360.608 |
+| Max / mean | 1.000 | 2.437 | 1.330 | 1.000 |
+
+The 4,606 recovery cases cost 1809.091 s and move from shard 8 in A to shard 0
+in B. The 1,649 crash cases cost 533.836 s and move from shard 6 to shard 1.
+C spreads both files across all ten jobs. The next-largest whole files cost
+423.166 s (`test_parent_development.py`, A/B/C shards 1/2/0), 373.922 s
+(`test_parent_completion_resume.py`, 8/3/1), and 355.775 s
+(`test_court_dataset.py`, 0/4/2). With C, replaying measured ordinary case costs
+gives a maximum of 1360.609 s, 58.9% below A's observed maximum.
+
+The two boundary files use function-scoped `tmp_path` and `monkeypatch` and
+the global per-case seed fixture. The session-scoped pytest temp allocator
+gives each case its own root. `make_lab` puts the repository, mirror, synthetic
+`/proc`, journals and lock under that root. Fixture trace hooks run in forked
+children that are joined or killed, and pytest restores the path prepend
+during teardown. Collection with the real shard plugin accepted all 6,255
+boundary cases, assigned each once, and reported zero unmeasured split cases.
+
+#### Later full inventories
+
+We replayed A, B and C on the same 26,208-nodeid inventory from the full Actions
+comparison, then on the 26,218-nodeid collection of the review fixes at
+`1e139b9aecd44fc7b9e157c5ebe360d62117a07e`. The latter uses the `spin test`
+CPU selection with the locked pytest 9.2.0 and matches the Actions inventory
+plus the ten new cases exactly. Each snapshot includes the same 17
+`system_deps` nodeids. The comparison data records the inventory and assignment
+hashes, group and case counts and estimated loads for all ten ordinary shards
+under each condition. [Full run inventory](https://github.com/Motoki0705/tennis-lab/actions/runs/46056231956) · [Offline data](sharding-comparison.json)
+
+The 19 cases added between the profile source and the Actions comparison
+and the ten later regressions enter existing measured whole-file groups.
+The three inventories therefore give identical group assignments, estimates
+and unmeasured counts for each condition. A and B assign 1,440 ordinary groups
+each and C assigns 7,693.
+
+| Existing file group | Added for Actions | Added in review | Shard A / B / C | Fixed estimate A / B / C (s) |
+|---|---:|---:|---|---|
+| `test_ci_growth.py` | 1 | 0 | 0 / 9 / 4 | 0.084556 / 0.054511 / 0.054511 |
+| `test_ci_shards.py` | 18 | 6 | 5 / 3 / 1 | 4.998372 / 8.766644 / 8.766644 |
+| `test_ci_metrics.py` | 0 | 4 | 1 / 8 / 6 | 3.595444 / 5.535053 / 5.535053 |
+
+## Matched Actions comparison
+
+A used the old weights and C used the adopted weights. Their full-dispatch
+source trees differed only in `cpu-file-times.json`. The two scoped PRs added
+the same comment to `src/tasks/ball_refiner_3d/__init__.py` on their respective
+bases. Each run used ten ordinary four-vCPU shards and one system-runtime job,
+with two pytest workers per shard and one native thread. All 66 test jobs
+recorded a uv cache hit. Hosted runners varied in CPU model and Ubuntu image
+revision, so these results describe the six observed runs.
+
+All six first attempts succeeded. The four full runs requested all 26,208
+cases (26,089 passed and 119 skipped) and had `full_cpu_success=true`. Each
+scoped PR requested the same 23,334 of 26,208 cases (23,219 passed, 115 skipped
+and 2,874 deferred) and had `scoped_cpu_success=true`. Replaying the coverage
+audit from the worker manifests, raw events and JUnit confirmed the fixed
+profile and lane plan in each run. Requested and executed nodeids matched
+exactly, including the same skip outcomes within each scope. The isolated
+system job passed all 17 cases every time.
+
+Times are in seconds. `Test` and `Job` show the longest ordinary shard for
+each metric and its index. `Python` runs from workflow creation to completion
+of the required check. Workflow elapsed uses the Actions run's final update
+timestamp. Runner seconds sum the wall time of all 15 jobs.
+
+| Condition | Actions run | Max Test (shard) | Max job (shard) | Python | Workflow elapsed | All runner s |
+|---|---|---:|---:|---:|---:|---:|
+| Full A1 | [46045996862](https://github.com/Motoki0705/tennis-lab/actions/runs/46045996862) | 1755 (8) | 1834 (8) | 1941 | 1941 | 9082 |
+| Full C1 | [46050353999](https://github.com/Motoki0705/tennis-lab/actions/runs/46050353999) | 933 (5) | 1006 (5) | 1088 | 1089 | 8792 |
+| Full A2 | [46052765632](https://github.com/Motoki0705/tennis-lab/actions/runs/46052765632) | 1467 (8) | 1535 (8) | 1607 | 1608 | 8502 |
+| Full C2 | [46056231956](https://github.com/Motoki0705/tennis-lab/actions/runs/46056231956) | 991 (1) | 1061 (1) | 1141 | 1141 | 9476 |
+| Scoped A | [46058668606](https://github.com/Motoki0705/tennis-lab/actions/runs/46058668606) | 1069 (3) | 1125 (0) | 1208 | 1209 | 6496 |
+| Scoped C | [46061213080](https://github.com/Motoki0705/tennis-lab/actions/runs/46061213080) | 706 (2) | 749 (2) | 823 | 824 | 6328 |
+
+Preparation is the ordinary job start to the Test step start. Collection
+includes startup from the test command launch until all workers finish
+collecting. Both columns are means across ordinary shards. Queue columns
+show elapsed time from dispatch to the first job start and the longest time
+from an individual job's creation to its start, respectively. Measured phase
+seconds sum setup, call and teardown across workers.
+
+| Condition | Preparation s | Launch through collection s | Dispatch to first job s | Max job queue s | Max measured phase s | Phase max / mean |
+|---|---:|---:|---:|---:|---:|---:|
+| Full A1 | 60.5 | 109.1 | 3 | 3 | 3264.667 | 2.409 |
+| Full C1 | 59.9 | 109.9 | 4 | 2 | 1552.381 | 1.178 |
+| Full A2 | 60.8 | 107.4 | 3 | 3 | 2672.376 | 2.139 |
+| Full C2 | 62.3 | 118.5 | 5 | 3 | 1645.171 | 1.155 |
+| Scoped A | 39.4 | 110.8 | 3 | 3 | 1945.171 | 2.149 |
+| Scoped C | 40.6 | 106.8 | 2 | 3 | 1117.201 | 1.280 |
+
+Across the two full runs per condition, the mean longest Test step fell from
+1611 to 962 s (40.3%) and the mean Python check completion fell from 1774 to
+1114.5 s (37.2%). The longest Test step shortened in both pairs by 46.8% and
+32.4%, meeting the 30% target. Mean all-job runner time rose from 8792 to 9134 s
+(+3.9%, or 5 min 42 s per full run). In the single scoped pair the longest Test
+step fell from 1069 to 706 s (34.0%), Python finished 385 s earlier, and runner
+time fell from 6496 to 6328 s (2.6%).
+
+The estimates, measured phase costs, wall times, runner metadata and audit
+identities for each shard are recorded in the
+[comparison data](sharding-comparison.json).
 
 ## Default selection
 
-The default is 10 shards with two workers: the smallest measured two-worker configuration meeting the 15-minute completion target with no failures beyond the known README case. Four workers reproduced an additional process-cleanup assertion failure and remain available for manual comparisons. The complete timing/cost/cache/RSS table and sample limitations are owned by [baseline](baseline.md#runner-scheduling-observations). After the parent’s fixture changes merge, regenerate the profile and remeasure whether 6/8 shards suffice.
-
-Retain the three existing split-file declarations. The heaviest whole file is the court dataset integration at 406.228 s, below the refreshed 754.312 s per-shard budget. Adding it to `split_files` was checked against the current fixture graph and estimates the same 754.313 s maximum load, so it adds no balancing benefit for the measured full inventory. `test_parent_development.py`, `test_execution_basis.py` and `test_parent_completion_resume.py` cost 291.218 / 251.793 / 138.501 s and also fit within that budget. No test body or fixture scope changes.
+The default is ten ordinary shards with two workers each, plus the required
+system-runtime job. The original runner measurements, cache conditions, and
+sample limits are recorded in [baseline](baseline.md#runner-scheduling-observations).

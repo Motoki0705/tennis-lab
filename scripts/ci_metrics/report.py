@@ -14,9 +14,14 @@ from .growth import inventory_details
 from .lanes import audit_partition, read_plan
 from .runner import write_json
 
+PHASES = ("setup", "call", "teardown")
+# TestReport uses these outcomes. pytest encodes xfail/xpass in wasxfail and
+# reports setup/teardown errors as failed; fixture events have their own outcomes.
+PHASE_OUTCOMES = ("passed", "failed", "skipped")
 
-def _json(path: Path) -> dict[str, Any]:
-    return json.loads(path.read_text()) if path.exists() else {}
+
+def _json(path: Path, *, raise_io_errors: bool) -> dict[str, Any]:
+    return json.loads(path.read_text()) if raise_io_errors or path.exists() else {}
 
 
 def _junit_address(nodeid: str) -> tuple[str, str]:
@@ -31,9 +36,9 @@ def _elapsed(stop: float | None, start: float | None) -> float | None:
     return stop - start if stop is not None and start is not None else None
 
 
-def summarize(root: Path) -> dict[str, Any]:
+def summarize(root: Path, *, raise_io_errors: bool = False) -> dict[str, Any]:
     report_started = time.perf_counter()
-    metadata = _json(root / "environment.json")
+    metadata = _json(root / "environment.json", raise_io_errors=raise_io_errors)
     issues: list[str] = []
     processes = []
     controller: list[dict[str, Any]] = []
@@ -139,7 +144,7 @@ def summarize(root: Path) -> dict[str, Any]:
             item["errors"] += event["outcome"] == "error"
             item["skipped"] += event["outcome"] == "skipped"
             item["xfailed"] += event["outcome"] == "xfailed"
-    run = _json(root / "run.json")
+    run = _json(root / "run.json", raise_io_errors=raise_io_errors)
     if not metadata:
         issues.append("missing environment metadata")
     if not run or run.get("finished_at") is None:
@@ -235,25 +240,37 @@ def summarize(root: Path) -> dict[str, Any]:
                 "deferred_suites": plan["deferred_suites"],
             }
         except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+            if raise_io_errors and isinstance(error, OSError):
+                raise
             issues.append(f"invalid lane evidence: {error}")
     elif (root / "lane-plan.json").exists() or any(universes.values()):
         issues.append("lane evidence has no runner plan identity")
     phases: dict[str, list[dict[str, Any]]] = defaultdict(list)
+    invalid_phase_nodes: set[str] = set()
     for event in controller:
         if event["event"] == "phase":
-            phases[event["nodeid"]].append(event)
-    if set(phases) - set(nodeids):
+            nodeid = event["nodeid"]
+            phase, outcome = event.get("phase"), event.get("outcome")
+            if phase not in PHASES or outcome not in PHASE_OUTCOMES:
+                issues.append(
+                    f"unknown pytest phase or outcome for {nodeid}: {phase!r}, {outcome!r}"
+                )
+                invalid_phase_nodes.add(nodeid)
+            else:
+                phases[nodeid].append(event)
+    if (set(phases) | invalid_phase_nodes) - set(nodeids):
         issues.append("reports outside selected inventory")
     results = []
     for nodeid in nodeids:
         reports = phases.get(nodeid, [])
         names = Counter(e["phase"] for e in reports)
         setup = next((e for e in reports if e["phase"] == "setup"), None)
-        complete = names["setup"] == names["teardown"] == 1 and all(
-            n == 1 for n in names.values()
+        complete = (
+            nodeid not in invalid_phase_nodes
+            and setup is not None
+            and names["setup"] == names["teardown"] == 1
+            and names["call"] == int(setup["outcome"] == "passed")
         )
-        if setup is None or (setup["outcome"] == "passed" and names["call"] != 1):
-            complete = False
         outcomes = {e["outcome"] for e in reports}
         if not complete:
             status = "incomplete"
@@ -282,7 +299,7 @@ def summarize(root: Path) -> dict[str, Any]:
         )
     counts = dict(Counter(item["status"] for item in results))
     if counts.get("incomplete"):
-        issues.append("selected tests have missing/duplicate phases")
+        issues.append("selected tests have missing, duplicate or unexpected phases")
     collection_results = [e for e in controller if e["event"] == "collection_result"]
     junit: dict[str, Any] = {}
     try:
@@ -332,6 +349,8 @@ def summarize(root: Path) -> dict[str, Any]:
                 "JUnit total time differs from phase reports (beyond XML rounding)"
             )
     except (FileNotFoundError, ET.ParseError, ValueError) as error:
+        if raise_io_errors and isinstance(error, FileNotFoundError):
+            raise
         issues.append(f"missing/invalid JUnit: {type(error).__name__}")
     phase_s = {
         phase: sum(
@@ -340,7 +359,7 @@ def summarize(root: Path) -> dict[str, Any]:
             for e in events
             if e["phase"] == phase
         )
-        for phase in ("setup", "call", "teardown")
+        for phase in PHASES
     }
     for process_row in processes:
         process_row["first_phase_at"] = min(

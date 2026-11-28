@@ -30,6 +30,26 @@ deployments:
   task: tennis_scene
   source: LICENSES.md
 - config: src/tennis_scene/configs/pipeline.yaml
+  key: people_models.rfdetr_checkpoint
+  value: rfdetr/rf-detr-large-2026.pth
+  task: player_detection
+  source: LICENSES.md
+  evidence:
+  - run-meiji-rfdetr-large-accuracy
+  note: >-
+    people_models.detector=rfdetr-l を明示指定したときのみ使う公開重み（既定は dino）。
+    #2492 / PR #2681 で設定へ追加された。
+- config: src/tennis_scene/configs/pipeline.yaml
+  key: people_models.rtmpose_checkpoint
+  value: rtmpose/rtmpose-x_simcc-body7_pt-body7-halpe26_700e-384x288-7fb6e239_20230606.pth
+  task: tennis_scene
+  source: LICENSES.md
+  evidence:
+  - run-meiji-topdown-pose-comparison
+  note: >-
+    people_models.pose=rtmpose-x を明示指定したときのみ使う公開重み（既定は vitpose-h）。
+    商用利用・再配布条件は一次資料で未確認（LICENSES.md）。#2492 / PR #2681 で設定へ追加された。
+- config: src/tennis_scene/configs/pipeline.yaml
   key: people_models.hmr2_checkpoint
   value: hmr2/epoch=10-step=25000.ckpt
   task: tennis_scene

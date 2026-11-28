@@ -1,0 +1,5011 @@
+{
+  "archived": {
+    "failed": 14,
+    "generated": 55
+  },
+  "clips": [
+    {
+      "archived": {
+        "player_frames_3d": 1416,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_000",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1416,
+          "raw_observations_selected": 4936,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1416
+          }
+        },
+        "short": {
+          "appearance_samples": 279,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1416,
+          "raw_observations_selected": 5065,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1416
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1416,
+          "raw_observations_selected": 5238,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1416
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 295,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1416,
+          "raw_observations_selected": 5367,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1416
+          }
+        }
+      },
+      "frames": 356,
+      "scene_index_sha256": "8b27228048e51b21f5b031308af518712076b331b46593d16451630d85458a0b"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1677,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_001",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 208,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1677,
+          "raw_observations_selected": 6908,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1677
+          }
+        },
+        "short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 559,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2236,
+          "raw_observations_selected": 8148,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 559,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2236
+          }
+        },
+        "wide": {
+          "appearance_samples": 256,
+          "gained_player_frames": 559,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2236,
+          "raw_observations_selected": 8558,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 559,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2236
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 559,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2236,
+          "raw_observations_selected": 8707,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 559,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2236
+          }
+        }
+      },
+      "frames": 561,
+      "scene_index_sha256": "a4fb3cc0556b2f22ad15e3ff3f04dd742b0b3f91617595f6e2d8ceaf95b5c9b7"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_ambiguous_players",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_002",
+      "conditions": {
+        "baseline": {
+          "error": "Identity 1 (830 frames) is too close to player identity 4 (1514 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 23440,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "error": "Identity 1 (830 frames) is too close to player identity 4 (1514 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 24154,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "error": "Identity 1 (830 frames) is too close to player identity 4 (1514 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 24154,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide_short": {
+          "error": "Identity 1 (830 frames) is too close to player identity 4 (1514 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 24154,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 1516,
+      "scene_index_sha256": "66f264ffbce84396ab650b61a627e912660fd559ccb8b260b3f8a20b0f00c8a2"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1468,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_003",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1468,
+          "raw_observations_selected": 5786,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1468
+          }
+        },
+        "short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1468,
+          "raw_observations_selected": 5786,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1468
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1468,
+          "raw_observations_selected": 5786,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1468
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1468,
+          "raw_observations_selected": 5786,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1468
+          }
+        }
+      },
+      "frames": 369,
+      "scene_index_sha256": "df4f162c98d297e3b1d8bcb4036cf60edd2ae8a447b4f150aaadd7cb68e4916c"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_ambiguous_players",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_004",
+      "conditions": {
+        "baseline": {
+          "error": "Identity 4 (452 frames) is too close to player identity 3 (584 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 8503,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "error": "Identity 4 (452 frames) is too close to player identity 3 (584 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 8622,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "error": "Identity 4 (452 frames) is too close to player identity 3 (584 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 8745,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide_short": {
+          "error": "Identity 4 (452 frames) is too close to player identity 3 (584 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 8864,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 586,
+      "scene_index_sha256": "884600d5f34e296b2e26faf512a52be747f83e9ed59e836992428f7eb13dbf11"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 936,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_005",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 208,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 936,
+          "raw_observations_selected": 3386,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 936
+          }
+        },
+        "short": {
+          "appearance_samples": 224,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 936,
+          "raw_observations_selected": 3503,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 936
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 312,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1248,
+          "raw_observations_selected": 4439,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 312,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1248
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 312,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1248,
+          "raw_observations_selected": 4484,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 312,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1248
+          }
+        }
+      },
+      "frames": 314,
+      "scene_index_sha256": "75869ec5df0ce2e25609f5d35397e2b5fe69e02de486146c14769fa56850a159"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 3460,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_006",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3460,
+          "raw_observations_selected": 12658,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3460
+          }
+        },
+        "short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3460,
+          "raw_observations_selected": 13085,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3460
+          }
+        },
+        "wide": {
+          "appearance_samples": 320,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3460,
+          "raw_observations_selected": 12901,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3460
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3460,
+          "raw_observations_selected": 13085,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3460
+          }
+        }
+      },
+      "frames": 867,
+      "scene_index_sha256": "348a8d56b1f9f9b06c64eeb48f76a51cb6eec3aa927d2d5e965e32575a634067"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1596,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_007",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 283,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1596,
+          "raw_observations_selected": 6155,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1596
+          }
+        },
+        "short": {
+          "appearance_samples": 283,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1596,
+          "raw_observations_selected": 6155,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1596
+          }
+        },
+        "wide": {
+          "appearance_samples": 283,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1596,
+          "raw_observations_selected": 6155,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1596
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 283,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1596,
+          "raw_observations_selected": 6155,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1596
+          }
+        }
+      },
+      "frames": 401,
+      "scene_index_sha256": "b8a13fb9e0d93fcef3caed57af12d9a992eef4a0dc01f8273958b712e26db844"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 2496,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_008",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2496,
+          "raw_observations_selected": 8393,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2496
+          }
+        },
+        "short": {
+          "appearance_samples": 313,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2496,
+          "raw_observations_selected": 9099,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2496
+          }
+        },
+        "wide": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2496,
+          "raw_observations_selected": 9055,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2496
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 329,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2496,
+          "raw_observations_selected": 9461,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2496
+          }
+        }
+      },
+      "frames": 626,
+      "scene_index_sha256": "55f6c95db33a97ea20f0aa27f87d103da202b36de6702c29cf249f3173e9bc43"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 3861,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_009",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3861,
+          "raw_observations_selected": 12801,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3861
+          }
+        },
+        "short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 1,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3862,
+          "raw_observations_selected": 13384,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 1,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3862
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 26,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3887,
+          "raw_observations_selected": 13395,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 26,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3887
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 26,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3887,
+          "raw_observations_selected": 14037,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 26,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3887
+          }
+        }
+      },
+      "frames": 974,
+      "scene_index_sha256": "60ff8fac88ffc3b69acb3075c1f2330371a4b984f883c101128feab711449e6c"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 2171,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_010",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2171,
+          "raw_observations_selected": 7392,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2171
+          }
+        },
+        "short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2171,
+          "raw_observations_selected": 7838,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2171
+          }
+        },
+        "wide": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2171,
+          "raw_observations_selected": 7735,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2171
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2171,
+          "raw_observations_selected": 7838,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2171
+          }
+        }
+      },
+      "frames": 545,
+      "scene_index_sha256": "5151bbbe8034f034286a07aac3a6f43781fa8d511258663d65f980cbd9e76cb8"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 4580,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_011",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4580,
+          "raw_observations_selected": 16777,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4580
+          }
+        },
+        "short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4580,
+          "raw_observations_selected": 17274,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4580
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4580,
+          "raw_observations_selected": 16777,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4580
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4580,
+          "raw_observations_selected": 17274,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4580
+          }
+        }
+      },
+      "frames": 1147,
+      "scene_index_sha256": "69ba425277295bae803c4b0fc346216edc95c52a183b79bc149f34a4867031c3"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "court_side_no_consistent_hypothesis",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_012",
+      "conditions": {
+        "baseline": {
+          "error": "no_consistent_hypothesis: The best hypothesis lacks absolute geometric support [[False, False, True, True] cost=0.211 support=0.196; [False, False, False, True] cost=0.406 support=0.028; [False, True, False, False] cost=0.433 support=0.004; [False, False, True, False] cost=0.436 support=0.002; [False, True, True, True] cost=0.456 support=0.000; [False, False, False, False] cost=0.478 support=0.004; [False, True, True, False] cost=0.516 support=0.002; [False, True, False, True] cost=0.525 support=0.000]",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 14643,
+          "reason": "court_side_no_consistent_hypothesis",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 4060,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4060,
+          "raw_observations_selected": 14990,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 4060,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4060
+          }
+        },
+        "wide": {
+          "appearance_samples": 288,
+          "gained_player_frames": 4060,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4060,
+          "raw_observations_selected": 14990,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 4060,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4060
+          }
+        },
+        "wide_short": {
+          "error": "Identity 5 (558 frames) is too close to player identity 1 (1015 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 15452,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 1017,
+      "scene_index_sha256": "e4f0d9c5a67e0ba6680421a296fa12de25809e1c23850c4b72d54ab22e7d1953"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1868,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_013",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 240,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1868,
+          "raw_observations_selected": 6436,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1868
+          }
+        },
+        "short": {
+          "appearance_samples": 257,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1868,
+          "raw_observations_selected": 6690,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1868
+          }
+        },
+        "wide": {
+          "appearance_samples": 240,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1868,
+          "raw_observations_selected": 6436,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1868
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 257,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1868,
+          "raw_observations_selected": 6690,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1868
+          }
+        }
+      },
+      "frames": 469,
+      "scene_index_sha256": "7b63bbfb8da063b0eb48fddef4ed03ce6c022718f7da760c224639aa40962528"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_ambiguous_players",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_014",
+      "conditions": {
+        "baseline": {
+          "error": "Identity 4 (377 frames) is too close to player identity 1 (461 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 6739,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "error": "Identity 4 (385 frames) is too close to player identity 1 (461 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 6896,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "error": "Identity 4 (423 frames) is too close to player identity 1 (461 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 7114,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide_short": {
+          "error": "Identity 4 (423 frames) is too close to player identity 1 (461 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 7114,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 463,
+      "scene_index_sha256": "564961bdec19cbffd53ec0b906684ae108ec93af8c5f1da36fd55927475f759d"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 3304,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_015",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3304,
+          "raw_observations_selected": 12112,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3304
+          }
+        },
+        "short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3304,
+          "raw_observations_selected": 12580,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3304
+          }
+        },
+        "wide": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3304,
+          "raw_observations_selected": 12112,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3304
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3304,
+          "raw_observations_selected": 12580,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3304
+          }
+        }
+      },
+      "frames": 828,
+      "scene_index_sha256": "b038449bcb54fed991f2652198e399fe064b36f2c3d8a722ff7cf3b273db4cd2"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 4599,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_016",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4599,
+          "raw_observations_selected": 16324,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4599
+          }
+        },
+        "short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 210,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4809,
+          "raw_observations_selected": 17447,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 210,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4809
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 15,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4614,
+          "raw_observations_selected": 17011,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 15,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4614
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 352,
+          "gained_player_frames": 225,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4824,
+          "raw_observations_selected": 18134,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 225,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4824
+          }
+        }
+      },
+      "frames": 1214,
+      "scene_index_sha256": "33a83b14359032dd4891e5388077c343beb88ba23e71865c05cc21ce178b4011"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1448,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_017",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1448,
+          "raw_observations_selected": 5253,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1448
+          }
+        },
+        "short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1448,
+          "raw_observations_selected": 5562,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1448
+          }
+        },
+        "wide": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1448,
+          "raw_observations_selected": 5386,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1448
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1448,
+          "raw_observations_selected": 5572,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1448
+          }
+        }
+      },
+      "frames": 364,
+      "scene_index_sha256": "ae65dfd86503f95bdb3a240ea17689093f427619ff8693fcec9bc327ed0ab9e1"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_ambiguous_players",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_018",
+      "conditions": {
+        "baseline": {
+          "error": "Identity 3 (312 frames) is too close to player identity 1 (384 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 4150,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "error": "Identity 3 (329 frames) is too close to player identity 1 (384 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 4251,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "error": "no_consistent_hypothesis: The best hypothesis lacks absolute geometric support [[False, False, True, True] cost=0.215 support=0.130; [False, True, True, True] cost=0.508 support=0.000; [False, True, False, False] cost=0.530 support=0.000; [False, False, False, True] cost=0.545 support=0.000; [False, False, True, False] cost=0.547 support=0.000; [False, False, False, False] cost=0.592 support=0.000; [False, True, True, False] cost=0.660 support=0.000; [False, True, False, True] cost=0.662 support=0.000]",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 5903,
+          "reason": "court_side_no_consistent_hypothesis",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide_short": {
+          "error": "no_consistent_hypothesis: The best hypothesis lacks absolute geometric support [[False, False, True, True] cost=0.213 support=0.158; [False, True, True, True] cost=0.509 support=0.000; [False, True, False, False] cost=0.526 support=0.000; [False, False, False, True] cost=0.546 support=0.000; [False, False, True, False] cost=0.547 support=0.000; [False, False, False, False] cost=0.595 support=0.000; [False, True, True, False] cost=0.660 support=0.000; [False, True, False, True] cost=0.660 support=0.000]",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 6001,
+          "reason": "court_side_no_consistent_hypothesis",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 386,
+      "scene_index_sha256": "b38952b30c84a9c5ad2d95b624471a809d6aa0ee34e372f422ff30f61b6c689e"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1880,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_019",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 240,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1880,
+          "raw_observations_selected": 7387,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1880
+          }
+        },
+        "short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 388,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2268,
+          "raw_observations_selected": 8521,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 388,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2268
+          }
+        },
+        "wide": {
+          "appearance_samples": 288,
+          "gained_player_frames": 388,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2268,
+          "raw_observations_selected": 8732,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 388,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2268
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 388,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2268,
+          "raw_observations_selected": 8732,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 388,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2268
+          }
+        }
+      },
+      "frames": 569,
+      "scene_index_sha256": "99ba7129ee40f3c01855f7150d9a6c0fd79bf0aeda195932a5c00981605f6af1"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_player_not_found",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_020",
+      "conditions": {
+        "baseline": {
+          "error": "Side y>0 lacks 2 identities present for 163 frames",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 7435,
+          "reason": "player_association_player_not_found",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "error": "Side y>0 lacks 2 identities present for 163 frames",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 7435,
+          "reason": "player_association_player_not_found",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "appearance_samples": 256,
+          "gained_player_frames": 2579,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2579,
+          "raw_observations_selected": 9529,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 2579,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2579
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 2596,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2596,
+          "raw_observations_selected": 9887,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 2596,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2596
+          }
+        }
+      },
+      "frames": 651,
+      "scene_index_sha256": "eb17bec3cb5a50070cc4a2cece6eef4f5005c3000a5ec41babdf41f6f9aaf9a6"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1966,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_021",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1966,
+          "raw_observations_selected": 7311,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1966
+          }
+        },
+        "short": {
+          "appearance_samples": 320,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1966,
+          "raw_observations_selected": 7604,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1966
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1966,
+          "raw_observations_selected": 7311,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1966
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 320,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1966,
+          "raw_observations_selected": 7604,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1966
+          }
+        }
+      },
+      "frames": 513,
+      "scene_index_sha256": "aa43fdc77129cf39d6a73c0b8334811de804c21e2a88b27db24236056adc5967"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 3116,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_022",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3116,
+          "raw_observations_selected": 12720,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3116
+          }
+        },
+        "short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 883,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3999,
+          "raw_observations_selected": 14264,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 883,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3999
+          }
+        },
+        "wide": {
+          "appearance_samples": 304,
+          "gained_player_frames": 678,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3794,
+          "raw_observations_selected": 14408,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 678,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3794
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 352,
+          "gained_player_frames": 926,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4042,
+          "raw_observations_selected": 15131,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 926,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4042
+          }
+        }
+      },
+      "frames": 1044,
+      "scene_index_sha256": "8e98356c161f54e5d2e41c87b258a7c8a408f9e5a81cd35dea0aa0a64b3a9380"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_ambiguous_players",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_023",
+      "conditions": {
+        "baseline": {
+          "error": "Identity 0 (1045 frames) is too close to player identity 4 (1734 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 25241,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "error": "Identity 0 (1045 frames) is too close to player identity 4 (1734 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 25241,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "error": "Identity 0 (1045 frames) is too close to player identity 4 (1734 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 25877,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide_short": {
+          "error": "Identity 0 (1045 frames) is too close to player identity 4 (1734 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 26621,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 1736,
+      "scene_index_sha256": "a1db62d670886b2261e868bd8ce220a139e954499bc36601430034f46344d5be"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1580,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_024",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 224,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1580,
+          "raw_observations_selected": 5495,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1580
+          }
+        },
+        "short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1580,
+          "raw_observations_selected": 6238,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1580
+          }
+        },
+        "wide": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1580,
+          "raw_observations_selected": 6238,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1580
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1580,
+          "raw_observations_selected": 6238,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1580
+          }
+        }
+      },
+      "frames": 397,
+      "scene_index_sha256": "b87a747bb8598d1703666a845623ad2205e7b292de9ce0ff60b7eaccef12314c"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 2012,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_025",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2012,
+          "raw_observations_selected": 7739,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2012
+          }
+        },
+        "short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2012,
+          "raw_observations_selected": 7822,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2012
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2012,
+          "raw_observations_selected": 7739,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2012
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2012,
+          "raw_observations_selected": 7822,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2012
+          }
+        }
+      },
+      "frames": 505,
+      "scene_index_sha256": "b122b35a86b4272c1272890c8c00bbcca87e5c89d36ff72194e4988ffbfb8cfc"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 4835,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_026",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4835,
+          "raw_observations_selected": 18085,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4835
+          }
+        },
+        "short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 167,
+          "lost_player_frames": 0,
+          "player_frames_3d": 5002,
+          "raw_observations_selected": 19040,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 167,
+            "lost_player_frames": 0,
+            "player_frames_3d": 5002
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4835,
+          "raw_observations_selected": 18177,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4835
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 167,
+          "lost_player_frames": 0,
+          "player_frames_3d": 5002,
+          "raw_observations_selected": 19132,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 167,
+            "lost_player_frames": 0,
+            "player_frames_3d": 5002
+          }
+        }
+      },
+      "frames": 1262,
+      "scene_index_sha256": "20d57e2882a9901a7f709c7412540b5e9287396dd2746fe24e6cfd8e875f8ab3"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 932,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_027",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 932,
+          "raw_observations_selected": 3696,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 932
+          }
+        },
+        "short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 932,
+          "raw_observations_selected": 3696,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 932
+          }
+        },
+        "wide": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 932,
+          "raw_observations_selected": 3696,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 932
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 932,
+          "raw_observations_selected": 3696,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 932
+          }
+        }
+      },
+      "frames": 235,
+      "scene_index_sha256": "966b311fd1176600c53d6e3419373c9f3dc22c23e6f74e9516e3a2b38db30416"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_ambiguous_players",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_028",
+      "conditions": {
+        "baseline": {
+          "error": "Identity 4 (1254 frames) is too close to player identity 3 (1286 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 18287,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "error": "Identity 4 (1254 frames) is too close to player identity 2 (1286 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 18838,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "error": "Identity 4 (1254 frames) is too close to player identity 3 (1286 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 19003,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide_short": {
+          "error": "Identity 4 (1254 frames) is too close to player identity 2 (1286 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 19797,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 1288,
+      "scene_index_sha256": "326291b1e1f546b9a74d62d6f78677c0585405c02ea2272d7a09e6e0ef9cf076"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 3700,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_029",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3700,
+          "raw_observations_selected": 14166,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3700
+          }
+        },
+        "short": {
+          "appearance_samples": 320,
+          "gained_player_frames": 35,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3735,
+          "raw_observations_selected": 14579,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 35,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3735
+          }
+        },
+        "wide": {
+          "appearance_samples": 304,
+          "gained_player_frames": 217,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3917,
+          "raw_observations_selected": 14465,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 217,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3917
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 352,
+          "gained_player_frames": 252,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3952,
+          "raw_observations_selected": 15150,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 252,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3952
+          }
+        }
+      },
+      "frames": 990,
+      "scene_index_sha256": "933990c4d5a6741f54660a3f5a0f986d00f6166b9fd6c130c91f46dc74c62e3e"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 2052,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_030",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2052,
+          "raw_observations_selected": 7916,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2052
+          }
+        },
+        "short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2052,
+          "raw_observations_selected": 8028,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2052
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2052,
+          "raw_observations_selected": 7916,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2052
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2052,
+          "raw_observations_selected": 8028,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2052
+          }
+        }
+      },
+      "frames": 515,
+      "scene_index_sha256": "3aba0725a2e872541b7fcf374bff86adb0d4a3756e5d8329778f313801be04ba"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1276,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_031",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1276,
+          "raw_observations_selected": 4706,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1276
+          }
+        },
+        "short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1276,
+          "raw_observations_selected": 4766,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1276
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1276,
+          "raw_observations_selected": 4706,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1276
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1276,
+          "raw_observations_selected": 4766,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1276
+          }
+        }
+      },
+      "frames": 321,
+      "scene_index_sha256": "be39cba7339175944a5daf030d2aa3d73a010952421e7b2a9390c6f6fdcab7f5"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1347,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_032",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 240,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1347,
+          "raw_observations_selected": 5685,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1347
+          }
+        },
+        "short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1347,
+          "raw_observations_selected": 5794,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1347
+          }
+        },
+        "wide": {
+          "appearance_samples": 288,
+          "gained_player_frames": 449,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1796,
+          "raw_observations_selected": 7032,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 449,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1796
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 449,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1796,
+          "raw_observations_selected": 7141,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 449,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1796
+          }
+        }
+      },
+      "frames": 451,
+      "scene_index_sha256": "788687e4f7b4c28c19017a2409cefc834c23b3ca719f56337d7ac6de0ccb2a57"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1652,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_033",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1652,
+          "raw_observations_selected": 6380,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1652
+          }
+        },
+        "short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1652,
+          "raw_observations_selected": 6436,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1652
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1652,
+          "raw_observations_selected": 6380,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1652
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1652,
+          "raw_observations_selected": 6436,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1652
+          }
+        }
+      },
+      "frames": 415,
+      "scene_index_sha256": "ddd5347fec0bd8c37d8d41e8a3b0f3d341dbd7d761be57dc23ab44f523bee407"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 4488,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_034",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4488,
+          "raw_observations_selected": 16327,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4488
+          }
+        },
+        "short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4488,
+          "raw_observations_selected": 17280,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4488
+          }
+        },
+        "wide": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4488,
+          "raw_observations_selected": 16833,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4488
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4488,
+          "raw_observations_selected": 17280,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4488
+          }
+        }
+      },
+      "frames": 1124,
+      "scene_index_sha256": "894a6c8c9f86b88cda5f05155298b3cd9763da4b5a50d4d3bde59b098a9382e3"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 8369,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_035",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 8369,
+          "raw_observations_selected": 26980,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 8369
+          }
+        },
+        "short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 55,
+          "lost_player_frames": 0,
+          "player_frames_3d": 8424,
+          "raw_observations_selected": 27963,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 55,
+            "lost_player_frames": 0,
+            "player_frames_3d": 8424
+          }
+        },
+        "wide": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 8369,
+          "raw_observations_selected": 27031,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 8369
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 352,
+          "gained_player_frames": 55,
+          "lost_player_frames": 0,
+          "player_frames_3d": 8424,
+          "raw_observations_selected": 28406,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 55,
+            "lost_player_frames": 0,
+            "player_frames_3d": 8424
+          }
+        }
+      },
+      "frames": 2108,
+      "scene_index_sha256": "9fb22ac1bfd43a26f5af3dacb78335dff2953f6959dee74286c6c42f51ed3f3e"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_ambiguous_players",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_036",
+      "conditions": {
+        "baseline": {
+          "error": "Identity 4 (241 frames) is too close to player identity 2 (403 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 4943,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "error": "Identity 4 (241 frames) is too close to player identity 2 (403 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 5748,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "error": "Identity 4 (241 frames) is too close to player identity 2 (403 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 6356,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide_short": {
+          "error": "Identity 4 (241 frames) is too close to player identity 2 (403 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 6356,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 405,
+      "scene_index_sha256": "f21659f64718751165d923f560a18025e54207ce4806c4326c45743d9ad24bce"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1160,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_037",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1160,
+          "raw_observations_selected": 4436,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1160
+          }
+        },
+        "short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1160,
+          "raw_observations_selected": 4577,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1160
+          }
+        },
+        "wide": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1160,
+          "raw_observations_selected": 4436,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1160
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1160,
+          "raw_observations_selected": 4577,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1160
+          }
+        }
+      },
+      "frames": 292,
+      "scene_index_sha256": "c91f0d66b6f9c4febfd1e8044fb3b643a300839964bcc2ec9a875982229f9f0c"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_ambiguous_players",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_038",
+      "conditions": {
+        "baseline": {
+          "error": "Identity 4 (187 frames) is too close to player identity 2 (335 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 5274,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "error": "Identity 4 (187 frames) is too close to player identity 2 (335 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 5274,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "error": "Identity 4 (187 frames) is too close to player identity 2 (335 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 5274,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide_short": {
+          "error": "Identity 4 (187 frames) is too close to player identity 2 (335 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 5274,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 337,
+      "scene_index_sha256": "7f75def19b13f436c81f4be8701661ee65dbf530e6963c0330be8cc5f76de2b1"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_ambiguous_players",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_039",
+      "conditions": {
+        "baseline": {
+          "error": "Identity 4 (831 frames) is too close to player identity 1 (871 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 13625,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "error": "Identity 4 (831 frames) is too close to player identity 1 (871 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 13792,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "error": "Identity 4 (831 frames) is too close to player identity 1 (871 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 13625,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide_short": {
+          "error": "Identity 4 (831 frames) is too close to player identity 1 (871 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 13792,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 873,
+      "scene_index_sha256": "e4d1c7668354a1650bf220a960f9d99a4b93a68806a352a44f3443359484f066"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1660,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_040",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1660,
+          "raw_observations_selected": 6563,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1660
+          }
+        },
+        "short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1660,
+          "raw_observations_selected": 6563,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1660
+          }
+        },
+        "wide": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1660,
+          "raw_observations_selected": 6563,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1660
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1660,
+          "raw_observations_selected": 6563,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1660
+          }
+        }
+      },
+      "frames": 417,
+      "scene_index_sha256": "480bd1fb801a0611b326e3031d61338216e593955d7481898180816374939889"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 3116,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_041",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3116,
+          "raw_observations_selected": 12167,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3116
+          }
+        },
+        "short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3116,
+          "raw_observations_selected": 12167,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3116
+          }
+        },
+        "wide": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3116,
+          "raw_observations_selected": 12167,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3116
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3116,
+          "raw_observations_selected": 12268,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3116
+          }
+        }
+      },
+      "frames": 781,
+      "scene_index_sha256": "d712a8578d13192200a127995390add64c08a82a89e796533357afaeed06e1dc"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1664,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_042",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1664,
+          "raw_observations_selected": 6372,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1664
+          }
+        },
+        "short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1664,
+          "raw_observations_selected": 6573,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1664
+          }
+        },
+        "wide": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1664,
+          "raw_observations_selected": 6642,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1664
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1664,
+          "raw_observations_selected": 6642,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1664
+          }
+        }
+      },
+      "frames": 418,
+      "scene_index_sha256": "2873b0605969b3cd64fb91082fc2373e466514db642b1797088ccecc1514550a"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 2828,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_043",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2828,
+          "raw_observations_selected": 10827,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2828
+          }
+        },
+        "short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2828,
+          "raw_observations_selected": 11099,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2828
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2828,
+          "raw_observations_selected": 10892,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2828
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2828,
+          "raw_observations_selected": 11164,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2828
+          }
+        }
+      },
+      "frames": 709,
+      "scene_index_sha256": "00470258d1dc2897afc224536d0ee906bba89dda6c120405c3219280fa525cf9"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 2402,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_044",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2402,
+          "raw_observations_selected": 9140,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2402
+          }
+        },
+        "short": {
+          "error": "Identity 5 (433 frames) is too close to player identity 2 (594 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 2402,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 9412,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 2402,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 9,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2411,
+          "raw_observations_selected": 9161,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 9,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2411
+          }
+        },
+        "wide_short": {
+          "error": "Identity 5 (433 frames) is too close to player identity 2 (605 frames)",
+          "gained_player_frames": 0,
+          "lost_player_frames": 2402,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 9433,
+          "reason": "player_association_ambiguous_players",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 2402,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 616,
+      "scene_index_sha256": "9a39e4541a9e0a28e5d765b178c81db38e405e0a562c026665218796b9a5a161"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1364,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_045",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1364,
+          "raw_observations_selected": 5192,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1364
+          }
+        },
+        "short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1364,
+          "raw_observations_selected": 5268,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1364
+          }
+        },
+        "wide": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1364,
+          "raw_observations_selected": 5203,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1364
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1364,
+          "raw_observations_selected": 5279,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1364
+          }
+        }
+      },
+      "frames": 343,
+      "scene_index_sha256": "60dbf6bd2aaeea2a92f1094420d3c07da597bb97d9d31f0f502541978533fa81"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1692,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_046",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1692,
+          "raw_observations_selected": 6526,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1692
+          }
+        },
+        "short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1692,
+          "raw_observations_selected": 6526,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1692
+          }
+        },
+        "wide": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1692,
+          "raw_observations_selected": 6526,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1692
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1692,
+          "raw_observations_selected": 6526,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1692
+          }
+        }
+      },
+      "frames": 425,
+      "scene_index_sha256": "fa286f5e46e1552ae967101d798f1726ba171a63455fc6679aa21a42a1b0f155"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 3372,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_047",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3372,
+          "raw_observations_selected": 13299,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3372
+          }
+        },
+        "short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3372,
+          "raw_observations_selected": 13299,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3372
+          }
+        },
+        "wide": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3372,
+          "raw_observations_selected": 13299,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3372
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3372,
+          "raw_observations_selected": 13299,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3372
+          }
+        }
+      },
+      "frames": 845,
+      "scene_index_sha256": "aec3db8bcdc1908d03e5f3e121a33e9cc050a5551bd8d03a28b0e1ab1fbbe748"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 3484,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_048",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3484,
+          "raw_observations_selected": 13275,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3484
+          }
+        },
+        "short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3484,
+          "raw_observations_selected": 13275,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3484
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3484,
+          "raw_observations_selected": 13860,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3484
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3484,
+          "raw_observations_selected": 13860,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3484
+          }
+        }
+      },
+      "frames": 873,
+      "scene_index_sha256": "a3e0b4c28395296177a1f3a005a1aa17f337c6530407e1fb6e8e72e90a35c929"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_ambiguous_association",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_049",
+      "conditions": {
+        "baseline": {
+          "error": "6 player decisions between long segments have margins below 1.0; the smallest is 0.314 for candidates 0 and 6",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 17274,
+          "reason": "player_association_ambiguous_association",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "error": "6 player decisions between long segments have margins below 1.0; the smallest is 0.314 for candidates 0 and 6",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 17424,
+          "reason": "player_association_ambiguous_association",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "error": "6 player decisions between long segments have margins below 1.0; the smallest is 0.314 for candidates 0 and 6",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 17274,
+          "reason": "player_association_ambiguous_association",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide_short": {
+          "error": "6 player decisions between long segments have margins below 1.0; the smallest is 0.314 for candidates 0 and 6",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 17424,
+          "reason": "player_association_ambiguous_association",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 1120,
+      "scene_index_sha256": "8332994ac6f544ff150994d761fbe85dbcde3a79fd0ae8df6e49bebf1c55aae9"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 3324,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_050",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3324,
+          "raw_observations_selected": 11979,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3324
+          }
+        },
+        "short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3324,
+          "raw_observations_selected": 12268,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3324
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3324,
+          "raw_observations_selected": 11979,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3324
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3324,
+          "raw_observations_selected": 12268,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3324
+          }
+        }
+      },
+      "frames": 833,
+      "scene_index_sha256": "f5b21eb8e185a4106a03c22446c147e3f6cd4bcf37dc39a76d16bfa687ea1391"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1192,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_051",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1192,
+          "raw_observations_selected": 4584,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1192
+          }
+        },
+        "short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1192,
+          "raw_observations_selected": 4584,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1192
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1192,
+          "raw_observations_selected": 4757,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1192
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1192,
+          "raw_observations_selected": 4757,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1192
+          }
+        }
+      },
+      "frames": 300,
+      "scene_index_sha256": "7efb750e50c8be908486a22e8aed9942f3efb357df616ee5521498f6dc7e716d"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1692,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_052",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1692,
+          "raw_observations_selected": 6525,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1692
+          }
+        },
+        "short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1692,
+          "raw_observations_selected": 6631,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1692
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1692,
+          "raw_observations_selected": 6525,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1692
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1692,
+          "raw_observations_selected": 6631,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1692
+          }
+        }
+      },
+      "frames": 425,
+      "scene_index_sha256": "b6cc26780c1c3efacd84d56516dd1c0653e15d060ce81260b2acd152c365168e"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 2176,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_053",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2176,
+          "raw_observations_selected": 8623,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2176
+          }
+        },
+        "short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2176,
+          "raw_observations_selected": 8623,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2176
+          }
+        },
+        "wide": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2176,
+          "raw_observations_selected": 8623,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2176
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2176,
+          "raw_observations_selected": 8623,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2176
+          }
+        }
+      },
+      "frames": 546,
+      "scene_index_sha256": "42dff0c480ade3b9535b68986c63a107010928a4fc0823190223ae5386c9281f"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 3064,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_054",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3064,
+          "raw_observations_selected": 10543,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3064
+          }
+        },
+        "short": {
+          "appearance_samples": 352,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3064,
+          "raw_observations_selected": 11541,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3064
+          }
+        },
+        "wide": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3064,
+          "raw_observations_selected": 11062,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3064
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 352,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3064,
+          "raw_observations_selected": 11541,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3064
+          }
+        }
+      },
+      "frames": 768,
+      "scene_index_sha256": "8af7fee0196ee8550de33ae4842eebe52302a07db7462b9fa13edb6d8a0aebc9"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 2756,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_055",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2756,
+          "raw_observations_selected": 10196,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2756
+          }
+        },
+        "short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2756,
+          "raw_observations_selected": 10196,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2756
+          }
+        },
+        "wide": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2756,
+          "raw_observations_selected": 10706,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2756
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2756,
+          "raw_observations_selected": 10706,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2756
+          }
+        }
+      },
+      "frames": 691,
+      "scene_index_sha256": "8a2eef407c1c2b77f52b54a27f3aa447f0b6b818e78c5e17e186ad7cdfef73f5"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 3044,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_056",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3044,
+          "raw_observations_selected": 11799,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3044
+          }
+        },
+        "short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3044,
+          "raw_observations_selected": 11929,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3044
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3044,
+          "raw_observations_selected": 11799,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3044
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3044,
+          "raw_observations_selected": 11929,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3044
+          }
+        }
+      },
+      "frames": 763,
+      "scene_index_sha256": "cd4fe4775d1375cc26f374f61bf2e8c8d4299d73d55e420b65c15feab8798e48"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1132,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_057",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 240,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1132,
+          "raw_observations_selected": 4111,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1132
+          }
+        },
+        "short": {
+          "appearance_samples": 240,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1132,
+          "raw_observations_selected": 4111,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1132
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1132,
+          "raw_observations_selected": 4473,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1132
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1132,
+          "raw_observations_selected": 4473,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1132
+          }
+        }
+      },
+      "frames": 285,
+      "scene_index_sha256": "94947af3c555e572394655a28d418a97d1a0c637627b6814208ab36799c9158e"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_player_not_found",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_058",
+      "conditions": {
+        "baseline": {
+          "error": "Side y>0 lacks 2 identities present for 191 frames",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 8340,
+          "reason": "player_association_player_not_found",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "appearance_samples": 224,
+          "gained_player_frames": 2289,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2289,
+          "raw_observations_selected": 9227,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 2289,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2289
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 3052,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3052,
+          "raw_observations_selected": 11591,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 3052,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3052
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 294,
+          "gained_player_frames": 3052,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3052,
+          "raw_observations_selected": 11883,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 3052,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3052
+          }
+        }
+      },
+      "frames": 765,
+      "scene_index_sha256": "6c9296def341dff8ee6350bc7ffb7cf7928386e31ceb0f466925c9b018016ede"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1892,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_059",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1892,
+          "raw_observations_selected": 7418,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1892
+          }
+        },
+        "short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1892,
+          "raw_observations_selected": 7418,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1892
+          }
+        },
+        "wide": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1892,
+          "raw_observations_selected": 7418,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1892
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1892,
+          "raw_observations_selected": 7418,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1892
+          }
+        }
+      },
+      "frames": 475,
+      "scene_index_sha256": "1a59c5a372ce318df5c9bf163379d2cd4fdb09eee65b46b774746c4c675634fd"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 0,
+        "reason": "player_association_ambiguous_association",
+        "status": "failed"
+      },
+      "clip_id": "video_000/clip_060",
+      "conditions": {
+        "baseline": {
+          "error": "4 player decisions between long segments have margins below 1.0; the smallest is 0.649 for candidates 0 and 11",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 4778,
+          "reason": "player_association_ambiguous_association",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "short": {
+          "error": "10 player decisions between long segments have margins below 1.0; the smallest is 0.232 for candidates 2 and 6",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 4896,
+          "reason": "player_association_ambiguous_association",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "error": "4 player decisions between long segments have margins below 1.0; the smallest is 0.649 for candidates 0 and 11",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 4778,
+          "reason": "player_association_ambiguous_association",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        },
+        "wide_short": {
+          "error": "10 player decisions between long segments have margins below 1.0; the smallest is 0.232 for candidates 2 and 6",
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 4896,
+          "reason": "player_association_ambiguous_association",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 0
+          }
+        }
+      },
+      "frames": 313,
+      "scene_index_sha256": "26be886a8b32e2fcfd0d8984787418fe9f4cb1602971e647925e4837930d5de7"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1940,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_061",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1940,
+          "raw_observations_selected": 7689,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1940
+          }
+        },
+        "short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1940,
+          "raw_observations_selected": 7689,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1940
+          }
+        },
+        "wide": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1940,
+          "raw_observations_selected": 7689,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1940
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1940,
+          "raw_observations_selected": 7689,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1940
+          }
+        }
+      },
+      "frames": 487,
+      "scene_index_sha256": "17346cf88b996f243f1a04a35c33edbfe9760e971ecc437041acd5e457c6b36f"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1712,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_062",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 336,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1712,
+          "raw_observations_selected": 6725,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1712
+          }
+        },
+        "short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1712,
+          "raw_observations_selected": 6725,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1712
+          }
+        },
+        "wide": {
+          "appearance_samples": 336,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1712,
+          "raw_observations_selected": 6725,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1712
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1712,
+          "raw_observations_selected": 6725,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1712
+          }
+        }
+      },
+      "frames": 430,
+      "scene_index_sha256": "250a5e7280ae95e6efe860dd787c1cab32783222fcebdf0bcb4ac420bf75b289"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1356,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_063",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1356,
+          "raw_observations_selected": 5352,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1356
+          }
+        },
+        "short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1356,
+          "raw_observations_selected": 5352,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1356
+          }
+        },
+        "wide": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1356,
+          "raw_observations_selected": 5352,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1356
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1356,
+          "raw_observations_selected": 5352,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1356
+          }
+        }
+      },
+      "frames": 341,
+      "scene_index_sha256": "77bc2f1f927ea2598b81a39b5c046243432e8bc8c9e83f178bcc48b98dd7570b"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 3921,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_064",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 3921,
+          "raw_observations_selected": 14811,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 3921
+          }
+        },
+        "short": {
+          "error": "8 player decisions between long segments have margins below 1.0; the smallest is 0.193 for candidates 2 and 20",
+          "gained_player_frames": 0,
+          "lost_player_frames": 3921,
+          "player_frames_3d": 0,
+          "raw_observations_selected": 17133,
+          "reason": "player_association_ambiguous_association",
+          "status": "failed",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 3921,
+            "player_frames_3d": 0
+          }
+        },
+        "wide": {
+          "appearance_samples": 320,
+          "gained_player_frames": 873,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4794,
+          "raw_observations_selected": 16966,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 873,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4794
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 368,
+          "gained_player_frames": 905,
+          "lost_player_frames": 0,
+          "player_frames_3d": 4826,
+          "raw_observations_selected": 17610,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 905,
+            "lost_player_frames": 0,
+            "player_frames_3d": 4826
+          }
+        }
+      },
+      "frames": 1252,
+      "scene_index_sha256": "2f9d03a91f73cd58306ec84661f69dc1438f06bcef3826199ec92d087b8570ac"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1412,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_065",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1412,
+          "raw_observations_selected": 5201,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1412
+          }
+        },
+        "short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1412,
+          "raw_observations_selected": 5262,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1412
+          }
+        },
+        "wide": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1412,
+          "raw_observations_selected": 5201,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1412
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1412,
+          "raw_observations_selected": 5262,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1412
+          }
+        }
+      },
+      "frames": 355,
+      "scene_index_sha256": "765d78ebaaf7215eb0bdbf6142774b74b028c1ca542ff31c21bea9b187623982"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 2443,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_066",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 272,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2443,
+          "raw_observations_selected": 8463,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2443
+          }
+        },
+        "short": {
+          "appearance_samples": 320,
+          "gained_player_frames": 1,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2444,
+          "raw_observations_selected": 9125,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 1,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2444
+          }
+        },
+        "wide": {
+          "appearance_samples": 320,
+          "gained_player_frames": 1,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2444,
+          "raw_observations_selected": 9163,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 1,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2444
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 323,
+          "gained_player_frames": 1,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2444,
+          "raw_observations_selected": 9315,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 1,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2444
+          }
+        }
+      },
+      "frames": 613,
+      "scene_index_sha256": "3ce5d573552cf5f798d82d4aed1233ded4fd43b89701da68e0187824a9c0b40a"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 2164,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_067",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2164,
+          "raw_observations_selected": 8387,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2164
+          }
+        },
+        "short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2164,
+          "raw_observations_selected": 8387,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2164
+          }
+        },
+        "wide": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2164,
+          "raw_observations_selected": 8423,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2164
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 256,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 2164,
+          "raw_observations_selected": 8423,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 2164
+          }
+        }
+      },
+      "frames": 543,
+      "scene_index_sha256": "d0ece02efcba7dbc3a50376dd6cb71196b2639bc3296d9aa505e56648a72836a"
+    },
+    {
+      "archived": {
+        "player_frames_3d": 1840,
+        "reason": null,
+        "status": "generated"
+      },
+      "clip_id": "video_000/clip_068",
+      "conditions": {
+        "baseline": {
+          "appearance_samples": 288,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1840,
+          "raw_observations_selected": 6783,
+          "reason": null,
+          "same_archived_assignments": true,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1840
+          }
+        },
+        "short": {
+          "appearance_samples": 320,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1840,
+          "raw_observations_selected": 6983,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1840
+          }
+        },
+        "wide": {
+          "appearance_samples": 304,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1840,
+          "raw_observations_selected": 6819,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1840
+          }
+        },
+        "wide_short": {
+          "appearance_samples": 336,
+          "gained_player_frames": 0,
+          "lost_player_frames": 0,
+          "player_frames_3d": 1840,
+          "raw_observations_selected": 7019,
+          "reason": null,
+          "same_archived_assignments": false,
+          "status": "triangulated",
+          "vs_archived": {
+            "gained_player_frames": 0,
+            "lost_player_frames": 0,
+            "player_frames_3d": 1840
+          }
+        }
+      },
+      "frames": 462,
+      "scene_index_sha256": "fc8f132d7f21cc1ffa80096080fb11ac5244c771fb63179c0deb2486f8de41dd"
+    }
+  ],
+  "source": {
+    "all/outcome.json": "4d9ef0af9d03f25219b54db5d3b6c089fcdb49c29f07f05a80b136577b739f44",
+    "all/progress/d1df39596d4f47f1896cb535191e7040/progress.json": "4686dc79649d7b16b9cc33fd13c6a9ad36776adf515796153886ddcecc95f426",
+    "input.json": "0e601e5da65e9dd3fa0f8552767dbc576b94178c151137b5e780ef6ce2dc10a0"
+  },
+  "summary": {
+    "baseline": {
+      "gained_player_frames": 0,
+      "gained_player_frames_on_baseline_success": 0,
+      "lost_player_frames": 0,
+      "new_stops": [],
+      "player_frames_3d": 133887,
+      "raw_observations_selected": 659568,
+      "recovered_clips": [],
+      "stop_reasons": {
+        "court_side_no_consistent_hypothesis": 1,
+        "player_association_ambiguous_association": 2,
+        "player_association_ambiguous_players": 9,
+        "player_association_player_not_found": 2
+      },
+      "stopped_clips": 14,
+      "triangulated_clips": 55
+    },
+    "short": {
+      "gained_player_frames": 8648,
+      "gained_player_frames_on_baseline_success": 2299,
+      "lost_player_frames": 6323,
+      "new_stops": [
+        "video_000/clip_044",
+        "video_000/clip_064"
+      ],
+      "player_frames_3d": 136212,
+      "raw_observations_selected": 683151,
+      "recovered_clips": [
+        "video_000/clip_012",
+        "video_000/clip_058"
+      ],
+      "stop_reasons": {
+        "player_association_ambiguous_association": 3,
+        "player_association_ambiguous_players": 10,
+        "player_association_player_not_found": 1
+      },
+      "stopped_clips": 14,
+      "triangulated_clips": 55
+    },
+    "wide": {
+      "gained_player_frames": 13218,
+      "gained_player_frames_on_baseline_success": 3527,
+      "lost_player_frames": 0,
+      "new_stops": [],
+      "player_frames_3d": 147105,
+      "raw_observations_selected": 688290,
+      "recovered_clips": [
+        "video_000/clip_012",
+        "video_000/clip_020",
+        "video_000/clip_058"
+      ],
+      "stop_reasons": {
+        "court_side_no_consistent_hypothesis": 1,
+        "player_association_ambiguous_association": 2,
+        "player_association_ambiguous_players": 8
+      },
+      "stopped_clips": 11,
+      "triangulated_clips": 58
+    },
+    "wide_short": {
+      "gained_player_frames": 9913,
+      "gained_player_frames_on_baseline_success": 4265,
+      "lost_player_frames": 2402,
+      "new_stops": [
+        "video_000/clip_044"
+      ],
+      "player_frames_3d": 141398,
+      "raw_observations_selected": 703599,
+      "recovered_clips": [
+        "video_000/clip_020",
+        "video_000/clip_058"
+      ],
+      "stop_reasons": {
+        "court_side_no_consistent_hypothesis": 1,
+        "player_association_ambiguous_association": 2,
+        "player_association_ambiguous_players": 10
+      },
+      "stopped_clips": 13,
+      "triangulated_clips": 56
+    }
+  }
+}

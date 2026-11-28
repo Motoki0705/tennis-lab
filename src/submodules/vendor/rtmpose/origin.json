@@ -1,0 +1,22 @@
+{
+  "repository": "https://github.com/open-mmlab/mmpose",
+  "commit": "7bea17cdf362cdd731fc5e79b982e4b79be5cca9",
+  "license": "Apache-2.0",
+  "files": {
+    "network.py": [
+      "configs/body_2d_keypoint/rtmpose/body8/rtmpose-x_8xb256-700e_body8-halpe26-384x288.py",
+      "mmpose/models/backbones/csp_darknet.py",
+      "mmpose/models/backbones/cspnext.py",
+      "mmpose/models/heads/coord_cls_heads/rtmcc_head.py",
+      "mmpose/models/utils/csp_layer.py",
+      "mmpose/models/utils/rtmcc_block.py"
+    ],
+    "../../models/rtmpose/pose2d.py": [
+      "mmpose/codecs/simcc_label.py",
+      "mmpose/codecs/utils/post_processing.py",
+      "mmpose/datasets/transforms/topdown_transforms.py",
+      "mmpose/models/utils/tta.py",
+      "mmpose/structures/bbox/transforms.py"
+    ]
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "dataset_id": "meiji_4cam",
+  "video_id": "video_000",
+  "dataset_manifest_sha256": "968da7df0a235c4213af549ea661fa1b66c8e8c57c94b2c66d07775b23f50099",
+  "court_digest": "4ac8e386763687fcb6c81f46abf0774e38fc118af4f79b31cdb6e3c2283e3f75",
+  "court_drift_digest": "7a4be8bf20397552a7b287131c3cb0e5fa57ba0dedc16e4a05fa23287c81a7f6",
+  "reference_progress_sha256": "4686dc79649d7b16b9cc33fd13c6a9ad36776adf515796153886ddcecc95f426",
+  "clips": {
+    "video_000/clip_000": {
+      "frames": 356,
+      "manifest_sha256": "783f0ccd4acb849ef89be36869661a3cf36327e1781574ded7b1ce4731fee094",
+      "media_sha256": {
+        "cam0": "33823be69af8a6940e85f10876781f616d8054d95e4ba3cea35f20700d37a759",
+        "cam1": "49f70bef419efe8e75ed3275458fd86aa0a5832d19df04c3941e298b9eae148e",
+        "cam2": "0fdd6844265b1c796e066bffbbde76af2d87ee667ec7687bbf64cacc97de32e0",
+        "cam3": "1f2150db8799a2b33e089e40a9537b68e344e436512436308fbf0e9b16697c18"
+      }
+    },
+    "video_000/clip_037": {
+      "frames": 292,
+      "manifest_sha256": "dc89788e4406ba99a0d36c73491b077f6bb88b545385ba998d142d8d0be91a94",
+      "media_sha256": {
+        "cam0": "9300f92e4376f90fdc93a46e82c91d33fc2760c3807edfae8be97ce5f1d8972c",
+        "cam1": "c1b473a238719658a3caa6da81e4b6cae50396c18109956305db5ecba354c9b5",
+        "cam2": "8149f06c609a6f209499abf4cd17055a4b8ac4e9be301285c8a5fad4956c5bfc",
+        "cam3": "0112a64759ffd98bec0cfc529b779222dded555d883675794d78eba00f5049a1"
+      }
+    },
+    "video_000/clip_027": {
+      "frames": 235,
+      "manifest_sha256": "26da567a77b437a7e8ebc469580236563c5743872952765230b926fa9e28eb7c",
+      "media_sha256": {
+        "cam0": "e9c75fcdcabab57415b1be46b3dcec806534da0d4d33f212403ee87cbc8bc8e9",
+        "cam1": "de5b3f01b9a782231a0f054afe10600df0249b8162b42a97a5619f5b0426d976",
+        "cam2": "7bb142ef07b3b0d3a7f4239038713215d4f85d9554c82a79459241bb3a730978",
+        "cam3": "714595721a3d2d1242d76bd6bca3b514591574f8b1540fbad44aa795cd903cdb"
+      }
+    }
+  },
+  "batches": {
+    "vitpose": 8,
+    "hmr2": 16,
+    "dino": 1,
+    "clip": 16,
+    "gvhmr": 4
+  },
+  "dino_image_size": [
+    750,
+    1333
+  ],
+  "dino_engine_profile_batch": 2,
+  "gvhmr_engine_profile_frames": [
+    2,
+    177,
+    1055
+  ],
+  "sampling_interval_seconds": 0.5,
+  "cpu_threads": 2,
+  "seed": 42
+}

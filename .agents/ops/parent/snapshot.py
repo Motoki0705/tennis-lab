@@ -7,13 +7,16 @@ import os
 import re
 import subprocess
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
 
-def git(*args: str, cwd: Path | None = None) -> bytes:
+def git(
+    *args: str, cwd: Path | None = None, env: Mapping[str, str] | None = None
+) -> bytes:
     result = subprocess.run(
-        ["git", *args], cwd=cwd, capture_output=True, timeout=60, check=False
+        ["git", *args], cwd=cwd, env=env, capture_output=True, timeout=60, check=False
     )
     if result.returncode:
         raise ValueError(

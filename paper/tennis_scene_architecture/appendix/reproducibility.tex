@@ -1,0 +1,107 @@
+\section{再現手順と追加資料}
+\label{app:reproducibility}
+
+\subsection{入力と公開サンプル}
+
+再構成を追試するときは、カメラID・同期・解像度・FPS・元フレーム数をmanifestで固定する。
+公開サンプルは \href{https://huggingface.co/datasets/Motoki098/tennis-lab-multiview-sample}{テニス多視点サンプル}
+から取得し、リポジトリのデータroot基準で動画パスを指定する。
+指定したモデル重み、外部ライブラリ、DINOの拡張、身体モデル資産を先に解決する。
+配布版の再現と当時のv2保存については、
+\href{https://github.com/Motoki0705/tennis-lab/blob/main/knowledge/nodes/tennis_scene/000028-run-multiview-sample-standard-pipeline-20261021.md}{公開サンプルの実行記録}
+に固定入力のハッシュと実行版がある。
+
+標準入口では公開シーンの版に合わせてイベント方式を明示する。GPU実行はリポジトリの共有キューを用いる。
+
+\begin{verbatim}
+.venv/bin/python -m src.tennis_scene.scripts.run_pipeline \
+  'video_paths=[samples/cam0.mp4,samples/cam1.mp4,samples/cam2.mp4]' \
+  'camera_ids=[cam0,cam1,cam2]' event_detection.method=rule
+\end{verbatim}
+
+一括入口は \texttt{run\_video\_batch} で、登録済み動画のID、dataset、pipeline設定と上書き設定を渡す。
+固定コートを使う実験は共有成果物のdigestを指定し、プレイヤーのみの設定はそれをrunの入力記録へ保存する。
+比較では条件ごとに空のstoreを用意し、出力を読む際は採用した依存鎖と配列のchecksumを照合する。
+
+\subsection{SceneResult v2のマスクと理由コード}
+
+表\ref{tab:scene-masks}に、標準経路が保存する再構成用のブールマスクを示す。
+$P$は選手数、$T$は元フレーム数である。理由コード配列の型と形状は表\ref{tab:scene-contract}の注に従い、
+値\ev{schema}{0}がマスクの真と一致する。
+球の画像座標の利用可否は、視点別のブール配列 \texttt{ball\_vis} に保存する。
+
+\begin{table}[htbp]
+\centering
+\caption{SceneResult v2の再構成マスク。理由欄は対応する保存配列の識別子。}
+\label{tab:scene-masks}
+\small
+\begin{tabular}{@{}llll@{}}
+\toprule
+マスク & 形状 & 真の意味 & 理由コード配列 \\
+\midrule
+\texttt{player\_observed} & $(P,T)$ & 確定IDで実観測あり & --- \\
+\texttt{player\_valid} & $(P,T)$ & SMPL rootの配置が有効 & \texttt{player\_rejection\_code} \\
+\texttt{player\_heading\_valid} & $(P,T)$ & 身体のyawが有効 & --- \\
+\texttt{player\_kp\_3d\_vis} & $(P,T,\ev{schema}{17})$ & 三角測量した関節が有効 & \texttt{player\_kp\_3d\_rejection\_code} \\
+\texttt{player\_smpl\_valid} & $(P,T)$ & 身体メッシュの配置が有効 & --- \\
+\texttt{ball\_3d\_valid} & $(T,)$ & 球の三角測量が有効 & \texttt{ball\_rejection\_code} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+表\ref{tab:scene-reasons}のroot・関節・球は、それぞれ表\ref{tab:scene-masks}の
+選手root・三角測量関節・球に対応する理由コード配列を指す。
+関節または球の復元出力がない場合と、モデルによる球の有効フレーム数が設定下限に届かない場合は、
+対応する理由コード配列を値\ev{point-rejections}{1}で満たす。
+外部注釈から球を復元する設定では、利用可能な視点が足りない場合は値\ev{point-rejections}{1}、
+視点が足りていても幾何が成立しない場合は値\ev{point-rejections}{7}を使う。
+
+\begin{table}[htbp]
+\centering
+\caption{再構成で保存する非ゼロの理由コード。}
+\label{tab:scene-reasons}
+\small
+\begin{tabular}{@{}rllp{.53\linewidth}@{}}
+\toprule
+値 & 対象 & 実装名 & 意味 \\
+\midrule
+\ev{player-rejections}{1} & root & --- & 身体復元または身体配置の出力がない。 \\
+\ev{point-rejections}{1} & 関節・球 & \texttt{INSUFFICIENT\_VIEWS} & 利用できる視点が不足した。 \\
+\ev{point-rejections}{2} & 関節・球 & \texttt{DEGENERATE\_RAYS} & 視線がほぼ平行か、線形初期解が得られなかった。 \\
+\ev{point-rejections}{3} & 関節・球 & \texttt{BEHIND\_CAMERA} & カメラ前方の解が得られなかった。 \\
+\ev{point-rejections}{4} & 関節・球 & \texttt{REPROJECTION} & 再投影誤差が許容範囲に収まらなかった。 \\
+\ev{point-rejections}{5} & 関節・球 & \texttt{OUTSIDE\_BOUNDS} & 水平位置または高さがコート座標の許容範囲外。 \\
+\ev{point-rejections}{6} & root・球 & \texttt{EXCESSIVE\_SPEED} & 過大速度となる隣接フレーム対の両端を棄却した。 \\
+\ev{point-rejections}{7} & 関節・球 & \texttt{OPTIMIZATION\_FAILED} & 三角測量の最適化の失敗または非有限解。 \\
+\ev{player-rejections}{101} & root & \texttt{INSUFFICIENT\_JOINTS} & 配置に使える関節の数が不足した。 \\
+\ev{player-rejections}{102} & root & \texttt{UNOBSERVABLE\_YAW} & 初期yaw補正を求める水平面での幾何支持が不足。 \\
+\ev{player-rejections}{103} & root & \texttt{INSUFFICIENT\_SCALE} & スケール推定に使える対応骨長の組が不足した。 \\
+\ev{player-rejections}{104} & root & \texttt{SCALE\_OUT\_OF\_RANGE} & 推定した選手のスケールが設定範囲を外れた。 \\
+\ev{player-rejections}{105} & root & \texttt{SOLVER\_FAILED} & 区間の時系列配置の最適化の失敗または非有限解。 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{採点単位と証拠の追跡}
+
+採点単位と母数は各実験の表に従う。共通有効集合で精度を比べる場合は、共通集合へ含めた点と除外した点を記録する。
+時間とメモリの計測では計測範囲、同期設定、プロセス数を固定し、モデル読込と推論の区間を分ける。
+
+\subsection{図表の再生成と照合}
+
+原稿ディレクトリの \texttt{evidence/claims.md} に、本文・表・図の指標、評価条件、対応する保存データと版を記した。
+\texttt{evidence/figures.md} に元図の再現手順、コピー元と掲載先、SHA-256を記した。
+固定資料のGitオブジェクトを取得する手順は原稿ディレクトリのREADMEにある。
+次のコマンドはリポジトリのルートで実行する。追跡チェック付きの組版にはLaTeX入力のGit登録が必要である。
+
+\begin{verbatim}
+paper=paper/tennis_scene_architecture
+.venv/bin/python -B "$paper/scripts/make_tables.py"
+.venv/bin/python -B "$paper/scripts/prepare_figures.py" --restore
+bash "$paper/scripts/make_diagrams.sh"
+
+.venv/bin/python -B "$paper/scripts/make_tables.py" --check
+.venv/bin/python -B "$paper/scripts/prepare_figures.py"
+.venv/bin/python -B "$paper/scripts/check_evidence.py"
+bash "$paper/build.sh" --check-tracked
+\end{verbatim}

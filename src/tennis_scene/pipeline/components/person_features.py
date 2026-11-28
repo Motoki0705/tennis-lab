@@ -13,8 +13,18 @@ from numpy.typing import NDArray
 
 from src.submodules.models import (
     Pose2DFrameSequenceRequest,
+    RTMPoseBoxSequenceRequest,
+    RTMPoseXPose2D,
     ViTPosePose2D,
     iter_frame_person_crops,
+    iter_rtmpose_crops,
+)
+from src.submodules.models.rtmpose.pose2d import BBOX_PADDING, SCORE_KIND
+from src.submodules.vendor.rtmpose.network import (
+    HALPE_JOINTS,
+    HEIGHT,
+    SIMCC_SPLIT,
+    WIDTH,
 )
 from src.tasks.person_tracking.contracts import DetectionFeatures
 from src.tasks.person_tracking.features import (
@@ -52,7 +62,11 @@ from src.tennis_scene.pipeline.inference_runtime import (
     ModelSpec,
 )
 from src.tennis_scene.pipeline.model_assets import PeopleModelConfig, file_identity
-from src.tennis_scene.pipeline.model_resources import model_identities, vitpose_model
+from src.tennis_scene.pipeline.model_resources import (
+    model_identities,
+    rtmpose_model,
+    vitpose_model,
+)
 from src.utils.video import OpenCVVideoFrameReader
 from src.utils.video.reader import OpenCVDecodeIdentity
 
@@ -212,10 +226,18 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
     def __init__(self, people: PeopleModelConfig, config: FeatureConfig = DEFAULT_CONFIG, *, enabled: bool = True) -> None:
         self.people, self.config, self.enabled = people, config, enabled
 
-    def model_specs(self) -> dict[str, ModelSpec[ViTPosePose2D]]:
-        return {'pose': vitpose_model(self.people, factory=ViTPosePose2D)} if self.enabled else {}
+    def model_specs(self) -> dict[str, ModelSpec[Any]]:
+        if not self.enabled:
+            return {}
+        if self.people.pose == "rtmpose-x":
+            return {"pose": rtmpose_model(self.people, factory=RTMPoseXPose2D)}
+        return {"pose": vitpose_model(self.people, factory=ViTPosePose2D)}
 
     def cache_identity(self) -> dict[str, Any]:
+        if self.people.pose == "rtmpose-x":
+            return {"pose": self.people.pose, "crop": "native_xyxy_affine", "bbox_padding": BBOX_PADDING,
+                    "joint_confidence": SCORE_KIND, "missing_coordinates": [-1, -1],
+                    "enabled": self.enabled, "output_precision": "float32"}
         return pose_feature_settings(self.config, self.enabled)
 
     def validate_artifact(self, descriptor: Mapping[str, Any], settings: Mapping[str, Any]) -> None:
@@ -240,10 +262,15 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
             # shared crop iterator retains one decoded image and one crop batch.
             indices: NDArray[np.int64] = np.repeat(np.arange(video.num_frames, dtype=np.int64), np.diff(detections.frame_offsets))
             frames = iter_source_frames(video)
-            model: ViTPosePose2D = models.borrow('pose')
-            result = model.predict(Pose2DFrameSequenceRequest(frames, pose_boxes(detections.boxes_xyxy, self.config),
-                                                            torch.from_numpy(indices)))
-            # ViTPose stops at the last requested detection. Validate the rest of
+            if self.people.pose == "rtmpose-x":
+                rtm: RTMPoseXPose2D = models.borrow("pose")
+                result = rtm.predict(RTMPoseBoxSequenceRequest(
+                    frames, torch.from_numpy(np.array(detections.boxes_xyxy, copy=True)), torch.from_numpy(indices)))
+            else:
+                model: ViTPosePose2D = models.borrow("pose")
+                result = model.predict(Pose2DFrameSequenceRequest(frames, pose_boxes(detections.boxes_xyxy, self.config),
+                                                                 torch.from_numpy(indices)))
+            # Inference stops at the last requested detection. Validate the rest of
             # the camera too, including empty trailing frames, without retaining RGB.
             for _ in frames:
                 pass
@@ -265,16 +292,17 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
         video, detections = inputs.video, inputs.detections
         rows = require_alignment(video, detections)
         identity = models.identity(self.batch_alias)
+        rtmpose = self.people.pose == "rtmpose-x"
+        crop_bytes = 3 * (HEIGHT * WIDTH if rtmpose else 256 * 256) * 4
         # The crop iterator holds a decoded frame, RGB/half-resolution images
         # and one normalized crop while suspended. Track result rows as well.
         if len(rows):
-            memory.reserve(video.height * video.width * 10 + 3 * 256 * 256 * 8)
+            memory.reserve(video.height * video.width * 10 + 2 * crop_bytes)
         memory.reserve(len(rows) * (17 * 3 * 5 + 72))
         poses: NDArray[np.float32] = np.empty((len(rows), 17, 3), np.float32)
         written: NDArray[np.bool_] = np.zeros(len(rows), bool)
-        flip = self.people.runtime.vitpose.flip_test
-        crop_bytes = 3 * 256 * 256 * 4
-        heatmap_bytes = 17 * 64 * 48 * 4
+        flip = self.people.pose_runtime.flip_test
+        heatmap_bytes = HALPE_JOINTS * (HEIGHT + WIDTH) * SIMCC_SPLIT * 4 if rtmpose else 17 * 64 * 48 * 4
         item_bytes = crop_bytes * (7 if flip else 4) + heatmap_bytes * (5 if flip else 2)
 
         def units() -> Generator[BatchUnit, None, None]:
@@ -284,12 +312,17 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
                 raise ValueError('Feature boxes must have positive area')
             indices: NDArray[np.int64] = np.repeat(np.arange(video.num_frames, dtype=np.int64), np.diff(detections.frame_offsets))
             frames = iter_source_frames(video)
-            crops = iter_frame_person_crops(frames, pose_boxes(detections.boxes_xyxy, self.config),
-                                            torch.from_numpy(indices), batch_size=1)
+            if rtmpose:
+                crops = iter_rtmpose_crops(RTMPoseBoxSequenceRequest(
+                    frames, torch.from_numpy(np.array(detections.boxes_xyxy, copy=True)),
+                    torch.from_numpy(indices)), batch_size=1)
+            else:
+                crops = iter_frame_person_crops(frames, pose_boxes(detections.boxes_xyxy, self.config),
+                                                torch.from_numpy(indices), batch_size=1)
             with closing(frames), closing(crops):
                 for frame, row, crop in zip(indices, rows, crops, strict=True):
                     yield BatchUnit(BatchAddress(clip_id, video.camera_id, int(frame), int(row)),
-                                    'imagenet256', crop, item_bytes)
+                                    'rtmpose_affine' if rtmpose else 'imagenet256', crop, item_bytes)
                 # Preserve validation of empty trailing frames.
                 for _ in frames:
                     pass
@@ -310,7 +343,7 @@ class PersonPoseFeaturesModule(InferenceComponent[PersonFeaturesInput, PersonPos
         return BatchSource(units(), write, finish)
 
     def infer_batch(self, units: Sequence[BatchUnit], models: ModelBorrower) -> Sequence[Any]:
-        pose: ViTPosePose2D = models.borrow(self.batch_alias)
+        pose: ViTPosePose2D | RTMPoseXPose2D = models.borrow(self.batch_alias)
         images, boxes = zip(*(unit.payload for unit in units), strict=True)
         result = pose.predict_crops(torch.cat(images), torch.cat(boxes)).keypoints.detach().cpu().numpy()
         if result.shape != (len(units), 17, 3) or result.dtype != np.float32:

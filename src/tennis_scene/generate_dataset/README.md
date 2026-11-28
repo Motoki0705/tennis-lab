@@ -5,7 +5,7 @@ clip_studioの同期clipを標準TennisSceneOrchestratorへ渡し、SceneResult 
 `generate_pseudo_annotations`は対象clipの列挙、runnerの呼出し、成功/skip/失敗の集約、
 `continue_on_error`による継続を担当します。実行計画・cache/load・scene exportと
 入力検証・marker公開の共通関数は[pipeline](../pipeline/README.md#実行計画と入口)が所有します。
-この入口は各clipについて1clipの計画を使い、既存の呼出し方と成果物layoutを維持します。
+この入口は各clipについて1clipの計画を使います。
 生成設定は[generate_dataset.yaml](../configs/generate_dataset.yaml)、stage設定は
 [pipeline.yaml](../configs/pipeline.yaml)を使います。
 
@@ -20,8 +20,7 @@ clip_studioの同期clipを標準TennisSceneOrchestratorへ渡し、SceneResult 
 checkpoint変更はpipeline_overridesで指定します。Court・人物対応・sideの手動入力は不要です
 （[pipeline仕様](../pipeline/README.md#処理単位)）。元clip全体を保存するため、この入口でmax_framesによる切詰めはできません。
 
-成果物はclip内の`annotations/tennis_scene/`に保存します。
-component成果物と統合exportの配置は[pipeline仕様](../pipeline/README.md#成果物)を参照してください。
+成果物は[pipelineの保存規則](../pipeline/README.md#成果物)に従ってclip内に保存します。
 `annotation.json`はdataset向けの完成markerで、`scene_result`に採用したimmutableなNPZ exportを記録します。
 declared pipelineのscene v3を公開します。scene schema、shape/dtype、status、有効frame数、
 clip.json・動画・設定/重みの識別情報（publication identity）を検証します。

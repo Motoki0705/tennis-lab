@@ -1,16 +1,20 @@
 import {Playback, clamp, segmentPercent, stepSeconds, timecode} from './playback.js';
 import {DatasetReview} from './review.js';
+import {Scoring} from './scoring.js';
 const $ = id => document.getElementById(id);
 let project, selected = null, markIn = null, markOut = null, saving = false, view = null, proposal = null;
 function status(message, error = false) { $('status').textContent = message; $('status').classList.toggle('error', error); }
-async function api(path, body) {
+async function request(path, body) {
   const response = await fetch(`/api/${path}`, body === undefined ? {} : {
     method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body),
   });
-  const result = await response.json();
-  if (!response.ok) throw new Error(typeof result.detail === 'string' ? result.detail : JSON.stringify(result.detail));
-  return result;
+  if (!response.ok) {
+    const {detail} = await response.json();
+    throw new Error(typeof detail === 'string' ? detail : JSON.stringify(detail));
+  }
+  return response;
 }
+async function api(path, body) { return (await request(path, body)).json(); }
 function bind(id, handler, event = 'click') {
   $(id).addEventListener(event, e => {
     if (event === 'submit') e.preventDefault();
@@ -24,6 +28,7 @@ function setSyncPanel(visible) {
   $('sync-panel').parentElement.classList.toggle('sync-visible', visible);
 }
 const review = new DatasetReview(status);
+const scoring = new Scoring(bind, previewAndEdit);
 const playback = new Playback($('viewers'), (time, playing) => {
   $('time').textContent = timecode(time); $('seek-time').value = time.toFixed(3);
   $('seek').value = time; $('play').textContent = playing ? 'Ⅱ 停止' : '▶ 再生';
@@ -83,11 +88,12 @@ function renderClips() {
     button.dataset.clip = clip.name;
     const title = document.createElement('span'); title.textContent = clip.name;
     const times = document.createElement('small'); times.textContent = `${timecode(clip.start_sec)} / ${(clip.end_sec - clip.start_sec).toFixed(2)}s`;
-    button.append(title, times); button.onclick = () => selectClip(clip.name); $('clips').append(button);
+    button.append(title, times, scoring.row(clip)); button.onclick = () => selectClip(clip.name); $('clips').append(button);
   });
   const clip = project.clips.find(c => c.name === selected);
   $('clip-editor').hidden = project.read_only || !clip;
   if (clip) { $('clip-name').value = clip.name; $('clip-start').value = clip.start_sec.toFixed(6); $('clip-end').value = clip.end_sec.toFixed(6); }
+  scoring.select(clip);
   renderTrack();
   review.select(selected); review.decorateRows();
 }
@@ -109,7 +115,7 @@ function renderOffsets() {
     $('offsets').append(row);
   });
 }
-function renderProject(initial = false) {
+function renderProject(initial = false, scoreOnly = false) {
   document.body.classList.toggle('read-only', project.read_only);
   $('video').textContent = `${project.dataset_id} / ${project.video_id}`;
   $('saved').textContent = project.read_only ? '読取専用レビュー' : '保存済み'; $('saved').title = project.projects_path;
@@ -119,22 +125,41 @@ function renderProject(initial = false) {
       $(id).replaceChildren(); project.sources.forEach((source,index) => { const option = new Option(source.camera_id, index); $(id).add(option); });
     });
   }
-  applyMode(); review.load(project, selected); playback.load(project);
+  scoring.load(project);
+  applyMode(); review.load(project, selected); playback.load(project, scoreOnly);
   if (!view) setView(...[project.extent[0], project.extent[1] - project.extent[0]]);
   else setView(view[0], view[1] - view[0]);
   const [a,b] = project.common;
   $('common').textContent = b > a ? `全カメラ共通 ${timecode(a)} – ${timecode(b)}` : '全カメラ共通の区間なし';
   renderClips(); renderOffsets(); marks();
 }
-async function mutate(operation) {
+async function previewAndEdit(operation, revision = project.revision) {
+  if (saving) throw new Error('保存中です。完了を待って操作してください。');
+  const preview = await api('edit/preview', {revision, ...operation});
+  const messages = [];
+  if (preview.changed_clips) {
+    const scope = operation.name ? `${operation.name} の変更で、後続の` : '試合設定の変更で、';
+    messages.push(`${scope}${preview.changed_clips} クリップのカウントが変わります。`);
+  }
+  if (preview.broken_chain_clips.length) {
+    const clips = preview.broken_chain_clips;
+    messages.push(`${clips.length} クリップで連鎖切れになります（${clips.join('、')}）。開始前カウントの手入力が必要です。`);
+  }
+  if (messages.length && !window.confirm([...messages, '保存しますか？'].join('\n'))) return false;
+  await mutate(operation, preview.revision);
+  return true;
+}
+async function mutate(operation, revision = project.revision) {
   if (project.read_only) throw new Error('読取専用レビューでは変更できません。');
   if (saving) throw new Error('保存中です。完了を待って操作してください。');
-  saving = true; $('saved').textContent = '保存中…'; marks(); playback.pause(); clearLoop();
+  const scoreOnly = ['set_score', 'set_match', 'import_scores'].includes(operation.action);
+  saving = true; $('saved').textContent = '保存中…'; marks();
+  if (!scoreOnly) { playback.pause(); clearLoop(); }
   try {
-    project = await api('edit', {revision: project.revision, ...operation});
+    project = await api('edit', {revision, ...operation});
     if (operation.action === 'create') selected = project.clips.at(-1).name;
     if (operation.action === 'update') selected = operation.new_name;
-    proposal = null; $('proposal').replaceChildren(); renderProject(); status('変更を保存しました');
+    proposal = null; $('proposal').replaceChildren(); renderProject(false, scoreOnly); status('変更を保存しました');
   } catch (error) { $('saved').textContent = '保存失敗・操作は未適用'; throw error; }
   finally { saving = false; marks(); }
 }
@@ -190,14 +215,26 @@ bind('mark-in', () => { markIn = playback.time; marks(); }); bind('mark-out', ()
 bind('clear', () => { markIn = markOut = null; marks(); });
 bind('create', async () => {
   if (markIn === null || markOut === null || markOut <= markIn) throw new Error('開始より後に終了を指定してください。');
-  await mutate({action:'create', start_sec:markIn, end_sec:markOut}); markIn = markOut = null; marks();
+  if (await previewAndEdit({action:'create', start_sec:markIn, end_sec:markOut})) {
+    markIn = markOut = null; marks();
+  }
 });
 bind('undo', () => mutate({action:'undo'})); bind('redo', () => mutate({action:'redo'}));
 bind('reload', async () => { if (saving) throw new Error('保存中です。'); project = await api('project'); clearLoop(); renderProject(); status('保存済みプロジェクトを再読込しました'); });
-bind('clip-editor', () => mutate({action:'update', name:selected, new_name:$('clip-name').value, start_sec:$('clip-start').valueAsNumber, end_sec:$('clip-end').valueAsNumber}), 'submit');
+bind('clip-editor', () => previewAndEdit({action:'update', name:selected, new_name:$('clip-name').value, start_sec:$('clip-start').valueAsNumber, end_sec:$('clip-end').valueAsNumber}), 'submit');
 bind('set-start', () => { $('clip-start').value = playback.time.toFixed(6); });
 bind('set-end', () => { $('clip-end').value = playback.time.toFixed(6); });
-bind('delete', () => mutate({action:'delete', name:selected}));
+bind('delete', () => previewAndEdit({action:'delete', name:selected}));
+bind('score-csv-download', async () => {
+  const {revision, video_id} = project;
+  const response = await request(`score-csv?revision=${revision}`);
+  const url = URL.createObjectURL(await response.blob());
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = `${video_id}-scores.csv`;
+  link.click();
+  setTimeout(() => URL.revokeObjectURL(url), 0);
+});
 bind('loop', () => {
   if (playback.loop) { clearLoop(); playback.pause(); return; }
   const clip = project.clips.find(c => c.name === selected); playback.loop = clip;
@@ -241,6 +278,12 @@ document.addEventListener('keydown', e => {
   if (e.key === ' ' && e.target.closest('button')) return;
   if (e.ctrlKey || e.metaKey) {
     if (e.key.toLowerCase() === 'z') { e.preventDefault(); $(e.shiftKey ? 'redo' : 'undo').click(); } return;
+  }
+  const key = e.key.toLowerCase();
+  if ((key === 'a' || key === 'b') && !e.repeat) {
+    const button = scoring.winnerButton(key);
+    if (button) { e.preventDefault(); button.click(); }
+    return;
   }
   const actions = {' ':'play',i:'mark-in',o:'mark-out',c:'create'};
   if (e.key === 'ArrowLeft' || e.key === 'ArrowRight') { e.preventDefault(); step(e.key === 'ArrowLeft' ? -1 : 1,e.shiftKey ? 10 : 1); }

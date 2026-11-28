@@ -24,6 +24,7 @@ from src.tennis_scene.pipeline.components.event_detection import (
     annotation_digests,
 )
 from src.tennis_scene.pipeline.errors import ReconstructionUnavailable
+from src.tennis_scene.pipeline.model_assets import people_model_names
 from src.tennis_scene.pipeline.recipes import (
     ECPOSE_RECIPE,
     FASTHMR_RECIPE,
@@ -38,6 +39,10 @@ from src.tennis_scene.pipeline.storage.scene_index import (
     annotation_scene_path,
     indexed_scene_path,
     read_component_descriptor,
+)
+from src.tennis_scene.pipeline.storage.scene_pointers import (
+    require_stable_scene_pointers,
+    stable_scene_pointers,
 )
 from src.tennis_scene.schema import (
     SCENE_MASK_FIELDS,
@@ -61,8 +66,13 @@ def _publication_recipe(identity: Mapping[str, object]) -> RecipeName:
 
 
 def annotation_root(clip_dir: Path, identity: Mapping[str, object]) -> Path:
-    root: Path = recipe_directory(clip_dir / ANNOTATION_RELATIVE_DIR, _publication_recipe(identity))
-    return root
+    selection = None
+    if identity.get("schema") == "declared_component_pipeline_v1" and "people_models" in identity:
+        models = identity["people_models"]
+        if not isinstance(models, Mapping) or set(models) != {"detector", "pose"}:
+            raise ValueError("Publication requires the declared detector and pose models")
+        selection = people_model_names(models)
+    return recipe_directory(clip_dir / ANNOTATION_RELATIVE_DIR, _publication_recipe(identity), people_models=selection)
 
 
 def scene_array_manifest(result: SceneResult) -> dict[str, dict[str, object]]:
@@ -175,6 +185,8 @@ def _required_publication_components(inputs: DatasetClipInputs, identity: Mappin
         if not isinstance(event_ref, dict) or (event_ref["schema"], event_ref["version"]) != ("scene_result", 3):
             raise ValueError("Publication requires an event_detection SceneResult v3 export")
         event = read_component_descriptor(root, event_ref, node=EVENT_DETECTION, source_sha256=document["source_sha256"])
+        if event["identity"].get("implementation") != identity["code_sha256"]:
+            raise ValueError("Published event_detection implementation differs from its declared source identity")
         actual = event["identity"]["settings"]
         expected = {key: value for key, value in event_settings.items()
                     if key not in {"annotation_directory", "annotation_benchmark_manifest"}}
@@ -188,6 +200,17 @@ def _required_publication_components(inputs: DatasetClipInputs, identity: Mappin
         )
 
         required.update(require_current_ecpose_artifacts(root.resolve(), document, inputs.camera_ids, identity))
+    if "people_models" in identity:
+        from src.tennis_scene.pipeline.people_artifacts import (
+            require_current_people_artifacts,
+        )
+
+        settings = identity.get("settings")
+        observations = settings.get("person_observations") if isinstance(settings, Mapping) else None
+        if not isinstance(observations, Mapping) or type(observations.get("enabled")) is not bool:
+            raise ValueError("Publication requires the people observation setting")
+        if observations["enabled"]:
+            required.update(require_current_people_artifacts(root.resolve(), document, inputs.camera_ids, identity))
     if APPEARANCE_MEDIA in identity:
         node = "player_association"
         reference = document["artifacts"][node]
@@ -249,11 +272,13 @@ def _clip_publication_identity(inputs: DatasetClipInputs, identity: Mapping[str,
 def completed_annotation(inputs: DatasetClipInputs, publication_identity: Mapping[str, object], *, overwrite: bool = False) -> Path | None:
     """Return a reusable marker, rejecting stale inputs/settings as before."""
     destination = annotation_root(inputs.clip_dir, publication_identity) / "annotation.json"
-    if not destination.exists() or overwrite:
-        return None
+    with stable_scene_pointers(destination.parent):
+        if not destination.exists() or overwrite:
+            return None
     from src.tennis_scene.archive import load_scene_result
 
     with clip_store_lock(destination.parent):
+        require_stable_scene_pointers(destination.parent)
         if not destination.exists():
             return None
         publication_identity = _clip_publication_identity(inputs, publication_identity)
@@ -276,6 +301,7 @@ def publish_annotation(inputs: DatasetClipInputs, result: SceneResult, *, pipeli
     """Validate a complete clip and atomically publish its dataset marker."""
     destination = annotation_root(inputs.clip_dir, publication_identity)
     with span("publication"), clip_store_lock(destination):
+        require_stable_scene_pointers(destination)
         publication_identity = _clip_publication_identity(inputs, publication_identity)
         validate_dataset_result(result, inputs.record)
         inputs.snapshot.assert_unchanged()
@@ -311,9 +337,10 @@ def publish_annotation(inputs: DatasetClipInputs, result: SceneResult, *, pipeli
 
 
 def _failure_path(clip_dir: Path, identity: Mapping[str, object]) -> Path:
-    if _publication_recipe(identity) == STANDARD_RECIPE:
+    root = annotation_root(clip_dir, identity)
+    if root == clip_dir / ANNOTATION_RELATIVE_DIR:
         return clip_dir / "annotations" / "tennis_scene.failure.json"
-    return annotation_root(clip_dir, identity) / "failure.json"
+    return root / "failure.json"
 
 
 def record_annotation_failure(clip_dir: Path, clip_id: str, error: Exception, *,

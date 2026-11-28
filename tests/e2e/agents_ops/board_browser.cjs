@@ -40,7 +40,11 @@ async function main() {
       if (!request.url().startsWith(url + "/")) external.push(request.url());
       if (request.method() === "POST") writes.push(request.url());
     });
-    await page.goto(url);
+    const [runtimeResponse] = await Promise.all([
+      page.waitForResponse(`${url}/api/runtime`),
+      page.goto(url),
+    ]);
+    assert.equal(runtimeResponse.status(), 200, "initial Herdr runtime response");
     await page.waitForSelector(`#feed article[data-post-id="${rootId}"]`);
     assert.equal(
       await page.locator(".route, .delivery-summary, .post-footer").count(),

@@ -403,6 +403,10 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "submodules.install_smpl_assets",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.submodules.scripts.install_people_model_checkpoint": (
+        "submodules.install_people_model_checkpoint",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tennis_scene.clip_studio.__main__": (
         "tennis_scene.clip_studio_review",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
@@ -415,12 +419,20 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "tennis_scene.gvhmr_tensorrt_qualification",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tennis_scene.scripts.import_external_ball": (
+        "tennis_scene.external_ball_import",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tasks.ball_refiner_3d.scripts.evaluate": (
         "ball_refiner_3d.evaluate",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tasks.ball_refiner_3d.scripts.predict": (
         "ball_refiner_3d.predict",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tasks.ball_refiner_3d.scripts.post_train": (
+        "ball_refiner_3d.post_train",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tasks.player_detection.annotation.pose.__main__": (
@@ -542,12 +554,24 @@ _NON_HYDRA_BOUNDARY_BINDINGS: Mapping[str, tuple[str, str]] = {
         "tennis_scene.multiview_pose",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
+    "src.tennis_scene.multiview_tracking.__main__": (
+        "tennis_scene.multiview_tracking",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tennis_scene.multiview_scene.__main__": (
+        "tennis_scene.multiview_scene",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
     "src.tennis_scene.ball_events.__main__": (
         "tennis_scene.rule_ball_events",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tennis_scene.scripts.build_meiji_event_benchmark": (
         "tennis_scene.meiji_event_benchmark",
+        "src.utils.configuration.paths.NonHydraPathBoundary.validate",
+    ),
+    "src.tennis_scene.visualization.pose_comparison.__main__": (
+        "tennis_scene.pose_comparison",
         "src.utils.configuration.paths.NonHydraPathBoundary.validate",
     ),
     "src.tennis_scene.visualization.player_view.__main__": (
@@ -633,6 +657,10 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         executable_module=True,
         optional_policy="gvhmr_root is required when installing; --list may omit it, but any supplied checkout is validated",
     ),
+    _non_hydra_boundary(
+        "src.submodules.scripts.install_people_model_checkpoint", "main", domain="submodules",
+        executable_module=True,
+    ),
     _non_hydra_boundary("src.tennis_scene.clip_studio.__main__", "main", domain="tennis_scene", executable_module=True),
     _non_hydra_boundary(
         "src.tennis_scene.scripts.tensorrt", "main", domain="tennis_scene", executable_module=True,
@@ -643,8 +671,14 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         domain="tennis_scene", executable_module=True,
         optional_policy="each supplied video progress receipt is an existing artifact input",
     ),
+    _non_hydra_boundary(
+        "src.tennis_scene.scripts.import_external_ball", "main",
+        domain="tennis_scene", executable_module=True,
+        optional_policy="publish requires positions, side store, court store and report; drift store follows the pinned side decision",
+    ),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.evaluate", "main", domain="ball_refiner_3d", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.predict", "main", domain="ball_refiner_3d", executable_module=True),
+    _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.post_train", "main", domain="ball_refiner_3d", executable_module=True),
     _non_hydra_boundary("src.tasks.ball_refiner_3d.scripts.review_dataset", "main", domain="ball_refiner_3d", executable_module=True),
     _runtime_boundary("ball_refiner_3d", "src.tasks.ball_refiner_3d.scripts.train"),
     _runtime_boundary("ball_refiner_3d", "src.tasks.ball_refiner_3d.scripts.generate_dataset"),
@@ -797,6 +831,19 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
         optional_policy="the drift store may be omitted unless required by the pinned decision",
     ),
     _non_hydra_boundary(
+        "src.tennis_scene.multiview_tracking.__main__",
+        "main",
+        domain="tennis_scene",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tennis_scene.multiview_scene.__main__",
+        "main",
+        domain="tennis_scene",
+        executable_module=True,
+        optional_policy="the tracks and candidate stores are required for prepare/run",
+    ),
+    _non_hydra_boundary(
         "src.tennis_scene.ball_events.__main__",
         "main",
         domain="tennis_scene",
@@ -804,6 +851,12 @@ _RUNTIME_BOUNDARIES: tuple[RuntimeBoundary, ...] = (
     ),
     _non_hydra_boundary(
         "src.tennis_scene.scripts.build_meiji_event_benchmark",
+        "main",
+        domain="tennis_scene",
+        executable_module=True,
+    ),
+    _non_hydra_boundary(
+        "src.tennis_scene.visualization.pose_comparison.__main__",
         "main",
         domain="tennis_scene",
         executable_module=True,

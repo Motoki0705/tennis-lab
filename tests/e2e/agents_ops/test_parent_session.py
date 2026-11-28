@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import copy
+import fcntl
 import importlib
 import json
 import os
@@ -181,6 +182,13 @@ if path == "repos/o/r":
 if path == "repos/o/r/branches/main":
     import subprocess
     tip = subprocess.check_output(["git", "rev-parse", "main"], text=True).strip()
+    advance = state.pop("knowledge_advance_after_base_read", None)
+    if advance:
+        subprocess.run(["git", "merge", "--ff-only", advance["sha"]], check=True, capture_output=True)
+        pr = next(p for p in state["prs"] if p["number"] == advance["pr"])
+        pr["base"]["sha"] = advance["sha"]
+        pr["merge_commit_sha"] = advance["test_merge"]
+        save()
     response({"name": "main", "commit": {"sha": tip}})
 if path == "repos/o/r/actions/workflows/knowledge.yml/runs":
     head = parse_qs(query)["head_sha"][0]
@@ -205,6 +213,9 @@ if knowledge_merge:
         fail()
     if pr["state"] != "open" or pr["head"]["sha"] != payload["sha"]:
         response({"message": "HEAD changed"}, 409)
+    advance = state.pop("knowledge_advance_on_merge", None)
+    if advance:
+        subprocess.run(["git", "merge", "--ff-only", advance], check=True, capture_output=True)
     subprocess.run(["git", "merge", "--no-edit", "--no-ff", payload["sha"]], check=True, capture_output=True)
     merge = subprocess.check_output(["git", "rev-parse", "HEAD"], text=True).strip()
     pr.update(state="closed", merged=True, merged_at="2026-11-22T00:00:00Z", merge_commit_sha=merge)
@@ -242,7 +253,14 @@ if checks:
 if path == "repos/o/r/actions/runs":
     head = parse_qs(query).get("head_sha", [None])[0]
     prs = [p for p in state["prs"] if head in {p["head"]["sha"], p.get("merge_commit_sha")}]
-    rows = [{"id": p["number"], "check_suite_id": p["number"], "head_sha": head, "event": "push" if p.get("merged") else "pull_request", "run_attempt": 1} for p in prs]
+    rows = [
+        {"id": p["number"], "check_suite_id": p["number"], "head_sha": head,
+         "head_branch": p["base"]["ref"] if p.get("merged") else p["head"]["ref"],
+         "event": "push" if p.get("merged") else "pull_request",
+         "path": ".github/workflows/ci.yml", "run_number": p["number"], "run_attempt": 1,
+         "status": "completed", "conclusion": None}
+        for p in prs
+    ]
     response({"total_count": len(rows), "workflow_runs": rows})
 ci_jobs = re.fullmatch(r"repos/o/r/actions/runs/(\d+)/attempts/1/jobs", path)
 if ci_jobs:
@@ -800,6 +818,7 @@ def parent_env(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> ParentEnv:
         CLAUDE_CODE_SESSION_ID="private-session-a-unique",
         PARENT_GH_STATE=str(state_path),
         PARENT_GH_CALLS=str(calls_path),
+        AGENTS_TEST_DIRECT_MERGE_GATE="1",
     )
     # Parent operations must never reach the host Herdr executable. Display
     # integration tests explicitly replace this sentinel with their fake CLI.
@@ -2330,19 +2349,32 @@ def make_review_env(
     )
     driver = p.root / "prepare-approved-fixture.py"
     driver.write_text(
-        "from pathlib import Path\nfrom lib.ops_review.progression import read,save\nfrom lib.ops_review.progression_backend import LiveBackend\nfrom parent.state import Store\np=Path("
-        + repr(str(path))
-        + ")\ns=read(p)\nb=LiveBackend(s,Store(p.parents[2]))\ns['review']['result']=b.review(s,p.parent)\ns['review']['stage']='accepted'\ns['events']=[]\ns['status']='parent_wait'\nsave(p,s)\n"
+        f"""\
+from pathlib import Path
+from lib.ops_review.progression import read, save
+from lib.ops_review.progression_backend import LiveBackend
+from parent.state import Store
+
+path = Path({str(path)!r})
+state = read(path)
+backend = LiveBackend(state, Store(path.parents[2]))
+state["review"].update(result=backend.review(state, path.parent), stage="accepted")
+state["status"] = "parent_wait"
+# Event IDs are shared with the registry outbox and must remain append-only.
+save(path, state)
+"""
     )
-    completed = subprocess.run(
-        [sys.executable, str(driver)],
-        cwd=p.repo,
-        env=p.env,
-        text=True,
-        capture_output=True,
-        check=False,
-        timeout=90,
-    )
+    with path.with_suffix(".lock").open("a") as lock:
+        fcntl.flock(lock, fcntl.LOCK_EX)
+        completed = subprocess.run(
+            [sys.executable, str(driver)],
+            cwd=p.repo,
+            env=p.env,
+            text=True,
+            capture_output=True,
+            check=False,
+            timeout=90,
+        )
     assert completed.returncode == 0, completed.stderr
     request = json.loads(path.read_text())["request"]
     return ReviewEnv(p, request, path, fake, output, calls)

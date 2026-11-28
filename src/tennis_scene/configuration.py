@@ -57,7 +57,7 @@ from src.tennis_scene.pipeline.feature_flags import (
     OPTIONAL_FEATURES,
     validate_requested_features,
 )
-from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.model_assets import PeopleModelConfig, people_model_names
 from src.tennis_scene.pipeline.recipes import (
     ECPOSE_RECIPE,
     FASTHMR_RECIPE,
@@ -217,6 +217,7 @@ _PEOPLE_MODELS_SCHEMA = StrictConfigSchema(
     name="tennis_scene.people_models",
     fields={
         **{name: ConfigField.of(str) for name in ("gvhmr_checkpoint", "dino_checkpoint", "dino_repository", "vitpose_checkpoint", "hmr2_checkpoint", "body_models_dir")},
+        **{name: ConfigField.of(str, required=False) for name in ("detector", "pose", "rfdetr_checkpoint", "rtmpose_checkpoint")},
         "smpl_assets": ConfigField.mapping(SMPL_ASSET_SCHEMA),
         "runtime": ConfigField.mapping(SUBMODULE_RUNTIME_SCHEMA),
         "merge_duplicate_person_boxes": ConfigField.of(bool),
@@ -469,6 +470,8 @@ class PipelineRuntimeConfig:
 
     def __post_init__(self) -> None:
         parse_recipe(self.recipe)
+        if self.people.uses_alternative_models and self.recipe in {ECPOSE_RECIPE, FASTHMR_RECIPE}:
+            raise SemanticConfigurationError("RF-DETR-L and RTMPose-X require a standard people recipe")
         if (self.recipe == FASTHMR_RECIPE) != (self.fasthmr is not None):
             raise SemanticConfigurationError("FastHMR options require recipe=fasthmr, and vice versa")
         if (self.recipe == ECPOSE_RECIPE) != (self.ecpose is not None):
@@ -521,7 +524,6 @@ class PipelineRuntimeConfig:
         video_paths = tuple(resolver.resolve(PathRole.DATA, cast(str, x)) for x in raw_videos)
         output_name = _single_component(cast(str, value["output_name"]), name="output_name")
         output_directory = resolver.resolve(PathRole.OUTPUT, cast(str, value["output_directory"]))
-        output_path = resolver.validate(PathRole.OUTPUT, recipe_directory(output_directory, recipe) / f"{output_name}.npz")
         device = cast(str, value["device"])
         if not device.strip():
             raise SemanticConfigurationError("Pipeline device must be explicit")
@@ -568,6 +570,10 @@ class PipelineRuntimeConfig:
             resolver=resolver,
         )
         models = _mapping(value["people_models"], name="people_models")
+        detector, pose = people_model_names(models)
+        output_path = resolver.validate(
+            PathRole.OUTPUT, recipe_directory(output_directory, recipe, people_models=(detector, pose)) / f"{output_name}.npz",
+        )
         runtime = SubmoduleRuntimeConfig.from_mapping(
             _mapping(models["runtime"], name="people_models.runtime"), resolver=resolver)
         if runtime.device != device:
@@ -580,6 +586,12 @@ class PipelineRuntimeConfig:
             gvhmr_checkpoint=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["gvhmr_checkpoint"])),
             body_models_dir=resolver.resolve(PathRole.CHECKPOINT, cast(str, models["body_models_dir"])),
             smpl_assets=SmplAssetPaths.from_mapping(_mapping(models["smpl_assets"], name="smpl_assets"), resolver=resolver), runtime=runtime,
+            detector=detector,
+            pose=pose,
+            rfdetr_checkpoint=(resolver.resolve(PathRole.CHECKPOINT, cast(str, models["rfdetr_checkpoint"]))
+                               if "rfdetr_checkpoint" in models else None),
+            rtmpose_checkpoint=(resolver.resolve(PathRole.CHECKPOINT, cast(str, models["rtmpose_checkpoint"]))
+                                if "rtmpose_checkpoint" in models else None),
         )
         tracking_section = _mapping(value['person_tracking'], name='person_tracking')
         tracking = TrackingConfig(method=cast(str, tracking_section['method']), encoder=cast(str, tracking_section['encoder']),

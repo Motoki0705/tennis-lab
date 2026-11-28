@@ -7,13 +7,16 @@ from functools import partial
 from pathlib import Path
 
 from src.submodules.configuration import BatchedRuntimeConfig
-from src.submodules.models import ViTPosePose2D
+from src.submodules.models import RFDetrPersonDetector, RTMPoseXPose2D, ViTPosePose2D
 from src.submodules.models.dino.architecture import (
     DINO_NUM_CLASSES,
     DINO_NUM_QUERIES,
     dino_source_assets,
 )
 from src.submodules.models.gvhmr.onnx_attention import ATTENTION_MASK_ENCODING
+from src.submodules.models.rfdetr import person_detector as rfdetr
+from src.submodules.models.rtmpose import pose2d as rtmpose
+from src.submodules.people_model_assets import PEOPLE_MODEL_CHECKPOINTS
 from src.tasks.player_association.appearance.encoders import (
     CLIP_REID_PROFILE,
     AppearanceEncoder,
@@ -23,11 +26,100 @@ from src.tennis_scene.pipeline.inference_runtime import ModelSpec
 from src.tennis_scene.pipeline.inference_runtime import (
     model_identities as model_identities,
 )
-from src.tennis_scene.pipeline.model_assets import PeopleModelConfig
+from src.tennis_scene.pipeline.model_assets import (
+    BodyModelConfig,
+    PeopleModelConfig,
+    file_identity,
+)
 from src.tennis_scene.pipeline.tensorrt_assets import TensorRTModel, tensorrt_identity
 from src.utils.io import json_value
 from src.utils.models.loading.dinov3 import dinov3_source_assets
-from src.utils.models.tensorrt_artifacts import TensorSpec
+from src.utils.models.tensorrt_artifacts import (
+    EXPORT_MANIFEST,
+    EngineBundle,
+    ExportManifest,
+    TensorSpec,
+)
+
+
+def require_people_checkpoint(model: str, path: Path) -> None:
+    pin = PEOPLE_MODEL_CHECKPOINTS[model]
+    if file_identity(path)["sha256"] != pin.sha256:
+        raise ValueError(f"{model} checkpoint SHA-256 mismatch for {path}; expected {pin.sha256} from {pin.source_url}")
+
+
+def rfdetr_tensorrt(config: PeopleModelConfig, batch: int) -> TensorRTModel:
+    checkpoint, _ = config.rfdetr_settings()
+    require_people_checkpoint(rfdetr.MODEL_ID, checkpoint)
+    inputs, outputs = rfdetr.bindings(batch)
+    return TensorRTModel(rfdetr.MODEL_ID, {"checkpoint": checkpoint}, rfdetr.export_settings(batch),
+                         inputs, outputs, fixed_batch=True)
+
+
+def rtmpose_tensorrt(config: PeopleModelConfig) -> TensorRTModel:
+    checkpoint, _ = config.rtmpose_settings()
+    require_people_checkpoint(rtmpose.MODEL_ID, checkpoint)
+    return TensorRTModel(
+        rtmpose.MODEL_ID, {"checkpoint": checkpoint, "network": rtmpose.NETWORK_SOURCE},
+        rtmpose.EXPORT_SETTINGS, rtmpose.INPUTS, rtmpose.OUTPUTS,
+    )
+
+
+def rfdetr_model(config: PeopleModelConfig) -> ModelSpec[RFDetrPersonDetector]:
+    checkpoint, runtime = config.rfdetr_settings()
+    require_people_checkpoint(rfdetr.MODEL_ID, checkpoint)
+    assets = {"checkpoint": checkpoint}
+    options = json_value(runtime)
+    del options["engines"]
+    settings = {
+        "runtime": options, "rfdetr_version": rfdetr.PACKAGE_VERSION,
+        "score": "person_class_sigmoid", "square_resize": rfdetr.RESOLUTION,
+        "num_query_class_pairs": rfdetr.NUM_QUERIES,
+    }
+    bundles: dict[int, EngineBundle] = {}
+    if runtime.engines:
+        for root in runtime.engines:
+            export = ExportManifest.model_validate_json((root / EXPORT_MANIFEST).read_bytes())
+            if "input" not in export.inputs:
+                raise ValueError(f"RF-DETR-L TensorRT export requires the input binding: {root}")
+            batch = export.inputs["input"].shape[0]
+            if not 1 <= batch <= runtime.batch_size or batch in bundles:
+                raise ValueError(f"Unexpected or duplicate RF-DETR-L TensorRT batch {batch}: {root}")
+            bundles[batch] = rfdetr_tensorrt(config, batch).bind(root, device=config.runtime.device, batch_size=batch)
+        if set(bundles) != set(range(1, runtime.batch_size + 1)):
+            raise ValueError("RF-DETR-L TRT16 requires an engine for each batch from 1 to batch_size")
+        engine_assets, identity = tensorrt_identity(tuple(bundles.values()), batch_size=runtime.batch_size)
+        assets.update(engine_assets)
+        settings.update(identity)
+    else:
+        rfdetr.require_rf_detr_version()
+    return ModelSpec("rfdetr", assets, rfdetr.MODEL_ID, config.runtime.device,
+        "float16" if runtime.precision == "fp16" else "float32", settings,
+        lambda: RFDetrPersonDetector(checkpoint, device=config.runtime.device, confidence=runtime.confidence,
+                                     precision=runtime.precision, engines=tuple(bundles.values())),
+        initialize=lambda model: model.load(), release=lambda model: model.unload())
+
+
+def rtmpose_model(config: PeopleModelConfig, *, factory: Callable[..., RTMPoseXPose2D] = RTMPoseXPose2D,
+                  show_progress: bool = False) -> ModelSpec[RTMPoseXPose2D]:
+    checkpoint, runtime = config.rtmpose_settings()
+    require_people_checkpoint(rtmpose.MODEL_ID, checkpoint)
+    assets = {"checkpoint": checkpoint, "network": rtmpose.NETWORK_SOURCE}
+    options = json_value(runtime)
+    del options["engines"]
+    settings = {"runtime": options, "show_progress": show_progress, "joint_confidence": rtmpose.SCORE_KIND,
+                "mmpose_commit": rtmpose.SOURCE_COMMIT, "bbox_padding": rtmpose.BBOX_PADDING}
+    engine = None
+    if runtime.engines:
+        engine = rtmpose_tensorrt(config).bind(runtime.engines[0], device=config.runtime.device, batch_size=runtime.batch_size)
+        engine_assets, identity = tensorrt_identity((engine,), batch_size=runtime.batch_size)
+        assets.update(engine_assets)
+        settings.update(identity)
+    return ModelSpec("rtmpose", assets, rtmpose.MODEL_ID, config.runtime.device,
+        "float16" if runtime.precision == "fp16" else "float32", settings,
+        lambda: factory(checkpoint, device=config.runtime.device, flip_test=runtime.flip_test,
+                        batch_size=runtime.batch_size, precision=runtime.precision, show_progress=show_progress, engine=engine),
+        initialize=lambda model: model.load(), release=lambda model: model.unload())
 
 
 def vitpose_tensorrt(config: PeopleModelConfig) -> TensorRTModel:
@@ -43,7 +135,7 @@ def vitpose_tensorrt(config: PeopleModelConfig) -> TensorRTModel:
     )
 
 
-def hmr2_tensorrt(config: PeopleModelConfig) -> TensorRTModel:
+def hmr2_tensorrt(config: BodyModelConfig | PeopleModelConfig) -> TensorRTModel:
     return TensorRTModel(
         "hmr2_vit_huge",
         {"checkpoint": config.hmr2_checkpoint, "mean_params": config.smpl_assets.hmr2_mean_params},
@@ -79,7 +171,7 @@ def dino_tensorrt(config: PeopleModelConfig, height: int, width: int) -> TensorR
     )
 
 
-def gvhmr_tensorrt(config: PeopleModelConfig, *, legacy: bool = False) -> TensorRTModel:
+def gvhmr_tensorrt(config: BodyModelConfig | PeopleModelConfig, *, legacy: bool = False) -> TensorRTModel:
     batch = 1 if legacy else -1
     settings = {"attention_window": 120, "max_rotary_frames": 4096}
     return TensorRTModel(

@@ -131,7 +131,9 @@ def _observation(
     reports = [
         {
             "phase": "setup",
-            "outcome": outcome.removeprefix("setup_")
+            "outcome": "skipped"
+            if outcome == "setup_xfailed"
+            else outcome.removeprefix("setup_")
             if outcome.startswith("setup_")
             else "passed",
         },
@@ -155,6 +157,8 @@ def _observation(
     if outcome in {"xfailed", "xpassed"}:
         reports[1]["outcome"] = "skipped" if outcome == "xfailed" else "passed"
         reports[1]["wasxfail"] = ""  # An empty reason still identifies xfail/xpass.
+    elif outcome == "setup_xfailed":
+        reports[0]["wasxfail"] = "expected fixture failure"
     events = [
         {
             "event": "configured",
@@ -221,6 +225,7 @@ def _events(root: Path, events: list[dict[str, Any]], name: str = "controller") 
     [
         ("passed", "passed"),
         ("setup_skipped", "skipped"),
+        ("setup_xfailed", "xfailed"),
         ("skipped", "skipped"),
         ("setup_failed", "failed"),
         ("failed", "failed"),
@@ -237,6 +242,27 @@ def test_normal_failure_and_setup_skip_are_complete_observations(
     assert result["issues"] == []
     assert result["counts"] == {expected: 1}
     assert result["successful_test_baseline"] == (expected != "failed")
+
+
+@pytest.mark.parametrize(
+    "phase, key, value, issue",
+    [
+        ("call", "outcome", "xpassed", "unknown pytest phase or outcome"),
+        ("call", "phase", "cleanup", "unknown pytest phase or outcome"),
+        ("setup", "outcome", "skipped", "unexpected phases"),
+    ],
+)
+def test_phase_validation_rejects_invalid_reports_even_with_all_three_events(
+    tmp_path: Path, phase: str, key: str, value: str, issue: str
+) -> None:
+    events = _observation(tmp_path)
+    report = next(event for event in events if event.get("phase") == phase)
+    report[key] = value
+    _events(tmp_path, events)
+    result = summarize(tmp_path)
+    assert result["successful_test_baseline"] is False
+    assert result["counts"] == {"incomplete": 1}
+    assert any(issue in message for message in result["issues"])
 
 
 @pytest.mark.parametrize("outcome", ["passed", "failed", "setup_failed"])

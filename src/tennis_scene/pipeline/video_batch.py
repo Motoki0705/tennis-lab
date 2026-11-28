@@ -158,13 +158,15 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
     """Preflight the fixed inputs, then drain the plan using explicit batch limits."""
     cfg = orchestrator.config
     batching = BatchConfig() if batching is None else batching
-    if batching.enabled and cfg.people.runtime.uses_tensorrt:
+    if batching.enabled and (cfg.people.uses_tensorrt or cfg.people.uses_alternative_models):
         runtime = cfg.people.runtime
+        detector = cfg.people.detector_runtime
+        pose = cfg.people.pose_runtime
         sizes = {
             name: size
             for name, size, engines in (
-                ("dino", runtime.dino_detector.batch_size, runtime.dino_detector.engines),
-                ("vitpose", runtime.vitpose.batch_size, runtime.vitpose.engines),
+                ("dino", detector.batch_size, detector.engines or cfg.people.detector == "rfdetr-l"),
+                ("vitpose", pose.batch_size, pose.engines or cfg.people.pose == "rtmpose-x"),
                 ("clip", runtime.clip_reid.batch_size, runtime.clip_reid.backend.engines),
                 ("hmr2", runtime.hmr2.batch_size, runtime.hmr2.backend.engines),
             )
@@ -176,7 +178,8 @@ def run_video_batch(dataset_directory: Path, video_id: str, orchestrator: Tennis
         raise ValueError("Video batches require complete clips and the model pipeline")
     cfg.resolver.validate(PathRole.DATA, dataset_directory)
     validate_id_component(video_id, field_name="video_id")
-    directory = (recipe_directory(dataset_directory / "videos" / video_id / "annotations" / "tennis_scene", cfg.recipe) / "batch"
+    directory = (recipe_directory(dataset_directory / "videos" / video_id / "annotations" / "tennis_scene", cfg.recipe,
+                                  people_models=cfg.people.selection) / "batch"
                  if progress_directory is None else progress_directory)
     progress = VideoBatchProgress(directory, video_id, pipeline_config_yaml,
         overwrite=overwrite, continue_on_error=continue_on_error, recording_devices=recording_devices, batching=batching,

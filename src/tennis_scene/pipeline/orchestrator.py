@@ -18,6 +18,7 @@ from src.tennis_scene.pipeline.components.event_detection import (
     EventDetectionModule,
 )
 from src.tennis_scene.pipeline.components.person_features import (
+    PersonPoseFeaturesModule,
     appearance_feature_settings,
 )
 from src.tennis_scene.pipeline.definition import (
@@ -25,6 +26,8 @@ from src.tennis_scene.pipeline.definition import (
     check_shared_side_execution,
     component_override_identity,
     enabled_model_assets,
+    person_detection_settings,
+    person_pose_feature_settings,
     publication_model_identities,
     standard_definition,
     validate_override_names,
@@ -42,7 +45,6 @@ from src.tennis_scene.pipeline.runner import (
 )
 from src.tennis_scene.pipeline.source_identity import (
     compatible_source_digests,
-    source_commit,
     source_digests,
 )
 from src.tennis_scene.pipeline.storage.clip_store import ClipStore
@@ -88,8 +90,9 @@ class TennisSceneOrchestrator:
         self._video_court_side_key: tuple[object, ...] | None = None
         self.code_identity = document_digest(compatible_source_digests(
             source_digests(PROJECT_ROOT / "src"), ball_court_side=config.court_side_evidence == "ball",
-            tensorrt=config.people.runtime.uses_tensorrt or (config.ecpose is not None and config.ecpose.engine is not None),
-            standard_recipe=config.recipe == STANDARD_RECIPE, standard_people=config.ecpose is None))
+            tensorrt=config.people.uses_tensorrt or (config.ecpose is not None and config.ecpose.engine is not None),
+            standard_recipe=config.recipe == STANDARD_RECIPE, standard_people=config.ecpose is None,
+            alternative_people=config.people.uses_alternative_models))
 
     @classmethod
     def from_runtime_config(cls, cfg: PipelineRuntimeConfig, *, model_event: ModelEventHook | None = None) -> TennisSceneOrchestrator:
@@ -109,7 +112,25 @@ class TennisSceneOrchestrator:
         shared = self.prepare_video_court()
         side = self.prepare_video_court_side(shared)
         settings = json_value(cfg.processing_settings)
-        people_runtime = settings.get("people_models", {}).get("runtime", {})
+        people = settings.get("people_models", {})
+        people_runtime = people.get("runtime", {})
+        # Omit selectors with legacy values and the dormant model settings.
+        # Older saved configurations lack these fields entirely.
+        if cfg.people.detector == "dino":
+            people.pop("detector", None)
+            people.pop("rfdetr_checkpoint", None)
+            people_runtime.pop("rfdetr_l", None)
+        else:
+            people.pop("dino_checkpoint", None)
+            people.pop("dino_repository", None)
+            people_runtime.pop("dino_detector", None)
+        if cfg.people.pose == "vitpose-h":
+            people.pop("pose", None)
+            people.pop("rtmpose_checkpoint", None)
+            people_runtime.pop("rtmpose_x", None)
+        else:
+            people.pop("vitpose_checkpoint", None)
+            people_runtime.pop("vitpose", None)
         for name in ("dino_detector", "vitpose", "hmr2", "clip_reid", "gvhmr"):
             options = people_runtime.get(name, {})
             if options.get("backend") == "pytorch":
@@ -123,7 +144,7 @@ class TennisSceneOrchestrator:
         for name, default in (("clip_reid", 64), ("gvhmr", 1)):
             if people_runtime.get(name) == {"batch_size": default}:
                 del people_runtime[name]
-        event = event_config.settings(source_commit())
+        event = event_config.settings()
         if event_config.annotation_directory is not None:
             event["annotation_directory"] = str(event_config.annotation_directory)
             event["annotation_benchmark_manifest"] = str(event_config.annotation_benchmark_manifest)
@@ -133,6 +154,8 @@ class TennisSceneOrchestrator:
             "checkpoints": {key: cfg.court_kp.asset_catalog.file_identity(path) for key, path in enabled_model_assets(cfg).items()},
             "models": publication_model_identities(cfg),
             "component_overrides": overrides,
+            **({"people_models": {"detector": cfg.people.detector, "pose": cfg.people.pose}}
+               if cfg.people.uses_alternative_models else {}),
             **({"recipe": cfg.recipe} if cfg.recipe != STANDARD_RECIPE else {}),
             **({"appearance_preprocessing": appearance_feature_settings(cfg.tracking.features)}
                if cfg.enabled["person_observations"] else {}),
@@ -147,6 +170,12 @@ class TennisSceneOrchestrator:
             **({'video_court_cameras': shared.manifest['cameras'],
                 'video_court_unobservable_policy': cfg.video_court_unobservable_policy,
                 'video_court_drift_cameras': drift_identity(shared).get('camera_digests', {})} if shared is not None else {})}
+        if cfg.people.uses_alternative_models and cfg.enabled["person_observations"]:
+            pose = PersonPoseFeaturesModule(cfg.people, cfg.tracking.features)
+            identity["people_component_settings"] = json_value({
+                "person_detection": person_detection_settings(cfg),
+                "person_pose_features": person_pose_feature_settings(cfg, pose),
+            })
         self._publication_assets = ModelAssetSnapshot.capture(identity)
         self._publication_assets.assert_unchanged()
         return identity
@@ -224,8 +253,8 @@ class TennisSceneOrchestrator:
         ``store_root`` is the clip-owned store (structured datasets keep it at
         ``<clip>/annotations/tennis_scene``); ``None`` selects
         ``cache.directory/<source digest>``. The store is never inferred from
-        the shape of the video paths. Alternate recipes scope their own store
-        under that root.
+        the shape of the video paths. The recipe and people models determine
+        the store within that root.
         """
         event_config = self.config.require_event_detection()
         self._scene_export = None
@@ -236,7 +265,7 @@ class TennisSceneOrchestrator:
             raise ValueError("Reference camera is not a source camera")
         source_document = json_value(source)
         root = self.config.cache_directory / document_digest(source_document)[:20] if store_root is None else store_root
-        store = ClipStore(recipe_directory(root, self.config.recipe), source_document)
+        store = ClipStore(recipe_directory(root, self.config.recipe, people_models=self.config.people.selection), source_document)
         runner = None
         self.last_runner, self.last_store = None, store
         self.last_receipt = {"schema": "tennis_scene_run_v3", "status": "running", "clip_id": source.clip_id,
@@ -262,11 +291,9 @@ class TennisSceneOrchestrator:
             direct_event_settings = None
             if direct is not None:
                 from src.tasks.base.annotation.paths import AnnotationLayout
-                if self.config.people.runtime.uses_tensorrt:
+                if self.config.people.uses_tensorrt or self.config.people.uses_alternative_models:
                     direct_model_identity = document_digest(publication_model_identities(self.config))
-                direct_event_settings = EventDetectionModule(
-                    event_config, source.clip_id, code_commit=source_commit(),
-                ).cache_identity()
+                direct_event_settings = EventDetectionModule(event_config, source.clip_id).cache_identity()
                 workflow = direct.workflow(source, self.annotation_layout or AnnotationLayout.production())
                 self.last_receipt.update(
                     annotation={"status": "pending", "request": workflow.reference.model_dump(mode="json")},
@@ -300,7 +327,7 @@ class TennisSceneOrchestrator:
                 if direct.resume == "publication":
                     scene, saved = saved_scene(store, direct, workflow.reference.digest,
                         people_runtime=self.config.people.runtime, model_identity=direct_model_identity,
-                        event_settings=direct_event_settings)
+                        event_settings=direct_event_settings, code_identity=self.code_identity)
                     archive = Path(str(saved["archive"]))
                     self.last_receipt["scene"] = saved
                 else:

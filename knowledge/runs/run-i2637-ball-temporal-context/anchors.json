@@ -1,0 +1,5171 @@
+{
+  "schema": "ball_context_anchor_plan.v1",
+  "seed": 42,
+  "manifest_sha256": "af1773174bdbeed86ee5339846bb6f30ac42d86e26abd1e60c0c685b9c8b6fae",
+  "store_sha256": {
+    "metadata.json": "7a804cc4e3b3006d0128fbd953b0696712d45acee9dcef8a96c02ec46379037c",
+    "index.npz": "0bb00facd10f9961081f9c47af1b62f5c3ca4f5d349a2ac011573d9e510a9feb"
+  },
+  "anchors": [
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000002394-000003174",
+      "clip_index": 273,
+      "native_fps": "60",
+      "frame_index": 91,
+      "kind": "reviewed_empty",
+      "window_start": 76,
+      "rgb_shard_sha256": "ff101250466381c798fd20ad7c4613bb17ba8fd63f8d5b3b9d4e326e090891e7",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000002394-000003174",
+      "clip_index": 273,
+      "native_fps": "60",
+      "frame_index": 514,
+      "kind": "observed",
+      "window_start": 499,
+      "rgb_shard_sha256": "ff101250466381c798fd20ad7c4613bb17ba8fd63f8d5b3b9d4e326e090891e7",
+      "teacher_xy": [
+        199.99998474121094,
+        658.4999389648438
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000002394-000003174",
+      "clip_index": 273,
+      "native_fps": "60",
+      "frame_index": 559,
+      "kind": "observed",
+      "window_start": 544,
+      "rgb_shard_sha256": "ff101250466381c798fd20ad7c4613bb17ba8fd63f8d5b3b9d4e326e090891e7",
+      "teacher_xy": [
+        925.0,
+        506.49993896484375
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000007962-000008742",
+      "clip_index": 274,
+      "native_fps": "60",
+      "frame_index": 77,
+      "kind": "out_of_frame",
+      "window_start": 62,
+      "rgb_shard_sha256": "ad8317e65c1d3df366d3970944a27428279d89490bf2d8a90c66f8e9c59dfd6b",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000007962-000008742",
+      "clip_index": 274,
+      "native_fps": "60",
+      "frame_index": 477,
+      "kind": "observed",
+      "window_start": 462,
+      "rgb_shard_sha256": "ad8317e65c1d3df366d3970944a27428279d89490bf2d8a90c66f8e9c59dfd6b",
+      "teacher_xy": [
+        1030.0999755859375,
+        537.0999755859375
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000007962-000008742",
+      "clip_index": 274,
+      "native_fps": "60",
+      "frame_index": 634,
+      "kind": "observed",
+      "window_start": 619,
+      "rgb_shard_sha256": "ad8317e65c1d3df366d3970944a27428279d89490bf2d8a90c66f8e9c59dfd6b",
+      "teacher_xy": [
+        907.2999267578125,
+        467.699951171875
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000013530-000014310",
+      "clip_index": 275,
+      "native_fps": "60",
+      "frame_index": 470,
+      "kind": "observed",
+      "window_start": 455,
+      "rgb_shard_sha256": "c619c7b68335725a7364fe0c2c13eda59c5a4e49b2f79ca393a97bb31f517387",
+      "teacher_xy": [
+        1123.4998779296875,
+        575.0
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000013530-000014310",
+      "clip_index": 275,
+      "native_fps": "60",
+      "frame_index": 593,
+      "kind": "out_of_frame",
+      "window_start": 578,
+      "rgb_shard_sha256": "c619c7b68335725a7364fe0c2c13eda59c5a4e49b2f79ca393a97bb31f517387",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000013530-000014310",
+      "clip_index": 275,
+      "native_fps": "60",
+      "frame_index": 627,
+      "kind": "reviewed_empty",
+      "window_start": 612,
+      "rgb_shard_sha256": "c619c7b68335725a7364fe0c2c13eda59c5a4e49b2f79ca393a97bb31f517387",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000013530-000014310",
+      "clip_index": 275,
+      "native_fps": "60",
+      "frame_index": 809,
+      "kind": "observed",
+      "window_start": 794,
+      "rgb_shard_sha256": "c619c7b68335725a7364fe0c2c13eda59c5a4e49b2f79ca393a97bb31f517387",
+      "teacher_xy": [
+        1246.0,
+        91.99999237060547
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000013530-000014310",
+      "clip_index": 275,
+      "native_fps": "60",
+      "frame_index": 822,
+      "kind": "observed",
+      "window_start": 807,
+      "rgb_shard_sha256": "c619c7b68335725a7364fe0c2c13eda59c5a4e49b2f79ca393a97bb31f517387",
+      "teacher_xy": [
+        1191.0,
+        9.999999046325684
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000019098-000019878",
+      "clip_index": 276,
+      "native_fps": "60",
+      "frame_index": 169,
+      "kind": "out_of_frame",
+      "window_start": 154,
+      "rgb_shard_sha256": "39bb86baff21b53e83c9d95eec387223110e3d13fb164311b0acc0fdab4d07d9",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000019098-000019878",
+      "clip_index": 276,
+      "native_fps": "60",
+      "frame_index": 559,
+      "kind": "reviewed_empty",
+      "window_start": 544,
+      "rgb_shard_sha256": "39bb86baff21b53e83c9d95eec387223110e3d13fb164311b0acc0fdab4d07d9",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000019098-000019878",
+      "clip_index": 276,
+      "native_fps": "60",
+      "frame_index": 715,
+      "kind": "out_of_frame",
+      "window_start": 700,
+      "rgb_shard_sha256": "39bb86baff21b53e83c9d95eec387223110e3d13fb164311b0acc0fdab4d07d9",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000019098-000019878",
+      "clip_index": 276,
+      "native_fps": "60",
+      "frame_index": 789,
+      "kind": "observed",
+      "window_start": 774,
+      "rgb_shard_sha256": "39bb86baff21b53e83c9d95eec387223110e3d13fb164311b0acc0fdab4d07d9",
+      "teacher_xy": [
+        1363.5,
+        793.0
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000024666-000025446",
+      "clip_index": 277,
+      "native_fps": "60",
+      "frame_index": 109,
+      "kind": "reviewed_empty",
+      "window_start": 94,
+      "rgb_shard_sha256": "ad0507b6fe0de7f2d08d2f82e84196d901874bbea1a6fd59785cb3dc3bdf72bc",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000024666-000025446",
+      "clip_index": 277,
+      "native_fps": "60",
+      "frame_index": 133,
+      "kind": "reviewed_empty",
+      "window_start": 118,
+      "rgb_shard_sha256": "ad0507b6fe0de7f2d08d2f82e84196d901874bbea1a6fd59785cb3dc3bdf72bc",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000024666-000025446",
+      "clip_index": 277,
+      "native_fps": "60",
+      "frame_index": 446,
+      "kind": "reviewed_empty",
+      "window_start": 431,
+      "rgb_shard_sha256": "ad0507b6fe0de7f2d08d2f82e84196d901874bbea1a6fd59785cb3dc3bdf72bc",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000024666-000025446",
+      "clip_index": 277,
+      "native_fps": "60",
+      "frame_index": 625,
+      "kind": "reviewed_empty",
+      "window_start": 610,
+      "rgb_shard_sha256": "ad0507b6fe0de7f2d08d2f82e84196d901874bbea1a6fd59785cb3dc3bdf72bc",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "FSovu8bNxmw",
+      "camera_id": null,
+      "clip_id": "chat_annotation/FSovu8bNxmw__f50c555bede15438__f000024666-000025446",
+      "clip_index": 277,
+      "native_fps": "60",
+      "frame_index": 778,
+      "kind": "reviewed_empty",
+      "window_start": 763,
+      "rgb_shard_sha256": "ad0507b6fe0de7f2d08d2f82e84196d901874bbea1a6fd59785cb3dc3bdf72bc",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000000550-000001200",
+      "clip_index": 757,
+      "native_fps": "50",
+      "frame_index": 402,
+      "kind": "out_of_frame",
+      "window_start": 387,
+      "rgb_shard_sha256": "c377a723d46dea4441ab8c62be9b043b4500d12f630fc69c23a40386203caff8",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000000550-000001200",
+      "clip_index": 757,
+      "native_fps": "50",
+      "frame_index": 464,
+      "kind": "out_of_frame",
+      "window_start": 449,
+      "rgb_shard_sha256": "c377a723d46dea4441ab8c62be9b043b4500d12f630fc69c23a40386203caff8",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000000550-000001200",
+      "clip_index": 757,
+      "native_fps": "50",
+      "frame_index": 490,
+      "kind": "out_of_frame",
+      "window_start": 475,
+      "rgb_shard_sha256": "c377a723d46dea4441ab8c62be9b043b4500d12f630fc69c23a40386203caff8",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000000550-000001200",
+      "clip_index": 757,
+      "native_fps": "50",
+      "frame_index": 623,
+      "kind": "reviewed_empty",
+      "window_start": 608,
+      "rgb_shard_sha256": "c377a723d46dea4441ab8c62be9b043b4500d12f630fc69c23a40386203caff8",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000010250-000010900",
+      "clip_index": 758,
+      "native_fps": "50",
+      "frame_index": 185,
+      "kind": "observed",
+      "window_start": 170,
+      "rgb_shard_sha256": "58397c71ee657a994ab5e1a2c1f69344725ddce4e361ff224413417b631a67f4",
+      "teacher_xy": [
+        862.9999389648438,
+        360.79998779296875
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000010250-000010900",
+      "clip_index": 758,
+      "native_fps": "50",
+      "frame_index": 651,
+      "kind": "observed",
+      "window_start": 636,
+      "rgb_shard_sha256": "58397c71ee657a994ab5e1a2c1f69344725ddce4e361ff224413417b631a67f4",
+      "teacher_xy": [
+        934.0,
+        354.4999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000019050-000019700",
+      "clip_index": 759,
+      "native_fps": "50",
+      "frame_index": 187,
+      "kind": "out_of_frame",
+      "window_start": 172,
+      "rgb_shard_sha256": "6db39b4e45d997553e2cc4b7e8925a0bf9734ad730b6479a3370f55152fd6f18",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000019050-000019700",
+      "clip_index": 759,
+      "native_fps": "50",
+      "frame_index": 369,
+      "kind": "reviewed_empty",
+      "window_start": 354,
+      "rgb_shard_sha256": "6db39b4e45d997553e2cc4b7e8925a0bf9734ad730b6479a3370f55152fd6f18",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000019050-000019700",
+      "clip_index": 759,
+      "native_fps": "50",
+      "frame_index": 378,
+      "kind": "reviewed_empty",
+      "window_start": 363,
+      "rgb_shard_sha256": "6db39b4e45d997553e2cc4b7e8925a0bf9734ad730b6479a3370f55152fd6f18",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000019050-000019700",
+      "clip_index": 759,
+      "native_fps": "50",
+      "frame_index": 406,
+      "kind": "reviewed_empty",
+      "window_start": 391,
+      "rgb_shard_sha256": "6db39b4e45d997553e2cc4b7e8925a0bf9734ad730b6479a3370f55152fd6f18",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000019050-000019700",
+      "clip_index": 759,
+      "native_fps": "50",
+      "frame_index": 548,
+      "kind": "observed",
+      "window_start": 533,
+      "rgb_shard_sha256": "6db39b4e45d997553e2cc4b7e8925a0bf9734ad730b6479a3370f55152fd6f18",
+      "teacher_xy": [
+        902.5,
+        271.9999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000028450-000029100",
+      "clip_index": 760,
+      "native_fps": "50",
+      "frame_index": 117,
+      "kind": "observed",
+      "window_start": 102,
+      "rgb_shard_sha256": "2487793892b26d6312c695ac27016a1bf8c059939b12fa89fdc15eeabc585988",
+      "teacher_xy": [
+        1042.0,
+        351.9999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000028450-000029100",
+      "clip_index": 760,
+      "native_fps": "50",
+      "frame_index": 210,
+      "kind": "observed",
+      "window_start": 195,
+      "rgb_shard_sha256": "2487793892b26d6312c695ac27016a1bf8c059939b12fa89fdc15eeabc585988",
+      "teacher_xy": [
+        835.4999389648438,
+        274.9999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000028450-000029100",
+      "clip_index": 760,
+      "native_fps": "50",
+      "frame_index": 321,
+      "kind": "reviewed_empty",
+      "window_start": 306,
+      "rgb_shard_sha256": "2487793892b26d6312c695ac27016a1bf8c059939b12fa89fdc15eeabc585988",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000028450-000029100",
+      "clip_index": 760,
+      "native_fps": "50",
+      "frame_index": 333,
+      "kind": "reviewed_empty",
+      "window_start": 318,
+      "rgb_shard_sha256": "2487793892b26d6312c695ac27016a1bf8c059939b12fa89fdc15eeabc585988",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000028450-000029100",
+      "clip_index": 760,
+      "native_fps": "50",
+      "frame_index": 643,
+      "kind": "observed",
+      "window_start": 628,
+      "rgb_shard_sha256": "2487793892b26d6312c695ac27016a1bf8c059939b12fa89fdc15eeabc585988",
+      "teacher_xy": [
+        1004.5,
+        387.4999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000055050-000055700",
+      "clip_index": 761,
+      "native_fps": "50",
+      "frame_index": 103,
+      "kind": "observed",
+      "window_start": 88,
+      "rgb_shard_sha256": "f4274fe9175d1f0723df339bdc2d7dd1f1f79b2363ef84c5449b69f06575a345",
+      "teacher_xy": [
+        1114.0,
+        292.0
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000055050-000055700",
+      "clip_index": 761,
+      "native_fps": "50",
+      "frame_index": 456,
+      "kind": "observed",
+      "window_start": 441,
+      "rgb_shard_sha256": "f4274fe9175d1f0723df339bdc2d7dd1f1f79b2363ef84c5449b69f06575a345",
+      "teacher_xy": [
+        1137.5,
+        328.1999816894531
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000055050-000055700",
+      "clip_index": 761,
+      "native_fps": "50",
+      "frame_index": 604,
+      "kind": "reviewed_empty",
+      "window_start": 589,
+      "rgb_shard_sha256": "f4274fe9175d1f0723df339bdc2d7dd1f1f79b2363ef84c5449b69f06575a345",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "HASTK4HQJpI",
+      "camera_id": null,
+      "clip_id": "chat_annotation/HASTK4HQJpI__b1d5ecfa0610de36__f000055050-000055700",
+      "clip_index": 761,
+      "native_fps": "50",
+      "frame_index": 630,
+      "kind": "reviewed_empty",
+      "window_start": 615,
+      "rgb_shard_sha256": "f4274fe9175d1f0723df339bdc2d7dd1f1f79b2363ef84c5449b69f06575a345",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000002934-000003701",
+      "clip_index": 303,
+      "native_fps": "59",
+      "frame_index": 139,
+      "kind": "observed",
+      "window_start": 124,
+      "rgb_shard_sha256": "820c7db7867c703cfcd33284d0f54b841388735f0e5bb8fcf1ed6e032c6c9cf7",
+      "teacher_xy": [
+        1006.4999389648438,
+        100.49999237060547
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000002934-000003701",
+      "clip_index": 303,
+      "native_fps": "59",
+      "frame_index": 193,
+      "kind": "reviewed_empty",
+      "window_start": 178,
+      "rgb_shard_sha256": "820c7db7867c703cfcd33284d0f54b841388735f0e5bb8fcf1ed6e032c6c9cf7",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000002934-000003701",
+      "clip_index": 303,
+      "native_fps": "59",
+      "frame_index": 210,
+      "kind": "reviewed_empty",
+      "window_start": 195,
+      "rgb_shard_sha256": "820c7db7867c703cfcd33284d0f54b841388735f0e5bb8fcf1ed6e032c6c9cf7",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000002934-000003701",
+      "clip_index": 303,
+      "native_fps": "59",
+      "frame_index": 451,
+      "kind": "observed",
+      "window_start": 436,
+      "rgb_shard_sha256": "820c7db7867c703cfcd33284d0f54b841388735f0e5bb8fcf1ed6e032c6c9cf7",
+      "teacher_xy": [
+        959.199951171875,
+        135.09999084472656
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000002934-000003701",
+      "clip_index": 303,
+      "native_fps": "59",
+      "frame_index": 664,
+      "kind": "reviewed_empty",
+      "window_start": 649,
+      "rgb_shard_sha256": "820c7db7867c703cfcd33284d0f54b841388735f0e5bb8fcf1ed6e032c6c9cf7",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000009568-000010335",
+      "clip_index": 304,
+      "native_fps": "59",
+      "frame_index": 343,
+      "kind": "observed",
+      "window_start": 328,
+      "rgb_shard_sha256": "a7bc50a922e1bafed7de3e3be921213305b96eeed71aa65226f9a190865f92a2",
+      "teacher_xy": [
+        1598.4998779296875,
+        527.4999389648438
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000009568-000010335",
+      "clip_index": 304,
+      "native_fps": "59",
+      "frame_index": 482,
+      "kind": "observed",
+      "window_start": 467,
+      "rgb_shard_sha256": "a7bc50a922e1bafed7de3e3be921213305b96eeed71aa65226f9a190865f92a2",
+      "teacher_xy": [
+        724.0,
+        219.99998474121094
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000016202-000016969",
+      "clip_index": 305,
+      "native_fps": "59",
+      "frame_index": 207,
+      "kind": "observed",
+      "window_start": 192,
+      "rgb_shard_sha256": "733bef7d3412de6ac654e3f695bc2edbaeb6f7e6ab1de88daabbf608d828b7cb",
+      "teacher_xy": [
+        1094.2999267578125,
+        72.69999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000016202-000016969",
+      "clip_index": 305,
+      "native_fps": "59",
+      "frame_index": 227,
+      "kind": "reviewed_empty",
+      "window_start": 212,
+      "rgb_shard_sha256": "733bef7d3412de6ac654e3f695bc2edbaeb6f7e6ab1de88daabbf608d828b7cb",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000016202-000016969",
+      "clip_index": 305,
+      "native_fps": "59",
+      "frame_index": 463,
+      "kind": "out_of_frame",
+      "window_start": 448,
+      "rgb_shard_sha256": "733bef7d3412de6ac654e3f695bc2edbaeb6f7e6ab1de88daabbf608d828b7cb",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000016202-000016969",
+      "clip_index": 305,
+      "native_fps": "59",
+      "frame_index": 468,
+      "kind": "out_of_frame",
+      "window_start": 453,
+      "rgb_shard_sha256": "733bef7d3412de6ac654e3f695bc2edbaeb6f7e6ab1de88daabbf608d828b7cb",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000016202-000016969",
+      "clip_index": 305,
+      "native_fps": "59",
+      "frame_index": 470,
+      "kind": "out_of_frame",
+      "window_start": 455,
+      "rgb_shard_sha256": "733bef7d3412de6ac654e3f695bc2edbaeb6f7e6ab1de88daabbf608d828b7cb",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000016202-000016969",
+      "clip_index": 305,
+      "native_fps": "59",
+      "frame_index": 471,
+      "kind": "out_of_frame",
+      "window_start": 456,
+      "rgb_shard_sha256": "733bef7d3412de6ac654e3f695bc2edbaeb6f7e6ab1de88daabbf608d828b7cb",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000016202-000016969",
+      "clip_index": 305,
+      "native_fps": "59",
+      "frame_index": 776,
+      "kind": "reviewed_empty",
+      "window_start": 761,
+      "rgb_shard_sha256": "733bef7d3412de6ac654e3f695bc2edbaeb6f7e6ab1de88daabbf608d828b7cb",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000022837-000023604",
+      "clip_index": 306,
+      "native_fps": "59",
+      "frame_index": 427,
+      "kind": "reviewed_empty",
+      "window_start": 412,
+      "rgb_shard_sha256": "82416db537d0635a63ff7e3974e3d60e88fc76a63e454278dbca7a82f4f4be10",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000022837-000023604",
+      "clip_index": 306,
+      "native_fps": "59",
+      "frame_index": 475,
+      "kind": "reviewed_empty",
+      "window_start": 460,
+      "rgb_shard_sha256": "82416db537d0635a63ff7e3974e3d60e88fc76a63e454278dbca7a82f4f4be10",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000022837-000023604",
+      "clip_index": 306,
+      "native_fps": "59",
+      "frame_index": 563,
+      "kind": "reviewed_empty",
+      "window_start": 548,
+      "rgb_shard_sha256": "82416db537d0635a63ff7e3974e3d60e88fc76a63e454278dbca7a82f4f4be10",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000022837-000023604",
+      "clip_index": 306,
+      "native_fps": "59",
+      "frame_index": 637,
+      "kind": "observed",
+      "window_start": 622,
+      "rgb_shard_sha256": "82416db537d0635a63ff7e3974e3d60e88fc76a63e454278dbca7a82f4f4be10",
+      "teacher_xy": [
+        1587.0999755859375,
+        191.5999755859375
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000022837-000023604",
+      "clip_index": 306,
+      "native_fps": "59",
+      "frame_index": 693,
+      "kind": "observed",
+      "window_start": 678,
+      "rgb_shard_sha256": "82416db537d0635a63ff7e3974e3d60e88fc76a63e454278dbca7a82f4f4be10",
+      "teacher_xy": [
+        946.5,
+        213.59999084472656
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "Ia55DDXsKgY",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Ia55DDXsKgY__97c0d97bce227f64__f000029471-000030238",
+      "clip_index": 307,
+      "native_fps": "59",
+      "frame_index": 166,
+      "kind": "observed",
+      "window_start": 151,
+      "rgb_shard_sha256": "de252dd2613d0b48fd54305dafee7a1947eeea899295e1aaf15d18f1eab03b8a",
+      "teacher_xy": [
+        1076.2999267578125,
+        215.5
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000005095-000005874",
+      "clip_index": 822,
+      "native_fps": "60000/1001",
+      "frame_index": 109,
+      "kind": "reviewed_empty",
+      "window_start": 94,
+      "rgb_shard_sha256": "7822f1f8838be07b79be763225e5e2ffcf4046eb0100ef4cfc640dc1742ec09d",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000005095-000005874",
+      "clip_index": 822,
+      "native_fps": "60000/1001",
+      "frame_index": 465,
+      "kind": "observed",
+      "window_start": 450,
+      "rgb_shard_sha256": "7822f1f8838be07b79be763225e5e2ffcf4046eb0100ef4cfc640dc1742ec09d",
+      "teacher_xy": [
+        875.5,
+        309.4999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000005095-000005874",
+      "clip_index": 822,
+      "native_fps": "60000/1001",
+      "frame_index": 476,
+      "kind": "observed",
+      "window_start": 461,
+      "rgb_shard_sha256": "7822f1f8838be07b79be763225e5e2ffcf4046eb0100ef4cfc640dc1742ec09d",
+      "teacher_xy": [
+        874.9999389648438,
+        331.4999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000005095-000005874",
+      "clip_index": 822,
+      "native_fps": "60000/1001",
+      "frame_index": 724,
+      "kind": "observed",
+      "window_start": 709,
+      "rgb_shard_sha256": "7822f1f8838be07b79be763225e5e2ffcf4046eb0100ef4cfc640dc1742ec09d",
+      "teacher_xy": [
+        1109.699951171875,
+        176.49998474121094
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000006774-000007552",
+      "clip_index": 823,
+      "native_fps": "60000/1001",
+      "frame_index": 222,
+      "kind": "out_of_frame",
+      "window_start": 207,
+      "rgb_shard_sha256": "28db14a84f39e7a6793acea339f5574fbbc172b81b9c9acd24171df974ebe5d9",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000006774-000007552",
+      "clip_index": 823,
+      "native_fps": "60000/1001",
+      "frame_index": 223,
+      "kind": "out_of_frame",
+      "window_start": 208,
+      "rgb_shard_sha256": "28db14a84f39e7a6793acea339f5574fbbc172b81b9c9acd24171df974ebe5d9",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000006774-000007552",
+      "clip_index": 823,
+      "native_fps": "60000/1001",
+      "frame_index": 224,
+      "kind": "out_of_frame",
+      "window_start": 209,
+      "rgb_shard_sha256": "28db14a84f39e7a6793acea339f5574fbbc172b81b9c9acd24171df974ebe5d9",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000006774-000007552",
+      "clip_index": 823,
+      "native_fps": "60000/1001",
+      "frame_index": 274,
+      "kind": "reviewed_empty",
+      "window_start": 259,
+      "rgb_shard_sha256": "28db14a84f39e7a6793acea339f5574fbbc172b81b9c9acd24171df974ebe5d9",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000006774-000007552",
+      "clip_index": 823,
+      "native_fps": "60000/1001",
+      "frame_index": 282,
+      "kind": "reviewed_empty",
+      "window_start": 267,
+      "rgb_shard_sha256": "28db14a84f39e7a6793acea339f5574fbbc172b81b9c9acd24171df974ebe5d9",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000006774-000007552",
+      "clip_index": 823,
+      "native_fps": "60000/1001",
+      "frame_index": 374,
+      "kind": "reviewed_empty",
+      "window_start": 359,
+      "rgb_shard_sha256": "28db14a84f39e7a6793acea339f5574fbbc172b81b9c9acd24171df974ebe5d9",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000006774-000007552",
+      "clip_index": 823,
+      "native_fps": "60000/1001",
+      "frame_index": 502,
+      "kind": "observed",
+      "window_start": 487,
+      "rgb_shard_sha256": "28db14a84f39e7a6793acea339f5574fbbc172b81b9c9acd24171df974ebe5d9",
+      "teacher_xy": [
+        262.20001220703125,
+        336.5999755859375
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000006774-000007552",
+      "clip_index": 823,
+      "native_fps": "60000/1001",
+      "frame_index": 691,
+      "kind": "out_of_frame",
+      "window_start": 676,
+      "rgb_shard_sha256": "28db14a84f39e7a6793acea339f5574fbbc172b81b9c9acd24171df974ebe5d9",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000006774-000007552",
+      "clip_index": 823,
+      "native_fps": "60000/1001",
+      "frame_index": 814,
+      "kind": "observed",
+      "window_start": 799,
+      "rgb_shard_sha256": "28db14a84f39e7a6793acea339f5574fbbc172b81b9c9acd24171df974ebe5d9",
+      "teacher_xy": [
+        869.7999267578125,
+        464.699951171875
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000007913-000008691",
+      "clip_index": 824,
+      "native_fps": "60000/1001",
+      "frame_index": 713,
+      "kind": "observed",
+      "window_start": 698,
+      "rgb_shard_sha256": "e09769c5876ad4a41f4548e49a6bba184bb99a6b37e5d8fb94cb4d2ee3e0ed25",
+      "teacher_xy": [
+        1192.5,
+        389.0
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000007913-000008691",
+      "clip_index": 824,
+      "native_fps": "60000/1001",
+      "frame_index": 771,
+      "kind": "reviewed_empty",
+      "window_start": 756,
+      "rgb_shard_sha256": "e09769c5876ad4a41f4548e49a6bba184bb99a6b37e5d8fb94cb4d2ee3e0ed25",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000020500-000021278",
+      "clip_index": 825,
+      "native_fps": "60000/1001",
+      "frame_index": 451,
+      "kind": "reviewed_empty",
+      "window_start": 436,
+      "rgb_shard_sha256": "35a577449599e5a11366d35ae258f572b3fe1ffc5bdc9ade4628ff51d1d5b8c0",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000024876-000025654",
+      "clip_index": 826,
+      "native_fps": "60000/1001",
+      "frame_index": 79,
+      "kind": "observed",
+      "window_start": 64,
+      "rgb_shard_sha256": "7e0c2d1e5a0405847ab6880f5bbb928a24f6f724081ae8d3a40256adc95b04ee",
+      "teacher_xy": [
+        1020.2000122070312,
+        419.89996337890625
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000024876-000025654",
+      "clip_index": 826,
+      "native_fps": "60000/1001",
+      "frame_index": 357,
+      "kind": "observed",
+      "window_start": 342,
+      "rgb_shard_sha256": "7e0c2d1e5a0405847ab6880f5bbb928a24f6f724081ae8d3a40256adc95b04ee",
+      "teacher_xy": [
+        813.4999389648438,
+        380.4999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000024876-000025654",
+      "clip_index": 826,
+      "native_fps": "60000/1001",
+      "frame_index": 634,
+      "kind": "reviewed_empty",
+      "window_start": 619,
+      "rgb_shard_sha256": "7e0c2d1e5a0405847ab6880f5bbb928a24f6f724081ae8d3a40256adc95b04ee",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "OWH6OarB8lA",
+      "camera_id": null,
+      "clip_id": "chat_annotation/OWH6OarB8lA__ed386492f47b0272__f000024876-000025654",
+      "clip_index": 826,
+      "native_fps": "60000/1001",
+      "frame_index": 748,
+      "kind": "reviewed_empty",
+      "window_start": 733,
+      "rgb_shard_sha256": "7e0c2d1e5a0405847ab6880f5bbb928a24f6f724081ae8d3a40256adc95b04ee",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000013350-000014000",
+      "clip_index": 912,
+      "native_fps": "50",
+      "frame_index": 103,
+      "kind": "observed",
+      "window_start": 88,
+      "rgb_shard_sha256": "304e9d72254bbbab0dd7913666feec0d1c7361ed3990a4e1801e1b794dab8fc0",
+      "teacher_xy": [
+        918.4999389648438,
+        219.49998474121094
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000013350-000014000",
+      "clip_index": 912,
+      "native_fps": "50",
+      "frame_index": 154,
+      "kind": "out_of_frame",
+      "window_start": 139,
+      "rgb_shard_sha256": "304e9d72254bbbab0dd7913666feec0d1c7361ed3990a4e1801e1b794dab8fc0",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000013350-000014000",
+      "clip_index": 912,
+      "native_fps": "50",
+      "frame_index": 157,
+      "kind": "out_of_frame",
+      "window_start": 142,
+      "rgb_shard_sha256": "304e9d72254bbbab0dd7913666feec0d1c7361ed3990a4e1801e1b794dab8fc0",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000013350-000014000",
+      "clip_index": 912,
+      "native_fps": "50",
+      "frame_index": 158,
+      "kind": "out_of_frame",
+      "window_start": 143,
+      "rgb_shard_sha256": "304e9d72254bbbab0dd7913666feec0d1c7361ed3990a4e1801e1b794dab8fc0",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000013350-000014000",
+      "clip_index": 912,
+      "native_fps": "50",
+      "frame_index": 159,
+      "kind": "out_of_frame",
+      "window_start": 144,
+      "rgb_shard_sha256": "304e9d72254bbbab0dd7913666feec0d1c7361ed3990a4e1801e1b794dab8fc0",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000013350-000014000",
+      "clip_index": 912,
+      "native_fps": "50",
+      "frame_index": 575,
+      "kind": "reviewed_empty",
+      "window_start": 560,
+      "rgb_shard_sha256": "304e9d72254bbbab0dd7913666feec0d1c7361ed3990a4e1801e1b794dab8fc0",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000013350-000014000",
+      "clip_index": 912,
+      "native_fps": "50",
+      "frame_index": 598,
+      "kind": "reviewed_empty",
+      "window_start": 583,
+      "rgb_shard_sha256": "304e9d72254bbbab0dd7913666feec0d1c7361ed3990a4e1801e1b794dab8fc0",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000013350-000014000",
+      "clip_index": 912,
+      "native_fps": "50",
+      "frame_index": 606,
+      "kind": "reviewed_empty",
+      "window_start": 591,
+      "rgb_shard_sha256": "304e9d72254bbbab0dd7913666feec0d1c7361ed3990a4e1801e1b794dab8fc0",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000013350-000014000",
+      "clip_index": 912,
+      "native_fps": "50",
+      "frame_index": 632,
+      "kind": "reviewed_empty",
+      "window_start": 617,
+      "rgb_shard_sha256": "304e9d72254bbbab0dd7913666feec0d1c7361ed3990a4e1801e1b794dab8fc0",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000013350-000014000",
+      "clip_index": 912,
+      "native_fps": "50",
+      "frame_index": 679,
+      "kind": "reviewed_empty",
+      "window_start": 664,
+      "rgb_shard_sha256": "304e9d72254bbbab0dd7913666feec0d1c7361ed3990a4e1801e1b794dab8fc0",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000017850-000018500",
+      "clip_index": 913,
+      "native_fps": "50",
+      "frame_index": 132,
+      "kind": "observed",
+      "window_start": 117,
+      "rgb_shard_sha256": "87b442d3c08a499165d6411585aeb02636155a860329344044d26588f7855bd9",
+      "teacher_xy": [
+        745.800048828125,
+        240.09999084472656
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000017850-000018500",
+      "clip_index": 913,
+      "native_fps": "50",
+      "frame_index": 183,
+      "kind": "observed",
+      "window_start": 168,
+      "rgb_shard_sha256": "87b442d3c08a499165d6411585aeb02636155a860329344044d26588f7855bd9",
+      "teacher_xy": [
+        678.1000366210938,
+        229.39999389648438
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000026850-000027500",
+      "clip_index": 914,
+      "native_fps": "50",
+      "frame_index": 100,
+      "kind": "observed",
+      "window_start": 85,
+      "rgb_shard_sha256": "0247a055839b3b5b12b2e929193082e7042bf29cdcb03ec5d27d737365206fb6",
+      "teacher_xy": [
+        650.7999877929688,
+        198.99998474121094
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000026850-000027500",
+      "clip_index": 914,
+      "native_fps": "50",
+      "frame_index": 545,
+      "kind": "reviewed_empty",
+      "window_start": 530,
+      "rgb_shard_sha256": "0247a055839b3b5b12b2e929193082e7042bf29cdcb03ec5d27d737365206fb6",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000026850-000027500",
+      "clip_index": 914,
+      "native_fps": "50",
+      "frame_index": 556,
+      "kind": "reviewed_empty",
+      "window_start": 541,
+      "rgb_shard_sha256": "0247a055839b3b5b12b2e929193082e7042bf29cdcb03ec5d27d737365206fb6",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000040600-000041250",
+      "clip_index": 915,
+      "native_fps": "50",
+      "frame_index": 168,
+      "kind": "observed",
+      "window_start": 153,
+      "rgb_shard_sha256": "d80faf8b7ebf7136bfcbb151c3d5cf5a54d18ed92842ba8aeaa2fb16e9b2b81b",
+      "teacher_xy": [
+        776.3999633789062,
+        183.3499755859375
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000040600-000041250",
+      "clip_index": 915,
+      "native_fps": "50",
+      "frame_index": 678,
+      "kind": "observed",
+      "window_start": 663,
+      "rgb_shard_sha256": "d80faf8b7ebf7136bfcbb151c3d5cf5a54d18ed92842ba8aeaa2fb16e9b2b81b",
+      "teacher_xy": [
+        1123.2498779296875,
+        351.14996337890625
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000046250-000046900",
+      "clip_index": 916,
+      "native_fps": "50",
+      "frame_index": 147,
+      "kind": "observed",
+      "window_start": 132,
+      "rgb_shard_sha256": "57ea8bb59fb5dcf5d1d1b240f606d12322fd21095a5c16a60db2090e3dfdfa3f",
+      "teacher_xy": [
+        1010.5,
+        230.99998474121094
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000046250-000046900",
+      "clip_index": 916,
+      "native_fps": "50",
+      "frame_index": 455,
+      "kind": "observed",
+      "window_start": 440,
+      "rgb_shard_sha256": "57ea8bb59fb5dcf5d1d1b240f606d12322fd21095a5c16a60db2090e3dfdfa3f",
+      "teacher_xy": [
+        1025.9998779296875,
+        326.9999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "b5ZYUkDrbpQ",
+      "camera_id": null,
+      "clip_id": "chat_annotation/b5ZYUkDrbpQ__e9fbdef645416f48__f000046250-000046900",
+      "clip_index": 916,
+      "native_fps": "50",
+      "frame_index": 666,
+      "kind": "reviewed_empty",
+      "window_start": 651,
+      "rgb_shard_sha256": "57ea8bb59fb5dcf5d1d1b240f606d12322fd21095a5c16a60db2090e3dfdfa3f",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000001493-000001882",
+      "clip_index": 617,
+      "native_fps": "30000/1001",
+      "frame_index": 83,
+      "kind": "reviewed_empty",
+      "window_start": 68,
+      "rgb_shard_sha256": "5830ff265861f0367011c0542d08cbda6678e1219e625fbc963397f7a1ad9565",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000001493-000001882",
+      "clip_index": 617,
+      "native_fps": "30000/1001",
+      "frame_index": 99,
+      "kind": "reviewed_empty",
+      "window_start": 84,
+      "rgb_shard_sha256": "5830ff265861f0367011c0542d08cbda6678e1219e625fbc963397f7a1ad9565",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000001493-000001882",
+      "clip_index": 617,
+      "native_fps": "30000/1001",
+      "frame_index": 171,
+      "kind": "out_of_frame",
+      "window_start": 156,
+      "rgb_shard_sha256": "5830ff265861f0367011c0542d08cbda6678e1219e625fbc963397f7a1ad9565",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000001493-000001882",
+      "clip_index": 617,
+      "native_fps": "30000/1001",
+      "frame_index": 236,
+      "kind": "reviewed_empty",
+      "window_start": 221,
+      "rgb_shard_sha256": "5830ff265861f0367011c0542d08cbda6678e1219e625fbc963397f7a1ad9565",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000004868-000005257",
+      "clip_index": 618,
+      "native_fps": "30000/1001",
+      "frame_index": 116,
+      "kind": "reviewed_empty",
+      "window_start": 101,
+      "rgb_shard_sha256": "b8351355692b0171d999cdf74726f9a70f866f7ac62288552e5555597fc77aaa",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000004868-000005257",
+      "clip_index": 618,
+      "native_fps": "30000/1001",
+      "frame_index": 117,
+      "kind": "reviewed_empty",
+      "window_start": 102,
+      "rgb_shard_sha256": "b8351355692b0171d999cdf74726f9a70f866f7ac62288552e5555597fc77aaa",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000004868-000005257",
+      "clip_index": 618,
+      "native_fps": "30000/1001",
+      "frame_index": 194,
+      "kind": "out_of_frame",
+      "window_start": 179,
+      "rgb_shard_sha256": "b8351355692b0171d999cdf74726f9a70f866f7ac62288552e5555597fc77aaa",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000004868-000005257",
+      "clip_index": 618,
+      "native_fps": "30000/1001",
+      "frame_index": 338,
+      "kind": "observed",
+      "window_start": 323,
+      "rgb_shard_sha256": "b8351355692b0171d999cdf74726f9a70f866f7ac62288552e5555597fc77aaa",
+      "teacher_xy": [
+        1092.0,
+        274.5
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000008243-000008632",
+      "clip_index": 619,
+      "native_fps": "30000/1001",
+      "frame_index": 197,
+      "kind": "observed",
+      "window_start": 182,
+      "rgb_shard_sha256": "e62ae32afa7d3059a1e50d35f91c6695c0921ec5302799c33afd90ab6ecb6e3a",
+      "teacher_xy": [
+        1027.0,
+        284.0
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000008243-000008632",
+      "clip_index": 619,
+      "native_fps": "30000/1001",
+      "frame_index": 299,
+      "kind": "observed",
+      "window_start": 284,
+      "rgb_shard_sha256": "e62ae32afa7d3059a1e50d35f91c6695c0921ec5302799c33afd90ab6ecb6e3a",
+      "teacher_xy": [
+        1077.89990234375,
+        136.39999389648438
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000008243-000008632",
+      "clip_index": 619,
+      "native_fps": "30000/1001",
+      "frame_index": 383,
+      "kind": "observed",
+      "window_start": 368,
+      "rgb_shard_sha256": "e62ae32afa7d3059a1e50d35f91c6695c0921ec5302799c33afd90ab6ecb6e3a",
+      "teacher_xy": [
+        1171.9998779296875,
+        38.599998474121094
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000008243-000008632",
+      "clip_index": 619,
+      "native_fps": "30000/1001",
+      "frame_index": 387,
+      "kind": "out_of_frame",
+      "window_start": 372,
+      "rgb_shard_sha256": "e62ae32afa7d3059a1e50d35f91c6695c0921ec5302799c33afd90ab6ecb6e3a",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000011617-000012006",
+      "clip_index": 620,
+      "native_fps": "30000/1001",
+      "frame_index": 61,
+      "kind": "observed",
+      "window_start": 46,
+      "rgb_shard_sha256": "8a7d9b925e8cde0c5c18a17c81c9170047529c25ff6c28da497ecda163bd7843",
+      "teacher_xy": [
+        1258.5,
+        321.5999755859375
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000011617-000012006",
+      "clip_index": 620,
+      "native_fps": "30000/1001",
+      "frame_index": 103,
+      "kind": "reviewed_empty",
+      "window_start": 88,
+      "rgb_shard_sha256": "8a7d9b925e8cde0c5c18a17c81c9170047529c25ff6c28da497ecda163bd7843",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000011617-000012006",
+      "clip_index": 620,
+      "native_fps": "30000/1001",
+      "frame_index": 127,
+      "kind": "observed",
+      "window_start": 112,
+      "rgb_shard_sha256": "8a7d9b925e8cde0c5c18a17c81c9170047529c25ff6c28da497ecda163bd7843",
+      "teacher_xy": [
+        981.5,
+        168.0
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000011617-000012006",
+      "clip_index": 620,
+      "native_fps": "30000/1001",
+      "frame_index": 157,
+      "kind": "out_of_frame",
+      "window_start": 142,
+      "rgb_shard_sha256": "8a7d9b925e8cde0c5c18a17c81c9170047529c25ff6c28da497ecda163bd7843",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000011617-000012006",
+      "clip_index": 620,
+      "native_fps": "30000/1001",
+      "frame_index": 191,
+      "kind": "reviewed_empty",
+      "window_start": 176,
+      "rgb_shard_sha256": "8a7d9b925e8cde0c5c18a17c81c9170047529c25ff6c28da497ecda163bd7843",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000011617-000012006",
+      "clip_index": 620,
+      "native_fps": "30000/1001",
+      "frame_index": 245,
+      "kind": "observed",
+      "window_start": 230,
+      "rgb_shard_sha256": "8a7d9b925e8cde0c5c18a17c81c9170047529c25ff6c28da497ecda163bd7843",
+      "teacher_xy": [
+        1118.2999267578125,
+        146.29998779296875
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000011617-000012006",
+      "clip_index": 620,
+      "native_fps": "30000/1001",
+      "frame_index": 280,
+      "kind": "reviewed_empty",
+      "window_start": 265,
+      "rgb_shard_sha256": "8a7d9b925e8cde0c5c18a17c81c9170047529c25ff6c28da497ecda163bd7843",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "calibration",
+      "source": "chat_annotation",
+      "source_group": "yq0044xihOs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yq0044xihOs__f9ca7925d3beeb30__f000014992-000015381",
+      "clip_index": 621,
+      "native_fps": "30000/1001",
+      "frame_index": 302,
+      "kind": "observed",
+      "window_start": 287,
+      "rgb_shard_sha256": "b06b8dda375124eb8dd7b8107fa486d2f37aeb4a2f42f7bb12015c590a01fd23",
+      "teacher_xy": [
+        917.7999267578125,
+        298.20001220703125
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "3mL3oF9bF_s",
+      "camera_id": null,
+      "clip_id": "chat_annotation/3mL3oF9bF_s__7714b0859f5cbaa1__f000002075-000002400",
+      "clip_index": 683,
+      "native_fps": "25",
+      "frame_index": 325,
+      "kind": "observed",
+      "window_start": 310,
+      "rgb_shard_sha256": "a3d3e7a1290196d4afdb023dc8e6c1128fec87eea68a0a672c2753965100a344",
+      "teacher_xy": [
+        1032.0,
+        222.49998474121094
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "3mL3oF9bF_s",
+      "camera_id": null,
+      "clip_id": "chat_annotation/3mL3oF9bF_s__7714b0859f5cbaa1__f000002900-000003225",
+      "clip_index": 684,
+      "native_fps": "25",
+      "frame_index": 305,
+      "kind": "out_of_frame",
+      "window_start": 290,
+      "rgb_shard_sha256": "29153a17a41ce40738b02cb0948964f1dc608e0a19b70b535322613a877582ce",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "3mL3oF9bF_s",
+      "camera_id": null,
+      "clip_id": "chat_annotation/3mL3oF9bF_s__7714b0859f5cbaa1__f000002900-000003225",
+      "clip_index": 684,
+      "native_fps": "25",
+      "frame_index": 312,
+      "kind": "out_of_frame",
+      "window_start": 297,
+      "rgb_shard_sha256": "29153a17a41ce40738b02cb0948964f1dc608e0a19b70b535322613a877582ce",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "3mL3oF9bF_s",
+      "camera_id": null,
+      "clip_id": "chat_annotation/3mL3oF9bF_s__7714b0859f5cbaa1__f000005100-000005425",
+      "clip_index": 685,
+      "native_fps": "25",
+      "frame_index": 60,
+      "kind": "observed",
+      "window_start": 45,
+      "rgb_shard_sha256": "5a8b1a63b1bd1c0394480b3a6522720a7dc05c62f1645a80eed895f4a3f48fd5",
+      "teacher_xy": [
+        1002.2999877929688,
+        156.39999389648438
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "3mL3oF9bF_s",
+      "camera_id": null,
+      "clip_id": "chat_annotation/3mL3oF9bF_s__7714b0859f5cbaa1__f000005100-000005425",
+      "clip_index": 685,
+      "native_fps": "25",
+      "frame_index": 327,
+      "kind": "reviewed_empty",
+      "window_start": 312,
+      "rgb_shard_sha256": "5a8b1a63b1bd1c0394480b3a6522720a7dc05c62f1645a80eed895f4a3f48fd5",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "3mL3oF9bF_s",
+      "camera_id": null,
+      "clip_id": "chat_annotation/3mL3oF9bF_s__7714b0859f5cbaa1__f000005100-000005425",
+      "clip_index": 685,
+      "native_fps": "25",
+      "frame_index": 329,
+      "kind": "reviewed_empty",
+      "window_start": 314,
+      "rgb_shard_sha256": "5a8b1a63b1bd1c0394480b3a6522720a7dc05c62f1645a80eed895f4a3f48fd5",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "3mL3oF9bF_s",
+      "camera_id": null,
+      "clip_id": "chat_annotation/3mL3oF9bF_s__7714b0859f5cbaa1__f000006525-000006850",
+      "clip_index": 686,
+      "native_fps": "25",
+      "frame_index": 118,
+      "kind": "observed",
+      "window_start": 103,
+      "rgb_shard_sha256": "954b3eece0ca4cdffec8f1ca1e4686ffafcbdd11eb47011f3933807e90aa5bf0",
+      "teacher_xy": [
+        1099.0,
+        73.99999237060547
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "3mL3oF9bF_s",
+      "camera_id": null,
+      "clip_id": "chat_annotation/3mL3oF9bF_s__7714b0859f5cbaa1__f000006525-000006850",
+      "clip_index": 686,
+      "native_fps": "25",
+      "frame_index": 310,
+      "kind": "observed",
+      "window_start": 295,
+      "rgb_shard_sha256": "954b3eece0ca4cdffec8f1ca1e4686ffafcbdd11eb47011f3933807e90aa5bf0",
+      "teacher_xy": [
+        805.0,
+        557.9999389648438
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "7V1eZ3JQFUs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/7V1eZ3JQFUs__2f1b4849cbd5d7ff__f000003450-000003775",
+      "clip_index": 698,
+      "native_fps": "25",
+      "frame_index": 76,
+      "kind": "observed",
+      "window_start": 61,
+      "rgb_shard_sha256": "3cfc677ee21797b3a8b9c58e031ea2cc6da8563c372ff3b37a48154da06c3fa7",
+      "teacher_xy": [
+        1238.5,
+        723.5999755859375
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "7V1eZ3JQFUs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/7V1eZ3JQFUs__2f1b4849cbd5d7ff__f000003450-000003775",
+      "clip_index": 698,
+      "native_fps": "25",
+      "frame_index": 327,
+      "kind": "reviewed_empty",
+      "window_start": 312,
+      "rgb_shard_sha256": "3cfc677ee21797b3a8b9c58e031ea2cc6da8563c372ff3b37a48154da06c3fa7",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "7V1eZ3JQFUs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/7V1eZ3JQFUs__2f1b4849cbd5d7ff__f000003450-000003775",
+      "clip_index": 698,
+      "native_fps": "25",
+      "frame_index": 330,
+      "kind": "reviewed_empty",
+      "window_start": 315,
+      "rgb_shard_sha256": "3cfc677ee21797b3a8b9c58e031ea2cc6da8563c372ff3b37a48154da06c3fa7",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "7V1eZ3JQFUs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/7V1eZ3JQFUs__2f1b4849cbd5d7ff__f000004175-000004500",
+      "clip_index": 699,
+      "native_fps": "25",
+      "frame_index": 161,
+      "kind": "out_of_frame",
+      "window_start": 146,
+      "rgb_shard_sha256": "ed476b1553133e54a6c3740bbc028ac5711d0b99600b2e34488217a8a5960bfe",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "7V1eZ3JQFUs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/7V1eZ3JQFUs__2f1b4849cbd5d7ff__f000007275-000007600",
+      "clip_index": 700,
+      "native_fps": "25",
+      "frame_index": 226,
+      "kind": "out_of_frame",
+      "window_start": 211,
+      "rgb_shard_sha256": "f2e387720b362cb5d4e64bb5e5ad6d25ef03f970dab890942f3b94a0f752fe7f",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "7V1eZ3JQFUs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/7V1eZ3JQFUs__2f1b4849cbd5d7ff__f000010225-000010550",
+      "clip_index": 701,
+      "native_fps": "25",
+      "frame_index": 91,
+      "kind": "observed",
+      "window_start": 76,
+      "rgb_shard_sha256": "5b03749e3be7e9a39c7cead43575b3941930b394acebd66840beddbc0705d501",
+      "teacher_xy": [
+        1269.2999267578125,
+        59.89999771118164
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "7V1eZ3JQFUs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/7V1eZ3JQFUs__2f1b4849cbd5d7ff__f000010225-000010550",
+      "clip_index": 701,
+      "native_fps": "25",
+      "frame_index": 188,
+      "kind": "observed",
+      "window_start": 173,
+      "rgb_shard_sha256": "5b03749e3be7e9a39c7cead43575b3941930b394acebd66840beddbc0705d501",
+      "teacher_xy": [
+        1099.800048828125,
+        163.49998474121094
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "7V1eZ3JQFUs",
+      "camera_id": null,
+      "clip_id": "chat_annotation/7V1eZ3JQFUs__2f1b4849cbd5d7ff__f000010225-000010550",
+      "clip_index": 701,
+      "native_fps": "25",
+      "frame_index": 214,
+      "kind": "observed",
+      "window_start": 199,
+      "rgb_shard_sha256": "5b03749e3be7e9a39c7cead43575b3941930b394acebd66840beddbc0705d501",
+      "teacher_xy": [
+        1044.60009765625,
+        154.6999969482422
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "ArMURQ8VHOg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/ArMURQ8VHOg__c0f5b2a6a7d77592__f000006414-000007192",
+      "clip_index": 707,
+      "native_fps": "60000/1001",
+      "frame_index": 472,
+      "kind": "observed",
+      "window_start": 457,
+      "rgb_shard_sha256": "5d9e139ed188684ab337f208e4726b424fa2dd785349acb63d67729fb94cb710",
+      "teacher_xy": [
+        1032.800048828125,
+        332.5
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "ArMURQ8VHOg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/ArMURQ8VHOg__c0f5b2a6a7d77592__f000017083-000017862",
+      "clip_index": 708,
+      "native_fps": "60000/1001",
+      "frame_index": 662,
+      "kind": "reviewed_empty",
+      "window_start": 647,
+      "rgb_shard_sha256": "9f8fa8ce959207f2912c2271c8029b7424e20ef0942af4f6fbb8f2fa85230947",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "ArMURQ8VHOg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/ArMURQ8VHOg__c0f5b2a6a7d77592__f000028712-000029490",
+      "clip_index": 709,
+      "native_fps": "60000/1001",
+      "frame_index": 157,
+      "kind": "observed",
+      "window_start": 142,
+      "rgb_shard_sha256": "710c940532ee5ee4e1372b25ea3b8b2a6aacba45a11696456fa91a5140e25d6c",
+      "teacher_xy": [
+        1119.5999755859375,
+        385.6000061035156
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "ArMURQ8VHOg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/ArMURQ8VHOg__c0f5b2a6a7d77592__f000028712-000029490",
+      "clip_index": 709,
+      "native_fps": "60000/1001",
+      "frame_index": 733,
+      "kind": "out_of_frame",
+      "window_start": 718,
+      "rgb_shard_sha256": "710c940532ee5ee4e1372b25ea3b8b2a6aacba45a11696456fa91a5140e25d6c",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "ArMURQ8VHOg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/ArMURQ8VHOg__c0f5b2a6a7d77592__f000028712-000029490",
+      "clip_index": 709,
+      "native_fps": "60000/1001",
+      "frame_index": 734,
+      "kind": "out_of_frame",
+      "window_start": 719,
+      "rgb_shard_sha256": "710c940532ee5ee4e1372b25ea3b8b2a6aacba45a11696456fa91a5140e25d6c",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "ArMURQ8VHOg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/ArMURQ8VHOg__c0f5b2a6a7d77592__f000050290-000051068",
+      "clip_index": 710,
+      "native_fps": "60000/1001",
+      "frame_index": 138,
+      "kind": "reviewed_empty",
+      "window_start": 123,
+      "rgb_shard_sha256": "23241bc299f55941bae174bcde15dd2fd128a23077d0564ae90d5abb332d4158",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "ArMURQ8VHOg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/ArMURQ8VHOg__c0f5b2a6a7d77592__f000050290-000051068",
+      "clip_index": 710,
+      "native_fps": "60000/1001",
+      "frame_index": 428,
+      "kind": "observed",
+      "window_start": 413,
+      "rgb_shard_sha256": "23241bc299f55941bae174bcde15dd2fd128a23077d0564ae90d5abb332d4158",
+      "teacher_xy": [
+        911.5,
+        489.5
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "ArMURQ8VHOg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/ArMURQ8VHOg__c0f5b2a6a7d77592__f000053347-000054125",
+      "clip_index": 711,
+      "native_fps": "60000/1001",
+      "frame_index": 572,
+      "kind": "observed",
+      "window_start": 557,
+      "rgb_shard_sha256": "e2ec9097fc3c46ee8cc97092fbf14b264b18451dd3171d7fc01f3093c2c1959f",
+      "teacher_xy": [
+        1136.4000244140625,
+        275.5
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "Axz-Tmg2AJ4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Axz-Tmg2AJ4__94b5201599e8af58__f000013150-000013800",
+      "clip_index": 712,
+      "native_fps": "50",
+      "frame_index": 152,
+      "kind": "out_of_frame",
+      "window_start": 137,
+      "rgb_shard_sha256": "eb22d24d6e67f864b0e8e5a8d6f8e1feba876e0173923e4fb591673e1cfb8a4a",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "Axz-Tmg2AJ4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Axz-Tmg2AJ4__94b5201599e8af58__f000026550-000027200",
+      "clip_index": 714,
+      "native_fps": "50",
+      "frame_index": 231,
+      "kind": "observed",
+      "window_start": 216,
+      "rgb_shard_sha256": "a5c6e6bde2c1ec9a79dee7515db0720f486f981663138a192f8732884b45ea03",
+      "teacher_xy": [
+        857.1000366210938,
+        415.79998779296875
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "Axz-Tmg2AJ4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Axz-Tmg2AJ4__94b5201599e8af58__f000026550-000027200",
+      "clip_index": 714,
+      "native_fps": "50",
+      "frame_index": 533,
+      "kind": "observed",
+      "window_start": 518,
+      "rgb_shard_sha256": "a5c6e6bde2c1ec9a79dee7515db0720f486f981663138a192f8732884b45ea03",
+      "teacher_xy": [
+        953.5,
+        294.8000183105469
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "Axz-Tmg2AJ4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Axz-Tmg2AJ4__94b5201599e8af58__f000035550-000036200",
+      "clip_index": 715,
+      "native_fps": "50",
+      "frame_index": 113,
+      "kind": "reviewed_empty",
+      "window_start": 98,
+      "rgb_shard_sha256": "e5c04a874935ad961f223095e14785619be0ec9f6e85bd9b147d9434cf46b95d",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "Axz-Tmg2AJ4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Axz-Tmg2AJ4__94b5201599e8af58__f000035550-000036200",
+      "clip_index": 715,
+      "native_fps": "50",
+      "frame_index": 145,
+      "kind": "reviewed_empty",
+      "window_start": 130,
+      "rgb_shard_sha256": "e5c04a874935ad961f223095e14785619be0ec9f6e85bd9b147d9434cf46b95d",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "Axz-Tmg2AJ4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Axz-Tmg2AJ4__94b5201599e8af58__f000035550-000036200",
+      "clip_index": 715,
+      "native_fps": "50",
+      "frame_index": 487,
+      "kind": "observed",
+      "window_start": 472,
+      "rgb_shard_sha256": "e5c04a874935ad961f223095e14785619be0ec9f6e85bd9b147d9434cf46b95d",
+      "teacher_xy": [
+        1010.5,
+        259.5
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "Axz-Tmg2AJ4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Axz-Tmg2AJ4__94b5201599e8af58__f000059050-000059700",
+      "clip_index": 716,
+      "native_fps": "50",
+      "frame_index": 322,
+      "kind": "observed",
+      "window_start": 307,
+      "rgb_shard_sha256": "16223c5987138a2010b9d9c3dc117bc6ddc965cb3946d0a14847bd52f8a0b885",
+      "teacher_xy": [
+        1125.4998779296875,
+        282.0999755859375
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "Axz-Tmg2AJ4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/Axz-Tmg2AJ4__94b5201599e8af58__f000059050-000059700",
+      "clip_index": 716,
+      "native_fps": "50",
+      "frame_index": 409,
+      "kind": "out_of_frame",
+      "window_start": 394,
+      "rgb_shard_sha256": "16223c5987138a2010b9d9c3dc117bc6ddc965cb3946d0a14847bd52f8a0b885",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "GRW4OUknRwg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/GRW4OUknRwg__f46ee0cfb3db53fd__f000018600-000019250",
+      "clip_index": 747,
+      "native_fps": "50",
+      "frame_index": 374,
+      "kind": "reviewed_empty",
+      "window_start": 359,
+      "rgb_shard_sha256": "bd88cf95689d56f5e66f4063ccb4dbde8c1e6fa33a448227f89f1ae489984b44",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "GRW4OUknRwg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/GRW4OUknRwg__f46ee0cfb3db53fd__f000018600-000019250",
+      "clip_index": 747,
+      "native_fps": "50",
+      "frame_index": 420,
+      "kind": "reviewed_empty",
+      "window_start": 405,
+      "rgb_shard_sha256": "bd88cf95689d56f5e66f4063ccb4dbde8c1e6fa33a448227f89f1ae489984b44",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "GRW4OUknRwg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/GRW4OUknRwg__f46ee0cfb3db53fd__f000036900-000037550",
+      "clip_index": 748,
+      "native_fps": "50",
+      "frame_index": 129,
+      "kind": "observed",
+      "window_start": 114,
+      "rgb_shard_sha256": "17bf66909171adcc3e5f2182d164e0d33916093bb39866f46a85ba263116c4d2",
+      "teacher_xy": [
+        892.5999755859375,
+        397.199951171875
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "GRW4OUknRwg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/GRW4OUknRwg__f46ee0cfb3db53fd__f000036900-000037550",
+      "clip_index": 748,
+      "native_fps": "50",
+      "frame_index": 363,
+      "kind": "observed",
+      "window_start": 348,
+      "rgb_shard_sha256": "17bf66909171adcc3e5f2182d164e0d33916093bb39866f46a85ba263116c4d2",
+      "teacher_xy": [
+        1667.0999755859375,
+        704.3999633789062
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "GRW4OUknRwg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/GRW4OUknRwg__f46ee0cfb3db53fd__f000056800-000057450",
+      "clip_index": 750,
+      "native_fps": "50",
+      "frame_index": 201,
+      "kind": "out_of_frame",
+      "window_start": 186,
+      "rgb_shard_sha256": "827cd6ba2fb0ad72e4d4a773bc368eddb03eb38151232d40b4f1ca506da64f26",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "GRW4OUknRwg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/GRW4OUknRwg__f46ee0cfb3db53fd__f000056800-000057450",
+      "clip_index": 750,
+      "native_fps": "50",
+      "frame_index": 224,
+      "kind": "out_of_frame",
+      "window_start": 209,
+      "rgb_shard_sha256": "827cd6ba2fb0ad72e4d4a773bc368eddb03eb38151232d40b4f1ca506da64f26",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "GRW4OUknRwg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/GRW4OUknRwg__f46ee0cfb3db53fd__f000056800-000057450",
+      "clip_index": 750,
+      "native_fps": "50",
+      "frame_index": 454,
+      "kind": "observed",
+      "window_start": 439,
+      "rgb_shard_sha256": "827cd6ba2fb0ad72e4d4a773bc368eddb03eb38151232d40b4f1ca506da64f26",
+      "teacher_xy": [
+        1335.5,
+        630.0999755859375
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "GRW4OUknRwg",
+      "camera_id": null,
+      "clip_id": "chat_annotation/GRW4OUknRwg__f46ee0cfb3db53fd__f000056800-000057450",
+      "clip_index": 750,
+      "native_fps": "50",
+      "frame_index": 646,
+      "kind": "observed",
+      "window_start": 631,
+      "rgb_shard_sha256": "827cd6ba2fb0ad72e4d4a773bc368eddb03eb38151232d40b4f1ca506da64f26",
+      "teacher_xy": [
+        1026.099853515625,
+        370.39996337890625
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "IX0CrIlw9eo",
+      "camera_id": null,
+      "clip_id": "chat_annotation/IX0CrIlw9eo__0af56e9f057b8fcb__f000000000-000000780",
+      "clip_index": 298,
+      "native_fps": "60",
+      "frame_index": 343,
+      "kind": "reviewed_empty",
+      "window_start": 328,
+      "rgb_shard_sha256": "a7a423dc0a17a1e15751ab025b066d4d940a7571d35499f689f53f66060a938a",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "IX0CrIlw9eo",
+      "camera_id": null,
+      "clip_id": "chat_annotation/IX0CrIlw9eo__0af56e9f057b8fcb__f000000000-000000780",
+      "clip_index": 298,
+      "native_fps": "60",
+      "frame_index": 754,
+      "kind": "observed",
+      "window_start": 739,
+      "rgb_shard_sha256": "a7a423dc0a17a1e15751ab025b066d4d940a7571d35499f689f53f66060a938a",
+      "teacher_xy": [
+        1037.5,
+        167.49998474121094
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "IX0CrIlw9eo",
+      "camera_id": null,
+      "clip_id": "chat_annotation/IX0CrIlw9eo__0af56e9f057b8fcb__f000000780-000001560",
+      "clip_index": 299,
+      "native_fps": "60",
+      "frame_index": 80,
+      "kind": "observed",
+      "window_start": 65,
+      "rgb_shard_sha256": "24ed723ed1f3ce6d213c505cec366e7d933537dbe2fd449fc455cd0ea969de6b",
+      "teacher_xy": [
+        983.8999633789062,
+        369.699951171875
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "IX0CrIlw9eo",
+      "camera_id": null,
+      "clip_id": "chat_annotation/IX0CrIlw9eo__0af56e9f057b8fcb__f000000780-000001560",
+      "clip_index": 299,
+      "native_fps": "60",
+      "frame_index": 737,
+      "kind": "observed",
+      "window_start": 722,
+      "rgb_shard_sha256": "24ed723ed1f3ce6d213c505cec366e7d933537dbe2fd449fc455cd0ea969de6b",
+      "teacher_xy": [
+        1033.5,
+        355.89996337890625
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "IX0CrIlw9eo",
+      "camera_id": null,
+      "clip_id": "chat_annotation/IX0CrIlw9eo__0af56e9f057b8fcb__f000001560-000002340",
+      "clip_index": 300,
+      "native_fps": "60",
+      "frame_index": 423,
+      "kind": "out_of_frame",
+      "window_start": 408,
+      "rgb_shard_sha256": "28df07e6b6fa1af7df879aba2734f2e0f54835df41418c9f863e9538ce224306",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "IX0CrIlw9eo",
+      "camera_id": null,
+      "clip_id": "chat_annotation/IX0CrIlw9eo__0af56e9f057b8fcb__f000002340-000003120",
+      "clip_index": 301,
+      "native_fps": "60",
+      "frame_index": 591,
+      "kind": "reviewed_empty",
+      "window_start": 576,
+      "rgb_shard_sha256": "7812e6b9dda93ac5054a865feff7b4f2b16137c2e74350bcd2fd722471cf1698",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "IX0CrIlw9eo",
+      "camera_id": null,
+      "clip_id": "chat_annotation/IX0CrIlw9eo__0af56e9f057b8fcb__f000002340-000003120",
+      "clip_index": 301,
+      "native_fps": "60",
+      "frame_index": 660,
+      "kind": "observed",
+      "window_start": 645,
+      "rgb_shard_sha256": "7812e6b9dda93ac5054a865feff7b4f2b16137c2e74350bcd2fd722471cf1698",
+      "teacher_xy": [
+        889.0,
+        286.0
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "IX0CrIlw9eo",
+      "camera_id": null,
+      "clip_id": "chat_annotation/IX0CrIlw9eo__0af56e9f057b8fcb__f000002340-000003120",
+      "clip_index": 301,
+      "native_fps": "60",
+      "frame_index": 785,
+      "kind": "out_of_frame",
+      "window_start": 770,
+      "rgb_shard_sha256": "7812e6b9dda93ac5054a865feff7b4f2b16137c2e74350bcd2fd722471cf1698",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "JDIu8M4mTp4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/JDIu8M4mTp4__427b140d2c8be07d__f000000752-000001531",
+      "clip_index": 308,
+      "native_fps": "60000/1001",
+      "frame_index": 262,
+      "kind": "observed",
+      "window_start": 247,
+      "rgb_shard_sha256": "38cd6c26e8962792e0304eb143cce8835ae75accf0db371a4d9fcdfdecb8686d",
+      "teacher_xy": [
+        853.0999755859375,
+        416.9999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "JDIu8M4mTp4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/JDIu8M4mTp4__427b140d2c8be07d__f000000752-000001531",
+      "clip_index": 308,
+      "native_fps": "60000/1001",
+      "frame_index": 413,
+      "kind": "observed",
+      "window_start": 398,
+      "rgb_shard_sha256": "38cd6c26e8962792e0304eb143cce8835ae75accf0db371a4d9fcdfdecb8686d",
+      "teacher_xy": [
+        1088.0,
+        272.89996337890625
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "JDIu8M4mTp4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/JDIu8M4mTp4__427b140d2c8be07d__f000005318-000006097",
+      "clip_index": 310,
+      "native_fps": "60000/1001",
+      "frame_index": 390,
+      "kind": "observed",
+      "window_start": 375,
+      "rgb_shard_sha256": "e8015a1a3ad51ad290fdf3fd00ec0a67739b76e7334811852e04af5ccabd1f0c",
+      "teacher_xy": [
+        788.9999389648438,
+        36.5
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "JDIu8M4mTp4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/JDIu8M4mTp4__427b140d2c8be07d__f000005318-000006097",
+      "clip_index": 310,
+      "native_fps": "60000/1001",
+      "frame_index": 412,
+      "kind": "out_of_frame",
+      "window_start": 397,
+      "rgb_shard_sha256": "e8015a1a3ad51ad290fdf3fd00ec0a67739b76e7334811852e04af5ccabd1f0c",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "JDIu8M4mTp4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/JDIu8M4mTp4__427b140d2c8be07d__f000005318-000006097",
+      "clip_index": 310,
+      "native_fps": "60000/1001",
+      "frame_index": 586,
+      "kind": "out_of_frame",
+      "window_start": 571,
+      "rgb_shard_sha256": "e8015a1a3ad51ad290fdf3fd00ec0a67739b76e7334811852e04af5ccabd1f0c",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "JDIu8M4mTp4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/JDIu8M4mTp4__427b140d2c8be07d__f000005318-000006097",
+      "clip_index": 310,
+      "native_fps": "60000/1001",
+      "frame_index": 693,
+      "kind": "reviewed_empty",
+      "window_start": 678,
+      "rgb_shard_sha256": "e8015a1a3ad51ad290fdf3fd00ec0a67739b76e7334811852e04af5ccabd1f0c",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "JDIu8M4mTp4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/JDIu8M4mTp4__427b140d2c8be07d__f000007601-000008380",
+      "clip_index": 311,
+      "native_fps": "60000/1001",
+      "frame_index": 347,
+      "kind": "observed",
+      "window_start": 332,
+      "rgb_shard_sha256": "21a95cc5ef9d2d38bed5d5b48f8e6576da79f6dffa1bfacd57bf33509ddb72fb",
+      "teacher_xy": [
+        1650.0,
+        864.4999389648438
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "JDIu8M4mTp4",
+      "camera_id": null,
+      "clip_id": "chat_annotation/JDIu8M4mTp4__427b140d2c8be07d__f000009884-000010663",
+      "clip_index": 312,
+      "native_fps": "60000/1001",
+      "frame_index": 411,
+      "kind": "reviewed_empty",
+      "window_start": 396,
+      "rgb_shard_sha256": "0145e57f9430160ad7b2d67f7f81a083fb0850a331815b142be00a4347f7dc60",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "KmfKb0MswR0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/KmfKb0MswR0__16d222fe3ea99e65__f000001990-000002640",
+      "clip_index": 318,
+      "native_fps": "50",
+      "frame_index": 418,
+      "kind": "observed",
+      "window_start": 403,
+      "rgb_shard_sha256": "763f47c7d3a780b3c5c1ec8b1c0e78324b7329aa1f303174eed9768d91579eda",
+      "teacher_xy": [
+        707.0999755859375,
+        581.4999389648438
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "KmfKb0MswR0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/KmfKb0MswR0__16d222fe3ea99e65__f000001990-000002640",
+      "clip_index": 318,
+      "native_fps": "50",
+      "frame_index": 599,
+      "kind": "observed",
+      "window_start": 584,
+      "rgb_shard_sha256": "763f47c7d3a780b3c5c1ec8b1c0e78324b7329aa1f303174eed9768d91579eda",
+      "teacher_xy": [
+        1144.0,
+        738.5
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "KmfKb0MswR0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/KmfKb0MswR0__16d222fe3ea99e65__f000006619-000007269",
+      "clip_index": 319,
+      "native_fps": "50",
+      "frame_index": 581,
+      "kind": "observed",
+      "window_start": 566,
+      "rgb_shard_sha256": "6aedd068bc41d0fd205b0ec8b63e7e1ddb3f9839f310d6d6b682172e740816cb",
+      "teacher_xy": [
+        854.1000366210938,
+        291.1000061035156
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "KmfKb0MswR0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/KmfKb0MswR0__16d222fe3ea99e65__f000011247-000011897",
+      "clip_index": 320,
+      "native_fps": "50",
+      "frame_index": 398,
+      "kind": "out_of_frame",
+      "window_start": 383,
+      "rgb_shard_sha256": "b7e271792680bb715f6bc5c47c0b9d3739e274c5101fec1276a74d74f7041c11",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "KmfKb0MswR0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/KmfKb0MswR0__16d222fe3ea99e65__f000011247-000011897",
+      "clip_index": 320,
+      "native_fps": "50",
+      "frame_index": 423,
+      "kind": "out_of_frame",
+      "window_start": 408,
+      "rgb_shard_sha256": "b7e271792680bb715f6bc5c47c0b9d3739e274c5101fec1276a74d74f7041c11",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "KmfKb0MswR0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/KmfKb0MswR0__16d222fe3ea99e65__f000015876-000016526",
+      "clip_index": 321,
+      "native_fps": "50",
+      "frame_index": 183,
+      "kind": "observed",
+      "window_start": 168,
+      "rgb_shard_sha256": "723633f9ac6c1ea353faab5b8acabc0796892a5b636de160dca64b5e7fcacf28",
+      "teacher_xy": [
+        1059.4998779296875,
+        304.4999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "KmfKb0MswR0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/KmfKb0MswR0__16d222fe3ea99e65__f000020505-000021155",
+      "clip_index": 322,
+      "native_fps": "50",
+      "frame_index": 210,
+      "kind": "reviewed_empty",
+      "window_start": 195,
+      "rgb_shard_sha256": "59e40d28a1c037b16cb934d65aea399aa8cf22f58eecd04b16b2e5b3517acc4b",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "KmfKb0MswR0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/KmfKb0MswR0__16d222fe3ea99e65__f000020505-000021155",
+      "clip_index": 322,
+      "native_fps": "50",
+      "frame_index": 603,
+      "kind": "reviewed_empty",
+      "window_start": 588,
+      "rgb_shard_sha256": "59e40d28a1c037b16cb934d65aea399aa8cf22f58eecd04b16b2e5b3517acc4b",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "LaPfQVHFk7A",
+      "camera_id": null,
+      "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+      "clip_index": 328,
+      "native_fps": "30",
+      "frame_index": 97,
+      "kind": "observed",
+      "window_start": 82,
+      "rgb_shard_sha256": "7cb632aa690b6bb830c2313ff1af4a535b5cd373e46070f1a32acdf9b303dd59",
+      "teacher_xy": [
+        909.4999389648438,
+        300.4999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "LaPfQVHFk7A",
+      "camera_id": null,
+      "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+      "clip_index": 328,
+      "native_fps": "30",
+      "frame_index": 159,
+      "kind": "observed",
+      "window_start": 144,
+      "rgb_shard_sha256": "7cb632aa690b6bb830c2313ff1af4a535b5cd373e46070f1a32acdf9b303dd59",
+      "teacher_xy": [
+        926.5999755859375,
+        362.1999816894531
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "LaPfQVHFk7A",
+      "camera_id": null,
+      "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+      "clip_index": 328,
+      "native_fps": "30",
+      "frame_index": 245,
+      "kind": "observed",
+      "window_start": 230,
+      "rgb_shard_sha256": "7cb632aa690b6bb830c2313ff1af4a535b5cd373e46070f1a32acdf9b303dd59",
+      "teacher_xy": [
+        900.6000366210938,
+        372.1999816894531
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "LaPfQVHFk7A",
+      "camera_id": null,
+      "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000001529-000001919",
+      "clip_index": 328,
+      "native_fps": "30",
+      "frame_index": 296,
+      "kind": "observed",
+      "window_start": 281,
+      "rgb_shard_sha256": "7cb632aa690b6bb830c2313ff1af4a535b5cd373e46070f1a32acdf9b303dd59",
+      "teacher_xy": [
+        972.89990234375,
+        572.9999389648438
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "LaPfQVHFk7A",
+      "camera_id": null,
+      "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000004977-000005367",
+      "clip_index": 329,
+      "native_fps": "30",
+      "frame_index": 373,
+      "kind": "reviewed_empty",
+      "window_start": 358,
+      "rgb_shard_sha256": "254aa30ecaa33333d50863398db3784de9ecdb6e167e821e0c7e530ad37ce152",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "LaPfQVHFk7A",
+      "camera_id": null,
+      "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000008424-000008814",
+      "clip_index": 330,
+      "native_fps": "30",
+      "frame_index": 156,
+      "kind": "out_of_frame",
+      "window_start": 141,
+      "rgb_shard_sha256": "ae2226a018e3d3513fa70b0fca95347b1c4afc165df27d890ec1d915d8271f65",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "LaPfQVHFk7A",
+      "camera_id": null,
+      "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000015319-000015709",
+      "clip_index": 332,
+      "native_fps": "30",
+      "frame_index": 89,
+      "kind": "out_of_frame",
+      "window_start": 74,
+      "rgb_shard_sha256": "c51ccc440ed14b6f0eae2fc2951df0d0e20a53fba34b7e1753d400b168e2d8d7",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "LaPfQVHFk7A",
+      "camera_id": null,
+      "clip_id": "chat_annotation/LaPfQVHFk7A__546f73ee7719a2ab__f000015319-000015709",
+      "clip_index": 332,
+      "native_fps": "30",
+      "frame_index": 171,
+      "kind": "reviewed_empty",
+      "window_start": 156,
+      "rgb_shard_sha256": "c51ccc440ed14b6f0eae2fc2951df0d0e20a53fba34b7e1753d400b168e2d8d7",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "bTFK6YV-u1E",
+      "camera_id": null,
+      "clip_id": "chat_annotation/bTFK6YV-u1E__06d8a6f7fdf8b032__f000022860-000023640",
+      "clip_index": 918,
+      "native_fps": "60",
+      "frame_index": 76,
+      "kind": "reviewed_empty",
+      "window_start": 61,
+      "rgb_shard_sha256": "3c92e1af399918b8408b5601869b1ee2b60807c9d5ac36a5ea81a28e96d7c615",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "bTFK6YV-u1E",
+      "camera_id": null,
+      "clip_id": "chat_annotation/bTFK6YV-u1E__06d8a6f7fdf8b032__f000022860-000023640",
+      "clip_index": 918,
+      "native_fps": "60",
+      "frame_index": 217,
+      "kind": "observed",
+      "window_start": 202,
+      "rgb_shard_sha256": "3c92e1af399918b8408b5601869b1ee2b60807c9d5ac36a5ea81a28e96d7c615",
+      "teacher_xy": [
+        1345.5,
+        597.9999389648438
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "bTFK6YV-u1E",
+      "camera_id": null,
+      "clip_id": "chat_annotation/bTFK6YV-u1E__06d8a6f7fdf8b032__f000029400-000030180",
+      "clip_index": 919,
+      "native_fps": "60",
+      "frame_index": 323,
+      "kind": "out_of_frame",
+      "window_start": 308,
+      "rgb_shard_sha256": "7fcd8b27cb00e9152f281a77f9369df9f732b218b5d4662fbfec5d25a359c63d",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "bTFK6YV-u1E",
+      "camera_id": null,
+      "clip_id": "chat_annotation/bTFK6YV-u1E__06d8a6f7fdf8b032__f000029400-000030180",
+      "clip_index": 919,
+      "native_fps": "60",
+      "frame_index": 537,
+      "kind": "observed",
+      "window_start": 522,
+      "rgb_shard_sha256": "7fcd8b27cb00e9152f281a77f9369df9f732b218b5d4662fbfec5d25a359c63d",
+      "teacher_xy": [
+        1144.0,
+        310.0
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "bTFK6YV-u1E",
+      "camera_id": null,
+      "clip_id": "chat_annotation/bTFK6YV-u1E__06d8a6f7fdf8b032__f000029400-000030180",
+      "clip_index": 919,
+      "native_fps": "60",
+      "frame_index": 541,
+      "kind": "observed",
+      "window_start": 526,
+      "rgb_shard_sha256": "7fcd8b27cb00e9152f281a77f9369df9f732b218b5d4662fbfec5d25a359c63d",
+      "teacher_xy": [
+        1153.5,
+        309.0
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "bTFK6YV-u1E",
+      "camera_id": null,
+      "clip_id": "chat_annotation/bTFK6YV-u1E__06d8a6f7fdf8b032__f000029400-000030180",
+      "clip_index": 919,
+      "native_fps": "60",
+      "frame_index": 780,
+      "kind": "reviewed_empty",
+      "window_start": 765,
+      "rgb_shard_sha256": "7fcd8b27cb00e9152f281a77f9369df9f732b218b5d4662fbfec5d25a359c63d",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "bTFK6YV-u1E",
+      "camera_id": null,
+      "clip_id": "chat_annotation/bTFK6YV-u1E__06d8a6f7fdf8b032__f000036120-000036900",
+      "clip_index": 921,
+      "native_fps": "60",
+      "frame_index": 260,
+      "kind": "out_of_frame",
+      "window_start": 245,
+      "rgb_shard_sha256": "79d1c467bab0be09dceb11fc2885c165d541efaf7cbdacedd0258338f1d0ef0d",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "bTFK6YV-u1E",
+      "camera_id": null,
+      "clip_id": "chat_annotation/bTFK6YV-u1E__06d8a6f7fdf8b032__f000036120-000036900",
+      "clip_index": 921,
+      "native_fps": "60",
+      "frame_index": 616,
+      "kind": "observed",
+      "window_start": 601,
+      "rgb_shard_sha256": "79d1c467bab0be09dceb11fc2885c165d541efaf7cbdacedd0258338f1d0ef0d",
+      "teacher_xy": [
+        829.0,
+        194.5
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "cuFN663LQJc",
+      "camera_id": null,
+      "clip_id": "chat_annotation/cuFN663LQJc__a5ad1f80a727b950__f000000921-000001688",
+      "clip_index": 487,
+      "native_fps": "59",
+      "frame_index": 698,
+      "kind": "observed",
+      "window_start": 683,
+      "rgb_shard_sha256": "c4741ff83251c8245d55735ab5d1bb082a388778cf6e1e1e27bedb49286623b6",
+      "teacher_xy": [
+        946.5,
+        303.1999816894531
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "cuFN663LQJc",
+      "camera_id": null,
+      "clip_id": "chat_annotation/cuFN663LQJc__a5ad1f80a727b950__f000003529-000004296",
+      "clip_index": 488,
+      "native_fps": "59",
+      "frame_index": 756,
+      "kind": "reviewed_empty",
+      "window_start": 741,
+      "rgb_shard_sha256": "e2de2120852c0459afda53dd995ebf47a2bf0e7c50ace1c43f60256da8dc53c4",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "cuFN663LQJc",
+      "camera_id": null,
+      "clip_id": "chat_annotation/cuFN663LQJc__a5ad1f80a727b950__f000006137-000006904",
+      "clip_index": 489,
+      "native_fps": "59",
+      "frame_index": 279,
+      "kind": "observed",
+      "window_start": 264,
+      "rgb_shard_sha256": "dbdd8d3966e5a36bf091f9e6e3ec3bc96676688b24521faea01acb12c963b641",
+      "teacher_xy": [
+        716.9999389648438,
+        354.5999755859375
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "cuFN663LQJc",
+      "camera_id": null,
+      "clip_id": "chat_annotation/cuFN663LQJc__a5ad1f80a727b950__f000006137-000006904",
+      "clip_index": 489,
+      "native_fps": "59",
+      "frame_index": 315,
+      "kind": "observed",
+      "window_start": 300,
+      "rgb_shard_sha256": "dbdd8d3966e5a36bf091f9e6e3ec3bc96676688b24521faea01acb12c963b641",
+      "teacher_xy": [
+        838.199951171875,
+        235.29998779296875
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "cuFN663LQJc",
+      "camera_id": null,
+      "clip_id": "chat_annotation/cuFN663LQJc__a5ad1f80a727b950__f000006137-000006904",
+      "clip_index": 489,
+      "native_fps": "59",
+      "frame_index": 653,
+      "kind": "observed",
+      "window_start": 638,
+      "rgb_shard_sha256": "dbdd8d3966e5a36bf091f9e6e3ec3bc96676688b24521faea01acb12c963b641",
+      "teacher_xy": [
+        1057.9998779296875,
+        185.99998474121094
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "cuFN663LQJc",
+      "camera_id": null,
+      "clip_id": "chat_annotation/cuFN663LQJc__a5ad1f80a727b950__f000008746-000009513",
+      "clip_index": 490,
+      "native_fps": "59",
+      "frame_index": 391,
+      "kind": "reviewed_empty",
+      "window_start": 376,
+      "rgb_shard_sha256": "afa8eb504c63648cd5345362fe72f1b17be34dc3eec4e5219eaf89f0c01eb38b",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "cuFN663LQJc",
+      "camera_id": null,
+      "clip_id": "chat_annotation/cuFN663LQJc__a5ad1f80a727b950__f000008746-000009513",
+      "clip_index": 490,
+      "native_fps": "59",
+      "frame_index": 458,
+      "kind": "out_of_frame",
+      "window_start": 443,
+      "rgb_shard_sha256": "afa8eb504c63648cd5345362fe72f1b17be34dc3eec4e5219eaf89f0c01eb38b",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "cuFN663LQJc",
+      "camera_id": null,
+      "clip_id": "chat_annotation/cuFN663LQJc__a5ad1f80a727b950__f000008746-000009513",
+      "clip_index": 490,
+      "native_fps": "59",
+      "frame_index": 468,
+      "kind": "out_of_frame",
+      "window_start": 453,
+      "rgb_shard_sha256": "afa8eb504c63648cd5345362fe72f1b17be34dc3eec4e5219eaf89f0c01eb38b",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "yTKfvVA1yi0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yTKfvVA1yi0__6e1aad1f1dbfa4fb__f000006054-000006833",
+      "clip_index": 1017,
+      "native_fps": "60000/1001",
+      "frame_index": 673,
+      "kind": "observed",
+      "window_start": 658,
+      "rgb_shard_sha256": "35292fd9773b9f4f9108ef4082bbce232c2830540128dee611cc9235b0b9310e",
+      "teacher_xy": [
+        1012.5999145507812,
+        143.6999969482422
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "yTKfvVA1yi0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yTKfvVA1yi0__6e1aad1f1dbfa4fb__f000025775-000026553",
+      "clip_index": 1018,
+      "native_fps": "60000/1001",
+      "frame_index": 785,
+      "kind": "out_of_frame",
+      "window_start": 770,
+      "rgb_shard_sha256": "bf167721e201238ed1b5cb541e7f75adc490b94b82b17e60ea26f31294ca2364",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "yTKfvVA1yi0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yTKfvVA1yi0__6e1aad1f1dbfa4fb__f000033567-000034345",
+      "clip_index": 1019,
+      "native_fps": "60000/1001",
+      "frame_index": 695,
+      "kind": "observed",
+      "window_start": 680,
+      "rgb_shard_sha256": "0c627988f3f729501f60208589303416aeae8895cff08744b4a83ab99ea98a4c",
+      "teacher_xy": [
+        796.0999755859375,
+        277.0
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "yTKfvVA1yi0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yTKfvVA1yi0__6e1aad1f1dbfa4fb__f000035005-000035784",
+      "clip_index": 1020,
+      "native_fps": "60000/1001",
+      "frame_index": 471,
+      "kind": "observed",
+      "window_start": 456,
+      "rgb_shard_sha256": "e8241a25ea7832add5706c704a9af146bdaa7eaa14cbc6900073513c7b13c3cf",
+      "teacher_xy": [
+        1002.4999389648438,
+        125.29999542236328
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "yTKfvVA1yi0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yTKfvVA1yi0__6e1aad1f1dbfa4fb__f000050710-000051488",
+      "clip_index": 1021,
+      "native_fps": "60000/1001",
+      "frame_index": 188,
+      "kind": "out_of_frame",
+      "window_start": 173,
+      "rgb_shard_sha256": "f08cbffd7984e4a8cf6c1a9e58bd9c030fc5758179d6c31c797936909c87662b",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "yTKfvVA1yi0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yTKfvVA1yi0__6e1aad1f1dbfa4fb__f000050710-000051488",
+      "clip_index": 1021,
+      "native_fps": "60000/1001",
+      "frame_index": 652,
+      "kind": "observed",
+      "window_start": 637,
+      "rgb_shard_sha256": "f08cbffd7984e4a8cf6c1a9e58bd9c030fc5758179d6c31c797936909c87662b",
+      "teacher_xy": [
+        1134.5,
+        151.99998474121094
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "yTKfvVA1yi0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yTKfvVA1yi0__6e1aad1f1dbfa4fb__f000050710-000051488",
+      "clip_index": 1021,
+      "native_fps": "60000/1001",
+      "frame_index": 739,
+      "kind": "reviewed_empty",
+      "window_start": 724,
+      "rgb_shard_sha256": "f08cbffd7984e4a8cf6c1a9e58bd9c030fc5758179d6c31c797936909c87662b",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "chat_annotation",
+      "source_group": "yTKfvVA1yi0",
+      "camera_id": null,
+      "clip_id": "chat_annotation/yTKfvVA1yi0__6e1aad1f1dbfa4fb__f000050710-000051488",
+      "clip_index": 1021,
+      "native_fps": "60000/1001",
+      "frame_index": 782,
+      "kind": "reviewed_empty",
+      "window_start": 767,
+      "rgb_shard_sha256": "f08cbffd7984e4a8cf6c1a9e58bd9c030fc5758179d6c31c797936909c87662b",
+      "teacher_xy": null,
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam1",
+      "clip_id": "meiji/video_000/clip_000/cam1",
+      "clip_index": 51,
+      "native_fps": "2997003/50000",
+      "frame_index": 142,
+      "kind": "observed",
+      "window_start": 127,
+      "rgb_shard_sha256": "11a9719135aa76d0d5c9e3d968267234eba0a27f9ce2d32e0580f0b31e024bfd",
+      "teacher_xy": [
+        624.9400024414062,
+        436.3199768066406
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam2",
+      "clip_id": "meiji/video_000/clip_000/cam2",
+      "clip_index": 52,
+      "native_fps": "2997003/50000",
+      "frame_index": 144,
+      "kind": "observed",
+      "window_start": 129,
+      "rgb_shard_sha256": "d395d5df5b6a955c120fd52fbdd7b98e51b2b0a103472ce3ff52c207afd29421",
+      "teacher_xy": [
+        1029.4200439453125,
+        322.54998779296875
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam2",
+      "clip_id": "meiji/video_000/clip_000/cam2",
+      "clip_index": 52,
+      "native_fps": "2997003/50000",
+      "frame_index": 272,
+      "kind": "observed",
+      "window_start": 257,
+      "rgb_shard_sha256": "d395d5df5b6a955c120fd52fbdd7b98e51b2b0a103472ce3ff52c207afd29421",
+      "teacher_xy": [
+        799.4099731445312,
+        458.66998291015625
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam0",
+      "clip_id": "meiji/video_000/clip_001/cam0",
+      "clip_index": 53,
+      "native_fps": "2997003/50000",
+      "frame_index": 192,
+      "kind": "observed",
+      "window_start": 177,
+      "rgb_shard_sha256": "076e95d900de8f54f87b5185c528006b5b859191ea4ba32962a5ecc1e3c9e312",
+      "teacher_xy": [
+        1042.551025390625,
+        315.4919738769531
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam1",
+      "clip_id": "meiji/video_000/clip_001/cam1",
+      "clip_index": 54,
+      "native_fps": "2997003/50000",
+      "frame_index": 222,
+      "kind": "observed",
+      "window_start": 207,
+      "rgb_shard_sha256": "f80a7cec8121c9ee5fd15b228d797c356a77f84feecb9382c3c7a97717e8da4d",
+      "teacher_xy": [
+        1146.02197265625,
+        586.407958984375
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam2",
+      "clip_id": "meiji/video_000/clip_001/cam2",
+      "clip_index": 55,
+      "native_fps": "2997003/50000",
+      "frame_index": 305,
+      "kind": "observed",
+      "window_start": 290,
+      "rgb_shard_sha256": "18e7aa7ddaa878cecddd61a420e5843f22d4d65f19e8585e737e255fa9313248",
+      "teacher_xy": [
+        783.2239990234375,
+        384.8959655761719
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam0",
+      "clip_id": "meiji/video_000/clip_002/cam0",
+      "clip_index": 56,
+      "native_fps": "2997003/50000",
+      "frame_index": 663,
+      "kind": "observed",
+      "window_start": 648,
+      "rgb_shard_sha256": "523642ccb0a85eb4d6a453196e3defcb1735d1124273f62dd0170c9d7627065f",
+      "teacher_xy": [
+        1123.0,
+        298.0
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam1",
+      "clip_id": "meiji/video_000/clip_002/cam1",
+      "clip_index": 57,
+      "native_fps": "2997003/50000",
+      "frame_index": 1117,
+      "kind": "observed",
+      "window_start": 1102,
+      "rgb_shard_sha256": "bdaf6550f5d435e0e5cab891cb166315154f9b2056938e12b5c14aaa61427a32",
+      "teacher_xy": [
+        964.7599487304688,
+        584.1799926757812
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam2",
+      "clip_id": "meiji/video_000/clip_002/cam2",
+      "clip_index": 58,
+      "native_fps": "2997003/50000",
+      "frame_index": 128,
+      "kind": "observed",
+      "window_start": 113,
+      "rgb_shard_sha256": "7d2a805da0db8758a7176f116e7d7937efd1039448a0d2b46e7d8ab349c8d067",
+      "teacher_xy": [
+        876.0,
+        348.4999694824219
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam0",
+      "clip_id": "meiji/video_000/clip_003/cam0",
+      "clip_index": 59,
+      "native_fps": "2997003/50000",
+      "frame_index": 786,
+      "kind": "observed",
+      "window_start": 771,
+      "rgb_shard_sha256": "34470df359a62d3442c8ae4b603d4f09cb38fd421551515e82a7a34bd81502e7",
+      "teacher_xy": [
+        982.449951171875,
+        413.5099792480469
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam0",
+      "clip_id": "meiji/video_000/clip_003/cam0",
+      "clip_index": 59,
+      "native_fps": "2997003/50000",
+      "frame_index": 946,
+      "kind": "observed",
+      "window_start": 931,
+      "rgb_shard_sha256": "34470df359a62d3442c8ae4b603d4f09cb38fd421551515e82a7a34bd81502e7",
+      "teacher_xy": [
+        1087.199951171875,
+        339.02996826171875
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam1",
+      "clip_id": "meiji/video_000/clip_004/cam1",
+      "clip_index": 63,
+      "native_fps": "2997003/50000",
+      "frame_index": 145,
+      "kind": "observed",
+      "window_start": 130,
+      "rgb_shard_sha256": "ebab42151cb081a9fdc54774a52a45ae90572235d5fced0e930c9d507fd0927a",
+      "teacher_xy": [
+        977.5260620117188,
+        433.4649658203125
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam1",
+      "clip_id": "meiji/video_000/clip_005/cam1",
+      "clip_index": 66,
+      "native_fps": "2997003/50000",
+      "frame_index": 165,
+      "kind": "observed",
+      "window_start": 150,
+      "rgb_shard_sha256": "938714aace4d5b2cb2b6d99c555677989a2e40ac2f51be1587dff2fd687d3b22",
+      "teacher_xy": [
+        481.4100036621094,
+        539.5099487304688
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam2",
+      "clip_id": "meiji/video_000/clip_005/cam2",
+      "clip_index": 67,
+      "native_fps": "2997003/50000",
+      "frame_index": 270,
+      "kind": "observed",
+      "window_start": 255,
+      "rgb_shard_sha256": "c75bc7bb587c31e904d4fdc23537262d9e9e6824d3b6479849d5910a48f1423f",
+      "teacher_xy": [
+        909.3499755859375,
+        428.8399963378906
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam0",
+      "clip_id": "meiji/video_000/clip_006/cam0",
+      "clip_index": 68,
+      "native_fps": "2997003/50000",
+      "frame_index": 147,
+      "kind": "observed",
+      "window_start": 132,
+      "rgb_shard_sha256": "7c17851ff0319d7d4fcc66cc28758d751a6807a01b2337a8f054efaeb90dec08",
+      "teacher_xy": [
+        1078.219970703125,
+        334.6399841308594
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam0",
+      "clip_id": "meiji/video_000/clip_006/cam0",
+      "clip_index": 68,
+      "native_fps": "2997003/50000",
+      "frame_index": 340,
+      "kind": "observed",
+      "window_start": 325,
+      "rgb_shard_sha256": "7c17851ff0319d7d4fcc66cc28758d751a6807a01b2337a8f054efaeb90dec08",
+      "teacher_xy": [
+        1128.9898681640625,
+        333.42999267578125
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam1",
+      "clip_id": "meiji/video_000/clip_006/cam1",
+      "clip_index": 69,
+      "native_fps": "2997003/50000",
+      "frame_index": 117,
+      "kind": "observed",
+      "window_start": 102,
+      "rgb_shard_sha256": "7394b7f503e9d31525f314863efca160e2d3182aff3128e7d490104c4c065ec5",
+      "teacher_xy": [
+        698.0399169921875,
+        477.94000244140625
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam0",
+      "clip_id": "meiji/video_000/clip_007/cam0",
+      "clip_index": 71,
+      "native_fps": "2997003/50000",
+      "frame_index": 254,
+      "kind": "observed",
+      "window_start": 239,
+      "rgb_shard_sha256": "41c0495eaf3b48e6eb1bc69939c22d257b688f9ae2595dfb94ef7ed4dd78400d",
+      "teacher_xy": [
+        860.5400390625,
+        140.91998291015625
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam0",
+      "clip_id": "meiji/video_000/clip_007/cam0",
+      "clip_index": 71,
+      "native_fps": "2997003/50000",
+      "frame_index": 326,
+      "kind": "observed",
+      "window_start": 311,
+      "rgb_shard_sha256": "41c0495eaf3b48e6eb1bc69939c22d257b688f9ae2595dfb94ef7ed4dd78400d",
+      "teacher_xy": [
+        755.5199584960938,
+        433.40997314453125
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam2",
+      "clip_id": "meiji/video_000/clip_008/cam2",
+      "clip_index": 76,
+      "native_fps": "2997003/50000",
+      "frame_index": 290,
+      "kind": "observed",
+      "window_start": 275,
+      "rgb_shard_sha256": "ba69f6e690c532953f46046c2b628db13fbdbda8100a031a941c32a462bf4a93",
+      "teacher_xy": [
+        984.219970703125,
+        427.2899475097656
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam1",
+      "clip_id": "meiji/video_000/clip_009/cam1",
+      "clip_index": 78,
+      "native_fps": "2997003/50000",
+      "frame_index": 341,
+      "kind": "observed",
+      "window_start": 326,
+      "rgb_shard_sha256": "52cd96eb602d3fb186b101e2942ff541fef15f516c33a756b983fe528835ca4b",
+      "teacher_xy": [
+        675.5299682617188,
+        397.5199890136719
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam2",
+      "clip_id": "meiji/video_000/clip_009/cam2",
+      "clip_index": 79,
+      "native_fps": "2997003/50000",
+      "frame_index": 372,
+      "kind": "observed",
+      "window_start": 357,
+      "rgb_shard_sha256": "56d77c9365cc904a7852548410d6fe8065e3a38b1d4871aedfd97e523da0e9c5",
+      "teacher_xy": [
+        386.8599853515625,
+        695.3999633789062
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam1",
+      "clip_id": "meiji/video_000/clip_011/cam1",
+      "clip_index": 84,
+      "native_fps": "2997003/50000",
+      "frame_index": 192,
+      "kind": "observed",
+      "window_start": 177,
+      "rgb_shard_sha256": "b1fe25cb4e7a360c3951229f6ea34be07627b6d323ceb78f98bfd4be84c787a3",
+      "teacher_xy": [
+        704.8699951171875,
+        457.2099914550781
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "meiji",
+      "source_group": "video_000",
+      "camera_id": "cam2",
+      "clip_id": "meiji/video_000/clip_011/cam2",
+      "clip_index": 85,
+      "native_fps": "2997003/50000",
+      "frame_index": 734,
+      "kind": "observed",
+      "window_start": 719,
+      "rgb_shard_sha256": "7fccd4d7002cca76ab12c06c329e94e7c29e2f5ca5731a3ec2e17854d4bcb743",
+      "teacher_xy": [
+        857.1299438476562,
+        338.8659973144531
+      ],
+      "source_size": [
+        1920,
+        1080
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip2",
+      "clip_index": 46,
+      "native_fps": "30",
+      "frame_index": 21,
+      "kind": "observed",
+      "window_start": 6,
+      "rgb_shard_sha256": "26882ca07a64014109f8fd1c3125a620330ee9770e3307447d5703ab65b4b48c",
+      "teacher_xy": [
+        811.0,
+        434.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip2",
+      "clip_index": 46,
+      "native_fps": "30",
+      "frame_index": 25,
+      "kind": "observed",
+      "window_start": 10,
+      "rgb_shard_sha256": "26882ca07a64014109f8fd1c3125a620330ee9770e3307447d5703ab65b4b48c",
+      "teacher_xy": [
+        829.0,
+        400.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip2",
+      "clip_index": 46,
+      "native_fps": "30",
+      "frame_index": 30,
+      "kind": "observed",
+      "window_start": 15,
+      "rgb_shard_sha256": "26882ca07a64014109f8fd1c3125a620330ee9770e3307447d5703ab65b4b48c",
+      "teacher_xy": [
+        776.0,
+        277.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip2",
+      "clip_index": 46,
+      "native_fps": "30",
+      "frame_index": 102,
+      "kind": "observed",
+      "window_start": 87,
+      "rgb_shard_sha256": "26882ca07a64014109f8fd1c3125a620330ee9770e3307447d5703ab65b4b48c",
+      "teacher_xy": [
+        501.0,
+        194.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip2",
+      "clip_index": 46,
+      "native_fps": "30",
+      "frame_index": 114,
+      "kind": "observed",
+      "window_start": 99,
+      "rgb_shard_sha256": "26882ca07a64014109f8fd1c3125a620330ee9770e3307447d5703ab65b4b48c",
+      "teacher_xy": [
+        491.0,
+        120.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip3",
+      "clip_index": 47,
+      "native_fps": "30",
+      "frame_index": 39,
+      "kind": "observed",
+      "window_start": 24,
+      "rgb_shard_sha256": "1261445f42b9721b1fdd425fed90f43d9bdd257b3ff7063d6a928913606e7257",
+      "teacher_xy": [
+        665.0,
+        217.99998474121094
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip3",
+      "clip_index": 47,
+      "native_fps": "30",
+      "frame_index": 44,
+      "kind": "observed",
+      "window_start": 29,
+      "rgb_shard_sha256": "1261445f42b9721b1fdd425fed90f43d9bdd257b3ff7063d6a928913606e7257",
+      "teacher_xy": [
+        666.0,
+        137.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip3",
+      "clip_index": 47,
+      "native_fps": "30",
+      "frame_index": 210,
+      "kind": "observed",
+      "window_start": 195,
+      "rgb_shard_sha256": "1261445f42b9721b1fdd425fed90f43d9bdd257b3ff7063d6a928913606e7257",
+      "teacher_xy": [
+        936.0,
+        414.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip3",
+      "clip_index": 47,
+      "native_fps": "30",
+      "frame_index": 265,
+      "kind": "observed",
+      "window_start": 250,
+      "rgb_shard_sha256": "1261445f42b9721b1fdd425fed90f43d9bdd257b3ff7063d6a928913606e7257",
+      "teacher_xy": [
+        709.0,
+        78.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip5",
+      "clip_index": 48,
+      "native_fps": "30",
+      "frame_index": 19,
+      "kind": "observed",
+      "window_start": 4,
+      "rgb_shard_sha256": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+      "teacher_xy": [
+        633.0,
+        261.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip5",
+      "clip_index": 48,
+      "native_fps": "30",
+      "frame_index": 39,
+      "kind": "observed",
+      "window_start": 24,
+      "rgb_shard_sha256": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+      "teacher_xy": [
+        807.0000610351562,
+        234.00001525878906
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip5",
+      "clip_index": 48,
+      "native_fps": "30",
+      "frame_index": 91,
+      "kind": "observed",
+      "window_start": 76,
+      "rgb_shard_sha256": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+      "teacher_xy": [
+        488.0,
+        255.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip5",
+      "clip_index": 48,
+      "native_fps": "30",
+      "frame_index": 195,
+      "kind": "reviewed_empty",
+      "window_start": 180,
+      "rgb_shard_sha256": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+      "teacher_xy": null,
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip5",
+      "clip_index": 48,
+      "native_fps": "30",
+      "frame_index": 196,
+      "kind": "reviewed_empty",
+      "window_start": 181,
+      "rgb_shard_sha256": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+      "teacher_xy": null,
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip5",
+      "clip_index": 48,
+      "native_fps": "30",
+      "frame_index": 197,
+      "kind": "reviewed_empty",
+      "window_start": 182,
+      "rgb_shard_sha256": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+      "teacher_xy": null,
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip5",
+      "clip_index": 48,
+      "native_fps": "30",
+      "frame_index": 199,
+      "kind": "reviewed_empty",
+      "window_start": 184,
+      "rgb_shard_sha256": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+      "teacher_xy": null,
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip5",
+      "clip_index": 48,
+      "native_fps": "30",
+      "frame_index": 203,
+      "kind": "reviewed_empty",
+      "window_start": 188,
+      "rgb_shard_sha256": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+      "teacher_xy": null,
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip5",
+      "clip_index": 48,
+      "native_fps": "30",
+      "frame_index": 205,
+      "kind": "reviewed_empty",
+      "window_start": 190,
+      "rgb_shard_sha256": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+      "teacher_xy": null,
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip5",
+      "clip_index": 48,
+      "native_fps": "30",
+      "frame_index": 213,
+      "kind": "reviewed_empty",
+      "window_start": 198,
+      "rgb_shard_sha256": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+      "teacher_xy": null,
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip5",
+      "clip_index": 48,
+      "native_fps": "30",
+      "frame_index": 217,
+      "kind": "reviewed_empty",
+      "window_start": 202,
+      "rgb_shard_sha256": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+      "teacher_xy": null,
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip5",
+      "clip_index": 48,
+      "native_fps": "30",
+      "frame_index": 269,
+      "kind": "observed",
+      "window_start": 254,
+      "rgb_shard_sha256": "5be30620c76b6c240f4cfa942b475b9b34877abcf33b41afa5441ee56d3322a5",
+      "teacher_xy": [
+        680.0,
+        283.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip9",
+      "clip_index": 49,
+      "native_fps": "30",
+      "frame_index": 169,
+      "kind": "observed",
+      "window_start": 154,
+      "rgb_shard_sha256": "d49957638dc570d11ff80f205afc45b7777a3dea28e7c792c29d291db766544b",
+      "teacher_xy": [
+        678.0,
+        248.99998474121094
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip9",
+      "clip_index": 49,
+      "native_fps": "30",
+      "frame_index": 174,
+      "kind": "observed",
+      "window_start": 159,
+      "rgb_shard_sha256": "d49957638dc570d11ff80f205afc45b7777a3dea28e7c792c29d291db766544b",
+      "teacher_xy": [
+        744.0,
+        356.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    },
+    {
+      "split": "evaluation",
+      "source": "tracknet",
+      "source_group": "game9",
+      "camera_id": null,
+      "clip_id": "tracknet/game9/Clip9",
+      "clip_index": 49,
+      "native_fps": "30",
+      "frame_index": 199,
+      "kind": "observed",
+      "window_start": 184,
+      "rgb_shard_sha256": "d49957638dc570d11ff80f205afc45b7777a3dea28e7c792c29d291db766544b",
+      "teacher_xy": [
+        573.0,
+        217.0
+      ],
+      "source_size": [
+        1280,
+        720
+      ]
+    }
+  ]
+}

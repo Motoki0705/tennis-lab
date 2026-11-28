@@ -1,0 +1,4090 @@
+{
+  "source": {
+    "i2363_commit": "fef1d626dd0c40ea8ce69705eda777fec4801021",
+    "width_study_commit": "63e9730fa23a57d46e7df4d9d4fed9e9204e9f94",
+    "upstream_reference_commit": "61fef16091952b5c0df06f89b32603656a29a745",
+    "progress.json": "4686dc79649d7b16b9cc33fd13c6a9ad36776adf515796153886ddcecc95f426",
+    "outcome.json": "4d9ef0af9d03f25219b54db5d3b6c089fcdb49c29f07f05a80b136577b739f44",
+    "dataset.json": "968da7df0a235c4213af549ea661fa1b66c8e8c57c94b2c66d07775b23f50099"
+  },
+  "clips": [
+    {
+      "clip": "clip_002",
+      "original_reason": "player_association_ambiguous_players",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              0,
+              2
+            ],
+            "runner_up": null
+          },
+          "1": {
+            "players": [
+              3,
+              4
+            ],
+            "runner_up": 1
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0,
+              5,
+              13,
+              15
+            ],
+            "identity": 0,
+            "presence_frames": 1514,
+            "seen_frames": 1514,
+            "side": -1
+          },
+          {
+            "candidates": [
+              1
+            ],
+            "identity": 1,
+            "presence_frames": 830,
+            "seen_frames": 1299,
+            "side": 1
+          },
+          {
+            "candidates": [
+              2,
+              6,
+              14,
+              18
+            ],
+            "identity": 2,
+            "presence_frames": 1514,
+            "seen_frames": 1514,
+            "side": -1
+          },
+          {
+            "candidates": [
+              3,
+              7,
+              12,
+              16
+            ],
+            "identity": 3,
+            "presence_frames": 1514,
+            "seen_frames": 1514,
+            "side": 1
+          },
+          {
+            "candidates": [
+              4,
+              8,
+              9,
+              10,
+              11,
+              17,
+              19
+            ],
+            "identity": 4,
+            "presence_frames": 1514,
+            "seen_frames": 1514,
+            "side": 1
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 1 (830 frames) is too close to player identity 4 (1514 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                3,
+                4
+              ],
+              "runner_up": 1
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                5,
+                13,
+                15
+              ],
+              "presence_frames": 1514,
+              "seen_frames": 1514,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1
+              ],
+              "presence_frames": 830,
+              "seen_frames": 1299,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                6,
+                14,
+                18
+              ],
+              "presence_frames": 1514,
+              "seen_frames": 1514,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                12,
+                16
+              ],
+              "presence_frames": 1514,
+              "seen_frames": 1514,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                4,
+                8,
+                9,
+                10,
+                11,
+                17,
+                19
+              ],
+              "presence_frames": 1514,
+              "seen_frames": 1514,
+              "side": 1
+            }
+          ]
+        },
+        "delete_reviewed_dino_rows": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 1 (830 frames) is too close to player identity 4 (1514 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                3,
+                4
+              ],
+              "runner_up": 1
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                5,
+                13,
+                15
+              ],
+              "presence_frames": 1514,
+              "seen_frames": 1514,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1
+              ],
+              "presence_frames": 830,
+              "seen_frames": 1295,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                6,
+                14,
+                18
+              ],
+              "presence_frames": 1514,
+              "seen_frames": 1514,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                12,
+                16
+              ],
+              "presence_frames": 1514,
+              "seen_frames": 1514,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                4,
+                8,
+                9,
+                10,
+                11,
+                17,
+                19
+              ],
+              "presence_frames": 1514,
+              "seen_frames": 1514,
+              "side": 1
+            }
+          ],
+          "removed": {
+            "cam0": [
+              10630,
+              12586,
+              12640,
+              12694
+            ]
+          },
+          "unchanged_tracking_and_selection_match": [
+            "cam0"
+          ]
+        },
+        "omit_runner_up_group": {
+          "status": "passed",
+          "stage": "player_association",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                1
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                2,
+                3
+              ],
+              "runner_up": null
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                12,
+                14
+              ],
+              "presence_frames": 1514,
+              "seen_frames": 1514,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                5,
+                13,
+                17
+              ],
+              "presence_frames": 1514,
+              "seen_frames": 1514,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                6,
+                11,
+                15
+              ],
+              "presence_frames": 1514,
+              "seen_frames": 1514,
+              "side": 1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                8,
+                9,
+                10,
+                16,
+                18
+              ],
+              "presence_frames": 1514,
+              "seen_frames": 1514,
+              "side": 1
+            }
+          ],
+          "min_player_margin": 15.222414237725985,
+          "ambiguous_pairs": [],
+          "known_player_rows": 47,
+          "assigned_player_rows": 44,
+          "ids_by_role": {
+            "T": {
+              "1": 11
+            },
+            "W": {
+              "2": 12
+            },
+            "C": {
+              "3": 9
+            },
+            "D": {
+              "0": 12
+            }
+          },
+          "camera_counts_by_role": {
+            "T": 4,
+            "W": 4,
+            "C": 4,
+            "D": 4
+          },
+          "players_per_side": {
+            "-1": 2,
+            "1": 2
+          },
+          "consistent_four_on_reviewed_rows": true,
+          "camera": "cam0",
+          "group": 1
+        }
+      },
+      "elapsed_seconds": 78.041
+    },
+    {
+      "clip": "clip_004",
+      "original_reason": "player_association_ambiguous_players",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              0,
+              2
+            ],
+            "runner_up": null
+          },
+          "1": {
+            "players": [
+              1,
+              3
+            ],
+            "runner_up": 4
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0,
+              4,
+              10,
+              13
+            ],
+            "identity": 0,
+            "presence_frames": 584,
+            "seen_frames": 584,
+            "side": -1
+          },
+          {
+            "candidates": [
+              1,
+              5,
+              9,
+              12
+            ],
+            "identity": 1,
+            "presence_frames": 584,
+            "seen_frames": 584,
+            "side": 1
+          },
+          {
+            "candidates": [
+              2,
+              6,
+              11,
+              14,
+              15
+            ],
+            "identity": 2,
+            "presence_frames": 584,
+            "seen_frames": 584,
+            "side": -1
+          },
+          {
+            "candidates": [
+              3,
+              7,
+              8,
+              16
+            ],
+            "identity": 3,
+            "presence_frames": 584,
+            "seen_frames": 584,
+            "side": 1
+          },
+          {
+            "candidates": [
+              17
+            ],
+            "identity": 4,
+            "presence_frames": 452,
+            "seen_frames": 452,
+            "side": 1
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 4 (452 frames) is too close to player identity 3 (584 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                1,
+                3
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                10,
+                13
+              ],
+              "presence_frames": 584,
+              "seen_frames": 584,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                5,
+                9,
+                12
+              ],
+              "presence_frames": 584,
+              "seen_frames": 584,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                6,
+                11,
+                14,
+                15
+              ],
+              "presence_frames": 584,
+              "seen_frames": 584,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                8,
+                16
+              ],
+              "presence_frames": 584,
+              "seen_frames": 584,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                17
+              ],
+              "presence_frames": 452,
+              "seen_frames": 452,
+              "side": 1
+            }
+          ]
+        },
+        "delete_reviewed_dino_rows": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 4 (452 frames) is too close to player identity 3 (584 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                1,
+                3
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                10,
+                13
+              ],
+              "presence_frames": 584,
+              "seen_frames": 584,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                5,
+                9,
+                12
+              ],
+              "presence_frames": 584,
+              "seen_frames": 584,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                6,
+                11,
+                14,
+                15
+              ],
+              "presence_frames": 584,
+              "seen_frames": 584,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                8,
+                16
+              ],
+              "presence_frames": 584,
+              "seen_frames": 584,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                17
+              ],
+              "presence_frames": 452,
+              "seen_frames": 452,
+              "side": 1
+            }
+          ],
+          "removed": {
+            "cam3": [
+              1818,
+              1869
+            ],
+            "cam2": [
+              1978
+            ]
+          },
+          "unchanged_tracking_and_selection_match": [
+            "cam3",
+            "cam2"
+          ]
+        },
+        "omit_runner_up_group": {
+          "status": "stopped",
+          "stage": "court_side",
+          "reason": "court_side_no_consistent_hypothesis",
+          "error": "no_consistent_hypothesis: The best hypothesis lacks absolute geometric support [[False, False, True, True] cost=0.217 support=0.194; [False, True, True, True] cost=0.446 support=0.000; [False, False, False, True] cost=0.446 support=0.000; [False, False, True, False] cost=0.448 support=0.022; [False, True, False, False] cost=0.450 support=0.000; [False, False, False, False] cost=0.502 support=0.000; [False, True, False, True] cost=0.534 support=0.000; [False, True, True, False] cost=0.538 support=0.000]",
+          "hypotheses": [
+            {
+              "view_half_turns": [
+                false,
+                false,
+                true,
+                true
+              ],
+              "cost": 0.21659957823894574,
+              "support": 0.19424460431654678,
+              "frames": 278
+            },
+            {
+              "view_half_turns": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "cost": 0.44620787536753986,
+              "support": 0.0,
+              "frames": 278
+            },
+            {
+              "view_half_turns": [
+                false,
+                false,
+                false,
+                true
+              ],
+              "cost": 0.4464754762647017,
+              "support": 0.0,
+              "frames": 278
+            },
+            {
+              "view_half_turns": [
+                false,
+                false,
+                true,
+                false
+              ],
+              "cost": 0.4480994160623742,
+              "support": 0.02158273381294964,
+              "frames": 278
+            },
+            {
+              "view_half_turns": [
+                false,
+                true,
+                false,
+                false
+              ],
+              "cost": 0.44970723776476423,
+              "support": 0.0,
+              "frames": 278
+            },
+            {
+              "view_half_turns": [
+                false,
+                false,
+                false,
+                false
+              ],
+              "cost": 0.5016632242833723,
+              "support": 0.0,
+              "frames": 278
+            },
+            {
+              "view_half_turns": [
+                false,
+                true,
+                false,
+                true
+              ],
+              "cost": 0.5344458675358403,
+              "support": 0.0,
+              "frames": 278
+            },
+            {
+              "view_half_turns": [
+                false,
+                true,
+                true,
+                false
+              ],
+              "cost": 0.5377813354012217,
+              "support": 0.0,
+              "frames": 278
+            }
+          ],
+          "frames": 278,
+          "margin": 0.22960829712859412,
+          "camera": "cam3",
+          "group": 4
+        }
+      },
+      "elapsed_seconds": 21.598
+    },
+    {
+      "clip": "clip_012",
+      "original_reason": "court_side_no_consistent_hypothesis",
+      "original": {
+        "hypotheses": [
+          {
+            "cost": 0.21112635331165558,
+            "frames": 470,
+            "support": 0.19574468085106383,
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              true
+            ]
+          },
+          {
+            "cost": 0.406223246790366,
+            "frames": 470,
+            "support": 0.027659574468085105,
+            "view_half_turns": [
+              false,
+              false,
+              false,
+              true
+            ]
+          },
+          {
+            "cost": 0.43250656756283895,
+            "frames": 470,
+            "support": 0.00425531914893617,
+            "view_half_turns": [
+              false,
+              true,
+              false,
+              false
+            ]
+          },
+          {
+            "cost": 0.43604975648504385,
+            "frames": 470,
+            "support": 0.002127659574468085,
+            "view_half_turns": [
+              false,
+              false,
+              true,
+              false
+            ]
+          },
+          {
+            "cost": 0.4558425413384096,
+            "frames": 470,
+            "support": 0.0,
+            "view_half_turns": [
+              false,
+              true,
+              true,
+              true
+            ]
+          },
+          {
+            "cost": 0.4777422767468663,
+            "frames": 470,
+            "support": 0.00425531914893617,
+            "view_half_turns": [
+              false,
+              false,
+              false,
+              false
+            ]
+          },
+          {
+            "cost": 0.5162970918661411,
+            "frames": 470,
+            "support": 0.002127659574468085,
+            "view_half_turns": [
+              false,
+              true,
+              true,
+              false
+            ]
+          },
+          {
+            "cost": 0.5254563902519949,
+            "frames": 470,
+            "support": 0.0,
+            "view_half_turns": [
+              false,
+              true,
+              false,
+              true
+            ]
+          }
+        ],
+        "frames": 470,
+        "margin": 0.1950968934787104
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "court_side",
+          "reason": "court_side_no_consistent_hypothesis",
+          "error": "no_consistent_hypothesis: The best hypothesis lacks absolute geometric support [[False, False, True, True] cost=0.211 support=0.196; [False, False, False, True] cost=0.406 support=0.028; [False, True, False, False] cost=0.433 support=0.004; [False, False, True, False] cost=0.436 support=0.002; [False, True, True, True] cost=0.456 support=0.000; [False, False, False, False] cost=0.478 support=0.004; [False, True, True, False] cost=0.516 support=0.002; [False, True, False, True] cost=0.525 support=0.000]",
+          "hypotheses": [
+            {
+              "view_half_turns": [
+                false,
+                false,
+                true,
+                true
+              ],
+              "cost": 0.21112635331165558,
+              "support": 0.19574468085106383,
+              "frames": 470
+            },
+            {
+              "view_half_turns": [
+                false,
+                false,
+                false,
+                true
+              ],
+              "cost": 0.406223246790366,
+              "support": 0.027659574468085105,
+              "frames": 470
+            },
+            {
+              "view_half_turns": [
+                false,
+                true,
+                false,
+                false
+              ],
+              "cost": 0.43250656756283895,
+              "support": 0.00425531914893617,
+              "frames": 470
+            },
+            {
+              "view_half_turns": [
+                false,
+                false,
+                true,
+                false
+              ],
+              "cost": 0.43604975648504385,
+              "support": 0.002127659574468085,
+              "frames": 470
+            },
+            {
+              "view_half_turns": [
+                false,
+                true,
+                true,
+                true
+              ],
+              "cost": 0.4558425413384096,
+              "support": 0.0,
+              "frames": 470
+            },
+            {
+              "view_half_turns": [
+                false,
+                false,
+                false,
+                false
+              ],
+              "cost": 0.4777422767468663,
+              "support": 0.00425531914893617,
+              "frames": 470
+            },
+            {
+              "view_half_turns": [
+                false,
+                true,
+                true,
+                false
+              ],
+              "cost": 0.5162970918661411,
+              "support": 0.002127659574468085,
+              "frames": 470
+            },
+            {
+              "view_half_turns": [
+                false,
+                true,
+                false,
+                true
+              ],
+              "cost": 0.5254563902519949,
+              "support": 0.0,
+              "frames": 470
+            }
+          ],
+          "frames": 470,
+          "margin": 0.1950968934787104
+        }
+      },
+      "elapsed_seconds": 2.916
+    },
+    {
+      "clip": "clip_014",
+      "original_reason": "player_association_ambiguous_players",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              0,
+              1
+            ],
+            "runner_up": 4
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0,
+              4
+            ],
+            "identity": 0,
+            "presence_frames": 461,
+            "seen_frames": 461,
+            "side": -1
+          },
+          {
+            "candidates": [
+              1,
+              5,
+              8,
+              13
+            ],
+            "identity": 1,
+            "presence_frames": 461,
+            "seen_frames": 461,
+            "side": -1
+          },
+          {
+            "candidates": [
+              2,
+              7,
+              9,
+              12
+            ],
+            "identity": 2,
+            "presence_frames": 461,
+            "seen_frames": 461,
+            "side": 1
+          },
+          {
+            "candidates": [
+              3,
+              6,
+              11,
+              14
+            ],
+            "identity": 3,
+            "presence_frames": 461,
+            "seen_frames": 461,
+            "side": 1
+          },
+          {
+            "candidates": [
+              10
+            ],
+            "identity": 4,
+            "presence_frames": 377,
+            "seen_frames": 415,
+            "side": -1
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 4 (377 frames) is too close to player identity 1 (461 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                1
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4
+              ],
+              "presence_frames": 461,
+              "seen_frames": 461,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                5,
+                8,
+                13
+              ],
+              "presence_frames": 461,
+              "seen_frames": 461,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                7,
+                9,
+                12
+              ],
+              "presence_frames": 461,
+              "seen_frames": 461,
+              "side": 1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                6,
+                11,
+                14
+              ],
+              "presence_frames": 461,
+              "seen_frames": 461,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                10
+              ],
+              "presence_frames": 377,
+              "seen_frames": 415,
+              "side": -1
+            }
+          ]
+        },
+        "omit_runner_up_group": {
+          "status": "passed",
+          "stage": "player_association",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                1
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                2,
+                3
+              ],
+              "runner_up": null
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4
+              ],
+              "presence_frames": 461,
+              "seen_frames": 461,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                5,
+                8,
+                12
+              ],
+              "presence_frames": 461,
+              "seen_frames": 461,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                7,
+                9,
+                11
+              ],
+              "presence_frames": 461,
+              "seen_frames": 461,
+              "side": 1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                6,
+                10,
+                13
+              ],
+              "presence_frames": 461,
+              "seen_frames": 461,
+              "side": 1
+            }
+          ],
+          "min_player_margin": 8.923392576028903,
+          "ambiguous_pairs": [],
+          "known_player_rows": 48,
+          "assigned_player_rows": 42,
+          "ids_by_role": {
+            "T": {
+              "3": 12
+            },
+            "W": {
+              "0": 6
+            },
+            "C": {
+              "1": 12
+            },
+            "D": {
+              "2": 12
+            }
+          },
+          "camera_counts_by_role": {
+            "T": 4,
+            "W": 2,
+            "C": 4,
+            "D": 4
+          },
+          "players_per_side": {
+            "-1": 2,
+            "1": 2
+          },
+          "consistent_four_on_reviewed_rows": true,
+          "camera": "cam2",
+          "group": 2
+        }
+      },
+      "elapsed_seconds": 5.668
+    },
+    {
+      "clip": "clip_018",
+      "original_reason": "player_association_ambiguous_players",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              0,
+              1
+            ],
+            "runner_up": 3
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0,
+              3
+            ],
+            "identity": 0,
+            "presence_frames": 384,
+            "seen_frames": 384,
+            "side": -1
+          },
+          {
+            "candidates": [
+              1,
+              4,
+              7,
+              10
+            ],
+            "identity": 1,
+            "presence_frames": 384,
+            "seen_frames": 384,
+            "side": -1
+          },
+          {
+            "candidates": [
+              2,
+              5,
+              6,
+              9
+            ],
+            "identity": 2,
+            "presence_frames": 384,
+            "seen_frames": 384,
+            "side": 1
+          },
+          {
+            "candidates": [
+              8
+            ],
+            "identity": 3,
+            "presence_frames": 312,
+            "seen_frames": 330,
+            "side": -1
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 3 (312 frames) is too close to player identity 1 (384 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                1
+              ],
+              "runner_up": 3
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                3
+              ],
+              "presence_frames": 384,
+              "seen_frames": 384,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                4,
+                7,
+                10
+              ],
+              "presence_frames": 384,
+              "seen_frames": 384,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                6,
+                9
+              ],
+              "presence_frames": 384,
+              "seen_frames": 384,
+              "side": 1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                8
+              ],
+              "presence_frames": 312,
+              "seen_frames": 330,
+              "side": -1
+            }
+          ]
+        },
+        "omit_runner_up_group": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_player_not_found",
+          "error": "Side y>0 lacks 2 identities present for 96 frames",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                1
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                2
+              ],
+              "runner_up": null
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                3
+              ],
+              "presence_frames": 384,
+              "seen_frames": 384,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                4,
+                7,
+                9
+              ],
+              "presence_frames": 384,
+              "seen_frames": 384,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                6,
+                8
+              ],
+              "presence_frames": 384,
+              "seen_frames": 384,
+              "side": 1
+            }
+          ],
+          "camera": "cam2",
+          "group": 2
+        }
+      },
+      "elapsed_seconds": 1.726
+    },
+    {
+      "clip": "clip_020",
+      "original_reason": "player_association_player_not_found",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              0,
+              1
+            ],
+            "runner_up": null
+          },
+          "1": {
+            "players": [
+              2
+            ],
+            "runner_up": null
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0,
+              3,
+              8,
+              11
+            ],
+            "identity": 0,
+            "presence_frames": 649,
+            "seen_frames": 649,
+            "side": -1
+          },
+          {
+            "candidates": [
+              1,
+              4,
+              7,
+              10
+            ],
+            "identity": 1,
+            "presence_frames": 649,
+            "seen_frames": 649,
+            "side": -1
+          },
+          {
+            "candidates": [
+              2,
+              5,
+              6,
+              9
+            ],
+            "identity": 2,
+            "presence_frames": 649,
+            "seen_frames": 649,
+            "side": 1
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_player_not_found",
+          "error": "Side y>0 lacks 2 identities present for 163 frames",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                1
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                2
+              ],
+              "runner_up": null
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                3,
+                8,
+                11
+              ],
+              "presence_frames": 649,
+              "seen_frames": 649,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                4,
+                7,
+                10
+              ],
+              "presence_frames": 649,
+              "seen_frames": 649,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                6,
+                9
+              ],
+              "presence_frames": 649,
+              "seen_frames": 649,
+              "side": 1
+            }
+          ]
+        }
+      },
+      "elapsed_seconds": 1.261
+    },
+    {
+      "clip": "clip_023",
+      "original_reason": "player_association_ambiguous_players",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              1,
+              4
+            ],
+            "runner_up": 0
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0
+            ],
+            "identity": 0,
+            "presence_frames": 1045,
+            "seen_frames": 1102,
+            "side": -1
+          },
+          {
+            "candidates": [
+              1,
+              6,
+              12,
+              13,
+              17
+            ],
+            "identity": 1,
+            "presence_frames": 1734,
+            "seen_frames": 1734,
+            "side": -1
+          },
+          {
+            "candidates": [
+              2,
+              7,
+              11,
+              16
+            ],
+            "identity": 2,
+            "presence_frames": 1734,
+            "seen_frames": 1734,
+            "side": 1
+          },
+          {
+            "candidates": [
+              3,
+              8,
+              9,
+              14
+            ],
+            "identity": 3,
+            "presence_frames": 1734,
+            "seen_frames": 1734,
+            "side": 1
+          },
+          {
+            "candidates": [
+              4,
+              5,
+              10,
+              15
+            ],
+            "identity": 4,
+            "presence_frames": 1734,
+            "seen_frames": 1734,
+            "side": -1
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 0 (1045 frames) is too close to player identity 4 (1734 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                1,
+                4
+              ],
+              "runner_up": 0
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0
+              ],
+              "presence_frames": 1045,
+              "seen_frames": 1102,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                6,
+                12,
+                13,
+                17
+              ],
+              "presence_frames": 1734,
+              "seen_frames": 1734,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                7,
+                11,
+                16
+              ],
+              "presence_frames": 1734,
+              "seen_frames": 1734,
+              "side": 1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                8,
+                9,
+                14
+              ],
+              "presence_frames": 1734,
+              "seen_frames": 1734,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                4,
+                5,
+                10,
+                15
+              ],
+              "presence_frames": 1734,
+              "seen_frames": 1734,
+              "side": -1
+            }
+          ]
+        },
+        "delete_reviewed_dino_rows": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 0 (1044 frames) is too close to player identity 4 (1734 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                1,
+                4
+              ],
+              "runner_up": 0
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0
+              ],
+              "presence_frames": 1044,
+              "seen_frames": 1100,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                6,
+                12,
+                13,
+                17
+              ],
+              "presence_frames": 1734,
+              "seen_frames": 1734,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                7,
+                11,
+                16
+              ],
+              "presence_frames": 1734,
+              "seen_frames": 1734,
+              "side": 1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                8,
+                9,
+                14
+              ],
+              "presence_frames": 1734,
+              "seen_frames": 1734,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                4,
+                5,
+                10,
+                15
+              ],
+              "presence_frames": 1734,
+              "seen_frames": 1734,
+              "side": -1
+            }
+          ],
+          "removed": {
+            "cam0": [
+              9452,
+              9701
+            ]
+          },
+          "unchanged_tracking_and_selection_match": [
+            "cam0"
+          ]
+        },
+        "omit_runner_up_group": {
+          "status": "passed",
+          "stage": "player_association",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                3
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                1,
+                2
+              ],
+              "runner_up": null
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                5,
+                11,
+                12,
+                16
+              ],
+              "presence_frames": 1734,
+              "seen_frames": 1734,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                6,
+                10,
+                15
+              ],
+              "presence_frames": 1734,
+              "seen_frames": 1734,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                7,
+                8,
+                13
+              ],
+              "presence_frames": 1734,
+              "seen_frames": 1734,
+              "side": 1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                4,
+                9,
+                14
+              ],
+              "presence_frames": 1734,
+              "seen_frames": 1734,
+              "side": -1
+            }
+          ],
+          "min_player_margin": 21.130444615140306,
+          "ambiguous_pairs": [],
+          "known_player_rows": 48,
+          "assigned_player_rows": 40,
+          "ids_by_role": {
+            "T": {
+              "0": 7
+            },
+            "W": {
+              "2": 12
+            },
+            "C": {
+              "3": 12
+            },
+            "D": {
+              "1": 9
+            }
+          },
+          "camera_counts_by_role": {
+            "T": 3,
+            "W": 4,
+            "C": 4,
+            "D": 3
+          },
+          "players_per_side": {
+            "-1": 2,
+            "1": 2
+          },
+          "consistent_four_on_reviewed_rows": true,
+          "camera": "cam0",
+          "group": 0
+        }
+      },
+      "elapsed_seconds": 82.833
+    },
+    {
+      "clip": "clip_028",
+      "original_reason": "player_association_ambiguous_players",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              1,
+              3
+            ],
+            "runner_up": 4
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0,
+              4,
+              9,
+              14
+            ],
+            "identity": 0,
+            "presence_frames": 1280,
+            "seen_frames": 1286,
+            "side": 1
+          },
+          {
+            "candidates": [
+              1,
+              5,
+              12,
+              13,
+              17
+            ],
+            "identity": 1,
+            "presence_frames": 1286,
+            "seen_frames": 1286,
+            "side": -1
+          },
+          {
+            "candidates": [
+              2,
+              6,
+              7,
+              11
+            ],
+            "identity": 2,
+            "presence_frames": 1286,
+            "seen_frames": 1286,
+            "side": 1
+          },
+          {
+            "candidates": [
+              3,
+              8,
+              10,
+              15
+            ],
+            "identity": 3,
+            "presence_frames": 1286,
+            "seen_frames": 1286,
+            "side": -1
+          },
+          {
+            "candidates": [
+              16
+            ],
+            "identity": 4,
+            "presence_frames": 1254,
+            "seen_frames": 1254,
+            "side": -1
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 4 (1254 frames) is too close to player identity 3 (1286 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                1,
+                3
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                9,
+                14
+              ],
+              "presence_frames": 1280,
+              "seen_frames": 1286,
+              "side": 1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                5,
+                12,
+                13,
+                17
+              ],
+              "presence_frames": 1286,
+              "seen_frames": 1286,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                6,
+                7,
+                11
+              ],
+              "presence_frames": 1286,
+              "seen_frames": 1286,
+              "side": 1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                8,
+                10,
+                15
+              ],
+              "presence_frames": 1286,
+              "seen_frames": 1286,
+              "side": -1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                16
+              ],
+              "presence_frames": 1254,
+              "seen_frames": 1254,
+              "side": -1
+            }
+          ]
+        },
+        "delete_reviewed_dino_rows": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 4 (1254 frames) is too close to player identity 3 (1286 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                1,
+                3
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                9,
+                14
+              ],
+              "presence_frames": 1280,
+              "seen_frames": 1286,
+              "side": 1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                5,
+                12,
+                13,
+                17
+              ],
+              "presence_frames": 1286,
+              "seen_frames": 1286,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                6,
+                7,
+                11
+              ],
+              "presence_frames": 1286,
+              "seen_frames": 1286,
+              "side": 1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                8,
+                10,
+                15
+              ],
+              "presence_frames": 1286,
+              "seen_frames": 1286,
+              "side": -1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                16
+              ],
+              "presence_frames": 1254,
+              "seen_frames": 1254,
+              "side": -1
+            }
+          ],
+          "removed": {
+            "cam0": [
+              2759
+            ],
+            "cam3": [
+              4800
+            ]
+          },
+          "unchanged_tracking_and_selection_match": [
+            "cam0",
+            "cam3"
+          ]
+        },
+        "omit_runner_up_group": {
+          "status": "passed",
+          "stage": "player_association",
+          "selection": {
+            "-1": {
+              "players": [
+                1,
+                3
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                2,
+                0
+              ],
+              "runner_up": null
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                9,
+                14
+              ],
+              "presence_frames": 1280,
+              "seen_frames": 1286,
+              "side": 1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                5,
+                12,
+                13,
+                16
+              ],
+              "presence_frames": 1286,
+              "seen_frames": 1286,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                6,
+                7,
+                11
+              ],
+              "presence_frames": 1286,
+              "seen_frames": 1286,
+              "side": 1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                8,
+                10,
+                15
+              ],
+              "presence_frames": 1286,
+              "seen_frames": 1286,
+              "side": -1
+            }
+          ],
+          "min_player_margin": 1.411273633464532,
+          "ambiguous_pairs": [],
+          "known_player_rows": 48,
+          "assigned_player_rows": 39,
+          "ids_by_role": {
+            "T": {
+              "0": 10
+            },
+            "W": {
+              "3": 9
+            },
+            "C": {
+              "2": 9,
+              "1": 1
+            },
+            "D": {
+              "1": 10
+            }
+          },
+          "camera_counts_by_role": {
+            "T": 4,
+            "W": 4,
+            "C": 4,
+            "D": 4
+          },
+          "players_per_side": {
+            "-1": 2,
+            "1": 2
+          },
+          "consistent_four_on_reviewed_rows": false,
+          "camera": "cam3",
+          "group": 2
+        }
+      },
+      "elapsed_seconds": 95.133
+    },
+    {
+      "clip": "clip_036",
+      "original_reason": "player_association_ambiguous_players",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              0,
+              2
+            ],
+            "runner_up": 4
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0,
+              4,
+              8,
+              12
+            ],
+            "identity": 0,
+            "presence_frames": 403,
+            "seen_frames": 403,
+            "side": -1
+          },
+          {
+            "candidates": [
+              1,
+              3,
+              6,
+              11
+            ],
+            "identity": 1,
+            "presence_frames": 403,
+            "seen_frames": 403,
+            "side": 1
+          },
+          {
+            "candidates": [
+              2,
+              5,
+              10,
+              13
+            ],
+            "identity": 2,
+            "presence_frames": 403,
+            "seen_frames": 403,
+            "side": -1
+          },
+          {
+            "candidates": [
+              7
+            ],
+            "identity": 3,
+            "presence_frames": 403,
+            "seen_frames": 403,
+            "side": 1
+          },
+          {
+            "candidates": [
+              9
+            ],
+            "identity": 4,
+            "presence_frames": 241,
+            "seen_frames": 241,
+            "side": -1
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 4 (241 frames) is too close to player identity 2 (403 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                8,
+                12
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                3,
+                6,
+                11
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                10,
+                13
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                7
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                9
+              ],
+              "presence_frames": 241,
+              "seen_frames": 241,
+              "side": -1
+            }
+          ]
+        },
+        "delete_reviewed_dino_rows": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 4 (240 frames) is too close to player identity 2 (403 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                8,
+                12
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                3,
+                6,
+                11
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                10,
+                13
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                7
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                9
+              ],
+              "presence_frames": 240,
+              "seen_frames": 240,
+              "side": -1
+            }
+          ],
+          "removed": {
+            "cam2": [
+              1606
+            ]
+          },
+          "unchanged_tracking_and_selection_match": [
+            "cam2"
+          ]
+        },
+        "join_reviewed_groups": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 4 (240 frames) is too close to player identity 2 (403 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                8,
+                12
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                3,
+                6,
+                11
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                10,
+                13
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                7
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                9
+              ],
+              "presence_frames": 240,
+              "seen_frames": 240,
+              "side": -1
+            }
+          ],
+          "groups": {
+            "camera": "cam2",
+            "groups": [
+              4,
+              3
+            ],
+            "checked_frames": {
+              "3": [
+                2,
+                62,
+                122,
+                182,
+                283
+              ],
+              "4": [
+                242,
+                277,
+                311,
+                345,
+                404
+              ]
+            }
+          }
+        },
+        "omit_runner_up_group": {
+          "status": "passed",
+          "stage": "player_association",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                1,
+                3
+              ],
+              "runner_up": null
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                8,
+                11
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                3,
+                6,
+                10
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                9,
+                12
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                7
+              ],
+              "presence_frames": 403,
+              "seen_frames": 403,
+              "side": 1
+            }
+          ],
+          "min_player_margin": 6.238871731270137,
+          "ambiguous_pairs": [],
+          "known_player_rows": 48,
+          "assigned_player_rows": 33,
+          "ids_by_role": {
+            "T": {
+              "0": 12
+            },
+            "W": {
+              "3": 3
+            },
+            "C": {
+              "2": 12
+            },
+            "D": {
+              "1": 6
+            }
+          },
+          "camera_counts_by_role": {
+            "T": 4,
+            "W": 1,
+            "C": 4,
+            "D": 2
+          },
+          "players_per_side": {
+            "-1": 2,
+            "1": 2
+          },
+          "consistent_four_on_reviewed_rows": false,
+          "camera": "cam2",
+          "group": 3
+        }
+      },
+      "elapsed_seconds": 11.071
+    },
+    {
+      "clip": "clip_038",
+      "original_reason": "player_association_ambiguous_players",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              0,
+              2
+            ],
+            "runner_up": 4
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0,
+              6,
+              10,
+              13
+            ],
+            "identity": 0,
+            "presence_frames": 335,
+            "seen_frames": 335,
+            "side": -1
+          },
+          {
+            "candidates": [
+              1,
+              4,
+              8,
+              14
+            ],
+            "identity": 1,
+            "presence_frames": 335,
+            "seen_frames": 335,
+            "side": 1
+          },
+          {
+            "candidates": [
+              2,
+              5,
+              12,
+              15,
+              16
+            ],
+            "identity": 2,
+            "presence_frames": 335,
+            "seen_frames": 335,
+            "side": -1
+          },
+          {
+            "candidates": [
+              3,
+              7,
+              9,
+              17
+            ],
+            "identity": 3,
+            "presence_frames": 335,
+            "seen_frames": 335,
+            "side": 1
+          },
+          {
+            "candidates": [
+              11
+            ],
+            "identity": 4,
+            "presence_frames": 187,
+            "seen_frames": 188,
+            "side": -1
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 4 (187 frames) is too close to player identity 2 (335 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                6,
+                10,
+                13
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                4,
+                8,
+                14
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                12,
+                15,
+                16
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                9,
+                17
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                11
+              ],
+              "presence_frames": 187,
+              "seen_frames": 188,
+              "side": -1
+            }
+          ]
+        },
+        "delete_reviewed_dino_rows": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 4 (186 frames) is too close to player identity 2 (335 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                6,
+                10,
+                13
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                4,
+                8,
+                14
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                12,
+                15,
+                16
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                9,
+                17
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                11
+              ],
+              "presence_frames": 186,
+              "seen_frames": 187,
+              "side": -1
+            }
+          ],
+          "removed": {
+            "cam2": [
+              1049
+            ]
+          },
+          "unchanged_tracking_and_selection_match": [
+            "cam2"
+          ]
+        },
+        "join_reviewed_groups": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 4 (175 frames) is too close to player identity 2 (335 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                6,
+                10,
+                13
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                4,
+                8,
+                14
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                12,
+                15,
+                16
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                9,
+                17
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                11
+              ],
+              "presence_frames": 175,
+              "seen_frames": 176,
+              "side": -1
+            }
+          ],
+          "groups": {
+            "camera": "cam2",
+            "groups": [
+              4,
+              3
+            ],
+            "checked_frames": {
+              "3": [
+                2,
+                49,
+                96,
+                143,
+                200
+              ],
+              "4": [
+                179,
+                224,
+                262,
+                299,
+                336
+              ]
+            }
+          }
+        },
+        "omit_runner_up_group": {
+          "status": "passed",
+          "stage": "player_association",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                1,
+                3
+              ],
+              "runner_up": null
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                6,
+                10,
+                12
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                4,
+                8,
+                13
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                11,
+                14,
+                15
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                9,
+                16
+              ],
+              "presence_frames": 335,
+              "seen_frames": 335,
+              "side": 1
+            }
+          ],
+          "min_player_margin": 9.150568553514688,
+          "ambiguous_pairs": [],
+          "known_player_rows": 48,
+          "assigned_player_rows": 45,
+          "ids_by_role": {
+            "T": {
+              "0": 12
+            },
+            "W": {
+              "2": 12
+            },
+            "C": {
+              "3": 12
+            },
+            "D": {
+              "1": 9
+            }
+          },
+          "camera_counts_by_role": {
+            "T": 4,
+            "W": 4,
+            "C": 4,
+            "D": 3
+          },
+          "players_per_side": {
+            "-1": 2,
+            "1": 2
+          },
+          "consistent_four_on_reviewed_rows": true,
+          "camera": "cam2",
+          "group": 3
+        }
+      },
+      "elapsed_seconds": 16.921
+    },
+    {
+      "clip": "clip_039",
+      "original_reason": "player_association_ambiguous_players",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              0,
+              1
+            ],
+            "runner_up": 4
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0,
+              6,
+              12,
+              15
+            ],
+            "identity": 0,
+            "presence_frames": 871,
+            "seen_frames": 871,
+            "side": -1
+          },
+          {
+            "candidates": [
+              1,
+              4,
+              14
+            ],
+            "identity": 1,
+            "presence_frames": 871,
+            "seen_frames": 871,
+            "side": -1
+          },
+          {
+            "candidates": [
+              2,
+              5,
+              9,
+              13
+            ],
+            "identity": 2,
+            "presence_frames": 871,
+            "seen_frames": 871,
+            "side": 1
+          },
+          {
+            "candidates": [
+              3,
+              7,
+              8,
+              10,
+              16
+            ],
+            "identity": 3,
+            "presence_frames": 871,
+            "seen_frames": 871,
+            "side": 1
+          },
+          {
+            "candidates": [
+              11
+            ],
+            "identity": 4,
+            "presence_frames": 831,
+            "seen_frames": 831,
+            "side": -1
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_players",
+          "error": "Identity 4 (831 frames) is too close to player identity 1 (871 frames)",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                1
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                6,
+                12,
+                15
+              ],
+              "presence_frames": 871,
+              "seen_frames": 871,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                4,
+                14
+              ],
+              "presence_frames": 871,
+              "seen_frames": 871,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                9,
+                13
+              ],
+              "presence_frames": 871,
+              "seen_frames": 871,
+              "side": 1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                8,
+                10,
+                16
+              ],
+              "presence_frames": 871,
+              "seen_frames": 871,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                11
+              ],
+              "presence_frames": 831,
+              "seen_frames": 831,
+              "side": -1
+            }
+          ]
+        },
+        "omit_runner_up_group": {
+          "status": "passed",
+          "stage": "player_association",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                1
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                2,
+                3
+              ],
+              "runner_up": null
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                6,
+                11,
+                14
+              ],
+              "presence_frames": 871,
+              "seen_frames": 871,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                4,
+                13
+              ],
+              "presence_frames": 871,
+              "seen_frames": 871,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                9,
+                12
+              ],
+              "presence_frames": 871,
+              "seen_frames": 871,
+              "side": 1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                8,
+                10,
+                15
+              ],
+              "presence_frames": 871,
+              "seen_frames": 871,
+              "side": 1
+            }
+          ],
+          "min_player_margin": 16.561142870714377,
+          "ambiguous_pairs": [],
+          "known_player_rows": 48,
+          "assigned_player_rows": 45,
+          "ids_by_role": {
+            "T": {
+              "3": 12
+            },
+            "W": {
+              "0": 12
+            },
+            "C": {
+              "1": 9
+            },
+            "D": {
+              "2": 12
+            }
+          },
+          "camera_counts_by_role": {
+            "T": 4,
+            "W": 4,
+            "C": 3,
+            "D": 4
+          },
+          "players_per_side": {
+            "-1": 2,
+            "1": 2
+          },
+          "consistent_four_on_reviewed_rows": true,
+          "camera": "cam2",
+          "group": 2
+        }
+      },
+      "elapsed_seconds": 8.087
+    },
+    {
+      "clip": "clip_049",
+      "original_reason": "player_association_ambiguous_association",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              1,
+              2
+            ],
+            "runner_up": null
+          },
+          "1": {
+            "players": [
+              0,
+              3
+            ],
+            "runner_up": 4
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0,
+              8,
+              12,
+              14
+            ],
+            "identity": 0,
+            "presence_frames": 1118,
+            "seen_frames": 1118,
+            "side": 1
+          },
+          {
+            "candidates": [
+              1,
+              5,
+              13,
+              17
+            ],
+            "identity": 1,
+            "presence_frames": 1118,
+            "seen_frames": 1118,
+            "side": -1
+          },
+          {
+            "candidates": [
+              2,
+              4,
+              10,
+              11,
+              16
+            ],
+            "identity": 2,
+            "presence_frames": 1118,
+            "seen_frames": 1118,
+            "side": -1
+          },
+          {
+            "candidates": [
+              3,
+              7,
+              9,
+              15
+            ],
+            "identity": 3,
+            "presence_frames": 1118,
+            "seen_frames": 1118,
+            "side": 1
+          },
+          {
+            "candidates": [
+              6
+            ],
+            "identity": 4,
+            "presence_frames": 292,
+            "seen_frames": 292,
+            "side": 1
+          }
+        ],
+        "min_player_margin": 0.31413775204310923,
+        "ambiguous_pairs": [
+          {
+            "a": 0,
+            "b": 6,
+            "linked": false,
+            "margin": 0.31413775204310923
+          },
+          {
+            "a": 0,
+            "b": 8,
+            "linked": true,
+            "margin": 0.31413775204310923
+          },
+          {
+            "a": 6,
+            "b": 12,
+            "linked": false,
+            "margin": 0.31413775204310923
+          },
+          {
+            "a": 6,
+            "b": 14,
+            "linked": false,
+            "margin": 0.31413775204310923
+          },
+          {
+            "a": 8,
+            "b": 12,
+            "linked": true,
+            "margin": 0.31413775204310923
+          },
+          {
+            "a": 8,
+            "b": 14,
+            "linked": true,
+            "margin": 0.31413775204310923
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_association",
+          "error": "6 player decisions between long segments have margins below 1.0; the smallest is 0.314 for candidates 0 and 6",
+          "selection": {
+            "-1": {
+              "players": [
+                1,
+                2
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                0,
+                3
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                8,
+                12,
+                14
+              ],
+              "presence_frames": 1118,
+              "seen_frames": 1118,
+              "side": 1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                5,
+                13,
+                17
+              ],
+              "presence_frames": 1118,
+              "seen_frames": 1118,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                4,
+                10,
+                11,
+                16
+              ],
+              "presence_frames": 1118,
+              "seen_frames": 1118,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                9,
+                15
+              ],
+              "presence_frames": 1118,
+              "seen_frames": 1118,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                6
+              ],
+              "presence_frames": 292,
+              "seen_frames": 292,
+              "side": 1
+            }
+          ],
+          "min_player_margin": 0.3141377618868262,
+          "ambiguous_pairs": [
+            {
+              "a": 0,
+              "b": 6,
+              "margin": 0.3141377618868262,
+              "linked": false
+            },
+            {
+              "a": 0,
+              "b": 8,
+              "margin": 0.3141377618868262,
+              "linked": true
+            },
+            {
+              "a": 6,
+              "b": 12,
+              "margin": 0.3141377618868262,
+              "linked": false
+            },
+            {
+              "a": 6,
+              "b": 14,
+              "margin": 0.3141377618868262,
+              "linked": false
+            },
+            {
+              "a": 8,
+              "b": 12,
+              "margin": 0.3141377618868262,
+              "linked": true
+            },
+            {
+              "a": 8,
+              "b": 14,
+              "margin": 0.3141377618868262,
+              "linked": true
+            }
+          ]
+        },
+        "delete_reviewed_dino_rows": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_association",
+          "error": "6 player decisions between long segments have margins below 1.0; the smallest is 0.309 for candidates 0 and 6",
+          "selection": {
+            "-1": {
+              "players": [
+                1,
+                2
+              ],
+              "runner_up": null
+            },
+            "1": {
+              "players": [
+                0,
+                3
+              ],
+              "runner_up": 4
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                8,
+                12,
+                14
+              ],
+              "presence_frames": 1118,
+              "seen_frames": 1118,
+              "side": 1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                5,
+                13,
+                17
+              ],
+              "presence_frames": 1118,
+              "seen_frames": 1118,
+              "side": -1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                4,
+                10,
+                11,
+                16
+              ],
+              "presence_frames": 1118,
+              "seen_frames": 1118,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                9,
+                15
+              ],
+              "presence_frames": 1118,
+              "seen_frames": 1118,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                6
+              ],
+              "presence_frames": 290,
+              "seen_frames": 290,
+              "side": 1
+            }
+          ],
+          "min_player_margin": 0.30850233282808404,
+          "ambiguous_pairs": [
+            {
+              "a": 0,
+              "b": 6,
+              "margin": 0.30850233282808404,
+              "linked": false
+            },
+            {
+              "a": 0,
+              "b": 8,
+              "margin": 0.30850233282808404,
+              "linked": true
+            },
+            {
+              "a": 6,
+              "b": 12,
+              "margin": 0.30850233282808404,
+              "linked": false
+            },
+            {
+              "a": 6,
+              "b": 14,
+              "margin": 0.30850233282808404,
+              "linked": false
+            },
+            {
+              "a": 8,
+              "b": 12,
+              "margin": 0.30850233282808404,
+              "linked": true
+            },
+            {
+              "a": 8,
+              "b": 14,
+              "margin": 0.30850233282808404,
+              "linked": true
+            }
+          ],
+          "removed": {
+            "cam1": [
+              2192,
+              2339
+            ]
+          },
+          "unchanged_tracking_and_selection_match": [
+            "cam1"
+          ]
+        }
+      },
+      "elapsed_seconds": 43.079
+    },
+    {
+      "clip": "clip_058",
+      "original_reason": "player_association_player_not_found",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              0,
+              2
+            ],
+            "runner_up": 3
+          },
+          "1": {
+            "players": [
+              1
+            ],
+            "runner_up": null
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0,
+              4,
+              6,
+              10
+            ],
+            "identity": 0,
+            "presence_frames": 763,
+            "seen_frames": 763,
+            "side": -1
+          },
+          {
+            "candidates": [
+              1,
+              3,
+              8,
+              11
+            ],
+            "identity": 1,
+            "presence_frames": 763,
+            "seen_frames": 763,
+            "side": 1
+          },
+          {
+            "candidates": [
+              2,
+              5,
+              9,
+              12
+            ],
+            "identity": 2,
+            "presence_frames": 763,
+            "seen_frames": 763,
+            "side": -1
+          },
+          {
+            "candidates": [
+              7
+            ],
+            "identity": 3,
+            "presence_frames": 29,
+            "seen_frames": 29,
+            "side": -1
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_player_not_found",
+          "error": "Side y>0 lacks 2 identities present for 191 frames",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": 3
+            },
+            "1": {
+              "players": [
+                1
+              ],
+              "runner_up": null
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                6,
+                10
+              ],
+              "presence_frames": 763,
+              "seen_frames": 763,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                3,
+                8,
+                11
+              ],
+              "presence_frames": 763,
+              "seen_frames": 763,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                9,
+                12
+              ],
+              "presence_frames": 763,
+              "seen_frames": 763,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                7
+              ],
+              "presence_frames": 29,
+              "seen_frames": 29,
+              "side": -1
+            }
+          ]
+        },
+        "delete_reviewed_dino_rows": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_player_not_found",
+          "error": "Side y>0 lacks 2 identities present for 191 frames",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": 3
+            },
+            "1": {
+              "players": [
+                1
+              ],
+              "runner_up": null
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                6,
+                10
+              ],
+              "presence_frames": 763,
+              "seen_frames": 763,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                3,
+                8,
+                11
+              ],
+              "presence_frames": 763,
+              "seen_frames": 763,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                9,
+                12
+              ],
+              "presence_frames": 763,
+              "seen_frames": 763,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                7
+              ],
+              "presence_frames": 29,
+              "seen_frames": 29,
+              "side": -1
+            }
+          ],
+          "removed": {
+            "cam0": [
+              4397,
+              4564
+            ]
+          },
+          "unchanged_tracking_and_selection_match": [
+            "cam0"
+          ]
+        }
+      },
+      "elapsed_seconds": 24.16
+    },
+    {
+      "clip": "clip_060",
+      "original_reason": "player_association_ambiguous_association",
+      "original": {
+        "selection": {
+          "-1": {
+            "players": [
+              0,
+              2
+            ],
+            "runner_up": 4
+          },
+          "1": {
+            "players": [
+              1,
+              3
+            ],
+            "runner_up": null
+          }
+        },
+        "identities": [
+          {
+            "candidates": [
+              0,
+              4,
+              10,
+              15
+            ],
+            "identity": 0,
+            "presence_frames": 311,
+            "seen_frames": 311,
+            "side": -1
+          },
+          {
+            "candidates": [
+              1,
+              6,
+              8,
+              13,
+              17
+            ],
+            "identity": 1,
+            "presence_frames": 311,
+            "seen_frames": 311,
+            "side": 1
+          },
+          {
+            "candidates": [
+              2,
+              5,
+              12,
+              16
+            ],
+            "identity": 2,
+            "presence_frames": 311,
+            "seen_frames": 311,
+            "side": -1
+          },
+          {
+            "candidates": [
+              3,
+              7,
+              9,
+              14
+            ],
+            "identity": 3,
+            "presence_frames": 311,
+            "seen_frames": 311,
+            "side": 1
+          },
+          {
+            "candidates": [
+              11
+            ],
+            "identity": 4,
+            "presence_frames": 146,
+            "seen_frames": 146,
+            "side": -1
+          }
+        ],
+        "min_player_margin": 0.6488260184555088,
+        "ambiguous_pairs": [
+          {
+            "a": 0,
+            "b": 11,
+            "linked": false,
+            "margin": 0.6488260184555088
+          },
+          {
+            "a": 4,
+            "b": 11,
+            "linked": false,
+            "margin": 0.6488260184555088
+          },
+          {
+            "a": 10,
+            "b": 11,
+            "linked": false,
+            "margin": 0.6488260184555088
+          },
+          {
+            "a": 11,
+            "b": 15,
+            "linked": false,
+            "margin": 0.6488260184555088
+          }
+        ]
+      },
+      "conditions": {
+        "unchanged": {
+          "status": "stopped",
+          "stage": "player_association",
+          "reason": "player_association_ambiguous_association",
+          "error": "4 player decisions between long segments have margins below 1.0; the smallest is 0.649 for candidates 0 and 11",
+          "selection": {
+            "-1": {
+              "players": [
+                0,
+                2
+              ],
+              "runner_up": 4
+            },
+            "1": {
+              "players": [
+                1,
+                3
+              ],
+              "runner_up": null
+            }
+          },
+          "identities": [
+            {
+              "identity": 0,
+              "candidates": [
+                0,
+                4,
+                10,
+                15
+              ],
+              "presence_frames": 311,
+              "seen_frames": 311,
+              "side": -1
+            },
+            {
+              "identity": 1,
+              "candidates": [
+                1,
+                6,
+                8,
+                13,
+                17
+              ],
+              "presence_frames": 311,
+              "seen_frames": 311,
+              "side": 1
+            },
+            {
+              "identity": 2,
+              "candidates": [
+                2,
+                5,
+                12,
+                16
+              ],
+              "presence_frames": 311,
+              "seen_frames": 311,
+              "side": -1
+            },
+            {
+              "identity": 3,
+              "candidates": [
+                3,
+                7,
+                9,
+                14
+              ],
+              "presence_frames": 311,
+              "seen_frames": 311,
+              "side": 1
+            },
+            {
+              "identity": 4,
+              "candidates": [
+                11
+              ],
+              "presence_frames": 146,
+              "seen_frames": 146,
+              "side": -1
+            }
+          ],
+          "min_player_margin": 0.6488260184555088,
+          "ambiguous_pairs": [
+            {
+              "a": 0,
+              "b": 11,
+              "margin": 0.6488260184555088,
+              "linked": false
+            },
+            {
+              "a": 4,
+              "b": 11,
+              "margin": 0.6488260184555088,
+              "linked": false
+            },
+            {
+              "a": 10,
+              "b": 11,
+              "margin": 0.6488260184555088,
+              "linked": false
+            },
+            {
+              "a": 11,
+              "b": 15,
+              "margin": 0.6488260184555088,
+              "linked": false
+            }
+          ]
+        }
+      },
+      "elapsed_seconds": 7.762
+    }
+  ]
+}
