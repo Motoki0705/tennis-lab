@@ -7,7 +7,6 @@ from typing import Any
 
 import bpy
 import numpy as np
-
 from common import _key_visibility, _new_material
 
 PLAYBACK_BUNDLE_SCHEMA = "tennis_scene_blender_playback_v1"
