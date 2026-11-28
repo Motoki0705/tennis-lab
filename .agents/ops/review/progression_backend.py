@@ -13,15 +13,26 @@ from pathlib import Path
 from typing import Any
 
 from issues.cli import GitHubHTTPError
+from lib import knowledge_ci
 from lib.d_capacity import CapacityError
 from lib.ops_review import knowledge_evidence, knowledge_records
-from lib.ops_review.merge_gate_policy import auto_merge, python_ci_errors
-from lib.ops_review.progression import KNOWLEDGE_MERGE, MergeHold, RateWait
+from lib.ops_review.merge_gate_policy import (
+    auto_merge,
+    latest_push_ci_run,
+    python_ci_errors,
+)
+from lib.ops_review.progression import (
+    KNOWLEDGE_MERGE,
+    MERGEABILITY_UNKNOWN,
+    MergeHold,
+    RateWait,
+    is_transient_read,
+)
 from lib.repair_turn import parse_report
 from lib.repair_turn import request as repair_request
 from parent.execution import authorization
-from parent.github import GitHub
-from parent.policy import child_stopped, closing_issues, digest, object_value
+from parent.github import GitHub, GitHubWriteError
+from parent.policy import child_stopped, closing_issues, digest, number, object_value
 from parent.session import ParentSession
 from parent.state import Store
 
@@ -61,6 +72,15 @@ class ProgressionGitHub(GitHub):
         if response.rate_limit is not None:
             raise RateWait(response.rate_limit.resume_at, response.rate_limit.reason)
         return response.body
+
+    def rerun_workflow(self, run_id: int) -> None:
+        endpoint = f"repos/{self.repo}/actions/runs/{number(run_id)}/rerun"
+        response = self._write_response("POST", endpoint, {})
+        if response.status != 201:
+            raise GitHubWriteError(
+                f"workflow rerun expected HTTP 201, got HTTP {response.status}",
+                status=response.status,
+            )
 
 
 class LiveBackend:
@@ -152,28 +172,57 @@ class LiveBackend:
 
     def ci(self, number: int, head: str, *, main: bool = False) -> dict[str, Any]:
         checks = self.checks(head)
-        if main and checks:
-            # A PR run at the same SHA is not main's push CI. Select suites
-            # belonging to a push run on the requested base branch.
+        run = None
+        jobs: list[dict[str, Any]] = []
+        cancelled = False
+        if main:
             base = self.state["targets"][str(number)]["base_ref"]
-            runs = self.runs(head, event="push", branch=base)
-            suites = {r["check_suite_id"] for r in runs}
-            checks = [c for c in checks if c.get("check_suite", {}).get("id") in suites]
+            run = latest_push_ci_run(
+                self.runs(head, event="push", branch=base), head, base
+            )
+            if run is None:
+                checks = []
+            else:
+                suite = run["check_suite_id"]
+                checks = [
+                    c for c in checks if c.get("check_suite", {}).get("id") == suite
+                ]
+                cancelled = (
+                    run["status"] == "completed" and run["conclusion"] == "cancelled"
+                )
+                if cancelled or (run["run_attempt"] > 1 and checks):
+                    jobs = self.jobs(run)
+                    # Reruns share a suite; job IDs identify this attempt's checks.
+                    job_ids = {job["id"] for job in jobs}
+                    checks = [c for c in checks if c["id"] in job_ids]
         errors = python_ci_errors(checks, head)
-        pending = {"ci_python_missing", "ci_python_pending"}
-        status = (
-            "success"
-            if not errors
-            else "pending"
-            if set(errors) <= pending
-            else "failure"
-        )
-        return {
+        if cancelled and not jobs:
+            status, errors = (
+                "cancelled_before_start",
+                ("ci_python_cancelled_before_start",),
+            )
+        elif cancelled and errors:
+            status, errors = "failure", ("ci_python_cancelled",)
+        elif not errors:
+            status = "success"
+        elif set(errors) <= {"ci_python_missing", "ci_python_pending"}:
+            status = "pending"
+        else:
+            status = "failure"
+        result: dict[str, Any] = {
             "status": status,
             "head": head,
             "checks": checks,
             "reasons": list(errors),
         }
+        if run is not None:
+            result["run"] = {
+                key: run[key] for key in ("id", "run_attempt", "status", "conclusion")
+            }
+        return result
+
+    def rerun_workflow(self, run_id: int) -> None:
+        self.gh.rerun_workflow(run_id)
 
     def shape(self, target: dict[str, Any], pr: dict[str, Any]) -> str | None:
         if pr.get("state") != "open" or pr.get("merged"):
@@ -181,9 +230,7 @@ class LiveBackend:
         if pr.get("draft"):
             return "draft"
         if pr.get("mergeable") is not True:
-            return (
-                "conflict" if pr.get("mergeable") is False else "mergeability_unknown"
-            )
+            return "conflict" if pr.get("mergeable") is False else MERGEABILITY_UNKNOWN
         if (
             pr["head"]["ref"] != target["branch"]
             or pr["base"]["ref"] != target["base_ref"]
@@ -304,6 +351,12 @@ class LiveBackend:
                 raise ValueError("incomplete GitHub pagination")
         raise ValueError("GitHub pagination exceeded limit")
 
+    def jobs(self, run: dict[str, Any]) -> list[dict[str, Any]]:
+        run_id, attempt = number(run.get("id")), number(run.get("run_attempt"))
+        return self.paged(
+            f"repos/{self.repo}/actions/runs/{run_id}/attempts/{attempt}/jobs", "jobs"
+        )
+
     def failure(self, target: dict[str, Any], ci: dict[str, Any]) -> dict[str, Any]:
         if ci.get("run"):
             runs = [ci["run"]]
@@ -318,8 +371,7 @@ class LiveBackend:
             ]
         jobs = []
         for run in runs:
-            endpoint = f"repos/{self.repo}/actions/runs/{run['id']}/attempts/{run['run_attempt']}/jobs"
-            for job in self.paged(endpoint, "jobs"):
+            for job in self.jobs(run):
                 if job.get("conclusion") in {None, "success", "skipped", "neutral"}:
                     continue
                 log = self.gh.job_log(job["id"], clock=self.clock)
@@ -509,9 +561,8 @@ class LiveBackend:
             raise ValueError("gh pr merge failed: " + result.stderr.strip())
 
     def knowledge_ci(self, pr: dict[str, Any]) -> dict[str, Any]:
-        scope, comparison = knowledge_records.assess(
-            Path(self.state["checkout"]), self.repo, pr
-        )
+        root = Path(self.state["checkout"])
+        scope, comparison = knowledge_records.assess(root, self.repo, pr)
         if comparison is None:
             return {
                 "status": "failure",
@@ -519,19 +570,19 @@ class LiveBackend:
                 "workflow": knowledge_records.WORKFLOW,
                 "reasons": [f"knowledge records scope unavailable: {scope.reason}"],
             }
-        return knowledge_records.observe_ci(self, pr, comparison)
+        return knowledge_records.observe_ci(self, pr, comparison, root=root)
 
     def merge_knowledge(
         self,
         state: dict[str, Any],
         target: dict[str, Any],
         ci: dict[str, Any],
-        record_intent: Callable[[], None],
+        record_intent: Callable[[str, str], None],
     ) -> None:
         with self.merge_slot():
             pr = self.pr(target["number"])
             if reason := self.shape(target, pr):
-                raise MergeHold(reason)
+                raise MergeHold(reason, retry=reason == MERGEABILITY_UNKNOWN)
             if pr["head"]["sha"] != ci["head"]:
                 raise MergeHold("knowledge PR HEAD changed; confirm new evidence")
             if target.get("implementation_pr"):
@@ -545,21 +596,27 @@ class LiveBackend:
                     implementation.get("body") or "", self.repo
                 ):
                     raise MergeHold("knowledge PR references changed")
-            comparison = knowledge_records.Comparison.from_pr(pr)
-            if (comparison.base, comparison.merge) != (ci["base_sha"], ci["merge_sha"]):
-                raise MergeHold("knowledge PR comparison changed", retry=True)
             if reason := self.local(state) or self.human(state, target):
                 raise MergeHold(reason)
             current = self.pr(target["number"])
             if reason := self.shape(target, current):
-                raise MergeHold(reason)
+                raise MergeHold(reason, retry=reason == MERGEABILITY_UNKNOWN)
             if "needs-human" in {label["name"] for label in current["labels"]}:
                 raise MergeHold(f"needs-human: pulls/{target['number']}")
-            if knowledge_records.Comparison.from_pr(
-                current
-            ) != comparison or current.get("body") != pr.get("body"):
+            if current["head"]["sha"] != ci["head"]:
+                raise MergeHold("knowledge PR HEAD changed; confirm new evidence")
+            if current.get("body") != pr.get("body"):
                 raise MergeHold("knowledge PR changed while checking merge", retry=True)
             root = Path(state["checkout"])
+            comparison = knowledge_records.Comparison.from_pr(current)
+            if (comparison.base, comparison.merge) != (ci["base_sha"], ci["merge_sha"]):
+                # GitHub can regenerate the test merge on the same HEAD.
+                scope, refreshed = knowledge_records.assess(root, self.repo, current)
+                if refreshed is None:
+                    raise MergeHold(
+                        f"knowledge records scope unavailable: {scope.reason}"
+                    )
+                comparison = refreshed
             try:
                 closing = knowledge_records.closing_targets(
                     self.gh, root, current, comparison
@@ -568,12 +625,11 @@ class LiveBackend:
                     root, current, comparison, target.get("verified_evidence")
                 )
             except ValueError as exc:
+                if is_transient_read(exc):
+                    raise
                 raise MergeHold(str(exc)) from exc
             if closing != set(target["issues"]):
                 raise MergeHold("GitHub closing targets changed")
-            if knowledge_records.base_tip(self.gh, "main") != comparison.base:
-                raise MergeHold("main advanced after knowledge CI", retry=True)
-            # Last remote observation before recording intent and submitting.
             run = knowledge_records.latest_run(self, current, comparison.head)
             if (
                 run is None
@@ -582,7 +638,19 @@ class LiveBackend:
                 or any(run.get(key) != ci["run"][key] for key in ("id", "run_attempt"))
             ):
                 raise MergeHold("Knowledge library run or attempt changed", retry=True)
-            record_intent()
+            current_main = knowledge_records.base_tip(self.gh, "main")
+            verified_base = ci.get("verified_base_sha", ci["base_sha"])
+            try:
+                knowledge_records.require_current_comparison(
+                    root,
+                    comparison,
+                    checked_base=verified_base,
+                    checked_merge=ci.get("verified_merge_sha", ci["merge_sha"]),
+                    current_main=current_main,
+                )
+            except ValueError as exc:
+                raise MergeHold(str(exc)) from exc
+            record_intent(current_main, verified_base)
             # Submit a synchronous merge. The request fixes HEAD and cannot
             # enqueue a later merge against a different comparison.
             result = self.gh.write(
@@ -604,12 +672,26 @@ class LiveBackend:
             pr.get("merge_commit_sha"), "merge commit"
         )
         actual = object_value(self.gh.get(f"repos/{self.repo}/commits/{commit}"))
-        if actual.get("sha") != commit or [
-            parent.get("sha") for parent in actual.get("parents", [])
-        ] != [target["merge_base"], target["merge_head"]]:
-            raise ValueError(
-                "knowledge merge parents differ from the verified comparison"
-            )
+        parents = actual.get("parents")
+        mismatch = "knowledge merge parents differ from the verified comparison"
+        if (
+            actual.get("sha") != commit
+            or not isinstance(parents, list)
+            or len(parents) != 2
+            or not all(isinstance(parent, dict) for parent in parents)
+            or parents[1].get("sha") != target["merge_head"]
+        ):
+            raise ValueError(mismatch)
+        actual_base = parents[0].get("sha")
+        if actual_base != target["merge_base"]:
+            # In older intents merge_base was also the base verified by CI.
+            verified_base = target.get("verified_base", target["merge_base"])
+            try:
+                knowledge_ci.require_unchanged_base(
+                    Path(self.state["checkout"]), verified_base, actual_base
+                )
+            except ValueError as exc:
+                raise ValueError(mismatch) from exc
         main = knowledge_records.base_tip(self.gh, "main")
         if commit != main:
             comparison = object_value(
@@ -739,6 +821,7 @@ class LiveBackend:
     def notify(self, state: dict[str, Any], event: dict[str, Any]) -> None:
         from decision_logs.review_capture import progression_event
         from dispatcher.supervisor import event as dispatch_event
+        from lib.ops_review import progression_notify
 
         progression_event(self.store.directory, state, event)
         with self.store.locked():
@@ -749,23 +832,45 @@ class LiveBackend:
             ):
                 return  # The durable private event remains visible to the new owner.
             dispatch = row.get("dispatch")
-            if not dispatch:
+            if not dispatch and (
+                row["status"] != "active"
+                or event["kind"] not in progression_notify.KINDS
+            ):
                 return
             delivered = row.setdefault("progression_notifications", {})
             token = f"{state['id']}:{event['id']}"
             if token in delivered:
                 return
-            delivered[token] = dict(event)
-            dispatch["wake_requested"] = True
-            if dispatch["phase"] == "waiting":
-                dispatch.update(
-                    phase="resume_pending", reason="レビュー・merge自動進行からの通知"
+            if dispatch:
+                delivered[token] = dict(event)
+                dispatch["wake_requested"] = True
+                if dispatch["phase"] == "waiting":
+                    dispatch.update(
+                        phase="resume_pending",
+                        reason="レビュー・merge自動進行からの通知",
+                    )
+                dispatch_event(
+                    dispatch,
+                    "merge_progression",
+                    progression_id=state["id"],
+                    notification_id=event["id"],
+                    kind_detail=event["kind"],
                 )
-            dispatch_event(
-                dispatch,
-                "merge_progression",
-                progression_id=state["id"],
-                notification_id=event["id"],
-                kind_detail=event["kind"],
-            )
+                self.store.save()
+                return
+            notice = progression_notify.record(state, event, self.clock())
+            delivered[token] = notice
             self.store.save()
+
+        outcome = progression_notify.deliver_bell(
+            os.environ, self.store, notice, state["owner"]
+        )
+        with self.store.locked():
+            saved = self.store.parents.get(self.key, {}).get(
+                "progression_notifications", {}
+            )
+            if saved.get(token) == notice:
+                saved[token]["delivery"] = progression_notify.delivery(
+                    outcome, notice["delivery"]["engine"], self.clock()
+                )
+                self.store.save()

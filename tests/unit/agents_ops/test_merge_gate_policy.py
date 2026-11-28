@@ -158,6 +158,130 @@ def test_required_check_run_pages_are_all_checked(
     assert len(calls) == 2
 
 
+@pytest.fixture
+def main_ci_backend(policy: Any, tmp_path: Path) -> Any:
+    Store = importlib.import_module("parent.state").Store
+    LiveBackend = importlib.import_module(
+        "lib.ops_review.progression_backend"
+    ).LiveBackend
+    state = {
+        "request": {"repo": "o/r", "parent_issue": 1},
+        "targets": {"11": {"base_ref": "trunk"}},
+    }
+    return LiveBackend(state, Store(tmp_path))
+
+
+@pytest.mark.parametrize(
+    ("scenario", "status", "reason"),
+    [
+        ("no_jobs", "cancelled_before_start", "ci_python_cancelled_before_start"),
+        ("no_python", "failure", "ci_python_cancelled"),
+        ("python_cancelled", "failure", "ci_python_cancelled"),
+        ("python_passed", "success", None),
+        ("stale_python", "failure", "ci_python_cancelled"),
+        ("rerun_queued", "pending", "ci_python_missing"),
+        ("other_workflow", "pending", "ci_python_missing"),
+    ],
+)
+def test_main_ci_checks_the_latest_push_attempt_even_without_checks(
+    main_ci_backend: Any, scenario: str, status: str, reason: str | None
+) -> None:
+    latest = {
+        "id": 17,
+        "name": "CI",
+        "path": ".github/workflows/ci.yml@refs/heads/trunk",
+        "head_sha": HEAD,
+        "head_branch": "trunk",
+        "event": "push",
+        "check_suite_id": 12,
+        "run_number": 30,
+        "run_attempt": 2,
+        "status": "completed",
+        "conclusion": "cancelled",
+    }
+    unrelated = {
+        **latest,
+        "path": ".github/workflows/other.yml",
+        "id": 18,
+        "run_number": 31,
+    }
+    runs = [unrelated]
+    if scenario != "other_workflow":
+        runs.extend(
+            [
+                {**latest, "run_attempt": 1, "conclusion": "success"},
+                {**latest, "id": 15, "run_number": 29, "run_attempt": 8},
+                {**latest, "id": 16, "run_number": 32, "event": "pull_request"},
+                latest,
+            ]
+        )
+    checks = [
+        {**check, "id": 40, "check_suite": {"id": 12}}
+        for check in ci_runs(
+            {
+                "python_cancelled": "cancelled",
+                "python_passed": "success",
+                "stale_python": "success",
+                "rerun_queued": "success",
+                "other_workflow": "success",
+            }.get(scenario, "missing")
+        )
+    ]
+    if scenario == "rerun_queued":
+        latest.update(status="queued", conclusion=None)
+    jobs = (
+        []
+        if scenario in {"no_jobs", "rerun_queued"}
+        else [{"id": 40 if scenario in {"python_passed", "python_cancelled"} else 42}]
+    )
+    observations: list[str] = []
+
+    class Fake:
+        def get(self, endpoint: str) -> dict[str, Any]:
+            observations.append(endpoint)
+            if "/check-runs?" in endpoint:
+                return {"total_count": len(checks), "check_runs": checks}
+            if (
+                endpoint
+                == f"repos/o/r/actions/runs?head_sha={HEAD}&event=push&branch=trunk&per_page=100&page=1"
+            ):
+                return {"total_count": len(runs), "workflow_runs": runs}
+            assert (
+                endpoint
+                == "repos/o/r/actions/runs/17/attempts/2/jobs?per_page=100&page=1"
+            )
+            return {"total_count": len(jobs), "jobs": jobs}
+
+    main_ci_backend.gh = Fake()
+    result = main_ci_backend.ci(11, HEAD, main=True)
+    assert result["status"] == status
+    assert result["reasons"] == ([reason] if reason else [])
+    assert len(observations) == (2 if scenario == "other_workflow" else 3)
+    if scenario == "no_jobs":
+        assert (result["run"]["id"], result["run"]["run_attempt"]) == (17, 2)
+
+
+@pytest.mark.parametrize("status", [201, 503])
+def test_rerun_workflow_accepts_empty_201_and_submits_once(
+    main_ci_backend: Any, monkeypatch: pytest.MonkeyPatch, status: int
+) -> None:
+    HTTPResponse = importlib.import_module("issues.transport").HTTPResponse
+    GitHubWriteError = importlib.import_module("parent.github").GitHubWriteError
+    requests = []
+
+    def response(method: str, endpoint: str, payload: dict[str, Any]) -> Any:
+        requests.append((method, endpoint, payload))
+        return HTTPResponse(status, {}, "")
+
+    monkeypatch.setattr(main_ci_backend.gh._http, "request_response", response)
+    if status == 201:
+        main_ci_backend.rerun_workflow(17)
+    else:
+        with pytest.raises(GitHubWriteError, match="HTTP 503"):
+            main_ci_backend.rerun_workflow(17)
+    assert requests == [("POST", "repos/o/r/actions/runs/17/rerun", {})]
+
+
 @pytest.mark.parametrize(
     "case,expected",
     [

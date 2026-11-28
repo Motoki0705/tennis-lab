@@ -15,6 +15,7 @@ from urllib.parse import quote
 
 from issues.format import visible_lines
 from lib import knowledge_ci
+from lib.ops_review.progression import is_transient_read
 from parent.policy import closing_references, nonempty, number, object_value
 from parent.snapshot import git
 
@@ -299,18 +300,42 @@ def result_bytes(backend: LiveBackend, run: dict[str, Any]) -> bytes:
         raise ValueError("invalid knowledge records artifact ZIP") from exc
 
 
+def require_current_comparison(
+    root: Path,
+    comparison: Comparison,
+    *,
+    checked_base: str,
+    checked_merge: str,
+    current_main: str,
+) -> None:
+    if checked_base == comparison.base and checked_merge != comparison.merge:
+        raise ValueError(
+            "knowledge records result merge_sha does not match the PR test merge at the same base"
+        )
+    try:
+        knowledge_ci.require_unchanged_base(root, checked_base, current_main)
+        if comparison.base != checked_base:
+            # Prove both bases are ancestors with the same watched paths as main.
+            # This also proves the watched paths match between the two bases.
+            knowledge_ci.require_unchanged_base(root, comparison.base, current_main)
+    except ValueError as exc:
+        raise ValueError(
+            f"{exc}. Merge main into the PR branch and refresh evidence"
+        ) from exc
+
+
 def observe_ci(
-    backend: LiveBackend, pr: dict[str, Any], comparison: Comparison
+    backend: LiveBackend, pr: dict[str, Any], comparison: Comparison, *, root: Path
 ) -> dict[str, Any]:
+    current_main = base_tip(backend.gh, pr["base"]["ref"])
     result: dict[str, Any] = {
         "workflow": WORKFLOW,
         "status": "pending",
         "head": comparison.head,
         "base_sha": comparison.base,
         "merge_sha": comparison.merge,
+        "observed_main_sha": current_main,
     }
-    if base_tip(backend.gh, pr["base"]["ref"]) != comparison.base:
-        return {**result, "reasons": ["PR comparison is behind the current base"]}
     run = latest_run(backend, pr, comparison.head)
     if run is None:
         return {**result, "reasons": ["Knowledge library PR run is missing"]}
@@ -327,23 +352,43 @@ def observe_ci(
         }
     try:
         data = result_bytes(backend, run)
-        # A successful run on an earlier comparison can coexist with a new
-        # test merge. Keep waiting for a PR event against the current base.
         artifact = object_value(json.loads(data))
         checked_base = commit_sha(artifact.get("base_sha"), "result base")
-        if checked_base != comparison.base:
-            return {
-                **result,
-                "reasons": ["Knowledge library result is for an earlier comparison"],
-            }
+        checked_merge = commit_sha(artifact.get("merge_sha"), "result test merge")
         knowledge_ci.verify_result(
             data,
             run,
             pr_number=pr["number"],
             head_sha=comparison.head,
-            base_sha=comparison.base,
-            merge_sha=comparison.merge,
+            base_sha=checked_base,
+            merge_sha=checked_merge,
         )
-    except (ValueError, subprocess.TimeoutExpired) as exc:
+        knowledge_ci.ensure_commits(root, checked_base, comparison.head, checked_merge)
+        scope = knowledge_ci.classify_pr(
+            root,
+            head_sha=comparison.head,
+            base_sha=checked_base,
+            merge_sha=checked_merge,
+        )
+        if not scope.records_only:
+            raise ValueError(
+                f"knowledge records result comparison is invalid: {scope.reason}"
+            )
+        require_current_comparison(
+            root,
+            comparison,
+            checked_base=checked_base,
+            checked_merge=checked_merge,
+            current_main=current_main,
+        )
+    except (OSError, ValueError, subprocess.SubprocessError) as exc:
+        if is_transient_read(exc):
+            raise
         return {**result, "status": "failure", "reasons": [str(exc)]}
-    return {**result, "status": "success", "reasons": []}
+    return {
+        **result,
+        "status": "success",
+        "reasons": [],
+        "verified_base_sha": checked_base,
+        "verified_merge_sha": checked_merge,
+    }

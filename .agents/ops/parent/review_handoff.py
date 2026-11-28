@@ -10,6 +10,17 @@ from .policy import closing_issues, object_value
 from .session import ParentSession
 
 
+def require_ready_pr(pr: dict[str, Any]) -> None:
+    number = pr["number"]
+    draft = pr.get("draft")
+    if draft is True:
+        raise ValueError(
+            f"PR #{number} is a draft. Mark it ready for review before using review-request."
+        )
+    if draft is not False:
+        raise ValueError(f"PR #{number}: draft status is unavailable")
+
+
 def runner_ended(session: ParentSession, child: int, *, persist: bool = True) -> None:
     task = session.worker_task(child)
     if not task.get("delegated"):
@@ -91,6 +102,7 @@ def request(
 
         if pr.get("number") != n:
             raise ValueError("PR identity differs from request")
+        require_ready_pr(pr)
         with session.gh.io_scope():
             scope, _ = knowledge_records.assess(Path.cwd(), session.gh.repo, pr)
         if scope.records_only:
@@ -99,7 +111,7 @@ def request(
             )
         require_separate_self_prs(parent, [pr], session.gh.repo)
         relevant = closing_issues(pr.get("body") or "", session.gh.repo) & targets
-        if pr.get("number") != n or not relevant or pr.get("state") != "open":
+        if not relevant or pr.get("state") != "open":
             raise ValueError("review requires related open PRs")
         linked.update(relevant)
     for child in sorted(linked):

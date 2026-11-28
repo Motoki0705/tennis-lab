@@ -35,6 +35,7 @@ PYTHONPATH=.agents/ops .venv/bin/python -m parent evidence-close --apply
 ラベル付き一覧への反映前でも、直接照合が成功し、一覧に競合する紐付けがなければ確定できる。
 
 メインcheckoutから実行した `wait-worker` は、runと監視結果を読む区間で `ops-code.lock` を共有取得し、ポーリング間隔では手放す。`wait-supplement` は `gh run watch` 中、`wait-merge` とレビュー・マージ操作の `--wait` はイベントの観測間隔で手放す。復帰時の版照合と終了条件は [対話CLIの保護](../lib/README.md#対話cliの保護) を参照する。checkout更新で75が返った場合は、更新後のCLIで `wait-worker`・`wait-supplement`・`wait-merge` を実行し、保存済みのrun・監視・進行記録から待機を続ける。
+待機するCLIが75で終了した後も、[隔離されたマージcontroller](../review/README.md#実行と保存) は進行を続ける。`wait-merge --run-id RUN --after EVENT` で同じ進行の次のイベントから合流できる。
 
 状態ルートは実ディレクトリを指定する。状態ルートと `parents/` は実行ユーザーが所有し、上位は root または実行ユーザーが所有する。
 状態ディレクトリ本体と状態ファイルにはグループ・その他への書込み権限を与えない。

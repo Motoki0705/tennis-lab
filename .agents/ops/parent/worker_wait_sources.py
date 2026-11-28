@@ -79,7 +79,7 @@ def ci_result(
 
         _, comparison = knowledge_records.assess(root, backend.repo, current)
         if comparison is not None:
-            ci = knowledge_records.observe_ci(backend, current, comparison)
+            ci = knowledge_records.observe_ci(backend, current, comparison, root=root)
     if ci["status"] == "pending":
         if python_missing and current.get("mergeable") is False:
             latest = backend.pr(pr)
@@ -98,7 +98,15 @@ def ci_result(
         result.update(
             {
                 key: ci[key]
-                for key in ("workflow", "base_sha", "merge_sha", "run")
+                for key in (
+                    "workflow",
+                    "base_sha",
+                    "merge_sha",
+                    "run",
+                    "verified_base_sha",
+                    "verified_merge_sha",
+                    "observed_main_sha",
+                )
                 if key in ci
             }
         )

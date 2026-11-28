@@ -1,0 +1,27 @@
+\documentclass[border=2pt]{standalone}
+\input{diagram-style}
+\begin{document}
+\begin{tikzpicture}[x=1mm,y=-1mm]
+  \node[processing] (one) at (-50,0) {単一クリップ};
+  \node[processing] (many) at (50,0) {登録動画の全クリップ};
+  \node[geom,minimum width=54mm] (plan) at (0,14) {クリップ別の依存計画};
+  \node[geom,minimum width=54mm] (ready) at (0,30) {依存が揃った処理を選択};
+  \node[stored] (store) at (-52,47) {component store\\採用版と依存参照};
+  \node[processing,minimum width=53mm] (compute) at (0,47) {入力の組立と計算};
+  \node[processing] (batch) at (52,39) {互換な処理単位を集約};
+  \node[processing] (runtime) at (52,55) {共有モデルで推論};
+  \node[stored,minimum width=54mm] (output) at (0,68) {完成クリップのシーンを公開};
+
+  \draw[flow] (one) |- (plan);
+  \draw[flow] (many) |- (plan);
+  \draw[flow] (plan) -- (ready);
+  \draw[flow] (ready) -- node[right,font=\sffamily\scriptsize] {計算が必要} (compute);
+  \draw[flow] (ready.west) -| node[pos=.28,above,font=\sffamily\scriptsize] {照合・再利用} (store.north);
+  \draw[flow] (store.north east) -- ++(1,0) |- ($(ready.west)+(0,.9)$);
+  \draw[flow] (compute) -- (store);
+  \draw[flow] (compute.east) -- ++(5,0) |- (batch);
+  \draw[flow] (batch) -- (runtime);
+  \draw[flow] (runtime.west) -| ($(compute.south east)+(-8,0)$);
+  \draw[flow] (store.south) |- (output);
+\end{tikzpicture}
+\end{document}

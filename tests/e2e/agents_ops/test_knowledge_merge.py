@@ -17,6 +17,7 @@ from tests.support.agents_ops.improvements import finish_for
 
 RECORD = "knowledge/nodes/task/000001-result.md"
 SCRIPT = "knowledge/runs/trial/repro.sh"
+WORKER_LOG = ".agents/logs/parents/1/workers/worker-log.md"
 
 
 def pr_with_paths(
@@ -30,7 +31,7 @@ def pr_with_paths(
     run_git(tree, "add", *paths)
     run_git(tree, "commit", "-m", message or f"fixture PR {number}")
     head = run_git(tree, "rev-parse", "HEAD")
-    pr = p.pr(number, 10, head, f"codex/knowledge-pr-{number}")
+    pr: dict[str, Any] = p.pr(number, 10, head, f"codex/knowledge-pr-{number}")
     merge = run_git(
         p.repo,
         "commit-tree",
@@ -156,6 +157,29 @@ def merge_request(p: ParentEnv, pr: dict[str, Any], **extra: str) -> dict[str, A
     )
 
 
+def commit_base_change(root: Path, path: str) -> str:
+    file = root / path
+    file.parent.mkdir(parents=True, exist_ok=True)
+    file.write_text("A parallel change on main.\n", encoding="utf-8")
+    run_git(root, "add", "--", path)
+    run_git(root, "commit", "-m", f"Advance main with {path}")
+    return run_git(root, "rev-parse", "HEAD")
+
+
+def updated_test_merge(root: Path, base: str, head: str) -> str:
+    return run_git(
+        root,
+        "commit-tree",
+        run_git(root, "merge-tree", "--write-tree", base, head),
+        "-p",
+        base,
+        "-p",
+        head,
+        "-m",
+        "Updated test merge",
+    )
+
+
 def test_knowledge_records_are_excluded_at_both_review_entry_points(
     parent_env: ParentEnv,
 ) -> None:
@@ -178,6 +202,7 @@ def test_knowledge_records_are_excluded_at_both_review_entry_points(
         p.cli("review-inspect", "--prs", *map(str, range(100, 107))).stdout
     )
     assert value["review_candidates"] == [102, 103, 104, 105, 106]
+    assert [pr["excluded_reason"] for pr in value["prs"][:2]] == ["records_only"] * 2
     assert "test merge commit is unavailable" in value["prs"][-1]["scope"]["reason"]
     for n in (100, 101):
         result = p.cli(
@@ -222,6 +247,32 @@ def test_public_knowledge_merge_and_acceptance(
         state["prs"] = [pr]
     execution_evidence(pr, executed=True)
     successful_run(p, state, pr)
+    checked_base = pr["base"]["sha"]
+    checked_merge = pr["merge_commit_sha"]
+    observed_main = merge_base = final_base = checked_base
+    if purpose == "closing":
+        # The initial PR snapshot still points at the base used by CI.
+        observed_main = commit_base_change(p.repo, WORKER_LOG)
+        merge_base = final_base = commit_base_change(
+            p.worktree("base-update"), ".agents/logs/parents/1/decision.md"
+        )
+        state["knowledge_advance_after_base_read"] = {
+            "sha": merge_base,
+            "pr": n,
+            "test_merge": updated_test_merge(p.repo, merge_base, pr["head"]["sha"]),
+        }
+    elif companion:
+        # GitHub has already regenerated the test merge since CI ran.
+        observed_main = merge_base = final_base = commit_base_change(
+            p.repo, "src/unrelated.py"
+        )
+        pr["base"]["sha"] = observed_main
+        pr["merge_commit_sha"] = updated_test_merge(
+            p.repo, observed_main, pr["head"]["sha"]
+        )
+    else:
+        final_base = commit_base_change(p.worktree("base-update"), WORKER_LOG)
+        state["knowledge_advance_on_merge"] = final_base
     p.save(state)
     result = merge_request(
         p,
@@ -251,7 +302,19 @@ def test_public_knowledge_merge_and_acceptance(
     assert result["review_usage"]["confirmed_launches"] == 0
     target = result["prs"][0]
     assert target["ci"]["run"]["run_attempt"] == 2
+    assert target["ci"]["verified_base_sha"] == target["verified_base"] == checked_base
+    assert target["ci"]["verified_merge_sha"] == checked_merge
+    assert target["ci"]["observed_main_sha"] == observed_main
+    assert target["ci"]["base_sha"] == pr["base"]["sha"]
+    assert target["ci"]["merge_sha"] == pr["merge_commit_sha"]
+    assert target["merge_base"] == merge_base
     assert target["merge_commit"] == run_git(p.repo, "rev-parse", "main")
+    assert run_git(
+        p.repo, "show", "-s", "--format=%P", target["merge_commit"]
+    ).split() == [
+        final_base,
+        pr["head"]["sha"],
+    ]
     assert target["main_ci"]["status"] == "success"
     assert target["main_ci"]["head"] == target["merge_commit"]
     assert target["issue_states"]["10"] == {
@@ -273,6 +336,64 @@ def test_public_knowledge_merge_and_acceptance(
     p.announce_completion()
     ended = json.loads(p.cli("release", "--ended", "--spec", p.spec(finish)).stdout)
     assert ended["completion"]["record"]["prs"] == ([original, n] if companion else [n])
+
+
+@pytest.mark.parametrize(
+    ("phase", "path"),
+    [
+        ("observe", "src/tennis_scene/configs/dataset.yaml"),
+        ("before_submit", "knowledge/reports/parallel.md"),
+        ("during_submit", "knowledge/reports/parallel.md"),
+    ],
+)
+def test_knowledge_main_changes_pause_the_merge(
+    parent_env: ParentEnv, phase: str, path: str
+) -> None:
+    p = parent_env
+    prepared(p)
+    state = p.state()
+    pr = pr_with_paths(p, 101, [RECORD])
+    state["prs"] = [pr]
+    execution_evidence(pr)
+    successful_run(p, state, pr)
+    if phase == "observe":
+        commit_base_change(p.repo, path)
+    else:
+        tip = commit_base_change(p.worktree("base-update"), path)
+        if phase == "before_submit":
+            state["knowledge_advance_after_base_read"] = {
+                "sha": tip,
+                "pr": pr["number"],
+                "test_merge": updated_test_merge(p.repo, tip, pr["head"]["sha"]),
+            }
+        else:
+            state["knowledge_advance_on_merge"] = tip
+    p.save(state)
+
+    result = merge_request(p, pr)
+
+    assert result["status"] == "parent_wait", result
+    target = result["prs"][0]
+    calls = p.calls()
+    submitted = [call for call in calls if "repos/o/r/pulls/101/merge" in call]
+    if phase == "during_submit":
+        assert len(submitted) == 1
+        assert target["resume_stage"] == "merge_pending"
+        assert (
+            target["error"]
+            == "knowledge merge parents differ from the verified comparison"
+        )
+        assert "main_ci" not in target
+    else:
+        assert not submitted
+        assert "merge_head" not in target
+        assert target["resume_stage"] == "ci_wait"
+        assert "main changed knowledge paths since verified CI" in target["reason"]
+        assert path in target["reason"]
+        assert "Merge main into the PR branch and refresh evidence" in target["reason"]
+        assert target["ci"]["status"] == (
+            "failure" if phase == "observe" else "success"
+        )
 
 
 @pytest.mark.parametrize(

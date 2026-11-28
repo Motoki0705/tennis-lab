@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from .artifacts import read_manifest
-from .growth import SCHEMA_VERSION, aggregate_snapshot, analyze
+from .growth import SCHEMA_VERSION, aggregate_snapshot, analyze, shard_balance
 from .growth import markdown as growth_markdown
 from .growth_baseline import previous_main
 from .lanes import parse_attempt, read_plan, validate_plan
@@ -121,6 +121,7 @@ def inspect_shards(
     attempt: str,
     lane_plan: dict[str, Any] | None = None,
     source_root: Path | None = None,
+    raise_io_errors: bool = False,
 ) -> dict[str, Any]:
     """Audit latest shards for one run/plan; attempt is the aggregate job attempt."""
     issues: list[str] = []
@@ -155,6 +156,8 @@ def inspect_shards(
                 raise ValueError("lane plan attempt is newer than aggregate attempt")
             plan_attempt = lane_plan["attempt"]
         except (OSError, ValueError, KeyError, TypeError) as error:
+            if raise_io_errors and isinstance(error, OSError):
+                raise
             issues.append(f"invalid fixed lane plan: {error}")
     for directory in directories:
         try:
@@ -277,7 +280,7 @@ def inspect_shards(
                 or plan["profile_sha256"] != profile
             ):
                 raise ValueError("shards disagree on full inventory or timing profile")
-            summary = summarize(directory)
+            summary = summarize(directory, raise_io_errors=raise_io_errors)
             inventory = json.loads((directory / "inventory.json").read_text())
             if (
                 summary["issues"]
@@ -308,6 +311,8 @@ def inspect_shards(
                 }
             )
         except (OSError, ValueError, KeyError, TypeError, IndexError) as error:
+            if raise_io_errors and isinstance(error, OSError):
+                raise
             issues.append(f"{directory.parent.name}: {error}")
     expected_count = count + int(schema == 3)
     if len(directories) != expected_count:
@@ -477,12 +482,20 @@ def write_growth_report(
         except (OSError, ValueError, KeyError, TypeError) as error:
             profile = None
             profile_reason = f"{type(error).__name__}: {error}"
+        balance = None
+        balance_reason = None
+        try:
+            balance = shard_balance(root, audit["shard_count"])
+        except (OSError, ValueError, KeyError, TypeError) as error:
+            balance_reason = f"{type(error).__name__}: {error}"
         report = analyze(
             snapshot,
             baseline,
             baseline_reason=reason,
             profile=profile,
             profile_reason=profile_reason,
+            balance=balance,
+            balance_reason=balance_reason,
         )
     document = growth_markdown(report)
     (root / "growth-summary.json").write_text(json.dumps(report, indent=2) + "\n")
